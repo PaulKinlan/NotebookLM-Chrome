@@ -308,6 +308,7 @@ function setupEventListeners(): void {
   });
   elements.addPageBtn.addEventListener('click', handleAddCurrentTab);
   elements.clearChatBtn?.addEventListener('click', handleClearChat);
+  elements.chatMessages?.addEventListener('click', handleCitationClick);
 
   // Transform tab
   elements.transformPodcast?.addEventListener('click', () => handleTransform('podcast'));
@@ -1119,17 +1120,20 @@ async function loadChatHistory(): Promise<void> {
     return;
   }
 
+  // Fetch sources for citation rendering
+  const sources = await getSourcesByNotebook(currentNotebookId);
+
   elements.chatMessages.innerHTML = '';
 
   for (const message of messages) {
-    appendChatMessage(message);
+    appendChatMessage(message, sources);
   }
 
   // Scroll to bottom
   elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 }
 
-function appendChatMessage(message: ChatMessage, isStreaming: boolean = false): HTMLDivElement {
+function appendChatMessage(message: ChatMessage, sources: Source[] = [], isStreaming: boolean = false): HTMLDivElement {
   // Remove empty state if present
   const emptyState = elements.chatMessages.querySelector('.empty-state');
   if (emptyState) {
@@ -1151,7 +1155,7 @@ function appendChatMessage(message: ChatMessage, isStreaming: boolean = false): 
         citationsEl.className = 'chat-citations';
         existingMessage.appendChild(citationsEl);
       }
-      citationsEl.innerHTML = renderCitations(message.citations);
+      citationsEl.innerHTML = renderCitations(message.citations, sources);
     }
     return existingMessage as HTMLDivElement;
   }
@@ -1168,7 +1172,7 @@ function appendChatMessage(message: ChatMessage, isStreaming: boolean = false): 
     <div class="chat-message-content">${formatMarkdown(message.content)}</div>
     ${message.citations && message.citations.length > 0 && !isStreaming ? `
       <div class="chat-citations">
-        ${renderCitations(message.citations)}
+        ${renderCitations(message.citations, sources)}
       </div>
     ` : ''}
     <div class="chat-message-time">${timeStr}</div>
@@ -1180,21 +1184,73 @@ function appendChatMessage(message: ChatMessage, isStreaming: boolean = false): 
   return div;
 }
 
-function renderCitations(citations: Citation[]): string {
+function renderCitations(citations: Citation[], sources: Source[]): string {
   if (citations.length === 0) return '';
 
   return `
     <div class="chat-citations-title">Sources cited</div>
-    ${citations.map((citation, index) => `
-      <div class="citation-item" data-source-id="${citation.sourceId}">
+    ${citations.map((citation, index) => {
+      const source = sources.find(s => s.id === citation.sourceId);
+      const sourceUrl = source?.url || '';
+      return `
+      <div class="citation-item" data-source-id="${citation.sourceId}" data-source-url="${escapeHtml(sourceUrl)}" data-excerpt="${escapeHtml(citation.excerpt)}">
         <div class="citation-number">${index + 1}</div>
         <div class="citation-content">
           <div class="citation-source">${escapeHtml(citation.sourceTitle)}</div>
           <div class="citation-excerpt">${escapeHtml(citation.excerpt)}</div>
         </div>
       </div>
-    `).join('')}
+    `;
+    }).join('')}
   `;
+}
+
+function createTextFragmentUrl(baseUrl: string, excerpt: string): string {
+  // Clean up the excerpt for text fragment
+  // Take first ~100 chars to avoid overly long fragments
+  let text = excerpt.trim();
+  if (text.length > 100) {
+    // Try to cut at a word boundary
+    text = text.substring(0, 100);
+    const lastSpace = text.lastIndexOf(' ');
+    if (lastSpace > 50) {
+      text = text.substring(0, lastSpace);
+    }
+  }
+
+  // Remove any existing fragment
+  const urlWithoutFragment = baseUrl.split('#')[0];
+
+  // Encode the text for URL
+  const encodedText = encodeURIComponent(text);
+
+  return `${urlWithoutFragment}#:~:text=${encodedText}`;
+}
+
+function handleCitationClick(event: Event): void {
+  const target = event.target as HTMLElement;
+  const citationItem = target.closest('.citation-item') as HTMLElement;
+
+  if (!citationItem) return;
+
+  const sourceUrl = citationItem.dataset.sourceUrl;
+  const excerpt = citationItem.dataset.excerpt;
+
+  if (!sourceUrl) {
+    showNotification('Source URL not available');
+    return;
+  }
+
+  // Skip if excerpt is generic
+  if (!excerpt || excerpt === 'Referenced in response') {
+    // Just open the URL without text fragment
+    chrome.tabs.create({ url: sourceUrl });
+    return;
+  }
+
+  // Create URL with text fragment
+  const fragmentUrl = createTextFragmentUrl(sourceUrl, excerpt);
+  chrome.tabs.create({ url: fragmentUrl });
 }
 
 function formatRelativeTime(timestamp: number): string {
@@ -1226,7 +1282,7 @@ async function handleQuery(): Promise<void> {
   // Save user message
   const userMessage = createChatMessage(currentNotebookId, 'user', query);
   await saveChatMessage(userMessage);
-  appendChatMessage(userMessage);
+  appendChatMessage(userMessage, sources);
 
   // Check cache first
   const sourceIds = sources.map(s => s.id);
@@ -1242,7 +1298,7 @@ async function handleQuery(): Promise<void> {
       cached.citations
     );
     await saveChatMessage(assistantMessage);
-    appendChatMessage(assistantMessage);
+    appendChatMessage(assistantMessage, sources);
     elements.queryBtn.disabled = false;
     elements.chatStatus.innerHTML = 'Response loaded from cache <span class="offline-indicator">Offline</span>';
     return;
@@ -1250,7 +1306,7 @@ async function handleQuery(): Promise<void> {
 
   // Create placeholder for assistant message
   const assistantMessage = createChatMessage(currentNotebookId, 'assistant', '');
-  const messageDiv = appendChatMessage(assistantMessage, true);
+  const messageDiv = appendChatMessage(assistantMessage, sources, true);
 
   try {
     const stream = streamChat(sources, query);
@@ -1294,7 +1350,7 @@ async function handleQuery(): Promise<void> {
     if (citations.length > 0) {
       const citationsDiv = document.createElement('div');
       citationsDiv.className = 'chat-citations';
-      citationsDiv.innerHTML = renderCitations(citations);
+      citationsDiv.innerHTML = renderCitations(citations, sources);
       messageDiv.insertBefore(citationsDiv, messageDiv.querySelector('.chat-message-time'));
     }
 
@@ -1327,7 +1383,7 @@ async function handleQuery(): Promise<void> {
       if (cached.citations.length > 0) {
         const citationsDiv = document.createElement('div');
         citationsDiv.className = 'chat-citations';
-        citationsDiv.innerHTML = renderCitations(cached.citations);
+        citationsDiv.innerHTML = renderCitations(cached.citations, sources);
         messageDiv.insertBefore(citationsDiv, messageDiv.querySelector('.chat-message-time'));
       }
 
