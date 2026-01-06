@@ -38,6 +38,7 @@ Users frequently encounter valuable information across multiple web pages but la
 | Current Tab | `activeTab` (required) | Add the currently active tab |
 | Selected Tabs | `activeTab` (required) | Add multiple highlighted/selected tabs at once |
 | Open Tabs | `tabs` (optional) | Browse and select from all open tabs via picker |
+| Tab Groups | `tabs` + `tabGroups` (optional) | Import all tabs from a Chrome tab group |
 | Bookmarks | `bookmarks` (optional) | Browse and select from bookmarks via picker |
 | History | `history` (optional) | Search and select from browsing history via picker |
 | Context Menu | `contextMenus` (required) | Right-click to add page or link |
@@ -88,12 +89,23 @@ Uses the Vercel AI SDK (`npm:ai`) with provider packages:
 - Streaming responses with live updates
 - Source-aware context building
 - Basic markdown rendering in responses
+- **Chat history persistence** (stored per-notebook in IndexedDB)
+- **Clear chat history** button to reset conversation
+- **Source citations** with inline [Source N] markers
+- **Clickable citation cards** that open source URL with text fragment highlighting
+- **Offline response caching** - cached responses used when offline or API fails
 
 #### 3.2 Query Types
 - Open-ended questions about sources
 - Comparison queries ("How does X differ from Y?")
 - Fact extraction ("What are the key dates mentioned?")
 - Synthesis ("Combine these perspectives on...")
+
+#### 3.3 Citation System
+The AI is instructed to cite sources using `[Source N]` markers. After the response, a structured citations section is parsed:
+- Citations extracted from response metadata
+- Displayed as clickable cards below the response
+- Clicking opens the source URL with Chrome's text fragment highlighting (`#:~:text=...`)
 
 ### 4. Transformations
 
@@ -158,8 +170,9 @@ Bottom tab bar with five sections:
 | Header | "Add Sources" title |
 | Primary Action | Blue "Add Current Tab" / "Add X Selected Tabs" button |
 | Search | Search field to filter added sources |
-| Import Options | Three card-style buttons with picker modals: |
+| Import Options | Four card-style buttons with picker modals: |
 | | - **Select from Open Tabs** - Multi-select picker |
+| | - **Import from Tab Groups** - Select tab group(s) to import all tabs |
 | | - **Add from Bookmarks** - Bookmark browser picker |
 | | - **Add from History** - History search picker |
 | Recent Sources | Previously added sources with title, domain, remove button |
@@ -174,7 +187,11 @@ Bottom tab bar with five sections:
 | Helper Text | "Ask questions to synthesize information from your active sources below" |
 | Active Sources | List of sources with initial icon, title, domain, remove button |
 | Add Current Page | Button to quickly add the current tab |
-| Generated Summary | AI-generated response with markdown formatting, timestamp, copy button |
+| Clear Chat | Button to clear chat history for the current notebook |
+| Chat Messages | Scrollable message history with user questions and assistant responses |
+| AI Response | Streaming markdown content with inline [Source N] citations |
+| Citation Cards | Clickable cards showing source title + excerpt, links to source with text fragment highlighting |
+| Offline Indicator | Shows when cached response is used (offline or API error) |
 
 ### Transform Screen
 `designs/content_transformation_options/screen.png`
@@ -204,7 +221,7 @@ Shared modal for tabs, bookmarks, and history selection:
 - Model selection dropdown (updates per provider)
 - API key input (hidden for Chrome Built-in)
 - Test connection button
-- Permission toggles (Tabs, Bookmarks, History)
+- Permission toggles (Tabs, Tab Groups, Bookmarks, History)
 
 ---
 
@@ -298,6 +315,22 @@ interface ChatMessage {
   timestamp: number;
 }
 
+interface Citation {
+  sourceId: string;
+  sourceTitle: string;
+  excerpt: string;
+}
+
+interface CachedResponse {
+  id: string;              // hash of query + sourceIds
+  notebookId: string;
+  query: string;
+  sourceIds: string[];
+  response: string;
+  citations: Citation[];
+  createdAt: number;
+}
+
 interface Transformation extends SyncableEntity {
   notebookId: string;
   type: 'podcast' | 'quiz' | 'takeaways' | 'email';
@@ -364,17 +397,21 @@ async function getModel(): Promise<LanguageModel | null> {
 - [x] Context menu (Add page, Add link)
 - [x] Multi-tab selection support
 - [x] Permission request flow
+- [x] Tab Groups picker (import all tabs from a tab group)
+- [x] Source citations in chat responses (inline [Source N] references + clickable citation cards)
+- [x] Citation click-to-source with text fragment highlighting
+- [x] Chat history persistence (per-notebook, stored in IndexedDB)
+- [x] Clear chat history functionality
+- [x] Offline caching of AI responses (fall back to cached responses when offline or API errors)
+- [x] Basic markdown rendering in chat responses
 
 ### Remaining
-- [ ] Improved content extraction (Readability.js fallback)
-- [ ] Source citations in responses
-- [ ] Chat history persistence
-- [ ] Offline caching of AI responses
-- [ ] Audio generation for podcast scripts (TTS)
-- [ ] Export functionality (markdown, JSON)
-- [ ] Onboarding flow
-- [ ] Error handling polish
-- [ ] Chrome Web Store listing
+- [ ] Improved content extraction (Readability.js fallback for better article parsing)
+- [ ] Audio generation for podcast scripts (TTS integration)
+- [ ] Export functionality (markdown, JSON export of notebooks/sources)
+- [ ] Onboarding flow (first-time user experience)
+- [ ] Error handling polish (better error messages, retry logic)
+- [ ] Chrome Web Store listing (icons, screenshots, description)
 
 ---
 
@@ -396,10 +433,13 @@ All data stored in IndexedDB for unlimited local storage capacity:
 - Settings stored as key-value pairs
 - Designed for future sync with SyncableEntity base type
 
-### Offline Support (Partial)
-- Chrome Built-in AI works fully offline
-- Sources and notebooks available offline
-- Cloud AI responses require network
+### Offline Support
+- Chrome Built-in AI works fully offline (Gemini Nano)
+- Sources and notebooks available offline (stored in IndexedDB)
+- **Response caching**: AI responses are cached with their query and source IDs
+- **Offline fallback**: When offline or API errors occur, cached responses are used
+- **Cache key**: Deterministic hash of query + sorted source IDs ensures consistent cache hits
+- Cloud AI providers require network for new queries
 
 ### Sync Strategy
 Design with sync hooks for future server-based sync:
