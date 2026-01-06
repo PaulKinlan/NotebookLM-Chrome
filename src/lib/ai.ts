@@ -1,0 +1,354 @@
+import { streamText, generateText, type LanguageModel } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { builtInAI } from '@built-in-ai/core';
+import type { Source, Citation } from '../types/index.ts';
+import { getAISettings, getApiKey } from './settings.ts';
+
+// ============================================================================
+// Provider Factory
+// ============================================================================
+
+export type AIProvider = 'anthropic' | 'openai' | 'google' | 'chrome';
+
+async function getModel(): Promise<LanguageModel | null> {
+  const settings = await getAISettings();
+  const apiKey = await getApiKey(settings.provider);
+
+  switch (settings.provider) {
+    case 'anthropic': {
+      if (!apiKey) return null;
+      const provider = createAnthropic({ apiKey });
+      return provider(settings.model || 'claude-sonnet-4-5-20250514');
+    }
+    case 'openai': {
+      if (!apiKey) return null;
+      const provider = createOpenAI({ apiKey });
+      return provider(settings.model || 'gpt-5');
+    }
+    case 'google': {
+      if (!apiKey) return null;
+      const provider = createGoogleGenerativeAI({ apiKey });
+      return provider(settings.model || 'gemini-2.5-flash');
+    }
+    case 'chrome': {
+      // Chrome Built-in AI - no API key needed
+      return builtInAI();
+    }
+    default:
+      return null;
+  }
+}
+
+// ============================================================================
+// Source Context Builder
+// ============================================================================
+
+function buildSourceContext(sources: Source[]): string {
+  return sources
+    .map((source, i) => {
+      return `[Source ${i + 1}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`;
+    })
+    .join('\n\n---\n\n');
+}
+
+function buildSourceList(sources: Source[]): string {
+  return sources
+    .map((source, i) => `  ${i + 1}. "${source.title}" (ID: ${source.id})`)
+    .join('\n');
+}
+
+// ============================================================================
+// Chat Query
+// ============================================================================
+
+export interface ChatResult {
+  content: string;
+  citations: Citation[];
+}
+
+function buildChatSystemPrompt(sources: Source[]): string {
+  return `You are a helpful AI assistant that answers questions based on the provided sources.
+
+IMPORTANT INSTRUCTIONS:
+1. Base your answers ONLY on the provided sources
+2. When you use information from a source, cite it using the format [Source N] where N is the source number
+3. Be accurate and well-structured
+4. If the sources don't contain relevant information, say so
+
+After your main response, add a CITATIONS section in this exact format:
+---CITATIONS---
+[Source 1]: "exact quote or paraphrase from source 1"
+[Source 2]: "exact quote or paraphrase from source 2"
+---END CITATIONS---
+
+Only include sources you actually referenced. If you didn't cite any sources, omit the citations section.
+
+Available sources:
+${buildSourceList(sources)}
+
+Source contents:
+
+${buildSourceContext(sources)}`;
+}
+
+function parseCitations(content: string, sources: Source[]): { cleanContent: string; citations: Citation[] } {
+  const citations: Citation[] = [];
+  let cleanContent = content;
+
+  // Extract citations section if present
+  const citationsMatch = content.match(/---CITATIONS---\n([\s\S]*?)\n---END CITATIONS---/);
+  if (citationsMatch) {
+    cleanContent = content.replace(/\n?---CITATIONS---[\s\S]*?---END CITATIONS---\n?/, '').trim();
+    const citationsText = citationsMatch[1];
+
+    // Parse each citation line
+    const citationLines = citationsText.split('\n').filter(line => line.trim());
+    for (const line of citationLines) {
+      const match = line.match(/\[Source (\d+)\]:\s*"?([^"]+)"?/);
+      if (match) {
+        const sourceIndex = parseInt(match[1], 10) - 1;
+        const excerpt = match[2].trim();
+        if (sourceIndex >= 0 && sourceIndex < sources.length) {
+          citations.push({
+            sourceId: sources[sourceIndex].id,
+            sourceTitle: sources[sourceIndex].title,
+            excerpt,
+          });
+        }
+      }
+    }
+  }
+
+  // Also extract inline citations like [Source 1] and map them
+  const inlineMatches = cleanContent.matchAll(/\[Source (\d+)\]/g);
+  const seenSourceIds = new Set(citations.map(c => c.sourceId));
+
+  for (const match of inlineMatches) {
+    const sourceIndex = parseInt(match[1], 10) - 1;
+    if (sourceIndex >= 0 && sourceIndex < sources.length) {
+      const source = sources[sourceIndex];
+      if (!seenSourceIds.has(source.id)) {
+        seenSourceIds.add(source.id);
+        citations.push({
+          sourceId: source.id,
+          sourceTitle: source.title,
+          excerpt: 'Referenced in response',
+        });
+      }
+    }
+  }
+
+  return { cleanContent, citations };
+}
+
+export async function* streamChat(
+  sources: Source[],
+  question: string
+): AsyncGenerator<string, ChatResult, unknown> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const systemPrompt = buildChatSystemPrompt(sources);
+
+  const result = streamText({
+    model,
+    system: systemPrompt,
+    prompt: question,
+  });
+
+  let fullContent = '';
+  for await (const chunk of result.textStream) {
+    fullContent += chunk;
+    // Don't yield the citations section while streaming
+    yield chunk.replace(/---CITATIONS---[\s\S]*$/, '');
+  }
+
+  const { cleanContent, citations } = parseCitations(fullContent, sources);
+
+  return {
+    content: cleanContent,
+    citations,
+  };
+}
+
+export async function chat(sources: Source[], question: string): Promise<ChatResult> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const systemPrompt = buildChatSystemPrompt(sources);
+
+  const result = await generateText({
+    model,
+    system: systemPrompt,
+    prompt: question,
+  });
+
+  const { cleanContent, citations } = parseCitations(result.text, sources);
+
+  return {
+    content: cleanContent,
+    citations,
+  };
+}
+
+// ============================================================================
+// Transformations
+// ============================================================================
+
+export async function generateSummary(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates clear, concise summaries.
+Synthesize the key information from all sources into a coherent summary.
+Focus on the most important points and how they relate to each other.`,
+    prompt: `Please provide a comprehensive summary of the following sources:
+
+${buildSourceContext(sources)}`,
+  });
+
+  return result.text;
+}
+
+export async function generateKeyTakeaways(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that extracts key takeaways.
+Create a bulleted list of the most important points from the sources.
+Each takeaway should be clear, actionable, and self-contained.`,
+    prompt: `Extract the key takeaways from these sources:
+
+${buildSourceContext(sources)}
+
+Format as a bulleted list with clear, concise points.`,
+  });
+
+  return result.text;
+}
+
+export async function generateQuiz(sources: Source[], questionCount: number = 5): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates educational quizzes.
+Generate multiple choice questions that test understanding of the key concepts.
+Each question should have 4 options with one correct answer.`,
+    prompt: `Create a ${questionCount}-question multiple choice quiz based on these sources:
+
+${buildSourceContext(sources)}
+
+Format each question as:
+Q1: [Question]
+A) [Option]
+B) [Option]
+C) [Option]
+D) [Option]
+Answer: [Letter]
+Explanation: [Brief explanation]`,
+  });
+
+  return result.text;
+}
+
+export async function generateEmailSummary(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates professional email summaries.
+Write a concise summary suitable for sharing via email.
+Use a professional tone and clear structure.`,
+    prompt: `Create a professional email summary of these sources:
+
+${buildSourceContext(sources)}
+
+Include:
+- A brief introduction
+- Key points (bulleted)
+- A conclusion or call to action if appropriate`,
+  });
+
+  return result.text;
+}
+
+export interface PodcastSegment {
+  speaker: 'host' | 'guest';
+  text: string;
+}
+
+export async function generatePodcastScript(
+  sources: Source[],
+  lengthMinutes: number = 5
+): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates engaging podcast scripts.
+Write a natural conversation between two hosts discussing the topics.
+Make it engaging, informative, and conversational.
+The hosts should be curious, ask follow-up questions, and build on each other's points.`,
+    prompt: `Create a ${lengthMinutes}-minute podcast script (approximately ${lengthMinutes * 150} words) based on these sources:
+
+${buildSourceContext(sources)}
+
+Format as a dialogue between Host A and Host B:
+Host A: [Introduction and topic setup]
+Host B: [Response and first point]
+...continue the natural conversation...
+
+Make it engaging and educational, covering the key points from the sources.`,
+  });
+
+  return result.text;
+}
+
+// ============================================================================
+// Test Connection
+// ============================================================================
+
+export async function testConnection(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const model = await getModel();
+    if (!model) {
+      return { success: false, error: 'No API key configured' };
+    }
+
+    await generateText({
+      model,
+      prompt: 'Say "Connection successful" in exactly those words.',
+    });
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}

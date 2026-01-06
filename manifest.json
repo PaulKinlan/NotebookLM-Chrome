@@ -7,10 +7,12 @@
     "storage",
     "sidePanel",
     "activeTab",
-    "scripting"
+    "scripting",
+    "contextMenus"
   ],
   "optional_permissions": [
     "tabs",
+    "tabGroups",
     "bookmarks",
     "history"
   ],

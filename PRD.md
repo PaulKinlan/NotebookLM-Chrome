@@ -30,70 +30,64 @@ Users frequently encounter valuable information across multiple web pages but la
 - Create, rename, and delete notebooks
 - Each notebook contains multiple sources
 - Notebooks persist in IndexedDB (with sync hooks for future server sync)
+- Active notebook tracked across sessions
 
 #### 1.2 Source Types
 | Source Type | Permission Required | Description |
 |-------------|---------------------|-------------|
 | Current Tab | `activeTab` (required) | Add the currently active tab |
-| Open Tabs | `tabs` (optional) | Browse and select from all open tabs |
-| Bookmarks | `bookmarks` (optional) | Browse bookmark folders and select items |
-| History | `history` (optional) | Search and select from browsing history |
-| Manual URL | None | Paste a URL to fetch and add |
-| Text Input | None | Paste raw text content directly |
+| Selected Tabs | `activeTab` (required) | Add multiple highlighted/selected tabs at once |
+| Open Tabs | `tabs` (optional) | Browse and select from all open tabs via picker |
+| Bookmarks | `bookmarks` (optional) | Browse and select from bookmarks via picker |
+| History | `history` (optional) | Search and select from browsing history via picker |
+| Context Menu | `contextMenus` (required) | Right-click to add page or link |
 
 #### 1.3 Content Extraction
 Uses **Turndown** library in a content script to convert HTML to clean markdown:
 
 **Strategy:**
-- Content script injected on all pages (`document_idle`)
+- Content script auto-injected on all pages via manifest (`document_idle`)
 - Turndown converts HTML to markdown with custom rules
+- Fallback inline extraction for pages loaded before extension install
 - Background script requests extraction via message passing
-
-**Content Selection Priority:**
-1. `<article>` element
-2. `<main>` or `[role="main"]`
-3. Common content selectors (`.post-content`, `.article-content`, `.entry-content`)
-4. Fallback to `<body>`
 
 **Turndown Rules:**
 - Remove noise: `style`, `script`, `noscript`, `iframe`, `nav`, `footer`, `header`, `aside`, `form`, `input`
 - Flatten links: Keep text, remove `<a>` tags (cleaner for AI context)
-- Remove images (configurable)
 
 **Output:** Markdown stored in `Source.content` for AI processing
 
 ### 2. AI Integration
 
 #### 2.1 Provider Support
-Use the Vercel AI SDK (`npm:ai`) to support multiple providers:
+Uses the Vercel AI SDK (`npm:ai`) with provider packages:
 
-| Provider | Models | Use Case |
-|----------|--------|----------|
-| Anthropic | Claude 4.5 Sonnet, Claude 4.5 Opus | High-quality reasoning and analysis |
-| OpenAI | GPT-5.2 | General purpose, fast responses |
-| Google | Gemini Pro, Gemini Flash 3.0 | Cost-effective, multimodal capable |
-| Chrome Built-in | Gemini Nano | Offline, privacy-focused, free |
+| Provider | Package | Models | Use Case |
+|----------|---------|--------|----------|
+| Anthropic | `@ai-sdk/anthropic` | Claude 4.5 Sonnet, Opus, Haiku | High-quality reasoning and analysis |
+| OpenAI | `@ai-sdk/openai` | GPT-5, GPT-5 Mini, GPT-5.1 Instant | General purpose, fast responses |
+| Google | `@ai-sdk/google` | Gemini 2.5 Flash/Pro, Gemini 3 Pro/Flash (Preview) | Cost-effective, multimodal capable |
+| Chrome Built-in | `@built-in-ai/core` | Gemini Nano | Offline, privacy-focused, free |
 
 #### 2.2 Settings UI
 - Model provider selection dropdown
-- API key input fields (stored securely in chrome.storage.local)
-- Model-specific settings (temperature, max tokens)
+- Model selection per provider
+- API key input fields (stored in IndexedDB per provider)
 - Test connection button
-- Chrome Built-in AI availability check
+- Chrome Built-in AI works without API key
 
 #### 2.3 Context Management
 - Combine source content into context for queries
-- Handle context length limits per model
-- Chunking strategies for large source collections
-- Source attribution in responses
+- Source attribution in prompts
+- Streaming responses for real-time feedback
 
 ### 3. Query & Chat
 
 #### 3.1 Chat Interface
-- Conversational UI in the side panel
-- Message history per notebook
-- Streaming responses
-- Source citations with links
+- Query input in the side panel
+- Streaming responses with live updates
+- Source-aware context building
+- Basic markdown rendering in responses
 
 #### 3.2 Query Types
 - Open-ended questions about sources
@@ -103,49 +97,40 @@ Use the Vercel AI SDK (`npm:ai`) to support multiple providers:
 
 ### 4. Transformations
 
-Four main transformation types (see `designs/content_transformation_options/screen.png`):
+Four transformation types accessible from the Transform tab:
 
 #### 4.1 Podcast Script
 - Generate conversational dialogue between two hosts
 - Hosts discuss and explain the source content
-- Natural conversation flow with questions, explanations, tangents
-- Configurable tone (casual, educational, professional)
-- Configurable length (5, 10, 15, 30 minutes of content)
+- Configurable length (default: 5 minutes)
 
 #### 4.2 Study Quiz
-- Multiple choice questions (default: 10 questions)
-- True/false questions
-- Short answer prompts
-- Configurable difficulty and quantity
-- Interactive quiz mode with scoring
-- Export quiz as JSON or text
+- Multiple choice questions (default: 5 questions)
+- Questions with 4 options each
+- Answer and explanation provided
 
 #### 4.3 Key Takeaways
-- Extract the most important bullet points rapidly
-- Prioritized by relevance and frequency across sources
-- Exportable as markdown list
+- Extract the most important bullet points
+- Formatted as a clear, actionable list
 
-#### 4.4 Summarize for Email
-- Draft a concise email summary for stakeholders
-- Professional tone optimized for business communication
-- Includes key findings and action items
+#### 4.4 Email Summary
+- Professional email summary for sharing
+- Includes key findings and structure
 - Copy-ready format
 
-#### 4.5 Audio Generation (for Podcast Script)
+### 5. Context Menu Integration
 
-##### Text-to-Speech
-| TTS Provider | Features |
-|--------------|----------|
-| OpenAI TTS | High quality, multiple voices |
-| ElevenLabs | Most natural, voice cloning option |
-| Google Cloud TTS | Cost-effective, many languages |
-| Browser SpeechSynthesis | Free, offline, lower quality |
+Right-click context menu for quick source addition:
+- **"Add page to Notebook"** - On any page, extracts and adds content
+- **"Add link to Notebook"** - On any link, opens URL in background, extracts content, closes tab
+- Opens side panel after adding (or if no notebook selected)
 
-##### Audio Output
-- Generate separate audio for each host
-- Merge into single podcast file
-- Download as MP3/WAV
-- Playback controls in extension
+### 6. Multi-Tab Selection
+
+When multiple tabs are highlighted in the browser:
+- Button automatically changes from "Add Current Tab" to "Add X Selected Tabs"
+- Clicking adds all selected tabs to the notebook
+- Updates dynamically as tab selection changes
 
 ---
 
@@ -155,59 +140,70 @@ Four main transformation types (see `designs/content_transformation_options/scre
 
 **Theme:** Dark mode UI with blue accent colors.
 
+**Tech Stack:** Vanilla TypeScript (no React), CSS with variables.
+
 ### Navigation
-Bottom tab bar with four sections:
+Bottom tab bar with five sections:
 - **Add** - Add sources to notebook
 - **Chat** - Query and interact with sources
-- **Library** - Browse notebooks (future)
+- **Transform** - Generate transformations from sources
+- **Library** - Browse notebooks
 - **Settings** - Configure AI providers and permissions
 
-### Main View: Notebook Summary & Query
-`designs/notebook_summary_&_query/screen.png`
-
-| Element | Description |
-|---------|-------------|
-| Header | "Notebook AI" title + settings gear icon |
-| Query Input | Search field: "Ask a question about your sources..." with submit button |
-| Helper Text | "Ask questions to synthesize information from your active sources below" |
-| Active Sources | List of sources with favicon, title, URL (e.g., "Wikipedia: Quantum Physics") |
-| Add Current Page | Button to quickly add the current tab |
-| Generated Summary | AI-generated synthesis with bold key terms, timestamp, copy/feedback buttons |
-| FAB | Floating action button (+) for quick actions |
-
-### Add Sources Screen
+### Main View: Add Sources Screen
 `designs/add_sources_to_notebook/screen.png`
 
 | Element | Description |
 |---------|-------------|
-| Header | "Add Sources" title with close (X) button |
-| Primary Action | Blue "Add Current Tab" button - captures active page immediately |
+| Header | "Add Sources" title |
+| Primary Action | Blue "Add Current Tab" / "Add X Selected Tabs" button |
 | Search | Search field to filter added sources |
-| Import Options | Three card-style buttons: |
-| | - **Select from Open Tabs** - "Choose from 12 active tabs" |
-| | - **Add from Bookmarks** - "Browse your saved pages" |
-| | - **Add from History** - "Find previously visited sites" |
-| Recent Sources | Previously added sources with title, URL, and tags (e.g., "AI", "Research") |
+| Import Options | Three card-style buttons with picker modals: |
+| | - **Select from Open Tabs** - Multi-select picker |
+| | - **Add from Bookmarks** - Bookmark browser picker |
+| | - **Add from History** - History search picker |
+| Recent Sources | Previously added sources with title, domain, remove button |
 
-### Transform Content Screen
+### Chat Screen
+`designs/notebook_summary_&_query/screen.png`
+
+| Element | Description |
+|---------|-------------|
+| Notebook Selector | Dropdown to select/create notebooks |
+| Query Input | Search field: "Ask a question about your sources..." with submit button |
+| Helper Text | "Ask questions to synthesize information from your active sources below" |
+| Active Sources | List of sources with initial icon, title, domain, remove button |
+| Add Current Page | Button to quickly add the current tab |
+| Generated Summary | AI-generated response with markdown formatting, timestamp, copy button |
+
+### Transform Screen
 `designs/content_transformation_options/screen.png`
 
 | Element | Description |
 |---------|-------------|
-| Header | Back arrow + notebook name (e.g., "Research Assistant") + overflow menu |
-| Title | "Transform Content" with subtitle "Based on 5 active sources" |
-| Transform Options | Card-style buttons with icons: |
-| | - **Podcast Script** (purple mic icon) - "Turn sources into a 2-person dialogue script" |
-| | - **Study Quiz** (orange question icon) - "Create 10 multiple choice questions to test knowledge" |
-| | - **Key Takeaways** (yellow lightning icon) - "Extract the most important bullet points rapidly" |
-| | - **Summarize for Email** (teal mail icon) - "Draft a concise email summary for stakeholders" |
-| Recent Transformations | History of generated content (e.g., "Marketing Trends Q3 - Podcast - 2 mins ago") |
+| Header | "Transform" title with helper text |
+| Transform Options | 2x2 grid of card-style buttons: |
+| | - **Podcast Script** (orange icon) - "Generate a 2-person conversation" |
+| | - **Study Quiz** (purple icon) - "Test your knowledge" |
+| | - **Key Takeaways** (green icon) - "Extract main points" |
+| | - **Email Summary** (blue icon) - "Professional summary to share" |
+| Result Panel | Generated content with copy/close buttons |
+
+### Picker Modal
+Shared modal for tabs, bookmarks, and history selection:
+
+| Element | Description |
+|---------|-------------|
+| Header | Title (e.g., "Select Tabs") with close button |
+| Search | Filter input to search items |
+| Item List | Scrollable list with checkbox, favicon/initial, title, URL |
+| Footer | Selected count + Cancel/Add Selected buttons |
 
 ### Settings Panel
 - AI Provider selection (Anthropic, OpenAI, Google, Chrome Built-in)
-- Model selection dropdown
-- API key input with masked display and test button
-- TTS provider and voice settings
+- Model selection dropdown (updates per provider)
+- API key input (hidden for Chrome Built-in)
+- Test connection button
 - Permission toggles (Tabs, Bookmarks, History)
 
 ---
@@ -222,22 +218,45 @@ Bottom tab bar with four sections:
 ├─────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐ │
 │  │ Side Panel  │  │ Background  │  │ Content Script  │ │
-│  │   (React?)  │◄─┤   Worker    ├─►│  (Extraction)   │ │
+│  │ (Vanilla TS)│◄─┤   Worker    ├─►│  (Turndown)     │ │
 │  │             │  │             │  │                 │ │
 │  └─────────────┘  └──────┬──────┘  └─────────────────┘ │
 │                          │                              │
 │                   ┌──────▼──────┐                       │
 │                   │  IndexedDB  │                       │
-│                   │  + Sync API │                       │
+│                   │  (Storage)  │                       │
 │                   └─────────────┘                       │
 └─────────────────────────────────────────────────────────┘
                            │
                            ▼
               ┌─────────────────────────┐
               │     AI Providers        │
-              │  (Anthropic, OpenAI,    │
-              │   Gemini, Chrome AI)    │
+              │  (Vercel AI SDK)        │
+              │  Anthropic, OpenAI,     │
+              │  Google, Chrome Built-in│
               └─────────────────────────┘
+```
+
+### File Structure
+
+```
+src/
+├── background/
+│   └── index.ts          # Service worker, context menus, message handling
+├── content/
+│   └── index.ts          # Turndown-based content extraction
+├── lib/
+│   ├── ai.ts             # AI provider integration (Vercel AI SDK)
+│   ├── db.ts             # IndexedDB wrapper
+│   ├── permissions.ts    # Permission request handling
+│   ├── settings.ts       # AI settings storage
+│   └── storage.ts        # StorageAdapter implementation
+├── sidepanel/
+│   ├── index.html        # Side panel UI structure
+│   ├── index.ts          # UI logic, event handling
+│   └── styles.css        # Dark theme CSS
+└── types/
+    └── index.ts          # TypeScript type definitions
 ```
 
 ### Data Models
@@ -245,8 +264,8 @@ Bottom tab bar with four sections:
 ```typescript
 // Base interface for sync-enabled entities
 interface SyncableEntity {
-  id: string;              // Local UUID
-  remoteId?: string;       // Server ID (when synced)
+  id: string;
+  remoteId?: string;
   syncStatus: 'local' | 'synced' | 'pending' | 'conflict';
   lastSynced?: number;
   createdAt: number;
@@ -255,16 +274,14 @@ interface SyncableEntity {
 
 interface Notebook extends SyncableEntity {
   name: string;
-  sources: Source[];
-  chatHistory: ChatMessage[];
 }
 
 interface Source extends SyncableEntity {
+  notebookId: string;
   type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text';
   url: string;
   title: string;
-  content: string;        // Plain text content
-  htmlContent?: string;   // Original HTML (optional)
+  content: string;
   metadata?: {
     favicon?: string;
     description?: string;
@@ -274,127 +291,90 @@ interface Source extends SyncableEntity {
 
 interface ChatMessage {
   id: string;
+  notebookId: string;
   role: 'user' | 'assistant';
   content: string;
   citations?: Citation[];
   timestamp: number;
 }
 
-interface Citation {
-  sourceId: string;
-  excerpt: string;
+interface Transformation extends SyncableEntity {
+  notebookId: string;
+  type: 'podcast' | 'quiz' | 'takeaways' | 'email';
+  title: string;
+  content: string;
+  sourceIds: string[];
 }
 
 interface AISettings {
   provider: 'anthropic' | 'openai' | 'google' | 'chrome';
   model: string;
-  apiKey?: string;  // Not needed for Chrome Built-in
-  temperature?: number;
-  maxTokens?: number;
-}
-
-interface TTSSettings {
-  provider: 'openai' | 'elevenlabs' | 'google' | 'browser';
-  apiKey?: string;
-  voice1: string;  // First podcast host
-  voice2: string;  // Second podcast host
-}
-
-// Storage abstraction for future sync
-interface StorageAdapter {
-  // Notebooks
-  getNotebooks(): Promise<Notebook[]>;
-  getNotebook(id: string): Promise<Notebook | null>;
-  saveNotebook(notebook: Notebook): Promise<void>;
-  deleteNotebook(id: string): Promise<void>;
-
-  // Sources
-  addSource(notebookId: string, source: Source): Promise<void>;
-  removeSource(notebookId: string, sourceId: string): Promise<void>;
-
-  // Chat
-  getChatHistory(notebookId: string): Promise<ChatMessage[]>;
-  addChatMessage(notebookId: string, message: ChatMessage): Promise<void>;
-
-  // Sync hooks (no-op in local implementation)
-  sync?(): Promise<SyncResult>;
-  onSyncConflict?(handler: ConflictHandler): void;
+  apiKeys: Record<string, string>;  // Per-provider API keys
 }
 ```
 
-### API Integration (Vercel AI SDK)
+### AI Provider Integration
 
 ```typescript
-import { generateText, streamText } from 'ai';
-import { anthropic } from '@ai-sdk/anthropic';
-import { openai } from '@ai-sdk/openai';
-import { google } from '@ai-sdk/google';
-import { chromeai } from 'chrome-ai';  // Community package
+import { streamText, generateText, type LanguageModel } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { builtInAI } from '@built-in-ai/core';
 
-// Provider factory
-function getProvider(settings: AISettings) {
+async function getModel(): Promise<LanguageModel | null> {
+  const settings = await getAISettings();
+  const apiKey = await getApiKey(settings.provider);
+
   switch (settings.provider) {
     case 'anthropic':
-      return anthropic(settings.model);
+      return createAnthropic({ apiKey })(settings.model);
     case 'openai':
-      return openai(settings.model);
+      return createOpenAI({ apiKey })(settings.model);
     case 'google':
-      return google(settings.model);
+      return createGoogleGenerativeAI({ apiKey })(settings.model);
     case 'chrome':
-      return chromeai();
+      return builtInAI();  // No API key needed
   }
 }
 ```
 
 ---
 
-## Implementation Phases
+## Implementation Status
 
-### Phase 1: Core Foundation
+### Completed
 - [x] Project setup (TypeScript, Vite, CRXJS)
 - [x] Manifest V3 with optional permissions
-- [x] Side panel UI scaffold
-- [x] Basic notebook and source management (chrome.storage)
-- [x] Content extraction from active tab
-- [ ] Migrate storage to IndexedDB with StorageAdapter interface
-- [ ] Settings panel with API key storage
-- [ ] Vercel AI SDK integration
-- [ ] Basic chat/query functionality
+- [x] Side panel UI with dark theme
+- [x] Bottom tab navigation (Add, Chat, Transform, Library, Settings)
+- [x] IndexedDB storage with StorageAdapter
+- [x] Notebook CRUD operations
+- [x] Source management (add, remove, list)
+- [x] Content extraction with Turndown
+- [x] Fallback inline content extraction
+- [x] Vercel AI SDK integration
+- [x] Multi-provider support (Anthropic, OpenAI, Google, Chrome Built-in)
+- [x] Streaming chat responses
+- [x] Transformations (Podcast, Quiz, Takeaways, Email)
+- [x] Settings panel with per-provider API keys
+- [x] Tab picker modal with multi-select
+- [x] Bookmark picker modal
+- [x] History picker modal
+- [x] Context menu (Add page, Add link)
+- [x] Multi-tab selection support
+- [x] Permission request flow
 
-### Phase 2: Source Management
-- [ ] Tab picker (requires `tabs` permission)
-- [ ] Bookmark browser (requires `bookmarks` permission)
-- [ ] History search (requires `history` permission)
-- [ ] Manual URL fetching
-- [ ] Raw text input
-- [ ] Improved content extraction (Readability.js)
-
-### Phase 3: Enhanced AI Features
-- [ ] Multi-provider support (Anthropic, OpenAI, Gemini)
-- [ ] Chrome Built-in AI integration
-- [ ] Streaming responses
-- [ ] Source citations
-- [ ] Context management for large notebooks
-- [ ] Offline support (cache AI responses in IndexedDB)
-
-### Phase 4: Transformations
-- [ ] Summarization (single and multi-source)
-- [ ] Quiz generation with interactive mode
+### Remaining
+- [ ] Improved content extraction (Readability.js fallback)
+- [ ] Source citations in responses
+- [ ] Chat history persistence
+- [ ] Offline caching of AI responses
+- [ ] Audio generation for podcast scripts (TTS)
 - [ ] Export functionality (markdown, JSON)
-
-### Phase 5: Podcast Generation
-- [ ] Conversational script generation
-- [ ] TTS provider integration
-- [ ] Audio generation and merging
-- [ ] Playback UI
-- [ ] Download functionality
-
-### Phase 6: Polish & Launch
-- [ ] Error handling and edge cases
-- [ ] Loading states and progress indicators
 - [ ] Onboarding flow
+- [ ] Error handling polish
 - [ ] Chrome Web Store listing
-- [ ] Documentation
 
 ---
 
@@ -412,48 +392,49 @@ function getProvider(settings: AISettings) {
 
 ### Storage: IndexedDB
 All data stored in IndexedDB for unlimited local storage capacity:
-- Notebooks, sources, and extracted content
-- Chat history and AI responses (cached for offline)
-- Generated audio files
-- User settings and API keys
+- Notebooks and sources stored separately (sources reference notebookId)
+- Settings stored as key-value pairs
+- Designed for future sync with SyncableEntity base type
 
-### Offline Support
-Cache AI responses in IndexedDB for offline viewing:
-- Previous chat messages viewable offline
-- Generated summaries, quizzes cached locally
+### Offline Support (Partial)
 - Chrome Built-in AI works fully offline
+- Sources and notebooks available offline
+- Cloud AI responses require network
 
 ### Sync Strategy
 Design with sync hooks for future server-based sync:
-- Abstract storage layer with `SyncableStorage` interface
-- Each entity has `localId`, `remoteId`, `syncStatus`, `lastSynced`
-- Sync operations: `push()`, `pull()`, `resolveConflict()`
+- Each entity has `syncStatus`, `remoteId`, `lastSynced`
+- StorageAdapter interface abstracts storage operations
 - Server sync implementation deferred to future phase
 
-### Sharing
-Future consideration - not in initial scope.
-
-### Podcast Files
-Local-only storage and playback. No hosting/publishing feature.
+### Chrome Built-in AI
+Uses `@built-in-ai/core` community package for Vercel AI SDK compatibility:
+- No API key required
+- Works offline
+- Requires Chrome 128+ with experimental flags
 
 ---
 
 ## Appendix: Chrome Built-in AI
 
-Chrome's built-in AI (Gemini Nano) is available in Chrome 127+ with these APIs:
-- `window.ai.languageModel` - Text generation
-- `window.ai.summarizer` - Summarization
-- `window.ai.writer` - Writing assistance
-- `window.ai.rewriter` - Text rewriting
+Chrome's built-in AI (Gemini Nano) is available in Chrome 128+ with experimental flags.
 
-Benefits:
+**Package:** `@built-in-ai/core`
+
+**Usage:**
+```typescript
+import { builtInAI } from '@built-in-ai/core';
+const model = builtInAI();
+```
+
+**Benefits:**
 - Free (no API costs)
 - Fast (runs locally)
 - Private (data doesn't leave device)
 - Works offline
 
-Limitations:
+**Limitations:**
 - Smaller model (less capable than cloud models)
 - Limited context window
-- Not available on all devices
 - Requires Chrome flags to enable (for now)
+- Not available on all devices

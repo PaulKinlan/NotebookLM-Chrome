@@ -3,62 +3,425 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NotebookLM Chrome</title>
+    <title>Notebook AI</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div id="app">
+      <!-- Header -->
       <header class="header">
-        <h1>NotebookLM Chrome</h1>
-        <button id="new-notebook-btn" class="btn btn-primary">+ New Notebook</button>
+        <div class="header-left">
+          <span class="logo">N</span>
+          <h1>Notebook AI</h1>
+        </div>
       </header>
 
-      <section id="permissions-section" class="section hidden">
-        <h2>Permissions</h2>
-        <p>Enable permissions to access more sources:</p>
-        <div class="permission-toggles">
-          <label>
-            <input type="checkbox" id="perm-tabs" />
-            Tabs (view all open tabs)
-          </label>
-          <label>
-            <input type="checkbox" id="perm-bookmarks" />
-            Bookmarks
-          </label>
-          <label>
-            <input type="checkbox" id="perm-history" />
-            History
-          </label>
-        </div>
-      </section>
-
-      <section id="notebook-section" class="section">
-        <div id="notebook-selector">
-          <select id="notebook-select">
-            <option value="">Select a notebook...</option>
-          </select>
-        </div>
-
-        <div id="sources-panel" class="hidden">
-          <h2>Sources</h2>
-          <div class="source-actions">
-            <button id="add-current-tab" class="btn">+ Current Tab</button>
-            <button id="add-from-tabs" class="btn" disabled>+ From Tabs</button>
-            <button id="add-from-bookmarks" class="btn" disabled>+ From Bookmarks</button>
+      <!-- Tab Content -->
+      <main class="content">
+        <!-- Add Sources Tab -->
+        <section id="tab-add" class="tab-content active">
+          <div class="tab-header">
+            <h2>Add Sources</h2>
+            <button id="close-add-btn" class="icon-btn hidden">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
           </div>
-          <ul id="sources-list"></ul>
-        </div>
-      </section>
 
-      <section id="query-section" class="section hidden">
-        <h2>Query</h2>
-        <textarea id="query-input" placeholder="Ask a question about your sources..."></textarea>
-        <div class="query-actions">
-          <button id="query-btn" class="btn btn-primary">Ask</button>
-          <button id="transform-btn" class="btn">Transform</button>
+          <button id="add-current-tab-btn" class="btn btn-primary btn-large">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Current Tab
+          </button>
+          <p class="helper-text">Captures the active page content immediately.</p>
+
+          <div class="search-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="search-sources" placeholder="Search added sources..." />
+          </div>
+
+          <h3 class="section-title">Import Options</h3>
+          <div class="import-options">
+            <button class="import-option" id="import-tabs">
+              <span class="import-icon tabs-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                </svg>
+              </span>
+              <div class="import-text">
+                <span class="import-title">Select from Open Tabs</span>
+                <span class="import-desc" id="tabs-count">Choose from active tabs</span>
+              </div>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+
+            <button class="import-option" id="import-tab-groups">
+              <span class="import-icon tab-groups-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                  <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                  <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+                  <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                </svg>
+              </span>
+              <div class="import-text">
+                <span class="import-title">Add from Tab Groups</span>
+                <span class="import-desc">Import entire tab groups</span>
+              </div>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+
+            <button class="import-option" id="import-bookmarks">
+              <span class="import-icon bookmarks-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </span>
+              <div class="import-text">
+                <span class="import-title">Add from Bookmarks</span>
+                <span class="import-desc">Browse your saved pages</span>
+              </div>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+
+            <button class="import-option" id="import-history">
+              <span class="import-icon history-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </span>
+              <div class="import-text">
+                <span class="import-title">Add from History</span>
+                <span class="import-desc">Find previously visited sites</span>
+              </div>
+              <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
+            </button>
+          </div>
+
+          <h3 class="section-title">
+            Recent Sources
+            <a href="#" id="view-all-sources" class="link">View All</a>
+          </h3>
+          <div id="sources-list" class="sources-list"></div>
+        </section>
+
+        <!-- Chat Tab -->
+        <section id="tab-chat" class="tab-content">
+          <div class="notebook-selector">
+            <select id="notebook-select">
+              <option value="">Select a notebook...</option>
+            </select>
+            <button id="new-notebook-btn" class="btn btn-small">+ New</button>
+          </div>
+
+          <h3 class="section-title">
+            Active Sources (<span id="source-count">0</span>)
+            <a href="#" id="manage-sources" class="link">Manage</a>
+          </h3>
+          <div id="active-sources" class="sources-list compact"></div>
+
+          <button id="add-page-btn" class="btn btn-outline btn-small">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Current Page
+          </button>
+
+          <div class="chat-section">
+            <div class="chat-header">
+              <h3 class="section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Chat History
+              </h3>
+              <button id="clear-chat-btn" class="btn btn-small btn-outline" title="Clear chat history">Clear</button>
+            </div>
+            <div id="chat-messages" class="chat-messages">
+              <div class="empty-state">
+                <p>Ask a question to get started.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="query-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="query-input" placeholder="Ask a question about your sources..." />
+            <button id="query-btn" class="icon-btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="19" x2="12" y2="5"></line>
+                <polyline points="5 12 12 5 19 12"></polyline>
+              </svg>
+            </button>
+          </div>
+          <p class="helper-text" id="chat-status">Ask questions to synthesize information from your sources.</p>
+        </section>
+
+        <!-- Transform Tab -->
+        <section id="tab-transform" class="tab-content">
+          <h2>Transform</h2>
+          <p class="helper-text">Transform your sources into different formats.</p>
+
+          <div class="transform-grid">
+            <button class="transform-card" id="transform-podcast">
+              <div class="transform-icon podcast-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                  <line x1="12" y1="19" x2="12" y2="23"></line>
+                  <line x1="8" y1="23" x2="16" y2="23"></line>
+                </svg>
+              </div>
+              <div class="transform-info">
+                <span class="transform-title">Podcast Script</span>
+                <span class="transform-desc">Generate a 2-person conversation</span>
+              </div>
+            </button>
+
+            <button class="transform-card" id="transform-quiz">
+              <div class="transform-icon quiz-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+              </div>
+              <div class="transform-info">
+                <span class="transform-title">Study Quiz</span>
+                <span class="transform-desc">Test your knowledge</span>
+              </div>
+            </button>
+
+            <button class="transform-card" id="transform-takeaways">
+              <div class="transform-icon takeaways-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              </div>
+              <div class="transform-info">
+                <span class="transform-title">Key Takeaways</span>
+                <span class="transform-desc">Extract main points</span>
+              </div>
+            </button>
+
+            <button class="transform-card" id="transform-email">
+              <div class="transform-icon email-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </div>
+              <div class="transform-info">
+                <span class="transform-title">Email Summary</span>
+                <span class="transform-desc">Professional summary to share</span>
+              </div>
+            </button>
+          </div>
+
+          <div id="transform-result" class="transform-result hidden">
+            <div class="transform-result-header">
+              <h3 id="transform-result-title">Result</h3>
+              <div class="transform-result-actions">
+                <button class="icon-btn" id="copy-transform" title="Copy">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                </button>
+                <button class="icon-btn" id="close-transform" title="Close">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div id="transform-content" class="transform-content"></div>
+          </div>
+        </section>
+
+        <!-- Library Tab -->
+        <section id="tab-library" class="tab-content">
+          <h2>Library</h2>
+          <p class="helper-text">Your notebooks and saved content.</p>
+          <div id="notebooks-list" class="notebooks-list"></div>
+        </section>
+
+        <!-- Settings Tab -->
+        <section id="tab-settings" class="tab-content">
+          <h2>Settings</h2>
+
+          <div class="settings-group">
+            <h3 class="section-title">AI Provider</h3>
+            <select id="ai-provider">
+              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="openai">OpenAI</option>
+              <option value="google">Google (Gemini)</option>
+              <option value="chrome">Chrome Built-in AI</option>
+            </select>
+
+            <label class="input-label">Model</label>
+            <select id="ai-model">
+              <option value="claude-sonnet-4-5-20250514">Claude 4.5 Sonnet</option>
+              <option value="claude-opus-4-5-20251101">Claude 4.5 Opus</option>
+            </select>
+
+            <label class="input-label">API Key</label>
+            <div class="api-key-row">
+              <input type="password" id="api-key" placeholder="sk-ant-..." />
+              <button id="test-api" class="btn btn-small">Test</button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="section-title">Permissions</h3>
+            <label class="checkbox-label">
+              <input type="checkbox" id="perm-tabs" />
+              <span>Tabs - View all open tabs</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="perm-tab-groups" />
+              <span>Tab Groups - Access tab groups</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="perm-bookmarks" />
+              <span>Bookmarks - Access saved bookmarks</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="perm-history" />
+              <span>History - Access browsing history</span>
+            </label>
+          </div>
+        </section>
+      </main>
+
+      <!-- Bottom Navigation -->
+      <nav class="bottom-nav">
+        <button class="nav-item active" data-tab="add">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+          <span>Add</span>
+        </button>
+        <button class="nav-item" data-tab="chat">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>Chat</span>
+        </button>
+        <button class="nav-item" data-tab="transform">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+          </svg>
+          <span>Transform</span>
+        </button>
+        <button class="nav-item" data-tab="library">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+          </svg>
+          <span>Library</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+      <!-- FAB -->
+      <button id="fab" class="fab hidden">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+      </button>
+
+      <!-- Picker Modal -->
+      <div id="picker-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="picker-title">Select Items</h3>
+            <button id="picker-close" class="icon-btn">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="picker-search" placeholder="Search..." />
+          </div>
+          <div id="picker-list" class="picker-list"></div>
+          <div class="modal-footer">
+            <span id="picker-selected-count">0 selected</span>
+            <div class="modal-actions">
+              <button id="picker-cancel" class="btn btn-outline">Cancel</button>
+              <button id="picker-add" class="btn btn-primary">Add Selected</button>
+            </div>
+          </div>
         </div>
-        <div id="query-result"></div>
-      </section>
+      </div>
+
+      <!-- Notebook Dialog -->
+      <dialog id="notebook-dialog" class="dialog">
+        <h3 id="notebook-dialog-title">New Notebook</h3>
+        <input type="text" id="notebook-name-input" placeholder="Enter notebook name..." />
+        <div class="dialog-actions">
+          <button id="notebook-dialog-cancel" class="btn btn-outline">Cancel</button>
+          <button id="notebook-dialog-confirm" class="btn btn-primary">Create</button>
+        </div>
+      </dialog>
+
+      <!-- Confirm Dialog -->
+      <dialog id="confirm-dialog" class="dialog">
+        <h3 id="confirm-dialog-title">Confirm</h3>
+        <p id="confirm-dialog-message"></p>
+        <div class="dialog-actions">
+          <button id="confirm-dialog-cancel" class="btn btn-outline">Cancel</button>
+          <button id="confirm-dialog-confirm" class="btn btn-danger">Delete</button>
+        </div>
+      </dialog>
+
+      <!-- Notification -->
+      <div id="notification" class="notification"></div>
     </div>
 
     <script type="module" src="./index.ts"></script>

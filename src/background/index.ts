@@ -1,13 +1,222 @@
 import type { Message, ContentExtractionResult } from '../types/index.ts';
 import {
-  addSourceToNotebook,
   createSource,
+  saveSource,
+  getNotebooks,
   getActiveNotebookId,
+  setActiveNotebookId,
 } from '../lib/storage.ts';
+
+// ============================================================================
+// Side Panel Setup
+// ============================================================================
 
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
   .catch(console.error);
+
+// ============================================================================
+// Context Menu Setup
+// ============================================================================
+
+// Menu ID prefixes
+const PAGE_MENU_PREFIX = 'add-page-to-';
+const LINK_MENU_PREFIX = 'add-link-to-';
+const NEW_NOTEBOOK_SUFFIX = 'new-notebook';
+
+// Build context menus on install and when notebooks change
+chrome.runtime.onInstalled.addListener(() => {
+  buildContextMenus();
+});
+
+// Listen for requests to rebuild context menus (when notebooks change)
+// This is needed because IndexedDB changes don't trigger chrome.storage.onChanged
+
+async function buildContextMenus(): Promise<void> {
+  // Remove all existing menus first
+  await chrome.contextMenus.removeAll();
+
+  const notebooks = await getNotebooks();
+
+  // Create parent menu for pages
+  chrome.contextMenus.create({
+    id: 'add-page-parent',
+    title: 'Add page to Notebook',
+    contexts: ['page'],
+  });
+
+  // Create parent menu for links
+  chrome.contextMenus.create({
+    id: 'add-link-parent',
+    title: 'Add link to Notebook',
+    contexts: ['link'],
+  });
+
+  // Add notebook items for pages
+  for (const notebook of notebooks) {
+    chrome.contextMenus.create({
+      id: `${PAGE_MENU_PREFIX}${notebook.id}`,
+      parentId: 'add-page-parent',
+      title: notebook.name,
+      contexts: ['page'],
+    });
+  }
+
+  // Add separator and "New Notebook" for pages
+  if (notebooks.length > 0) {
+    chrome.contextMenus.create({
+      id: 'page-separator',
+      parentId: 'add-page-parent',
+      type: 'separator',
+      contexts: ['page'],
+    });
+  }
+
+  chrome.contextMenus.create({
+    id: `${PAGE_MENU_PREFIX}${NEW_NOTEBOOK_SUFFIX}`,
+    parentId: 'add-page-parent',
+    title: '+ New Notebook...',
+    contexts: ['page'],
+  });
+
+  // Add notebook items for links
+  for (const notebook of notebooks) {
+    chrome.contextMenus.create({
+      id: `${LINK_MENU_PREFIX}${notebook.id}`,
+      parentId: 'add-link-parent',
+      title: notebook.name,
+      contexts: ['link'],
+    });
+  }
+
+  // Add separator and "New Notebook" for links
+  if (notebooks.length > 0) {
+    chrome.contextMenus.create({
+      id: 'link-separator',
+      parentId: 'add-link-parent',
+      type: 'separator',
+      contexts: ['link'],
+    });
+  }
+
+  chrome.contextMenus.create({
+    id: `${LINK_MENU_PREFIX}${NEW_NOTEBOOK_SUFFIX}`,
+    parentId: 'add-link-parent',
+    title: '+ New Notebook...',
+    contexts: ['link'],
+  });
+}
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  const menuId = info.menuItemId as string;
+
+  // Open side panel immediately (must be in direct response to user gesture)
+  if (tab?.id) {
+    await chrome.sidePanel.open({ tabId: tab.id });
+  }
+
+  // Handle page menu clicks
+  if (menuId.startsWith(PAGE_MENU_PREFIX) && tab?.id) {
+    const notebookIdOrNew = menuId.replace(PAGE_MENU_PREFIX, '');
+
+    if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
+      // Store pending action in session storage for side panel to pick up
+      await chrome.storage.session.set({
+        pendingAction: {
+          type: 'CREATE_NOTEBOOK_AND_ADD_PAGE',
+          payload: { tabId: tab.id }
+        }
+      });
+      // Also try sending message in case side panel is already open
+      chrome.runtime.sendMessage({
+        type: 'CREATE_NOTEBOOK_AND_ADD_PAGE',
+        payload: { tabId: tab.id }
+      }).catch(() => {});
+    } else {
+      await handleAddPageFromContextMenu(tab.id, notebookIdOrNew);
+    }
+  }
+
+  // Handle link menu clicks
+  if (menuId.startsWith(LINK_MENU_PREFIX) && info.linkUrl) {
+    const notebookIdOrNew = menuId.replace(LINK_MENU_PREFIX, '');
+
+    if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
+      // Store pending action in session storage for side panel to pick up
+      await chrome.storage.session.set({
+        pendingAction: {
+          type: 'CREATE_NOTEBOOK_AND_ADD_LINK',
+          payload: { linkUrl: info.linkUrl }
+        }
+      });
+      // Also try sending message in case side panel is already open
+      chrome.runtime.sendMessage({
+        type: 'CREATE_NOTEBOOK_AND_ADD_LINK',
+        payload: { linkUrl: info.linkUrl }
+      }).catch(() => {});
+    } else {
+      await handleAddLinkFromContextMenu(info.linkUrl, notebookIdOrNew);
+    }
+  }
+});
+
+async function handleAddPageFromContextMenu(tabId: number, notebookId: string): Promise<void> {
+  try {
+    await ensureContentScript(tabId);
+    const result = await chrome.tabs.sendMessage(tabId, { action: 'extractContent' });
+
+    if (result) {
+      const source = createSource(
+        notebookId,
+        'tab',
+        result.url,
+        result.title,
+        result.markdown
+      );
+      await saveSource(source);
+
+      // Set as active notebook
+      await setActiveNotebookId(notebookId);
+
+      // Notify the side panel to refresh
+      chrome.runtime.sendMessage({ type: 'SOURCE_ADDED', payload: source }).catch(() => {
+        // Side panel may not be listening yet
+      });
+    }
+  } catch (error) {
+    console.error('Failed to add page from context menu:', error);
+  }
+}
+
+async function handleAddLinkFromContextMenu(linkUrl: string, notebookId: string): Promise<void> {
+  try {
+    const result = await extractContentFromUrl(linkUrl);
+    if (result) {
+      const source = createSource(
+        notebookId,
+        'tab',
+        result.url,
+        result.title,
+        result.content
+      );
+      await saveSource(source);
+
+      // Set as active notebook
+      await setActiveNotebookId(notebookId);
+
+      // Notify the side panel to refresh its source list
+      chrome.runtime.sendMessage({ type: 'SOURCE_ADDED', payload: source }).catch(() => {
+        // Side panel may not be listening yet
+      });
+    }
+  } catch (error) {
+    console.error('Failed to add link from context menu:', error);
+  }
+}
+
+// ============================================================================
+// Message Handling
+// ============================================================================
 
 chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
   handleMessage(message).then(sendResponse).catch(console.error);
@@ -22,6 +231,9 @@ async function handleMessage(message: Message): Promise<unknown> {
       return extractContentFromUrl(message.payload as string);
     case 'ADD_SOURCE':
       return handleAddSource(message.payload as ContentExtractionResult);
+    case 'REBUILD_CONTEXT_MENUS':
+      await buildContextMenus();
+      return true;
     default:
       return null;
   }
@@ -45,7 +257,7 @@ async function extractContentFromActiveTab(): Promise<ContentExtractionResult | 
       url: result.url,
       title: result.title,
       content: result.markdown,
-      textContent: result.markdown, // Using markdown as the text content
+      textContent: result.markdown,
     };
   } catch (error) {
     console.error('Failed to extract content:', error);
@@ -91,12 +303,54 @@ async function ensureContentScript(tabId: number): Promise<void> {
     // Try to ping the content script
     await chrome.tabs.sendMessage(tabId, { action: 'ping' });
   } catch {
-    // Content script not loaded, inject it
+    // Content script not loaded - inject inline extraction function
     await chrome.scripting.executeScript({
       target: { tabId },
-      files: ['src/content/index.ts'],
+      func: injectContentScript,
     });
   }
+}
+
+// Inline content script injection for pages loaded before extension install
+function injectContentScript(): void {
+  // Simple extraction if Turndown isn't available
+  if ((window as unknown as { __notebookExtracted?: boolean }).__notebookExtracted) {
+    return;
+  }
+  (window as unknown as { __notebookExtracted: boolean }).__notebookExtracted = true;
+
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.action === 'ping') {
+      sendResponse({ status: 'ok' });
+      return true;
+    }
+
+    if (message.action === 'extractContent') {
+      // Simple text extraction without Turndown
+      const title = document.title || 'Untitled';
+      const url = window.location.href;
+
+      // Remove script, style, nav, footer, etc.
+      const clone = document.body.cloneNode(true) as HTMLElement;
+      const removeSelectors = ['script', 'style', 'noscript', 'iframe', 'nav', 'footer', 'header', 'aside', 'form'];
+      removeSelectors.forEach(sel => {
+        clone.querySelectorAll(sel).forEach(el => el.remove());
+      });
+
+      const textContent = clone.innerText || clone.textContent || '';
+      // Clean up whitespace
+      const markdown = textContent
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0)
+        .join('\n\n');
+
+      sendResponse({ url, title, markdown });
+      return true;
+    }
+
+    return false;
+  });
 }
 
 function waitForTabLoad(tabId: number): Promise<void> {
@@ -120,8 +374,14 @@ async function handleAddSource(
     return false;
   }
 
-  const source = createSource('tab', extraction.url, extraction.title, extraction.content);
-  await addSourceToNotebook(notebookId, source);
+  const source = createSource(
+    notebookId,
+    'tab',
+    extraction.url,
+    extraction.title,
+    extraction.content
+  );
+  await saveSource(source);
 
   return true;
 }

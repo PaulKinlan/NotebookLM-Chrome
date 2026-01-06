@@ -12,12 +12,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.7",
+    "@ai-sdk/google": "^3.0.5",
+    "@ai-sdk/openai": "^3.0.7",
+    "@built-in-ai/core": "^3.0.1",
+    "ai": "^6.0.14",
     "turndown": "^7.2.0"
   },
   "devDependencies": {
-    "@types/turndown": "^5.0.5",
     "@crxjs/vite-plugin": "^2.0.0-beta.28",
     "@types/chrome": "^0.0.287",
+    "@types/turndown": "^5.0.5",
     "@typescript-eslint/eslint-plugin": "^8.19.0",
     "@typescript-eslint/parser": "^8.19.0",
     "eslint": "^9.17.0",
