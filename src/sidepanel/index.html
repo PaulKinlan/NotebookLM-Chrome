@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NotebookLM Chrome</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="header">
+        <h1>NotebookLM Chrome</h1>
+        <button id="new-notebook-btn" class="btn btn-primary">+ New Notebook</button>
+      </header>
+
+      <section id="permissions-section" class="section hidden">
+        <h2>Permissions</h2>
+        <p>Enable permissions to access more sources:</p>
+        <div class="permission-toggles">
+          <label>
+            <input type="checkbox" id="perm-tabs" />
+            Tabs (view all open tabs)
+          </label>
+          <label>
+            <input type="checkbox" id="perm-bookmarks" />
+            Bookmarks
+          </label>
+          <label>
+            <input type="checkbox" id="perm-history" />
+            History
+          </label>
+        </div>
+      </section>
+
+      <section id="notebook-section" class="section">
+        <div id="notebook-selector">
+          <select id="notebook-select">
+            <option value="">Select a notebook...</option>
+          </select>
+        </div>
+
+        <div id="sources-panel" class="hidden">
+          <h2>Sources</h2>
+          <div class="source-actions">
+            <button id="add-current-tab" class="btn">+ Current Tab</button>
+            <button id="add-from-tabs" class="btn" disabled>+ From Tabs</button>
+            <button id="add-from-bookmarks" class="btn" disabled>+ From Bookmarks</button>
+          </div>
+          <ul id="sources-list"></ul>
+        </div>
+      </section>
+
+      <section id="query-section" class="section hidden">
+        <h2>Query</h2>
+        <textarea id="query-input" placeholder="Ask a question about your sources..."></textarea>
+        <div class="query-actions">
+          <button id="query-btn" class="btn btn-primary">Ask</button>
+          <button id="transform-btn" class="btn">Transform</button>
+        </div>
+        <div id="query-result"></div>
+      </section>
+    </div>
+
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>
