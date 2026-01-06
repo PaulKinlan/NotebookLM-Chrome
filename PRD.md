@@ -42,10 +42,25 @@ Users frequently encounter valuable information across multiple web pages but la
 | Text Input | None | Paste raw text content directly |
 
 #### 1.3 Content Extraction
-- Extract main content from web pages (article, main, or body)
-- Strip navigation, headers, footers, ads, and scripts
-- Store both HTML structure and plain text
-- Handle common page types: articles, documentation, blog posts
+Uses **Turndown** library in a content script to convert HTML to clean markdown:
+
+**Strategy:**
+- Content script injected on all pages (`document_idle`)
+- Turndown converts HTML to markdown with custom rules
+- Background script requests extraction via message passing
+
+**Content Selection Priority:**
+1. `<article>` element
+2. `<main>` or `[role="main"]`
+3. Common content selectors (`.post-content`, `.article-content`, `.entry-content`)
+4. Fallback to `<body>`
+
+**Turndown Rules:**
+- Remove noise: `style`, `script`, `noscript`, `iframe`, `nav`, `footer`, `header`, `aside`, `form`, `input`
+- Flatten links: Keep text, remove `<a>` tags (cleaner for AI context)
+- Remove images (configurable)
+
+**Output:** Markdown stored in `Source.content` for AI processing
 
 ### 2. AI Integration
 

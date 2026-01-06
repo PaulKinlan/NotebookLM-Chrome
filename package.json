@@ -11,7 +11,11 @@
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "turndown": "^7.2.0"
+  },
   "devDependencies": {
+    "@types/turndown": "^5.0.5",
     "@crxjs/vite-plugin": "^2.0.0-beta.28",
     "@types/chrome": "^0.0.287",
     "@typescript-eslint/eslint-plugin": "^8.19.0",

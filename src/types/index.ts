@@ -25,6 +25,7 @@ export interface ContentExtractionResult {
 
 export type MessageType =
   | 'EXTRACT_CONTENT'
+  | 'EXTRACT_FROM_URL'
   | 'CONTENT_EXTRACTED'
   | 'ADD_SOURCE'
   | 'REMOVE_SOURCE'
