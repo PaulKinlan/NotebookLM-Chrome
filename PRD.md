@@ -103,29 +103,35 @@ Use the Vercel AI SDK (`npm:ai`) to support multiple providers:
 
 ### 4. Transformations
 
-#### 4.1 Summarization
-- Single source summaries
-- Multi-source synthesis
-- Configurable length (brief, standard, detailed)
-- Key points extraction
-- Export as text/markdown
+Four main transformation types (see `designs/content_transformation_options/screen.png`):
 
-#### 4.2 Quiz Generation
-- Multiple choice questions
+#### 4.1 Podcast Script
+- Generate conversational dialogue between two hosts
+- Hosts discuss and explain the source content
+- Natural conversation flow with questions, explanations, tangents
+- Configurable tone (casual, educational, professional)
+- Configurable length (5, 10, 15, 30 minutes of content)
+
+#### 4.2 Study Quiz
+- Multiple choice questions (default: 10 questions)
 - True/false questions
 - Short answer prompts
 - Configurable difficulty and quantity
 - Interactive quiz mode with scoring
 - Export quiz as JSON or text
 
-#### 4.3 Audio/Podcast Generation (NotebookLM-style)
+#### 4.3 Key Takeaways
+- Extract the most important bullet points rapidly
+- Prioritized by relevance and frequency across sources
+- Exportable as markdown list
 
-##### Script Generation
-- Generate conversational dialogue between two hosts
-- Hosts discuss and explain the source content
-- Natural conversation flow with questions, explanations, tangents
-- Configurable tone (casual, educational, professional)
-- Configurable length (5, 10, 15, 30 minutes of content)
+#### 4.4 Summarize for Email
+- Draft a concise email summary for stakeholders
+- Professional tone optimized for business communication
+- Includes key findings and action items
+- Copy-ready format
+
+#### 4.5 Audio Generation (for Podcast Script)
 
 ##### Text-to-Speech
 | TTS Provider | Features |
@@ -145,89 +151,64 @@ Use the Vercel AI SDK (`npm:ai`) to support multiple providers:
 
 ## User Interface
 
-### Side Panel Layout
+**Design Assets:** See `/designs/` folder for visual mockups.
 
-```
-┌─────────────────────────────────┐
-│ NotebookLM Chrome        [⚙️]  │
-├─────────────────────────────────┤
-│ [Notebook Dropdown ▼]  [+ New] │
-├─────────────────────────────────┤
-│ SOURCES (5)            [+ Add] │
-│ ┌─────────────────────────────┐│
-│ │ 📄 Article Title           ││
-│ │    example.com             ││
-│ │    [Remove]                ││
-│ └─────────────────────────────┘│
-│ ┌─────────────────────────────┐│
-│ │ 📄 Another Source          ││
-│ │    docs.example.com        ││
-│ └─────────────────────────────┘│
-├─────────────────────────────────┤
-│ ACTIONS                         │
-│ [💬 Chat] [📝 Summary]         │
-│ [❓ Quiz] [🎙️ Podcast]         │
-├─────────────────────────────────┤
-│ CHAT                            │
-│ ┌─────────────────────────────┐│
-│ │ User: What are the main... ││
-│ │                            ││
-│ │ AI: Based on your sources..││
-│ └─────────────────────────────┘│
-│ ┌─────────────────────────────┐│
-│ │ Ask a question...    [Send]││
-│ └─────────────────────────────┘│
-└─────────────────────────────────┘
-```
+**Theme:** Dark mode UI with blue accent colors.
+
+### Navigation
+Bottom tab bar with four sections:
+- **Add** - Add sources to notebook
+- **Chat** - Query and interact with sources
+- **Library** - Browse notebooks (future)
+- **Settings** - Configure AI providers and permissions
+
+### Main View: Notebook Summary & Query
+`designs/notebook_summary_&_query/screen.png`
+
+| Element | Description |
+|---------|-------------|
+| Header | "Notebook AI" title + settings gear icon |
+| Query Input | Search field: "Ask a question about your sources..." with submit button |
+| Helper Text | "Ask questions to synthesize information from your active sources below" |
+| Active Sources | List of sources with favicon, title, URL (e.g., "Wikipedia: Quantum Physics") |
+| Add Current Page | Button to quickly add the current tab |
+| Generated Summary | AI-generated synthesis with bold key terms, timestamp, copy/feedback buttons |
+| FAB | Floating action button (+) for quick actions |
+
+### Add Sources Screen
+`designs/add_sources_to_notebook/screen.png`
+
+| Element | Description |
+|---------|-------------|
+| Header | "Add Sources" title with close (X) button |
+| Primary Action | Blue "Add Current Tab" button - captures active page immediately |
+| Search | Search field to filter added sources |
+| Import Options | Three card-style buttons: |
+| | - **Select from Open Tabs** - "Choose from 12 active tabs" |
+| | - **Add from Bookmarks** - "Browse your saved pages" |
+| | - **Add from History** - "Find previously visited sites" |
+| Recent Sources | Previously added sources with title, URL, and tags (e.g., "AI", "Research") |
+
+### Transform Content Screen
+`designs/content_transformation_options/screen.png`
+
+| Element | Description |
+|---------|-------------|
+| Header | Back arrow + notebook name (e.g., "Research Assistant") + overflow menu |
+| Title | "Transform Content" with subtitle "Based on 5 active sources" |
+| Transform Options | Card-style buttons with icons: |
+| | - **Podcast Script** (purple mic icon) - "Turn sources into a 2-person dialogue script" |
+| | - **Study Quiz** (orange question icon) - "Create 10 multiple choice questions to test knowledge" |
+| | - **Key Takeaways** (yellow lightning icon) - "Extract the most important bullet points rapidly" |
+| | - **Summarize for Email** (teal mail icon) - "Draft a concise email summary for stakeholders" |
+| Recent Transformations | History of generated content (e.g., "Marketing Trends Q3 - Podcast - 2 mins ago") |
 
 ### Settings Panel
-
-```
-┌─────────────────────────────────┐
-│ ← Settings                      │
-├─────────────────────────────────┤
-│ AI PROVIDER                     │
-│ [Anthropic ▼]                   │
-│                                 │
-│ MODEL                           │
-│ [Claude 4.5 Sonnet ▼]          │
-│                                 │
-│ API KEY                         │
-│ [sk-ant-•••••••••••]  [Test]   │
-│                                 │
-│ ─────────────────────────────── │
-│ TTS PROVIDER                    │
-│ [OpenAI TTS ▼]                  │
-│                                 │
-│ TTS API KEY                     │
-│ [sk-•••••••••••••••]           │
-│                                 │
-│ ─────────────────────────────── │
-│ PERMISSIONS                     │
-│ ☑️ Tabs - View all open tabs    │
-│ ☑️ Bookmarks - Access bookmarks │
-│ ☐ History - Access history      │
-└─────────────────────────────────┘
-```
-
-### Add Source Modal
-
-```
-┌─────────────────────────────────┐
-│ Add Sources              [✕]   │
-├─────────────────────────────────┤
-│ [Current Tab] [Tabs] [Bookmarks]│
-├─────────────────────────────────┤
-│ 🔍 [Search tabs...]             │
-│                                 │
-│ ☐ Tab 1: Google Docs           │
-│ ☑️ Tab 2: MDN Web Docs          │
-│ ☑️ Tab 3: Stack Overflow        │
-│ ☐ Tab 4: GitHub                │
-│                                 │
-│           [Add Selected (2)]    │
-└─────────────────────────────────┘
-```
+- AI Provider selection (Anthropic, OpenAI, Google, Chrome Built-in)
+- Model selection dropdown
+- API key input with masked display and test button
+- TTS provider and voice settings
+- Permission toggles (Tabs, Bookmarks, History)
 
 ---
 

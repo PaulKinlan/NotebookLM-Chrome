@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add Sources to Notebook</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#0d59f2",
+                        "background-light": "#f5f6f8",
+                        "background-dark": "#101622",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for better look in side panel */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #222f49;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334466;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-gray-900 dark:text-white antialiased h-screen overflow-hidden flex flex-col w-full max-w-[480px] mx-auto border-x border-gray-200 dark:border-[#222f49]">
+<!-- Header -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-gray-200 dark:border-[#222f49] px-6 py-4 shrink-0 bg-background-light dark:bg-background-dark z-10">
+<div class="flex items-center gap-3">
+<div class="size-8 flex items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20 text-primary">
+<span class="material-symbols-outlined text-xl">library_add</span>
+</div>
+<h2 class="text-lg font-bold leading-tight tracking-[-0.015em]">Add Sources</h2>
+</div>
+<button class="flex size-8 cursor-pointer items-center justify-center overflow-hidden rounded-full hover:bg-gray-200 dark:hover:bg-[#222f49] transition-colors text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-6">
+<!-- Primary Action -->
+<section>
+<button class="group w-full flex items-center justify-center overflow-hidden rounded-xl h-14 bg-primary hover:bg-blue-600 transition-all text-white gap-3 px-4 shadow-lg shadow-primary/20 active:scale-[0.98]">
+<span class="material-symbols-outlined text-2xl group-hover:rotate-90 transition-transform duration-300">add</span>
+<span class="text-base font-bold leading-normal tracking-[0.015em]">Add Current Tab</span>
+</button>
+<p class="mt-2 text-xs text-center text-gray-500 dark:text-gray-400">Captures the active page content immediately.</p>
+</section>
+<!-- Search Bar -->
+<section class="relative">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-gray-400">search</span>
+</div>
+<input class="block w-full pl-10 pr-3 py-3 border-none rounded-xl bg-white dark:bg-[#1a2436] text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary shadow-sm" placeholder="Search added sources..." type="text"/>
+</section>
+<!-- More Options List -->
+<section>
+<h3 class="text-gray-900 dark:text-white tracking-tight text-sm uppercase font-bold leading-tight pb-3">Import Options</h3>
+<div class="flex flex-col gap-2">
+<!-- Select from Open Tabs -->
+<button class="flex items-center gap-4 bg-white dark:bg-[#1a2436] p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-[#222f49] transition-colors group text-left border border-transparent dark:border-[#222f49]">
+<div class="flex items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0 size-10">
+<span class="material-symbols-outlined">tabs</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-semibold leading-normal truncate">Select from Open Tabs</p>
+<p class="text-xs text-gray-500 dark:text-gray-400 truncate">Choose from 12 active tabs</p>
+</div>
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors">chevron_right</span>
+</button>
+<!-- Add from Bookmarks -->
+<button class="flex items-center gap-4 bg-white dark:bg-[#1a2436] p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-[#222f49] transition-colors group text-left border border-transparent dark:border-[#222f49]">
+<div class="flex items-center justify-center rounded-lg bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 shrink-0 size-10">
+<span class="material-symbols-outlined">bookmark</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-semibold leading-normal truncate">Add from Bookmarks</p>
+<p class="text-xs text-gray-500 dark:text-gray-400 truncate">Browse your saved pages</p>
+</div>
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors">chevron_right</span>
+</button>
+<!-- Add from History -->
+<button class="flex items-center gap-4 bg-white dark:bg-[#1a2436] p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-[#222f49] transition-colors group text-left border border-transparent dark:border-[#222f49]">
+<div class="flex items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0 size-10">
+<span class="material-symbols-outlined">history</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-semibold leading-normal truncate">Add from History</p>
+<p class="text-xs text-gray-500 dark:text-gray-400 truncate">Find previously visited sites</p>
+</div>
+<span class="material-symbols-outlined text-gray-400 group-hover:text-primary transition-colors">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Recent Sources Preview -->
+<section class="pb-6">
+<div class="flex items-center justify-between pb-3 pt-2">
+<h3 class="text-gray-900 dark:text-white tracking-tight text-sm uppercase font-bold leading-tight">Recent Sources</h3>
+<button class="text-xs text-primary font-medium hover:underline">View All</button>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Source Item 1 -->
+<div class="group flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-[#222f49] hover:bg-gray-50 dark:hover:bg-[#1a2436] transition-colors cursor-pointer">
+<div class="shrink-0 mt-0.5 size-4 rounded bg-gray-200 dark:bg-gray-700 overflow-hidden">
+<!-- Placeholder for favicon -->
+<div class="w-full h-full flex items-center justify-center bg-emerald-500 text-[8px] font-bold text-white">W</div>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="text-sm font-medium text-gray-900 dark:text-gray-200 truncate leading-tight">Machine Learning - Wikipedia</h4>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">en.wikipedia.org/wiki/Machine_learning</p>
+<div class="flex gap-2 mt-2">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-[#222f49] text-gray-600 dark:text-gray-300">
+                                AI
+                            </span>
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-[#222f49] text-gray-600 dark:text-gray-300">
+                                Research
+                            </span>
+</div>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-[#222f49] rounded text-gray-400 hover:text-red-400 transition-all">
+<span class="material-symbols-outlined text-lg">delete</span>
+</button>
+</div>
+<!-- Source Item 2 -->
+<div class="group flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-[#222f49] hover:bg-gray-50 dark:hover:bg-[#1a2436] transition-colors cursor-pointer">
+<div class="shrink-0 mt-0.5 size-4 rounded bg-gray-200 dark:bg-gray-700 overflow-hidden">
+<div class="w-full h-full flex items-center justify-center bg-gray-800 text-[8px] font-bold text-white">M</div>
+</div>
+<div class="flex-1 min-w-0">
+<h4 class="text-sm font-medium text-gray-900 dark:text-gray-200 truncate leading-tight">Introduction to Neural Networks</h4>
+<p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">medium.com/towards-data-science/intro-nn</p>
+<div class="flex gap-2 mt-2">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 dark:bg-[#222f49] text-gray-600 dark:text-gray-300">
+                                Deep Learning
+                            </span>
+</div>
+</div>
+<button class="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 dark:hover:bg-[#222f49] rounded text-gray-400 hover:text-red-400 transition-all">
+<span class="material-symbols-outlined text-lg">delete</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation (Context) -->
+<nav class="shrink-0 border-t border-gray-200 dark:border-[#222f49] bg-white dark:bg-[#1a2436] px-6 py-3">
+<div class="flex justify-around items-center">
+<button class="flex flex-col items-center gap-1 text-primary">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="text-[10px] font-medium">Add</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+<span class="material-symbols-outlined">forum</span>
+<span class="text-[10px] font-medium">Chat</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+<span class="material-symbols-outlined">folder_open</span>
+<span class="text-[10px] font-medium">Library</span>
+</button>
+<button class="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-[10px] font-medium">Settings</span>
+</button>
+</div>
+</nav>
+</body></html>
