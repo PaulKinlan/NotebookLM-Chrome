@@ -12,6 +12,16 @@ import { getAISettings, getApiKey } from './settings.ts';
 
 export type AIProvider = 'anthropic' | 'openai' | 'google' | 'chrome';
 
+/**
+ * Helper function to create provider config with optional baseURL
+ */
+function createProviderConfig(
+  apiKey: string,
+  baseURL?: string
+): { apiKey: string; baseURL?: string } {
+  return baseURL ? { apiKey, baseURL } : { apiKey };
+}
+
 async function getModel(): Promise<LanguageModel | null> {
   const settings = await getAISettings();
   const apiKey = await getApiKey(settings.provider);
@@ -19,17 +29,23 @@ async function getModel(): Promise<LanguageModel | null> {
   switch (settings.provider) {
     case 'anthropic': {
       if (!apiKey) return null;
-      const provider = createAnthropic({ apiKey });
+      const provider = createAnthropic(
+        createProviderConfig(apiKey, settings.baseURL)
+      );
       return provider(settings.model || 'claude-sonnet-4-5-20250514');
     }
     case 'openai': {
       if (!apiKey) return null;
-      const provider = createOpenAI({ apiKey });
+      const provider = createOpenAI(
+        createProviderConfig(apiKey, settings.baseURL)
+      );
       return provider(settings.model || 'gpt-5');
     }
     case 'google': {
       if (!apiKey) return null;
-      const provider = createGoogleGenerativeAI({ apiKey });
+      const provider = createGoogleGenerativeAI(
+        createProviderConfig(apiKey, settings.baseURL)
+      );
       return provider(settings.model || 'gemini-2.5-flash');
     }
     case 'chrome': {

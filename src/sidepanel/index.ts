@@ -57,6 +57,7 @@ import {
   setModel,
   setTemperature,
   setMaxTokens,
+  setBaseURL,
 } from "../lib/settings.ts";
 import { SandboxRenderer } from "../lib/sandbox-renderer.ts";
 
@@ -215,6 +216,8 @@ const elements = {
   aiTemperature: document.getElementById("ai-temperature") as HTMLInputElement,
   temperatureValue: document.getElementById("temperature-value") as HTMLSpanElement,
   aiMaxTokens: document.getElementById("ai-max-tokens") as HTMLInputElement,
+  aiBaseURL: document.getElementById("ai-base-url") as HTMLInputElement,
+  baseURLLabel: document.getElementById("base-url-label") as HTMLLabelElement,
   permTabs: document.getElementById("perm-tabs") as HTMLInputElement,
   permTabGroups: document.getElementById("perm-tab-groups") as HTMLInputElement,
   permBookmarks: document.getElementById("perm-bookmarks") as HTMLInputElement,
@@ -560,6 +563,7 @@ function setupEventListeners(): void {
   elements.testApiBtn.addEventListener("click", handleTestApi);
   elements.aiTemperature.addEventListener("input", handleTemperatureChange);
   elements.aiMaxTokens.addEventListener("change", handleMaxTokensChange);
+  elements.aiBaseURL.addEventListener("change", handleBaseURLChange);
 
   // FAB
   elements.fab.addEventListener("click", () => switchTab("add"));
@@ -2135,6 +2139,12 @@ function updateSettingsUI(): void {
   } else {
     elements.aiMaxTokens.value = "";
   }
+
+  if (aiSettings.baseURL) {
+    elements.aiBaseURL.value = aiSettings.baseURL;
+  } else {
+    elements.aiBaseURL.value = "";
+  }
 }
 
 async function handlePermissionToggle(
@@ -2454,6 +2464,17 @@ async function handleProviderChange(): Promise<void> {
     advancedSettings.style.display = provider === "chrome" ? "none" : "block";
   }
 
+  // Hide baseURL field for Chrome built-in AI
+  if (elements.aiBaseURL && elements.baseURLLabel) {
+    const showBaseUrlField = provider !== "chrome";
+    elements.aiBaseURL.style.display = showBaseUrlField ? "block" : "none";
+    elements.baseURLLabel.style.display = showBaseUrlField ? "block" : "none";
+    const baseUrlHint = elements.aiBaseURL.nextElementSibling as HTMLElement;
+    if (baseUrlHint && baseUrlHint.classList.contains("setting-hint")) {
+      baseUrlHint.style.display = showBaseUrlField ? "block" : "none";
+    }
+  }
+
   // Load saved API key for this provider
   if (aiSettings) {
     const savedKey = aiSettings.apiKeys[provider] || "";
@@ -2531,6 +2552,34 @@ async function handleMaxTokensChange(): Promise<void> {
   const value = elements.aiMaxTokens.value.trim();
   const maxTokens = value ? parseInt(value, 10) : undefined;
   await setMaxTokens(maxTokens);
+  aiSettings = await getAISettings();
+}
+
+async function handleBaseURLChange(): Promise<void> {
+  const value = elements.aiBaseURL.value.trim();
+  
+  // Treat empty string as undefined (use default behavior)
+  if (!value) {
+    await setBaseURL(undefined);
+    aiSettings = await getAISettings();
+    return;
+  }
+
+  // Validate that the provided value is a well-formed URL
+  try {
+    // This will throw if the URL is invalid
+    // We don't need the parsed result; just validation
+    new URL(value);
+  } catch {
+    showNotification(
+      "Please enter a valid URL (including http:// or https://) for the base URL."
+    );
+    // Reset the input field to the previously saved valid value
+    elements.aiBaseURL.value = aiSettings?.baseURL || "";
+    return;
+  }
+
+  await setBaseURL(value);
   aiSettings = await getAISettings();
 }
 

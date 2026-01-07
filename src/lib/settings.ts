@@ -52,3 +52,9 @@ export async function setMaxTokens(maxTokens: number | undefined): Promise<void>
   settings.maxTokens = maxTokens;
   await saveAISettings(settings);
 }
+
+export async function setBaseURL(baseURL: string | undefined): Promise<void> {
+  const settings = await getAISettings();
+  settings.baseURL = baseURL;
+  await saveAISettings(settings);
+}
