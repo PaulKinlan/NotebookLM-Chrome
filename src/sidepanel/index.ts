@@ -66,8 +66,6 @@ import { SandboxRenderer } from "../lib/sandbox-renderer.ts";
 
 let currentNotebookId: string | null = null;
 
-// Sandbox renderer for transform results (defense-in-depth for AI content)
-let transformSandbox: SandboxRenderer | null = null;
 let permissions: PermissionStatus = {
   tabs: false,
   tabGroups: false,
@@ -198,19 +196,9 @@ const elements = {
   transformOutline: document.getElementById(
     "transform-outline"
   ) as HTMLButtonElement,
-  transformResult: document.getElementById(
-    "transform-result"
+  transformHistory: document.getElementById(
+    "transform-history"
   ) as HTMLDivElement,
-  transformResultTitle: document.getElementById(
-    "transform-result-title"
-  ) as HTMLHeadingElement,
-  transformContent: document.getElementById(
-    "transform-content"
-  ) as HTMLDivElement,
-  copyTransform: document.getElementById("copy-transform") as HTMLButtonElement,
-  closeTransform: document.getElementById(
-    "close-transform"
-  ) as HTMLButtonElement,
 
   // Library tab
   notebooksList: document.getElementById("notebooks-list") as HTMLDivElement,
@@ -299,12 +287,6 @@ async function init(): Promise<void> {
   await loadChatHistory();
   updateTabCount();
   updateAddTabButton();
-
-  // Initialize sandbox renderer for transform results (defense-in-depth)
-  // The sandbox provides additional isolation for AI-generated content
-  if (elements.transformContent) {
-    transformSandbox = new SandboxRenderer(elements.transformContent);
-  }
 
   // Listen for tab highlight changes to update button text
   chrome.tabs.onHighlighted.addListener(() => {
@@ -539,12 +521,6 @@ function setupEventListeners(): void {
   elements.transformOutline?.addEventListener("click", () =>
     handleTransform("outline")
   );
-  elements.copyTransform?.addEventListener("click", () => {
-    copyToClipboard(elements.transformContent.textContent || "");
-  });
-  elements.closeTransform?.addEventListener("click", () => {
-    elements.transformResult.classList.add("hidden");
-  });
 
   // Settings tab
   elements.permTabs.addEventListener("change", () =>
@@ -1881,6 +1857,95 @@ type TransformType =
   | "citations"
   | "outline";
 
+// Track sandboxes for proper cleanup when cards are removed
+const cardSandboxes = new WeakMap<HTMLElement, SandboxRenderer>();
+const MAX_TRANSFORM_HISTORY = 10;
+
+// Helper to create a transform result card element
+function createTransformResultCard(title: string): {
+  card: HTMLDivElement;
+  sandbox: SandboxRenderer;
+} {
+  const card = document.createElement("div");
+  card.className = "transform-result";
+
+  const header = document.createElement("div");
+  header.className = "transform-result-header";
+
+  const titleEl = document.createElement("h3");
+  titleEl.textContent = title;
+
+  const actions = document.createElement("div");
+  actions.className = "transform-result-actions";
+
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "icon-btn";
+  copyBtn.title = "Copy";
+  copyBtn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+    </svg>
+  `;
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "icon-btn";
+  closeBtn.title = "Remove";
+  closeBtn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+  `;
+
+  actions.appendChild(copyBtn);
+  actions.appendChild(closeBtn);
+
+  header.appendChild(titleEl);
+  header.appendChild(actions);
+
+  const contentContainer = document.createElement("div");
+  contentContainer.className = "transform-content";
+
+  card.appendChild(header);
+  card.appendChild(contentContainer);
+
+  // Create sandbox renderer for this card
+  const sandbox = new SandboxRenderer(contentContainer);
+  cardSandboxes.set(card, sandbox);
+
+  // Wire up copy button
+  copyBtn.addEventListener("click", () => {
+    copyToClipboard(contentContainer.textContent || "");
+  });
+
+  // Wire up close button to remove this card
+  closeBtn.addEventListener("click", () => {
+    removeTransformCard(card);
+  });
+
+  return { card, sandbox };
+}
+
+// Helper to properly remove a transform card and clean up its sandbox
+function removeTransformCard(card: HTMLElement): void {
+  const sandbox = cardSandboxes.get(card);
+  if (sandbox) {
+    sandbox.destroy();
+    cardSandboxes.delete(card);
+  }
+  card.remove();
+}
+
+// Enforce the max history limit by removing oldest cards
+function enforceTransformHistoryLimit(): void {
+  const cards = elements.transformHistory.children;
+  while (cards.length > MAX_TRANSFORM_HISTORY) {
+    const oldestCard = cards[cards.length - 1] as HTMLElement;
+    removeTransformCard(oldestCard);
+  }
+}
+
 async function handleTransform(type: TransformType): Promise<void> {
   if (!currentNotebookId) {
     showNotification("Please select a notebook first");
@@ -1915,15 +1980,18 @@ async function handleTransform(type: TransformType): Promise<void> {
     outline: "Outline",
   };
 
-  elements.transformResult.classList.remove("hidden");
-  elements.transformResultTitle.textContent = titles[type];
+  // Create a new result card and prepend it to the history container
+  const { card, sandbox } = createTransformResultCard(titles[type]);
+  elements.transformHistory.prepend(card);
+
+  // Enforce the history limit (remove oldest cards if over limit)
+  enforceTransformHistoryLimit();
+
+  // Scroll to the new card
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
 
   // Show loading state
-  if (transformSandbox) {
-    await transformSandbox.render("<em>Generating...</em>");
-  } else {
-    elements.transformContent.innerHTML = "<em>Generating...</em>";
-  }
+  await sandbox.render("<em>Generating...</em>");
 
   // Disable all transform buttons during generation
   const buttons = [
@@ -2014,12 +2082,7 @@ async function handleTransform(type: TransformType): Promise<void> {
 
     // Render AI-generated content in sandbox for defense-in-depth
     // Content is sanitized by formatMarkdown (DOMPurify) before going to sandbox
-    if (transformSandbox) {
-      await transformSandbox.render(formatMarkdown(result));
-    } else {
-      // Fallback to direct rendering (still sanitized by formatMarkdown)
-      elements.transformContent.innerHTML = formatMarkdown(result);
-    }
+    await sandbox.render(formatMarkdown(result));
   } catch (error) {
     console.error("Transform failed:", error);
     const errorMessage =
@@ -2028,11 +2091,7 @@ async function handleTransform(type: TransformType): Promise<void> {
       <p class="error">Failed to generate: ${escapeHtml(errorMessage)}</p>
       <p>Please check your API key in Settings.</p>
     `;
-    if (transformSandbox) {
-      await transformSandbox.render(errorHtml);
-    } else {
-      elements.transformContent.innerHTML = errorHtml;
-    }
+    await sandbox.render(errorHtml);
   } finally {
     buttons.forEach((btn) => btn && (btn.disabled = false));
   }
