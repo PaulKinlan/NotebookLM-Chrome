@@ -72,7 +72,9 @@ export default [
         HTMLFormElement: 'readonly',
         HTMLLIElement: 'readonly',
         HTMLTableElement: 'readonly',
+        HTMLIFrameElement: 'readonly',
         NodeListOf: 'readonly',
+        MessageEvent: 'readonly',
       },
     },
     plugins: {
