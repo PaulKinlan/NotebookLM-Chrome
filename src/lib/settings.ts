@@ -40,3 +40,15 @@ export async function setModel(model: string): Promise<void> {
   settings.model = model;
   await saveAISettings(settings);
 }
+
+export async function setTemperature(temperature: number): Promise<void> {
+  const settings = await getAISettings();
+  settings.temperature = temperature;
+  await saveAISettings(settings);
+}
+
+export async function setMaxTokens(maxTokens: number | undefined): Promise<void> {
+  const settings = await getAISettings();
+  settings.maxTokens = maxTokens;
+  await saveAISettings(settings);
+}
