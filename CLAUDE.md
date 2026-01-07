@@ -59,3 +59,24 @@ All data persisted via `chrome.storage.local`:
 
 Place PNG icons in `icons/` directory:
 - icon16.png, icon32.png, icon48.png, icon128.png
+
+## Documentation Maintenance
+
+When making significant changes to the project, ensure documentation stays up to date:
+
+### README.md
+The README contains comprehensive architecture documentation. Update it when:
+- Adding new components or major features
+- Changing the project structure (new directories, renamed files)
+- Adding or removing dependencies
+- Modifying message types or data models
+- Changing permissions requirements
+- Adding new AI providers or transformation types
+
+### What to Update in README.md
+- **Architecture diagram**: If component relationships change
+- **Project Structure**: If files/directories are added, removed, or moved
+- **Data Models**: If types in `src/types/index.ts` change
+- **Message Passing table**: If message types are added/removed
+- **Permissions table**: If permissions change in manifest.json
+- **Tech Stack**: If major dependencies are added/removed
