@@ -63,7 +63,6 @@ export class SandboxRenderer {
     this.iframe.style.cssText = `
       width: 100%;
       border: none;
-      overflow: hidden;
       display: block;
       min-height: 20px;
     `;
@@ -93,8 +92,9 @@ export class SandboxRenderer {
 
       case "RENDER_COMPLETE":
       case "HEIGHT_RESPONSE":
-        // Update iframe height to match content
+        // Update iframe height to match content, capped at max-height from CSS
         if (height && this.iframe) {
+          // Set the height to content size; CSS max-height will constrain it
           this.iframe.style.height = `${height}px`;
         }
         // Resolve pending promise
