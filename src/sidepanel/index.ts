@@ -2123,10 +2123,14 @@ function setHighlightedIndex(index: number, items: HTMLElement[]): void {
   }
 }
 
-function handleKeyDown(e: KeyboardEvent): void {
-  let items = Array.from(
+function getDropdownItems(): HTMLElement[] {
+  return Array.from(
     elements.modelDropdownMenu.querySelectorAll(".dropdown-item")
   ) as HTMLElement[];
+}
+
+function handleKeyDown(e: KeyboardEvent): void {
+  let items = getDropdownItems();
 
   if (items.length === 0 && e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
 
@@ -2136,9 +2140,7 @@ function handleKeyDown(e: KeyboardEvent): void {
       if (!dropdownOpen) {
         toggleDropdown(true);
         // Re-query items after dropdown is opened and populated
-        items = Array.from(
-          elements.modelDropdownMenu.querySelectorAll(".dropdown-item")
-        ) as HTMLElement[];
+        items = getDropdownItems();
         setHighlightedIndex(0, items);
       } else {
         const newIndex = highlightedIndex < items.length - 1 ? highlightedIndex + 1 : 0;
@@ -2151,9 +2153,7 @@ function handleKeyDown(e: KeyboardEvent): void {
       if (!dropdownOpen) {
         toggleDropdown(true);
         // Re-query items after dropdown is opened and populated
-        items = Array.from(
-          elements.modelDropdownMenu.querySelectorAll(".dropdown-item")
-        ) as HTMLElement[];
+        items = getDropdownItems();
         setHighlightedIndex(items.length - 1, items);
       } else {
         const newIndex = highlightedIndex > 0 ? highlightedIndex - 1 : items.length - 1;
