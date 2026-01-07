@@ -34,6 +34,21 @@ import {
   generateQuiz,
   generateKeyTakeaways,
   generateEmailSummary,
+  generateSlideDeck,
+  generateReport,
+  generateDataTable,
+  generateMindMap,
+  generateFlashcards,
+  generateTimeline,
+  generateGlossary,
+  generateComparison,
+  generateFAQ,
+  generateActionItems,
+  generateExecutiveBrief,
+  generateStudyGuide,
+  generateProsCons,
+  generateCitationList,
+  generateOutline,
   testConnection,
 } from "../lib/ai.ts";
 import {
@@ -133,6 +148,51 @@ const elements = {
   ) as HTMLButtonElement,
   transformEmail: document.getElementById(
     "transform-email"
+  ) as HTMLButtonElement,
+  transformSlidedeck: document.getElementById(
+    "transform-slidedeck"
+  ) as HTMLButtonElement,
+  transformReport: document.getElementById(
+    "transform-report"
+  ) as HTMLButtonElement,
+  transformDatatable: document.getElementById(
+    "transform-datatable"
+  ) as HTMLButtonElement,
+  transformMindmap: document.getElementById(
+    "transform-mindmap"
+  ) as HTMLButtonElement,
+  transformFlashcards: document.getElementById(
+    "transform-flashcards"
+  ) as HTMLButtonElement,
+  transformTimeline: document.getElementById(
+    "transform-timeline"
+  ) as HTMLButtonElement,
+  transformGlossary: document.getElementById(
+    "transform-glossary"
+  ) as HTMLButtonElement,
+  transformComparison: document.getElementById(
+    "transform-comparison"
+  ) as HTMLButtonElement,
+  transformFaq: document.getElementById(
+    "transform-faq"
+  ) as HTMLButtonElement,
+  transformActionitems: document.getElementById(
+    "transform-actionitems"
+  ) as HTMLButtonElement,
+  transformExecutivebrief: document.getElementById(
+    "transform-executivebrief"
+  ) as HTMLButtonElement,
+  transformStudyguide: document.getElementById(
+    "transform-studyguide"
+  ) as HTMLButtonElement,
+  transformProscons: document.getElementById(
+    "transform-proscons"
+  ) as HTMLButtonElement,
+  transformCitations: document.getElementById(
+    "transform-citations"
+  ) as HTMLButtonElement,
+  transformOutline: document.getElementById(
+    "transform-outline"
   ) as HTMLButtonElement,
   transformResult: document.getElementById(
     "transform-result"
@@ -423,6 +483,51 @@ function setupEventListeners(): void {
   );
   elements.transformEmail?.addEventListener("click", () =>
     handleTransform("email")
+  );
+  elements.transformSlidedeck?.addEventListener("click", () =>
+    handleTransform("slidedeck")
+  );
+  elements.transformReport?.addEventListener("click", () =>
+    handleTransform("report")
+  );
+  elements.transformDatatable?.addEventListener("click", () =>
+    handleTransform("datatable")
+  );
+  elements.transformMindmap?.addEventListener("click", () =>
+    handleTransform("mindmap")
+  );
+  elements.transformFlashcards?.addEventListener("click", () =>
+    handleTransform("flashcards")
+  );
+  elements.transformTimeline?.addEventListener("click", () =>
+    handleTransform("timeline")
+  );
+  elements.transformGlossary?.addEventListener("click", () =>
+    handleTransform("glossary")
+  );
+  elements.transformComparison?.addEventListener("click", () =>
+    handleTransform("comparison")
+  );
+  elements.transformFaq?.addEventListener("click", () =>
+    handleTransform("faq")
+  );
+  elements.transformActionitems?.addEventListener("click", () =>
+    handleTransform("actionitems")
+  );
+  elements.transformExecutivebrief?.addEventListener("click", () =>
+    handleTransform("executivebrief")
+  );
+  elements.transformStudyguide?.addEventListener("click", () =>
+    handleTransform("studyguide")
+  );
+  elements.transformProscons?.addEventListener("click", () =>
+    handleTransform("proscons")
+  );
+  elements.transformCitations?.addEventListener("click", () =>
+    handleTransform("citations")
+  );
+  elements.transformOutline?.addEventListener("click", () =>
+    handleTransform("outline")
   );
   elements.copyTransform?.addEventListener("click", () => {
     copyToClipboard(elements.transformContent.textContent || "");
@@ -1742,9 +1847,28 @@ async function handleClearChat(): Promise<void> {
 // Transformations
 // ============================================================================
 
-async function handleTransform(
-  type: "podcast" | "quiz" | "takeaways" | "email"
-): Promise<void> {
+type TransformType =
+  | "podcast"
+  | "quiz"
+  | "takeaways"
+  | "email"
+  | "slidedeck"
+  | "report"
+  | "datatable"
+  | "mindmap"
+  | "flashcards"
+  | "timeline"
+  | "glossary"
+  | "comparison"
+  | "faq"
+  | "actionitems"
+  | "executivebrief"
+  | "studyguide"
+  | "proscons"
+  | "citations"
+  | "outline";
+
+async function handleTransform(type: TransformType): Promise<void> {
   if (!currentNotebookId) {
     showNotification("Please select a notebook first");
     return;
@@ -1756,11 +1880,26 @@ async function handleTransform(
     return;
   }
 
-  const titles: Record<string, string> = {
+  const titles: Record<TransformType, string> = {
     podcast: "Podcast Script",
     quiz: "Study Quiz",
     takeaways: "Key Takeaways",
     email: "Email Summary",
+    slidedeck: "Slide Deck",
+    report: "Report",
+    datatable: "Data Table",
+    mindmap: "Mind Map",
+    flashcards: "Flashcards",
+    timeline: "Timeline",
+    glossary: "Glossary",
+    comparison: "Comparison Chart",
+    faq: "FAQ",
+    actionitems: "Action Items",
+    executivebrief: "Executive Brief",
+    studyguide: "Study Guide",
+    proscons: "Pros & Cons",
+    citations: "Citation List",
+    outline: "Outline",
   };
 
   elements.transformResult.classList.remove("hidden");
@@ -1773,12 +1912,27 @@ async function handleTransform(
     elements.transformContent.innerHTML = "<em>Generating...</em>";
   }
 
-  // Disable buttons during generation
+  // Disable all transform buttons during generation
   const buttons = [
     elements.transformPodcast,
     elements.transformQuiz,
     elements.transformTakeaways,
     elements.transformEmail,
+    elements.transformSlidedeck,
+    elements.transformReport,
+    elements.transformDatatable,
+    elements.transformMindmap,
+    elements.transformFlashcards,
+    elements.transformTimeline,
+    elements.transformGlossary,
+    elements.transformComparison,
+    elements.transformFaq,
+    elements.transformActionitems,
+    elements.transformExecutivebrief,
+    elements.transformStudyguide,
+    elements.transformProscons,
+    elements.transformCitations,
+    elements.transformOutline,
   ];
   buttons.forEach((btn) => btn && (btn.disabled = true));
 
@@ -1797,6 +1951,51 @@ async function handleTransform(
         break;
       case "email":
         result = await generateEmailSummary(sources);
+        break;
+      case "slidedeck":
+        result = await generateSlideDeck(sources);
+        break;
+      case "report":
+        result = await generateReport(sources);
+        break;
+      case "datatable":
+        result = await generateDataTable(sources);
+        break;
+      case "mindmap":
+        result = await generateMindMap(sources);
+        break;
+      case "flashcards":
+        result = await generateFlashcards(sources, 10);
+        break;
+      case "timeline":
+        result = await generateTimeline(sources);
+        break;
+      case "glossary":
+        result = await generateGlossary(sources);
+        break;
+      case "comparison":
+        result = await generateComparison(sources);
+        break;
+      case "faq":
+        result = await generateFAQ(sources, 10);
+        break;
+      case "actionitems":
+        result = await generateActionItems(sources);
+        break;
+      case "executivebrief":
+        result = await generateExecutiveBrief(sources);
+        break;
+      case "studyguide":
+        result = await generateStudyGuide(sources);
+        break;
+      case "proscons":
+        result = await generateProsCons(sources);
+        break;
+      case "citations":
+        result = await generateCitationList(sources);
+        break;
+      case "outline":
+        result = await generateOutline(sources);
         break;
     }
 

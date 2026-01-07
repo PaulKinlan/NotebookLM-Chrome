@@ -95,7 +95,22 @@ export type TransformationType =
   | 'podcast'
   | 'quiz'
   | 'takeaways'
-  | 'email';
+  | 'email'
+  | 'slidedeck'
+  | 'report'
+  | 'datatable'
+  | 'mindmap'
+  | 'flashcards'
+  | 'timeline'
+  | 'glossary'
+  | 'comparison'
+  | 'faq'
+  | 'actionitems'
+  | 'executivebrief'
+  | 'studyguide'
+  | 'proscons'
+  | 'citations'
+  | 'outline';
 
 export interface Transformation extends SyncableEntity {
   notebookId: string;
