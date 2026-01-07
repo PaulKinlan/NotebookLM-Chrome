@@ -59,3 +59,21 @@ All data persisted via `chrome.storage.local`:
 
 Place PNG icons in `icons/` directory:
 - icon16.png, icon32.png, icon48.png, icon128.png
+
+## Privacy Policy Maintenance
+
+**IMPORTANT:** Whenever making changes that could affect user privacy, you MUST review and update `PRIVACY.md`. This includes:
+
+- Adding, removing, or modifying **permissions** in `manifest.json`
+- Adding new **third-party API integrations** or services
+- Changes to **data storage** (what data is stored, how it's stored)
+- Changes to how **user content is transmitted** to external services
+- Adding **new features** that access browser data (tabs, bookmarks, history)
+- Modifications to the **content security policy**
+- Adding **analytics, telemetry, or tracking** (should be avoided, but must be documented)
+
+When updating `PRIVACY.md`:
+1. Update the "Last Updated" date at the top of the file to the current date
+2. Add or modify relevant sections to accurately reflect the new behavior
+3. Ensure the permissions list matches `manifest.json`
+4. Document any new third-party services and link to their privacy policies
