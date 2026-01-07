@@ -1149,7 +1149,8 @@ function togglePickerItem(id: string): void {
 
 function updatePickerSelectedCount(): void {
   const count = selectedPickerItems.size;
-  elements.pickerAdd.textContent = `Add ${count}`;
+  const label = count === 0 ? "Add Selected" : `Add ${count}`;
+  elements.pickerAdd.textContent = label;
   elements.pickerAdd.disabled = count === 0;
 }
 
