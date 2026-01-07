@@ -19,11 +19,7 @@ function createProviderConfig(
   apiKey: string,
   baseURL?: string
 ): { apiKey: string; baseURL?: string } {
-  const config: { apiKey: string; baseURL?: string } = { apiKey };
-  if (baseURL) {
-    config.baseURL = baseURL;
-  }
-  return config;
+  return baseURL ? { apiKey, baseURL } : { apiKey };
 }
 
 async function getModel(): Promise<LanguageModel | null> {
