@@ -1154,8 +1154,23 @@ function updatePickerSelectedCount(): void {
   elements.pickerSelectedCount.textContent = `${count} selected`;
   elements.pickerAdd.disabled = count === 0;
 
-  // Update toggle button text
-  elements.pickerToggleAll.textContent = count === 0 ? "Select All" : "Select None";
+  // Update toggle button text based on visible items and current filter
+  const filter = elements.pickerSearch.value.trim();
+  const visibleItems = filter
+    ? pickerItems.filter(
+        (item) =>
+          item.title.toLowerCase().includes(filter.toLowerCase()) ||
+          (item.url && item.url.toLowerCase().includes(filter.toLowerCase()))
+      )
+    : pickerItems;
+
+  const visibleSelectedCount = visibleItems.reduce(
+    (acc, item) => (selectedPickerItems.has(item.id) ? acc + 1 : acc),
+    0
+  );
+
+  elements.pickerToggleAll.textContent =
+    visibleSelectedCount === 0 ? "Select All" : "Select None";
 }
 
 function handlePickerSearch(): void {
