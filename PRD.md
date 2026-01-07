@@ -1,8 +1,8 @@
-# NotebookLM Chrome - Product Requirements Document
+# FolioLM - Product Requirements Document
 
 ## Overview
 
-NotebookLM Chrome is a browser extension that brings NotebookLM-style functionality directly into Chrome. Users can collect web content from tabs, bookmarks, and browsing history into notebooks, then query, summarize, and transform that content using AI.
+FolioLM (https://foliolm.com) is a browser extension that helps users collect web content from tabs, bookmarks, and browsing history into notebooks, then query, summarize, and transform that content using AI.
 
 ## Problem Statement
 

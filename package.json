@@ -1,7 +1,7 @@
 {
-  "name": "notebooklm-chrome",
+  "name": "foliolm",
   "version": "0.1.0",
-  "description": "A NotebookLM-style Chrome extension for collecting and querying content from tabs, bookmarks, and history",
+  "description": "FolioLM - Collect and query content from tabs, bookmarks, and history. Your AI research companion.",
   "type": "module",
   "scripts": {
     "dev": "vite",
