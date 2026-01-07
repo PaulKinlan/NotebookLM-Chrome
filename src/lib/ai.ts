@@ -23,16 +23,6 @@ function createProviderConfig(
   return baseURL ? { apiKey, baseURL } : { apiKey };
 }
 
-/**
- * Helper function to create provider config with optional baseURL
- */
-function createProviderConfig(
-  apiKey: string,
-  baseURL?: string
-): { apiKey: string; baseURL?: string } {
-  return baseURL ? { apiKey, baseURL } : { apiKey };
-}
-
 async function getModel(): Promise<LanguageModel | null> {
   const settings = await getAISettings();
   const apiKey = await getApiKey(settings.provider);
