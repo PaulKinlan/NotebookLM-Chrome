@@ -447,6 +447,72 @@ input[type="text"]:focus {
   flex: 1;
 }
 
+.model-dropdown {
+  position: relative;
+}
+
+.model-dropdown input {
+  padding-right: 36px;
+}
+
+.dropdown-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dropdown-toggle:hover {
+  color: var(--text-primary);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-top: 4px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dropdown-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dropdown-item:hover,
+.dropdown-item.selected,
+.dropdown-item.highlighted {
+  background: var(--bg-tertiary);
+}
+
+.dropdown-item .model-label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.dropdown-item .model-id {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .checkbox-label {
   display: flex;
   align-items: center;

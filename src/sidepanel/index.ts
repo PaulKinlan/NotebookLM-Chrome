@@ -217,7 +217,10 @@ const elements = {
 
   // Settings tab
   aiProvider: document.getElementById("ai-provider") as HTMLSelectElement,
-  aiModel: document.getElementById("ai-model") as HTMLSelectElement,
+  aiModel: document.getElementById("ai-model") as HTMLInputElement,
+  modelDropdown: document.getElementById("model-dropdown") as HTMLDivElement,
+  modelDropdownToggle: document.getElementById("model-dropdown-toggle") as HTMLButtonElement,
+  modelDropdownMenu: document.getElementById("model-dropdown-menu") as HTMLDivElement,
   apiKey: document.getElementById("api-key") as HTMLInputElement,
   testApiBtn: document.getElementById("test-api") as HTMLButtonElement,
   apiKeyLink: document.getElementById("api-key-link") as HTMLAnchorElement,
@@ -558,6 +561,25 @@ function setupEventListeners(): void {
   );
   elements.aiProvider.addEventListener("change", handleProviderChange);
   elements.aiModel.addEventListener("change", handleModelChange);
+  elements.aiModel.addEventListener("focus", () => toggleDropdown(true));
+  elements.aiModel.addEventListener("input", () => {
+    if (!dropdownOpen) {
+      toggleDropdown(true);
+    } else {
+      populateModelDropdown();
+    }
+  });
+  elements.aiModel.addEventListener("keydown", handleKeyDown);
+  elements.modelDropdownToggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleDropdown();
+    // Focus input so arrow keys work for accessibility
+    elements.aiModel.focus();
+  });
+  // Prevent clicks inside dropdown from closing it (set up once during initialization)
+  elements.modelDropdownMenu.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
   elements.apiKey.addEventListener("change", handleApiKeyChange);
   elements.testApiBtn.addEventListener("click", handleTestApi);
   elements.aiTemperature.addEventListener("input", handleTemperatureChange);
@@ -2079,8 +2101,168 @@ async function handlePermissionToggle(
   updateTabCount();
 }
 
-async function handleProviderChange(): Promise<void> {
+// ============================================================================
+// Model Dropdown
+// ============================================================================
+
+let dropdownOpen = false;
+let highlightedIndex = -1;
+
+function setHighlightedIndex(index: number, items: HTMLElement[]): void {
+  // Remove previous highlight
+  if (highlightedIndex >= 0 && highlightedIndex < items.length) {
+    items[highlightedIndex].classList.remove("highlighted");
+  }
+
+  highlightedIndex = index;
+
+  // Add new highlight
+  if (highlightedIndex >= 0 && highlightedIndex < items.length) {
+    items[highlightedIndex].classList.add("highlighted");
+    items[highlightedIndex].scrollIntoView({ block: "nearest" });
+  }
+}
+
+function getDropdownItems(): HTMLElement[] {
+  return Array.from(
+    elements.modelDropdownMenu.querySelectorAll(".dropdown-item")
+  ) as HTMLElement[];
+}
+
+function handleKeyDown(e: KeyboardEvent): void {
+  let items = getDropdownItems();
+
+  if (items.length === 0 && e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+
+  switch (e.key) {
+    case "ArrowDown":
+      e.preventDefault();
+      if (!dropdownOpen) {
+        toggleDropdown(true);
+        // Re-query items after dropdown is opened and populated
+        items = getDropdownItems();
+        setHighlightedIndex(0, items);
+      } else {
+        const newIndex = highlightedIndex < items.length - 1 ? highlightedIndex + 1 : 0;
+        setHighlightedIndex(newIndex, items);
+      }
+      break;
+
+    case "ArrowUp":
+      e.preventDefault();
+      if (!dropdownOpen) {
+        toggleDropdown(true);
+        // Re-query items after dropdown is opened and populated
+        items = getDropdownItems();
+        setHighlightedIndex(items.length - 1, items);
+      } else {
+        const newIndex = highlightedIndex > 0 ? highlightedIndex - 1 : items.length - 1;
+        setHighlightedIndex(newIndex, items);
+      }
+      break;
+
+    case "Enter":
+      e.preventDefault();
+
+      // If something is highlighted, select it
+      if (highlightedIndex >= 0 && highlightedIndex < items.length) {
+        const selectedItem = items[highlightedIndex];
+        const modelValue = selectedItem.querySelector(".model-id")?.textContent;
+        if (modelValue) {
+          elements.aiModel.value = modelValue;
+          handleModelChange();
+          toggleDropdown(false);
+        }
+        return;
+      }
+
+      // If dropdown is open, check if first item is a match before auto-selecting
+      if (dropdownOpen && items.length > 0) {
+        const firstItem = items[0];
+        const firstScore = firstItem.dataset.score ? parseInt(firstItem.dataset.score, 10) : -1;
+
+        // Only auto-select if it's an actual match (score >= 0)
+        if (firstScore >= 0) {
+          const modelValue = firstItem.querySelector(".model-id")?.textContent;
+          if (modelValue) {
+            elements.aiModel.value = modelValue;
+            handleModelChange();
+            toggleDropdown(false);
+          }
+        } else {
+          // No matches - just close dropdown and keep custom value
+          toggleDropdown(false);
+        }
+      }
+      break;
+
+    case "Escape":
+      e.preventDefault();
+      toggleDropdown(false);
+      break;
+  }
+}
+
+function toggleDropdown(show?: boolean): void {
+  dropdownOpen = show !== undefined ? show : !dropdownOpen;
+  elements.modelDropdownMenu.hidden = !dropdownOpen;
+  elements.aiModel.setAttribute("aria-expanded", dropdownOpen.toString());
+
+  if (dropdownOpen) {
+    populateModelDropdown();
+    setTimeout(() => {
+      document.addEventListener("click", handleOutsideClick);
+    }, 0);
+  } else {
+    highlightedIndex = -1;
+    document.removeEventListener("click", handleOutsideClick);
+  }
+}
+
+function handleOutsideClick(e: MouseEvent): void {
+  if (!elements.modelDropdown.contains(e.target as Node)) {
+    toggleDropdown(false);
+  }
+}
+
+// Simple fuzzy match scoring function
+function fuzzyMatchScore(text: string, query: string): number {
+  if (!query) return 0;
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+
+  // Exact match at start - highest priority
+  if (lowerText.startsWith(lowerQuery)) {
+    return 100;
+  }
+
+  // Exact match anywhere
+  if (lowerText.includes(lowerQuery)) {
+    return 50;
+  }
+
+  // Character sequence match
+  let queryIndex = 0;
+  let score = 0;
+  for (let i = 0; i < lowerText.length && queryIndex < lowerQuery.length; i++) {
+    if (lowerText[i] === lowerQuery[queryIndex]) {
+      score += 1;
+      queryIndex++;
+    }
+  }
+
+  // If we matched all characters in order
+  if (queryIndex === lowerQuery.length) {
+    return Math.min(score, 49);
+  }
+
+  return -1; // No match
+}
+
+function populateModelDropdown(): void {
   const provider = elements.aiProvider.value as AISettings["provider"];
+  const query = elements.aiModel.value.trim();
 
   const modelOptions: Record<string, { value: string; label: string }[]> = {
     anthropic: [
@@ -2103,14 +2285,75 @@ async function handleProviderChange(): Promise<void> {
   };
 
   const models = modelOptions[provider] || [];
-  elements.aiModel.innerHTML = "";
 
-  for (const model of models) {
-    const option = document.createElement("option");
-    option.value = model.value;
-    option.textContent = model.label;
-    elements.aiModel.appendChild(option);
+  // Score and sort models based on fuzzy match
+  const scoredModels = models.map((model) => {
+    const labelScore = fuzzyMatchScore(model.label, query);
+    const valueScore = fuzzyMatchScore(model.value, query);
+    const score = Math.max(labelScore, valueScore);
+    return { model, score };
+  });
+
+  // Sort by score (highest first), with no matches at the end
+  scoredModels.sort((a, b) => {
+    if (a.score === -1 && b.score === -1) return 0;
+    if (a.score === -1) return 1;
+    if (b.score === -1) return -1;
+    return b.score - a.score;
+  });
+
+  elements.modelDropdownMenu.innerHTML = "";
+
+  // Reset highlight when repopulating due to typing
+  highlightedIndex = -1;
+
+  for (const { model, score } of scoredModels) {
+    const item = document.createElement("div");
+    item.className = "dropdown-item";
+
+    // Store score for keyboard navigation
+    item.dataset.score = score.toString();
+
+    // Dim unmatched items slightly
+    if (score === -1 && query) {
+      item.style.opacity = "0.5";
+    }
+
+    if (model.value === elements.aiModel.value) {
+      item.classList.add("selected");
+    }
+
+    // Add ARIA role for accessibility
+    item.setAttribute("role", "option");
+
+    // Create label and ID spans with textContent to prevent XSS
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "model-label";
+    labelSpan.textContent = model.label;
+
+    const idSpan = document.createElement("span");
+    idSpan.className = "model-id";
+    idSpan.textContent = model.value;
+
+    item.appendChild(labelSpan);
+    item.appendChild(idSpan);
+
+    item.addEventListener("click", () => {
+      elements.aiModel.value = model.value;
+      handleModelChange();
+      toggleDropdown(false);
+    });
+
+    elements.modelDropdownMenu.appendChild(item);
   }
+}
+
+// ============================================================================
+// Settings
+// ============================================================================
+
+async function handleProviderChange(): Promise<void> {
+  const provider = elements.aiProvider.value as AISettings["provider"];
 
   const apiKeyRow = elements.apiKey.parentElement;
   const apiKeyLabel = apiKeyRow?.previousElementSibling as HTMLElement;
