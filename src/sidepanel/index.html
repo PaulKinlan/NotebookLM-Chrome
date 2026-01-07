@@ -540,10 +540,11 @@
             </select>
 
             <label class="input-label">Model</label>
-            <select id="ai-model">
-              <option value="claude-sonnet-4-5-20250514">Claude 4.5 Sonnet</option>
-              <option value="claude-opus-4-5-20251101">Claude 4.5 Opus</option>
-            </select>
+            <div class="model-dropdown" id="model-dropdown">
+              <input type="text" id="ai-model" placeholder="Select or type model ID" />
+              <button type="button" id="model-dropdown-toggle" class="dropdown-toggle">▼</button>
+              <div class="dropdown-menu" id="model-dropdown-menu" hidden></div>
+            </div>
 
             <label class="input-label">API Key</label>
             <div class="api-key-row">
