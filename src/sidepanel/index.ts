@@ -1169,7 +1169,7 @@ function handlePickerToggleAll(): void {
     ? pickerItems.filter(
         (item) =>
           item.title.toLowerCase().includes(filter.toLowerCase()) ||
-          (item.url && item.url.toLowerCase().includes(filter.toLowerCase()))
+          item.url.toLowerCase().includes(filter.toLowerCase())
       )
     : pickerItems;
 
