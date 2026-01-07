@@ -54,12 +54,14 @@ window.addEventListener("message", (event) => {
     contentEl.innerHTML = content;
 
     // Execute scripts in order (they've been extracted from the HTML)
+    // We inject them as script elements rather than using new Function()
+    // to avoid requiring 'unsafe-eval' in CSP
     if (scripts && Array.isArray(scripts)) {
       for (const scriptContent of scripts) {
         try {
-          // Create and execute script
-          const scriptFn = new Function(scriptContent);
-          scriptFn();
+          const scriptEl = document.createElement("script");
+          scriptEl.textContent = scriptContent;
+          document.body.appendChild(scriptEl);
         } catch (error) {
           console.error("Script execution error:", error);
         }
