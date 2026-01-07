@@ -576,6 +576,10 @@ function setupEventListeners(): void {
     // Focus input so arrow keys work for accessibility
     elements.aiModel.focus();
   });
+  // Prevent clicks inside dropdown from closing it (set up once during initialization)
+  elements.modelDropdownMenu.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
   elements.apiKey.addEventListener("change", handleApiKeyChange);
   elements.testApiBtn.addEventListener("click", handleTestApi);
   elements.aiTemperature.addEventListener("input", handleTemperatureChange);
@@ -2119,18 +2123,24 @@ function setHighlightedIndex(index: number, items: HTMLElement[]): void {
   }
 }
 
-function handleKeyDown(e: KeyboardEvent): void {
-  const items = Array.from(
+function getDropdownItems(): HTMLElement[] {
+  return Array.from(
     elements.modelDropdownMenu.querySelectorAll(".dropdown-item")
   ) as HTMLElement[];
+}
 
-  if (items.length === 0) return;
+function handleKeyDown(e: KeyboardEvent): void {
+  let items = getDropdownItems();
+
+  if (items.length === 0 && e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
 
   switch (e.key) {
     case "ArrowDown":
       e.preventDefault();
       if (!dropdownOpen) {
         toggleDropdown(true);
+        // Re-query items after dropdown is opened and populated
+        items = getDropdownItems();
         setHighlightedIndex(0, items);
       } else {
         const newIndex = highlightedIndex < items.length - 1 ? highlightedIndex + 1 : 0;
@@ -2142,6 +2152,8 @@ function handleKeyDown(e: KeyboardEvent): void {
       e.preventDefault();
       if (!dropdownOpen) {
         toggleDropdown(true);
+        // Re-query items after dropdown is opened and populated
+        items = getDropdownItems();
         setHighlightedIndex(items.length - 1, items);
       } else {
         const newIndex = highlightedIndex > 0 ? highlightedIndex - 1 : items.length - 1;
@@ -2194,17 +2206,13 @@ function handleKeyDown(e: KeyboardEvent): void {
 function toggleDropdown(show?: boolean): void {
   dropdownOpen = show !== undefined ? show : !dropdownOpen;
   elements.modelDropdownMenu.hidden = !dropdownOpen;
+  elements.aiModel.setAttribute("aria-expanded", dropdownOpen.toString());
 
   if (dropdownOpen) {
     populateModelDropdown();
     setTimeout(() => {
       document.addEventListener("click", handleOutsideClick);
     }, 0);
-
-    // Prevent clicks inside dropdown from closing it
-    elements.modelDropdownMenu.addEventListener("click", (e) => {
-      e.stopPropagation();
-    });
   } else {
     highlightedIndex = -1;
     document.removeEventListener("click", handleOutsideClick);
@@ -2315,10 +2323,20 @@ function populateModelDropdown(): void {
       item.classList.add("selected");
     }
 
-    item.innerHTML = `
-      <span class="model-label">${model.label}</span>
-      <span class="model-id">${model.value}</span>
-    `;
+    // Add ARIA role for accessibility
+    item.setAttribute("role", "option");
+
+    // Create label and ID spans with textContent to prevent XSS
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "model-label";
+    labelSpan.textContent = model.label;
+
+    const idSpan = document.createElement("span");
+    idSpan.className = "model-id";
+    idSpan.textContent = model.value;
+
+    item.appendChild(labelSpan);
+    item.appendChild(idSpan);
 
     item.addEventListener("click", () => {
       elements.aiModel.value = model.value;
