@@ -104,8 +104,15 @@ jobs:
           EOF
           )
 
+          # Ensure packaged ZIP file(s) exist before creating the release
+          ZIP_FILES=(foliolm-extension-*.zip)
+          if [ ${#ZIP_FILES[@]} -eq 0 ]; then
+            echo "Error: No foliolm-extension-*.zip files found. Ensure 'npm run package' completed successfully."
+            exit 1
+          fi
+
           # Create release with files
           gh release create "${GITHUB_REF#refs/tags/}" \
             --title "FolioLM v${VERSION}" \
             --notes "$NOTES" \
-            foliolm-extension-*.zip
+            "${ZIP_FILES[@]}"

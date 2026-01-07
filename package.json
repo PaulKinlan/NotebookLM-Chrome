@@ -10,11 +10,11 @@
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
-    "package:zip": "cd dist && zip -r ../foliolm-extension-v$npm_package_version.zip .",
+    "package:zip": "cd dist && zip -r ../foliolm-extension-v${npm_package_version}.zip .",
     "package": "npm run package:zip",
-    "release:patch": "npm version patch && npm run build && npm run package",
-    "release:minor": "npm version minor && npm run build && npm run package",
-    "release:major": "npm version major && npm run build && npm run package"
+    "release:patch": "npm version patch --no-git-tag-version && npm run build && npm run package && git commit -am \"chore(release): v$npm_package_version\" && git tag v$npm_package_version",
+    "release:minor": "npm version minor --no-git-tag-version && npm run build && npm run package && git commit -am \"chore(release): v$npm_package_version\" && git tag v$npm_package_version",
+    "release:major": "npm version major --no-git-tag-version && npm run build && npm run package && git commit -am \"chore(release): v$npm_package_version\" && git tag v$npm_package_version"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.7",
