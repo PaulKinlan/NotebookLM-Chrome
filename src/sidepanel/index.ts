@@ -2515,11 +2515,12 @@ async function handleBaseURLChange(): Promise<void> {
     showNotification(
       "Please enter a valid URL (including http:// or https://) for the base URL."
     );
+    // Reset the input field to the previously saved valid value
+    elements.aiBaseURL.value = aiSettings?.baseURL || "";
     return;
   }
 
-  const baseURL = value;
-  await setBaseURL(baseURL);
+  await setBaseURL(value);
   aiSettings = await getAISettings();
 }
 
