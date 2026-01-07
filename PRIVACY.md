@@ -25,6 +25,7 @@ FolioLM allows you to connect to third-party AI services to query and transform 
 - **Anthropic** (Claude API) - https://www.anthropic.com/privacy
 - **OpenAI** (GPT API) - https://openai.com/privacy
 - **Google** (Gemini API) - https://policies.google.com/privacy
+- **OpenAI-Compatible Providers** - Custom endpoints you configure (OpenRouter, Ollama, Azure OpenAI, etc.)
 
 ### Important Notes About AI Services
 
@@ -32,7 +33,23 @@ FolioLM allows you to connect to third-party AI services to query and transform 
 
 2. **Data Sent to AI Services**: When you use AI features, the content you've collected (text from tabs, bookmarks, or history entries) is sent directly from your browser to the AI service you've configured. This communication happens directly between your browser and the AI provider—it does not pass through any servers operated by the FolioLM author.
 
-3. **AI Provider Privacy Policies**: You are responsible for reviewing and accepting the privacy policies of any AI services you choose to use. Each provider has their own data handling practices, retention policies, and terms of service.
+3. **Custom Endpoints (OpenAI-Compatible)**: When using the OpenAI-Compatible provider, you can configure custom API endpoints. You are solely responsible for:
+   - Verifying the trustworthiness of any custom endpoint you configure
+   - Understanding the data handling practices of that endpoint
+   - Ensuring the endpoint uses HTTPS encryption
+   - Reviewing and accepting that provider's privacy policy and terms of service
+
+4. **AI Provider Privacy Policies**: You are responsible for reviewing and accepting the privacy policies of any AI services you choose to use. Each provider has their own data handling practices, retention policies, and terms of service.
+
+## Content Security Policy (CSP)
+
+FolioLM uses a Content Security Policy to enhance security:
+
+- **Script Execution**: Only scripts from the extension itself can execute
+- **Network Connections**: The extension can connect to HTTPS endpoints for AI services
+  - This includes any custom HTTPS endpoint you configure for OpenAI-Compatible providers
+  - HTTP connections are blocked for security
+  - Only configure endpoints you trust with your data
 
 ## Browser Permissions
 

@@ -96,6 +96,7 @@ FolioLM is a Chrome Manifest V3 extension built with TypeScript and Vite.
 │         │  AI Providers               │                             │
 │         │  - Anthropic (Claude)       │                             │
 │         │  - OpenAI (GPT)             │                             │
+│         │  - OpenAI-Compatible        │                             │
 │         │  - Google (Gemini)          │                             │
 │         │  - Chrome Built-in AI       │                             │
 │         └─────────────────────────────┘                             │
@@ -246,7 +247,10 @@ Messages between components (defined in `src/types/index.ts`):
 
 ### Security
 
-- **CSP**: Strict Content Security Policy in manifest
+- **CSP**: Content Security Policy allows HTTPS connections for AI providers
+  - Extension pages can connect to any HTTPS endpoint for OpenAI-compatible providers
+  - Users must trust the custom endpoints they configure
+  - All API communications require HTTPS (HTTP is blocked)
 - **XSS Prevention**: Triple-layer defense (escape → format → DOMPurify)
 - **Sandbox Isolation**: AI content rendered in sandboxed iframe
 - **API Key Storage**: Per-provider keys stored in local IndexedDB only
@@ -256,16 +260,43 @@ Messages between components (defined in `src/types/index.ts`):
 ### AI Providers
 
 Configure in Settings tab:
-1. Select provider (Anthropic, OpenAI, Google, or Chrome Built-in)
+1. Select provider (Anthropic, OpenAI, OpenAI-Compatible, Google, or Chrome Built-in)
 2. Enter API key (not required for Chrome Built-in)
 3. Select model
 4. Optional: Set custom base URL for enterprise deployments
+
+#### OpenAI-Compatible Provider
+
+The **OpenAI-Compatible** provider allows you to use any API that implements the OpenAI API format, including:
+
+- **Local LLMs**: Ollama, LM Studio, LocalAI, text-generation-webui
+- **Cloud Aggregators**: OpenRouter, Together AI, Anyscale
+- **Enterprise Deployments**: Azure OpenAI Service, AWS Bedrock with OpenAI format
+- **Self-hosted**: vLLM, FastChat, or custom OpenAI-compatible servers
+
+**Setup Requirements:**
+1. Select "OpenAI-Compatible" as your provider
+2. Enter your API key for the service
+3. **Set Base URL** to the full API endpoint (e.g., `https://api.openrouter.ai/api/v1`)
+4. Enter the model identifier (e.g., `gpt-4o`, `anthropic/claude-3.5-sonnet`)
+
+**Security Note:** The extension's Content Security Policy (CSP) allows HTTPS connections to any endpoint. Only configure base URLs you trust, as your source content and queries will be sent to that endpoint.
+
+**Example Configurations:**
+
+| Service | Base URL | Model Example |
+|---------|----------|---------------|
+| OpenRouter | `https://api.openrouter.ai/api/v1` | `anthropic/claude-3.5-sonnet` |
+| Ollama (local) | `http://localhost:11434/v1` | `llama2`, `mistral` |
+| Azure OpenAI | `https://<your-resource>.openai.azure.com/openai/deployments/<deployment-name>` | Your deployment name |
+
+**Note:** Local endpoints using `http://localhost` may require additional browser configuration or HTTPS tunneling depending on your setup.
 
 ### Advanced Settings
 
 - **Temperature**: Controls response creativity (0-2)
 - **Max Tokens**: Limits response length
-- **Base URL**: Custom endpoint for local/enterprise LLM deployments
+- **Base URL**: Custom endpoint for local/enterprise LLM deployments (required for OpenAI-Compatible)
 
 ## Tech Stack
 

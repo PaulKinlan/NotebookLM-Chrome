@@ -87,6 +87,36 @@ When updating `PRIVACY.md`:
 3. Ensure the permissions list matches `manifest.json`
 4. Document any new third-party services and link to their privacy policies
 
+## Content Security Policy (CSP)
+
+The extension's CSP is defined in `manifest.json` under `content_security_policy.extension_pages`:
+
+```json
+"content_security_policy": {
+  "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https:;"
+}
+```
+
+**Key Points:**
+- `script-src 'self'` - Only scripts from the extension can execute
+- `object-src 'self'` - Only objects from the extension can be embedded
+- `connect-src 'self' https:` - Extension can connect to itself and any HTTPS endpoint
+
+**Why `https:` is allowed:**
+- The OpenAI-Compatible provider requires connecting to user-configured custom endpoints
+- Users might use local LLMs (Ollama), cloud aggregators (OpenRouter), or enterprise deployments (Azure OpenAI)
+- All connections must use HTTPS (HTTP is automatically blocked by the browser for extensions)
+- Users are responsible for trusting the endpoints they configure
+- This is documented in PRIVACY.md and README.md
+
+**Security Trade-offs:**
+- ✅ Enables flexibility for custom AI endpoints
+- ✅ Still requires HTTPS encryption
+- ⚠️ Users must trust their configured endpoints
+- ⚠️ Extension can't validate third-party endpoint security
+
+If you modify the CSP, update both `PRIVACY.md` and `README.md` to reflect the changes.
+
 ## Documentation Maintenance
 
 When making significant changes to the project, ensure documentation stays up to date:
