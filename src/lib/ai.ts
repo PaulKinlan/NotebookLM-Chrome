@@ -38,10 +38,11 @@ async function getModel(): Promise<LanguageModel | null> {
     }
     case 'openai-compatible': {
       if (!apiKey) return null;
+      if (!settings.baseURL) return null;
       const provider = createOpenAICompatible({
         name: 'openai-compatible',
         apiKey,
-        baseURL: settings.baseURL || 'https://api.openai.com/v1',
+        baseURL: settings.baseURL,
       });
       return provider(settings.model || 'gpt-4o');
     }
