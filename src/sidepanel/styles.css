@@ -1011,6 +1011,14 @@ input[type="text"]:focus {
   color: var(--text-secondary);
 }
 
+/* Transform History Container */
+.transform-history {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
 .transform-result {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
