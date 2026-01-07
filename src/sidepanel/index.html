@@ -409,8 +409,9 @@
           <div id="picker-list" class="picker-list"></div>
           <div class="modal-footer">
             <div class="modal-actions">
-              <button id="picker-cancel" class="btn btn-outline">Cancel</button>
-              <button id="picker-add" class="btn btn-primary">Add Selected</button>
+              <button id="picker-cancel" class="btn btn-outline" type="button" onclick="document.getElementById('picker-modal').classList.add('hidden')">Cancel</button>
+              <button id="picker-toggle-all" class="btn btn-outline" type="button">Select All</button>
+              <button id="picker-add" class="btn btn-primary" type="button">Add Selected</button>
             </div>
           </div>
         </div>

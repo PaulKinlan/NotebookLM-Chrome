@@ -167,8 +167,10 @@ const elements = {
   pickerSelectedCount: document.getElementById(
     "picker-selected-count"
   ) as HTMLSpanElement,
+  pickerToggleAll: document.getElementById(
+    "picker-toggle-all"
+  ) as HTMLButtonElement,
   pickerClose: document.getElementById("picker-close") as HTMLButtonElement,
-  pickerCancel: document.getElementById("picker-cancel") as HTMLButtonElement,
   pickerAdd: document.getElementById("picker-add") as HTMLButtonElement,
   pickerBackdrop: document.querySelector(".modal-backdrop") as HTMLDivElement,
 
@@ -440,10 +442,10 @@ function setupEventListeners(): void {
 
   // Picker Modal
   elements.pickerClose?.addEventListener("click", closePicker);
-  elements.pickerCancel?.addEventListener("click", closePicker);
   elements.pickerBackdrop?.addEventListener("click", closePicker);
   elements.pickerAdd?.addEventListener("click", handlePickerAdd);
   elements.pickerSearch?.addEventListener("input", handlePickerSearch);
+  elements.pickerToggleAll?.addEventListener("click", handlePickerToggleAll);
 }
 
 // ============================================================================
@@ -1152,11 +1154,63 @@ function updatePickerSelectedCount(): void {
   const label = count === 0 ? "Add Selected" : `Add ${count}`;
   elements.pickerAdd.textContent = label;
   elements.pickerAdd.disabled = count === 0;
+
+  // Update toggle button text based on visible items and current filter
+  const filter = elements.pickerSearch.value.trim();
+  const visibleItems = filter
+    ? pickerItems.filter(
+        (item) =>
+          item.title.toLowerCase().includes(filter.toLowerCase()) ||
+          (item.url && item.url.toLowerCase().includes(filter.toLowerCase()))
+      )
+    : pickerItems;
+
+  const visibleSelectedCount = visibleItems.reduce(
+    (acc, item) => (selectedPickerItems.has(item.id) ? acc + 1 : acc),
+    0
+  );
+
+  elements.pickerToggleAll.textContent =
+    visibleSelectedCount === 0 ? "Select All" : "Select None";
 }
 
 function handlePickerSearch(): void {
   const filter = elements.pickerSearch.value.trim();
   renderPickerItems(filter);
+}
+
+function handlePickerToggleAll(): void {
+  const filter = elements.pickerSearch.value.trim();
+  const visibleItems = filter
+    ? pickerItems.filter(
+        (item) =>
+          item.title.toLowerCase().includes(filter.toLowerCase()) ||
+          item.url.toLowerCase().includes(filter.toLowerCase())
+      )
+    : pickerItems;
+
+  // Check if any visible items are selected
+  const anyVisibleSelected = visibleItems.some((item) =>
+    selectedPickerItems.has(item.id)
+  );
+
+  if (anyVisibleSelected) {
+    // Deselect all visible items
+    visibleItems.forEach((item) => selectedPickerItems.delete(item.id));
+  } else {
+    // Select all visible items
+    visibleItems.forEach((item) => selectedPickerItems.add(item.id));
+  }
+
+  // Update UI for all visible items
+  visibleItems.forEach((item) => {
+    const itemElement = elements.pickerList.querySelector(
+      `[data-id="${item.id}"]`
+    );
+    itemElement?.classList.toggle("selected", selectedPickerItems.has(item.id));
+  });
+
+  updatePickerSelectedCount();
 }
 
 async function handlePickerAdd(): Promise<void> {
