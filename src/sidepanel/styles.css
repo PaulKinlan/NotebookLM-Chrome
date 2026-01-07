@@ -113,6 +113,56 @@ body {
   font-weight: 600;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.header-icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.header-icon-btn.active {
+  color: var(--accent-primary);
+}
+
+.header-notebook-select {
+  max-width: 140px;
+  padding: 4px 8px;
+  font-size: 13px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.header-notebook-select:hover {
+  border-color: var(--text-muted);
+}
+
+.header-notebook-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
 /* ============================================================================
    Content Area
    ============================================================================ */
@@ -585,20 +635,6 @@ input[type="text"]:focus {
   width: 28px;
   height: 28px;
   font-size: 12px;
-}
-
-/* ============================================================================
-   Notebook Selector
-   ============================================================================ */
-
-.notebook-selector {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.notebook-selector select {
-  flex: 1;
 }
 
 /* ============================================================================

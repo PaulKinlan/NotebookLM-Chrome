@@ -9,7 +9,6 @@ import DOMPurify, { Config } from "dompurify";
 import { checkPermissions, requestPermission } from "../lib/permissions.ts";
 import {
   getNotebooks,
-  getNotebook,
   saveNotebook,
   createNotebook,
   deleteNotebook,
@@ -103,6 +102,14 @@ const elements = {
     ".tab-content"
   ) as NodeListOf<HTMLElement>,
 
+  // Header buttons
+  headerLibraryBtn: document.getElementById(
+    "header-library-btn"
+  ) as HTMLButtonElement,
+  headerSettingsBtn: document.getElementById(
+    "header-settings-btn"
+  ) as HTMLButtonElement,
+
   // Add Sources tab
   addCurrentTabBtn: document.getElementById(
     "add-current-tab-btn"
@@ -125,9 +132,6 @@ const elements = {
   ) as HTMLSelectElement,
   newNotebookBtn: document.getElementById(
     "new-notebook-btn"
-  ) as HTMLButtonElement,
-  deleteNotebookBtn: document.getElementById(
-    "delete-notebook-btn"
   ) as HTMLButtonElement,
   queryInput: document.getElementById("query-input") as HTMLInputElement,
   queryBtn: document.getElementById("query-btn") as HTMLButtonElement,
@@ -452,6 +456,10 @@ function setupEventListeners(): void {
     });
   });
 
+  // Header buttons
+  elements.headerLibraryBtn.addEventListener("click", () => switchTab("library"));
+  elements.headerSettingsBtn.addEventListener("click", () => switchTab("settings"));
+
   // Add Sources tab
   elements.addCurrentTabBtn.addEventListener("click", handleAddCurrentTab);
   elements.importTabs.addEventListener("click", handleImportTabs);
@@ -462,7 +470,6 @@ function setupEventListeners(): void {
   // Chat tab
   elements.notebookSelect.addEventListener("change", handleNotebookChange);
   elements.newNotebookBtn.addEventListener("click", handleNewNotebook);
-  elements.deleteNotebookBtn.addEventListener("click", handleDeleteCurrentNotebook);
   elements.queryBtn.addEventListener("click", handleQuery);
   elements.queryInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") handleQuery();
@@ -619,8 +626,6 @@ async function loadNotebooks(): Promise<void> {
   if (currentNotebookId) {
     elements.notebookSelect.value = currentNotebookId;
   }
-
-  updateDeleteNotebookButton();
 }
 
 async function loadNotebooksList(): Promise<void> {
@@ -699,15 +704,6 @@ async function handleDeleteNotebook(id: string, name: string): Promise<void> {
   showNotification("Notebook deleted");
 }
 
-async function handleDeleteCurrentNotebook(): Promise<void> {
-  if (!currentNotebookId) return;
-
-  const notebook = await getNotebook(currentNotebookId);
-  if (!notebook) return;
-
-  await handleDeleteNotebook(notebook.id, notebook.name);
-}
-
 async function handleNewNotebook(): Promise<void> {
   const name = await showNotebookDialog("New Notebook");
   if (!name) return;
@@ -726,13 +722,8 @@ async function handleNotebookChange(): Promise<void> {
   const id = elements.notebookSelect.value;
   currentNotebookId = id || null;
   await setActiveNotebookId(currentNotebookId);
-  updateDeleteNotebookButton();
   await loadSources();
   await loadChatHistory();
-}
-
-function updateDeleteNotebookButton(): void {
-  elements.deleteNotebookBtn.disabled = !currentNotebookId;
 }
 
 async function selectNotebook(id: string): Promise<void> {
