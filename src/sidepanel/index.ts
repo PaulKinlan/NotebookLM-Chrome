@@ -2360,6 +2360,14 @@ function populateModelDropdown(): void {
       { value: "gpt-5-mini", label: "GPT-5 Mini" },
       { value: "gpt-5.1-instant", label: "GPT-5.1 Instant" },
     ],
+    "openai-compatible": [
+      { value: "gpt-4o", label: "GPT-4o" },
+      { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+      { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
+      { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+      { value: "claude-sonnet-4-5-20250514", label: "Claude 4.5 Sonnet (via OpenRouter)" },
+      { value: "claude-opus-4-5-20250514", label: "Claude 4.5 Opus (via OpenRouter)" },
+    ],
     google: [
       { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
       { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
@@ -2458,6 +2466,10 @@ async function handleProviderChange(): Promise<void> {
     openai: {
       url: "https://platform.openai.com/api-keys",
       text: "Get an OpenAI API key",
+    },
+    "openai-compatible": {
+      url: "https://openrouter.ai/keys",
+      text: "Get an API key (e.g., OpenRouter)",
     },
     google: {
       url: "https://aistudio.google.com/apikey",

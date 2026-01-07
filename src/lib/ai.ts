@@ -1,16 +1,17 @@
-import { streamText, generateText, type LanguageModel } from "ai";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { builtInAI } from "@built-in-ai/core";
-import type { Source, Citation } from "../types/index.ts";
-import { getAISettings, getApiKey } from "./settings.ts";
+import { streamText, generateText, type LanguageModel } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { builtInAI } from '@built-in-ai/core';
+import type { Source, Citation, AIProvider } from '../types/index.ts';
+import { getAISettings, getApiKey } from './settings.ts';
 
 // ============================================================================
 // Provider Factory
 // ============================================================================
 
-export type AIProvider = "anthropic" | "openai" | "google" | "chrome";
+export { AIProvider };
 
 /**
  * Helper function to create provider config with optional baseURL
@@ -41,7 +42,17 @@ async function getModel(): Promise<LanguageModel | null> {
       );
       return provider(settings.model || "gpt-5");
     }
-    case "google": {
+    case 'openai-compatible': {
+      if (!apiKey) return null;
+      if (!settings.baseURL) return null;
+      const provider = createOpenAICompatible({
+        name: 'openai-compatible',
+        apiKey,
+        baseURL: settings.baseURL,
+      });
+      return provider(settings.model || 'gpt-4o');
+    }
+    case 'google': {
       if (!apiKey) return null;
       const provider = createGoogleGenerativeAI(
         createProviderConfig(apiKey, settings.baseURL)
