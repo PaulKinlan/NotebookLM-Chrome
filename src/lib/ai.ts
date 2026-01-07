@@ -12,6 +12,20 @@ import { getAISettings, getApiKey } from './settings.ts';
 
 export type AIProvider = 'anthropic' | 'openai' | 'google' | 'chrome';
 
+/**
+ * Helper function to create provider config with optional baseURL
+ */
+function createProviderConfig(
+  apiKey: string,
+  baseURL?: string
+): { apiKey: string; baseURL?: string } {
+  const config: { apiKey: string; baseURL?: string } = { apiKey };
+  if (baseURL) {
+    config.baseURL = baseURL;
+  }
+  return config;
+}
+
 async function getModel(): Promise<LanguageModel | null> {
   const settings = await getAISettings();
   const apiKey = await getApiKey(settings.provider);
@@ -19,29 +33,23 @@ async function getModel(): Promise<LanguageModel | null> {
   switch (settings.provider) {
     case 'anthropic': {
       if (!apiKey) return null;
-      const providerConfig: { apiKey: string; baseURL?: string } = { apiKey };
-      if (settings.baseURL) {
-        providerConfig.baseURL = settings.baseURL;
-      }
-      const provider = createAnthropic(providerConfig);
+      const provider = createAnthropic(
+        createProviderConfig(apiKey, settings.baseURL)
+      );
       return provider(settings.model || 'claude-sonnet-4-5-20250514');
     }
     case 'openai': {
       if (!apiKey) return null;
-      const providerConfig: { apiKey: string; baseURL?: string } = { apiKey };
-      if (settings.baseURL) {
-        providerConfig.baseURL = settings.baseURL;
-      }
-      const provider = createOpenAI(providerConfig);
+      const provider = createOpenAI(
+        createProviderConfig(apiKey, settings.baseURL)
+      );
       return provider(settings.model || 'gpt-5');
     }
     case 'google': {
       if (!apiKey) return null;
-      const providerConfig: { apiKey: string; baseURL?: string } = { apiKey };
-      if (settings.baseURL) {
-        providerConfig.baseURL = settings.baseURL;
-      }
-      const provider = createGoogleGenerativeAI(providerConfig);
+      const provider = createGoogleGenerativeAI(
+        createProviderConfig(apiKey, settings.baseURL)
+      );
       return provider(settings.model || 'gemini-2.5-flash');
     }
     case 'chrome': {

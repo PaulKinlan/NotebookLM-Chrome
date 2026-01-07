@@ -228,8 +228,8 @@ const elements = {
   aiTemperature: document.getElementById("ai-temperature") as HTMLInputElement,
   temperatureValue: document.getElementById("temperature-value") as HTMLSpanElement,
   aiMaxTokens: document.getElementById("ai-max-tokens") as HTMLInputElement,
-  aiBaseUrl: document.getElementById("ai-base-url") as HTMLInputElement,
-  baseUrlLabel: document.getElementById("base-url-label") as HTMLLabelElement,
+  aiBaseURL: document.getElementById("ai-base-url") as HTMLInputElement,
+  baseURLLabel: document.getElementById("base-url-label") as HTMLLabelElement,
   permTabs: document.getElementById("perm-tabs") as HTMLInputElement,
   permTabGroups: document.getElementById("perm-tab-groups") as HTMLInputElement,
   permBookmarks: document.getElementById("perm-bookmarks") as HTMLInputElement,
@@ -587,7 +587,7 @@ function setupEventListeners(): void {
   elements.testApiBtn.addEventListener("click", handleTestApi);
   elements.aiTemperature.addEventListener("input", handleTemperatureChange);
   elements.aiMaxTokens.addEventListener("change", handleMaxTokensChange);
-  elements.aiBaseUrl.addEventListener("change", handleBaseUrlChange);
+  elements.aiBaseURL.addEventListener("change", handleBaseURLChange);
 
   // FAB
   elements.fab.addEventListener("click", () => switchTab("add"));
@@ -2082,9 +2082,9 @@ function updateSettingsUI(): void {
   }
 
   if (aiSettings.baseURL) {
-    elements.aiBaseUrl.value = aiSettings.baseURL;
+    elements.aiBaseURL.value = aiSettings.baseURL;
   } else {
-    elements.aiBaseUrl.value = "";
+    elements.aiBaseURL.value = "";
   }
 }
 
@@ -2406,11 +2406,11 @@ async function handleProviderChange(): Promise<void> {
   }
 
   // Hide baseURL field for Chrome built-in AI
-  if (elements.aiBaseUrl && elements.baseUrlLabel) {
+  if (elements.aiBaseURL && elements.baseURLLabel) {
     const showBaseUrlField = provider !== "chrome";
-    elements.aiBaseUrl.style.display = showBaseUrlField ? "block" : "none";
-    elements.baseUrlLabel.style.display = showBaseUrlField ? "block" : "none";
-    const baseUrlHint = elements.aiBaseUrl.nextElementSibling as HTMLElement;
+    elements.aiBaseURL.style.display = showBaseUrlField ? "block" : "none";
+    elements.baseURLLabel.style.display = showBaseUrlField ? "block" : "none";
+    const baseUrlHint = elements.aiBaseURL.nextElementSibling as HTMLElement;
     if (baseUrlHint && baseUrlHint.classList.contains("setting-hint")) {
       baseUrlHint.style.display = showBaseUrlField ? "block" : "none";
     }
@@ -2484,9 +2484,29 @@ async function handleMaxTokensChange(): Promise<void> {
   aiSettings = await getAISettings();
 }
 
-async function handleBaseUrlChange(): Promise<void> {
-  const value = elements.aiBaseUrl.value.trim();
-  const baseURL = value || undefined;
+async function handleBaseURLChange(): Promise<void> {
+  const value = elements.aiBaseURL.value.trim();
+  
+  // Treat empty string as undefined (use default behavior)
+  if (!value) {
+    await setBaseURL(undefined);
+    aiSettings = await getAISettings();
+    return;
+  }
+
+  // Validate that the provided value is a well-formed URL
+  try {
+    // This will throw if the URL is invalid
+    // We don't need the parsed result; just validation
+    new URL(value);
+  } catch {
+    showNotification(
+      "Please enter a valid URL (including http:// or https://) for the base URL."
+    );
+    return;
+  }
+
+  const baseURL = value;
   await setBaseURL(baseURL);
   aiSettings = await getAISettings();
 }
