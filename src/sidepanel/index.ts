@@ -2434,8 +2434,20 @@ async function handleProviderChange(): Promise<void> {
     elements.apiKey.value = savedKey;
   }
 
+  // Set model to the last model in the list for this provider
+  const modelOptions: Record<string, string> = {
+    anthropic: "claude-haiku-4-5-20250514",
+    openai: "gpt-5.1-instant",
+    google: "gemini-3-flash-preview",
+    chrome: "built-in",
+  };
+  const defaultModel = modelOptions[provider] || "";
+  elements.aiModel.value = defaultModel;
+
   await setProvider(provider);
+  await setModel(defaultModel);
   aiSettings = await getAISettings();
+  populateModelDropdown();
 }
 
 async function handleModelChange(): Promise<void> {
