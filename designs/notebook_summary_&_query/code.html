@@ -1,16 +1,23 @@
 <!DOCTYPE html>
 
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Notebook Summary &amp; Query</title>
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script id="tailwind-config">
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Folio Summary &amp; Query</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
@@ -25,175 +32,226 @@
                     fontFamily: {
                         "display": ["Inter", "sans-serif"]
                     },
-                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
                 },
             },
         }
     </script>
-<style>
+    <style>
         /* Custom scrollbar for side panel feel */
         ::-webkit-scrollbar {
             width: 6px;
         }
+
         ::-webkit-scrollbar-track {
             background: transparent;
         }
+
         ::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 3px;
         }
+
         .dark ::-webkit-scrollbar-thumb {
             background: #334155;
         }
+
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
     </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display transition-colors duration-200">
-<!-- Main Container - Centered to simulate side panel on desktop web view, 
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display transition-colors duration-200">
+    <!-- Main Container - Centered to simulate side panel on desktop web view, 
          but would be full width in actual extension -->
-<div class="relative flex min-h-screen w-full flex-col overflow-hidden mx-auto max-w-[480px] border-x border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark shadow-xl">
-<!-- Header -->
-<header class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-surface-light dark:bg-surface-dark px-5 py-4 shadow-sm">
-<div class="flex items-center gap-3">
-<div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-<span class="material-symbols-outlined">menu_book</span>
-</div>
-<h1 class="text-lg font-bold leading-tight tracking-tight">Notebook AI</h1>
-</div>
-<button class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50 transition-colors">
-<span class="material-symbols-outlined">settings</span>
-</button>
-</header>
-<!-- Scrollable Content -->
-<main class="flex-1 overflow-y-auto px-5 py-6 space-y-8">
-<!-- Search / Query Section -->
-<section class="space-y-3">
-<div class="relative flex items-center">
-<div class="absolute left-3 text-slate-400 dark:text-slate-500 pointer-events-none flex items-center">
-<span class="material-symbols-outlined text-[20px]">search</span>
-</div>
-<input class="w-full rounded-xl border border-slate-200 bg-surface-light py-3 pl-10 pr-12 text-sm text-slate-900 placeholder-slate-400 focus:border-primary focus:ring-1 focus:ring-primary dark:border-slate-700 dark:bg-surface-dark dark:text-white dark:placeholder-slate-500 shadow-sm" placeholder="Ask a question about your sources..." type="text"/>
-<button class="absolute right-2 rounded-lg bg-primary p-1.5 text-white shadow-md hover:bg-blue-600 transition-colors">
-<span class="material-symbols-outlined text-[18px]">arrow_upward</span>
-</button>
-</div>
-<p class="text-xs text-slate-500 dark:text-slate-400 px-1">
+    <div
+        class="relative flex min-h-screen w-full flex-col overflow-hidden mx-auto max-w-[480px] border-x border-slate-200 dark:border-slate-800 bg-background-light dark:bg-background-dark shadow-xl">
+        <!-- Header -->
+        <header
+            class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-surface-light dark:bg-surface-dark px-5 py-4 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <span class="material-symbols-outlined">menu_book</span>
+                </div>
+                <h1 class="text-lg font-bold leading-tight tracking-tight">Notebook AI</h1>
+            </div>
+            <button
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700/50 transition-colors">
+                <span class="material-symbols-outlined">settings</span>
+            </button>
+        </header>
+        <!-- Scrollable Content -->
+        <main class="flex-1 overflow-y-auto px-5 py-6 space-y-8">
+            <!-- Search / Query Section -->
+            <section class="space-y-3">
+                <div class="relative flex items-center">
+                    <div
+                        class="absolute left-3 text-slate-400 dark:text-slate-500 pointer-events-none flex items-center">
+                        <span class="material-symbols-outlined text-[20px]">search</span>
+                    </div>
+                    <input
+                        class="w-full rounded-xl border border-slate-200 bg-surface-light py-3 pl-10 pr-12 text-sm text-slate-900 placeholder-slate-400 focus:border-primary focus:ring-1 focus:ring-primary dark:border-slate-700 dark:bg-surface-dark dark:text-white dark:placeholder-slate-500 shadow-sm"
+                        placeholder="Ask a question about your sources..." type="text" />
+                    <button
+                        class="absolute right-2 rounded-lg bg-primary p-1.5 text-white shadow-md hover:bg-blue-600 transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">arrow_upward</span>
+                    </button>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 px-1">
                     Ask questions to synthesize information from your active sources below.
                 </p>
-</section>
-<!-- Sources List -->
-<section class="space-y-4">
-<div class="flex items-center justify-between">
-<h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Sources (3)</h3>
-<button class="text-xs font-medium text-primary hover:text-blue-400 transition-colors">Manage</button>
-</div>
-<div class="flex flex-col gap-3">
-<!-- Source Item 1 -->
-<div class="group relative flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-surface-light p-3 shadow-sm transition-all hover:border-primary/50 hover:shadow-md dark:border-slate-800 dark:bg-surface-dark dark:hover:border-primary/50">
-<div class="flex items-center gap-3 overflow-hidden">
-<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-<span class="material-symbols-outlined">public</span>
-</div>
-<div class="flex flex-col overflow-hidden">
-<p class="truncate text-sm font-semibold text-slate-900 dark:text-white">Wikipedia: Quantum Physics</p>
-<p class="truncate text-xs text-slate-500 dark:text-slate-400">en.wikipedia.org/wiki/Quantum_mechanics</p>
-</div>
-</div>
-<div class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-<button class="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-700/50">
-<span class="material-symbols-outlined text-[20px]">visibility</span>
-</button>
-<button class="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400">
-<span class="material-symbols-outlined text-[20px]">delete</span>
-</button>
-</div>
-</div>
-<!-- Source Item 2 -->
-<div class="group relative flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-surface-light p-3 shadow-sm transition-all hover:border-primary/50 hover:shadow-md dark:border-slate-800 dark:bg-surface-dark dark:hover:border-primary/50">
-<div class="flex items-center gap-3 overflow-hidden">
-<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-<span class="material-symbols-outlined">article</span>
-</div>
-<div class="flex flex-col overflow-hidden">
-<p class="truncate text-sm font-semibold text-slate-900 dark:text-white">Medium: Tech Trends 2024</p>
-<p class="truncate text-xs text-slate-500 dark:text-slate-400">medium.com/tech-trends-2024</p>
-</div>
-</div>
-<div class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-<button class="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-700/50">
-<span class="material-symbols-outlined text-[20px]">visibility</span>
-</button>
-<button class="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400">
-<span class="material-symbols-outlined text-[20px]">delete</span>
-</button>
-</div>
-</div>
-<!-- Source Item 3 -->
-<div class="group relative flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-surface-light p-3 shadow-sm transition-all hover:border-primary/50 hover:shadow-md dark:border-slate-800 dark:bg-surface-dark dark:hover:border-primary/50">
-<div class="flex items-center gap-3 overflow-hidden">
-<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-<span class="material-symbols-outlined">picture_as_pdf</span>
-</div>
-<div class="flex flex-col overflow-hidden">
-<p class="truncate text-sm font-semibold text-slate-900 dark:text-white">Research Paper: Neural Nets</p>
-<p class="truncate text-xs text-slate-500 dark:text-slate-400">arxiv.org/abs/2103.00020</p>
-</div>
-</div>
-<div class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-<button class="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-700/50">
-<span class="material-symbols-outlined text-[20px]">visibility</span>
-</button>
-<button class="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400">
-<span class="material-symbols-outlined text-[20px]">delete</span>
-</button>
-</div>
-</div>
-</div>
-<!-- Add Source Button -->
-<button class="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-3 text-sm font-medium text-slate-600 transition-all hover:border-primary hover:bg-slate-100 hover:text-primary dark:border-slate-700 dark:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
-<span class="material-symbols-outlined text-[20px]">add_link</span>
+            </section>
+            <!-- Sources List -->
+            <section class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Active
+                        Sources (3)</h3>
+                    <button
+                        class="text-xs font-medium text-primary hover:text-blue-400 transition-colors">Manage</button>
+                </div>
+                <div class="flex flex-col gap-3">
+                    <!-- Source Item 1 -->
+                    <div
+                        class="group relative flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-surface-light p-3 shadow-sm transition-all hover:border-primary/50 hover:shadow-md dark:border-slate-800 dark:bg-surface-dark dark:hover:border-primary/50">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div
+                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                <span class="material-symbols-outlined">public</span>
+                            </div>
+                            <div class="flex flex-col overflow-hidden">
+                                <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">Wikipedia:
+                                    Quantum Physics</p>
+                                <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+                                    en.wikipedia.org/wiki/Quantum_mechanics</p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <button
+                                class="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-700/50">
+                                <span class="material-symbols-outlined text-[20px]">visibility</span>
+                            </button>
+                            <button
+                                class="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400">
+                                <span class="material-symbols-outlined text-[20px]">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Source Item 2 -->
+                    <div
+                        class="group relative flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-surface-light p-3 shadow-sm transition-all hover:border-primary/50 hover:shadow-md dark:border-slate-800 dark:bg-surface-dark dark:hover:border-primary/50">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div
+                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                <span class="material-symbols-outlined">article</span>
+                            </div>
+                            <div class="flex flex-col overflow-hidden">
+                                <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">Medium: Tech
+                                    Trends 2024</p>
+                                <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+                                    medium.com/tech-trends-2024</p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <button
+                                class="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-700/50">
+                                <span class="material-symbols-outlined text-[20px]">visibility</span>
+                            </button>
+                            <button
+                                class="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400">
+                                <span class="material-symbols-outlined text-[20px]">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Source Item 3 -->
+                    <div
+                        class="group relative flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-surface-light p-3 shadow-sm transition-all hover:border-primary/50 hover:shadow-md dark:border-slate-800 dark:bg-surface-dark dark:hover:border-primary/50">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div
+                                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                <span class="material-symbols-outlined">picture_as_pdf</span>
+                            </div>
+                            <div class="flex flex-col overflow-hidden">
+                                <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">Research Paper:
+                                    Neural Nets</p>
+                                <p class="truncate text-xs text-slate-500 dark:text-slate-400">arxiv.org/abs/2103.00020
+                                </p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <button
+                                class="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-700/50">
+                                <span class="material-symbols-outlined text-[20px]">visibility</span>
+                            </button>
+                            <button
+                                class="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400">
+                                <span class="material-symbols-outlined text-[20px]">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Add Source Button -->
+                <button
+                    class="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 py-3 text-sm font-medium text-slate-600 transition-all hover:border-primary hover:bg-slate-100 hover:text-primary dark:border-slate-700 dark:bg-transparent dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
+                    <span class="material-symbols-outlined text-[20px]">add_link</span>
                     Add Current Page
                 </button>
-</section>
-<!-- Summary Section -->
-<section class="space-y-4 pb-20">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-primary text-[20px]">auto_awesome</span>
-<h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Generated Summary</h3>
-</div>
-<div class="rounded-xl bg-surface-light p-5 shadow-sm ring-1 ring-slate-200 dark:bg-surface-dark dark:ring-slate-800">
-<div class="prose prose-sm prose-slate dark:prose-invert max-w-none">
-<p class="mb-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                            Based on the selected sources, <strong>Quantum Physics</strong> represents a fundamental theory in physics that provides a description of the physical properties of nature at the scale of atoms and subatomic particles.
+            </section>
+            <!-- Summary Section -->
+            <section class="space-y-4 pb-20">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-[20px]">auto_awesome</span>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Generated
+                        Summary</h3>
+                </div>
+                <div
+                    class="rounded-xl bg-surface-light p-5 shadow-sm ring-1 ring-slate-200 dark:bg-surface-dark dark:ring-slate-800">
+                    <div class="prose prose-sm prose-slate dark:prose-invert max-w-none">
+                        <p class="mb-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                            Based on the selected sources, <strong>Quantum Physics</strong> represents a fundamental
+                            theory in physics that provides a description of the physical properties of nature at the
+                            scale of atoms and subatomic particles.
                         </p>
-<p class="mb-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                            Concurrently, <strong>2024 Tech Trends</strong> highlight a massive shift towards integrating quantum computing principles into neural network architectures. This synthesis suggests a growing intersection between theoretical physics and practical AI applications, aiming to solve complex optimization problems faster than classical computers.
+                        <p class="mb-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                            Concurrently, <strong>2024 Tech Trends</strong> highlight a massive shift towards
+                            integrating quantum computing principles into neural network architectures. This synthesis
+                            suggests a growing intersection between theoretical physics and practical AI applications,
+                            aiming to solve complex optimization problems faster than classical computers.
                         </p>
-<div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-700">
-<span class="text-xs text-slate-400">Generated 2 mins ago</span>
-<div class="flex gap-2">
-<button class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700">
-<span class="material-symbols-outlined text-[18px]">content_copy</span>
-</button>
-<button class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700">
-<span class="material-symbols-outlined text-[18px]">thumb_up</span>
-</button>
-<button class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700">
-<span class="material-symbols-outlined text-[18px]">thumb_down</span>
-</button>
-</div>
-</div>
-</div>
-</div>
-</section>
-</main>
-<!-- Floating Bottom Action (Optional for Quick Add) -->
-<div class="absolute bottom-6 right-6 z-20">
-<button class="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-blue-500/30 transition-transform hover:scale-110 active:scale-95">
-<span class="material-symbols-outlined">add</span>
-</button>
-</div>
-</div>
-</body></html>
+                        <div
+                            class="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-700">
+                            <span class="text-xs text-slate-400">Generated 2 mins ago</span>
+                            <div class="flex gap-2">
+                                <button
+                                    class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700">
+                                    <span class="material-symbols-outlined text-[18px]">content_copy</span>
+                                </button>
+                                <button
+                                    class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700">
+                                    <span class="material-symbols-outlined text-[18px]">thumb_up</span>
+                                </button>
+                                <button
+                                    class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700">
+                                    <span class="material-symbols-outlined text-[18px]">thumb_down</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        <!-- Floating Bottom Action (Optional for Quick Add) -->
+        <div class="absolute bottom-6 right-6 z-20">
+            <button
+                class="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-blue-500/30 transition-transform hover:scale-110 active:scale-95">
+                <span class="material-symbols-outlined">add</span>
+            </button>
+        </div>
+    </div>
+</body>
+
+</html>
