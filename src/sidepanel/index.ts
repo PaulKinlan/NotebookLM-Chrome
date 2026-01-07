@@ -229,6 +229,24 @@ async function init(): Promise<void> {
     updateAddTabButton();
   });
 
+  // Listen for tab creation/removal to update tab count in real-time
+  chrome.tabs.onCreated.addListener(() => {
+    updateTabCount();
+    refreshPickerIfShowingTabs();
+  });
+
+  chrome.tabs.onRemoved.addListener(() => {
+    updateTabCount();
+    refreshPickerIfShowingTabs();
+  });
+
+  chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+    // Only refresh when URL or title changes (not for every status update)
+    if (changeInfo.url || changeInfo.title) {
+      refreshPickerIfShowingTabs();
+    }
+  });
+
   // Listen for messages from background script
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "SOURCE_ADDED") {
@@ -1002,6 +1020,39 @@ function closePicker(): void {
   pickerItems = [];
   selectedPickerItems.clear();
   pickerType = null;
+}
+
+async function refreshPickerIfShowingTabs(): Promise<void> {
+  // Only refresh if picker is open and showing tabs
+  if (pickerType !== "tab") return;
+  if (elements.pickerModal.classList.contains("hidden")) return;
+
+  try {
+    const tabs = await chrome.tabs.query({});
+    const currentFilter = elements.pickerSearch.value;
+
+    pickerItems = tabs
+      .filter((tab) => tab.url && !tab.url.startsWith("chrome://"))
+      .map((tab) => ({
+        id: tab.id?.toString() || "",
+        url: tab.url || "",
+        title: tab.title || "Untitled",
+        favicon: tab.favIconUrl,
+      }));
+
+    // Remove any selected items that no longer exist
+    const currentIds = new Set(pickerItems.map((item) => item.id));
+    for (const selectedId of selectedPickerItems) {
+      if (!currentIds.has(selectedId)) {
+        selectedPickerItems.delete(selectedId);
+      }
+    }
+
+    renderPickerItems(currentFilter);
+    updatePickerSelectedCount();
+  } catch (error) {
+    console.error("Failed to refresh tabs:", error);
+  }
 }
 
 function renderPickerItems(filter: string = ""): void {
