@@ -9,7 +9,12 @@
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "package:zip": "cd dist && zip -r ../foliolm-extension-v$npm_package_version.zip .",
+    "package": "npm run package:zip",
+    "release:patch": "npm version patch && npm run build && npm run package",
+    "release:minor": "npm version minor && npm run build && npm run package",
+    "release:major": "npm version major && npm run build && npm run package"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.7",
