@@ -390,18 +390,57 @@ function injectContentScript(): void {
   });
 }
 
-function waitForTabLoad(tabId: number): Promise<void> {
-  return new Promise((resolve) => {
+function waitForTabLoad(tabId: number, timeoutMs: number = 30000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let resolved = false;
+
+    const cleanup = () => {
+      chrome.tabs.onUpdated.removeListener(listener);
+    };
+
     const listener = (
       updatedTabId: number,
       changeInfo: chrome.tabs.TabChangeInfo
     ) => {
       if (updatedTabId === tabId && changeInfo.status === "complete") {
-        chrome.tabs.onUpdated.removeListener(listener);
-        resolve();
+        if (!resolved) {
+          resolved = true;
+          cleanup();
+          resolve();
+        }
       }
     };
-    chrome.tabs.onUpdated.addListener(listener);
+
+    // Set up timeout
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        reject(new Error(`Tab load timed out after ${timeoutMs}ms`));
+      }
+    }, timeoutMs);
+
+    // Check if tab is already loaded before adding listener
+    chrome.tabs.get(tabId).then((tab) => {
+      if (tab.status === "complete") {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          cleanup();
+          resolve();
+        }
+      } else {
+        // Only add listener if tab isn't already complete
+        chrome.tabs.onUpdated.addListener(listener);
+      }
+    }).catch(() => {
+      // Tab might not exist anymore
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timeout);
+        reject(new Error("Tab no longer exists"));
+      }
+    });
   });
 }
 
