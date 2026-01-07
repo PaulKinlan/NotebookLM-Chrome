@@ -2,15 +2,16 @@ import { streamText, generateText, type LanguageModel } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { builtInAI } from '@built-in-ai/core';
-import type { Source, Citation } from '../types/index.ts';
+import type { Source, Citation, AIProvider } from '../types/index.ts';
 import { getAISettings, getApiKey } from './settings.ts';
 
 // ============================================================================
 // Provider Factory
 // ============================================================================
 
-export type AIProvider = 'anthropic' | 'openai' | 'google' | 'chrome';
+export { AIProvider };
 
 async function getModel(): Promise<LanguageModel | null> {
   const settings = await getAISettings();
@@ -34,6 +35,15 @@ async function getModel(): Promise<LanguageModel | null> {
       }
       const provider = createOpenAI(providerConfig);
       return provider(settings.model || 'gpt-5');
+    }
+    case 'openai-compatible': {
+      if (!apiKey) return null;
+      const provider = createOpenAICompatible({
+        name: 'openai-compatible',
+        apiKey,
+        baseURL: settings.baseURL || 'https://api.openai.com/v1',
+      });
+      return provider(settings.model || 'gpt-4o');
     }
     case 'google': {
       if (!apiKey) return null;

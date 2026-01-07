@@ -68,7 +68,7 @@ export interface CachedResponse {
 // AI Configuration
 // ============================================================================
 
-export type AIProvider = 'anthropic' | 'openai' | 'google' | 'chrome';
+export type AIProvider = 'anthropic' | 'openai' | 'openai-compatible' | 'google' | 'chrome';
 
 export interface AISettings {
   provider: AIProvider;
