@@ -1149,7 +1149,7 @@ function togglePickerItem(id: string): void {
 
 function updatePickerSelectedCount(): void {
   const count = selectedPickerItems.size;
-  elements.pickerSelectedCount.textContent = `${count} selected`;
+  elements.pickerAdd.textContent = `Add ${count}`;
   elements.pickerAdd.disabled = count === 0;
 }
 
@@ -1272,7 +1272,7 @@ async function handlePickerAdd(): Promise<void> {
   }
 
   elements.pickerAdd.disabled = false;
-  elements.pickerAdd.textContent = "Add Selected";
+  updatePickerSelectedCount();
 }
 
 function getDomain(url: string): string {
