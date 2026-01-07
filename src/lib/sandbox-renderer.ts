@@ -40,9 +40,11 @@ export class SandboxRenderer {
   private readyResolve: (() => void) | null = null;
   private messageId = 0;
   private pendingMessages = new Map<number, PendingMessage>();
+  private boundHandleMessage: (event: MessageEvent) => void;
 
   constructor(container: HTMLElement) {
     this.container = container;
+    this.boundHandleMessage = this.handleMessage.bind(this);
     this.readyPromise = new Promise((resolve) => {
       this.readyResolve = resolve;
     });
@@ -68,7 +70,7 @@ export class SandboxRenderer {
     `;
 
     // Listen for messages from sandbox
-    window.addEventListener("message", this.handleMessage.bind(this));
+    window.addEventListener("message", this.boundHandleMessage);
 
     // Append to container
     this.container.appendChild(this.iframe);
@@ -157,7 +159,7 @@ export class SandboxRenderer {
    * Destroy the sandbox and clean up
    */
   destroy(): void {
-    window.removeEventListener("message", this.handleMessage.bind(this));
+    window.removeEventListener("message", this.boundHandleMessage);
     if (this.iframe) {
       this.iframe.remove();
       this.iframe = null;
