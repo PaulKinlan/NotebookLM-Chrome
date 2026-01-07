@@ -5,6 +5,7 @@ import type {
   ChatMessage,
   Citation,
 } from "../types/index.ts";
+import DOMPurify, { Config } from "dompurify";
 import { checkPermissions, requestPermission } from "../lib/permissions.ts";
 import {
   getNotebooks,
@@ -42,12 +43,16 @@ import {
   setTemperature,
   setMaxTokens,
 } from "../lib/settings.ts";
+import { SandboxRenderer } from "../lib/sandbox-renderer.ts";
 
 // ============================================================================
 // State
 // ============================================================================
 
 let currentNotebookId: string | null = null;
+
+// Sandbox renderer for transform results (defense-in-depth for AI content)
+let transformSandbox: SandboxRenderer | null = null;
 let permissions: PermissionStatus = {
   tabs: false,
   tabGroups: false,
@@ -223,6 +228,12 @@ async function init(): Promise<void> {
   await loadChatHistory();
   updateTabCount();
   updateAddTabButton();
+
+  // Initialize sandbox renderer for transform results (defense-in-depth)
+  // The sandbox provides additional isolation for AI-generated content
+  if (elements.transformContent) {
+    transformSandbox = new SandboxRenderer(elements.transformContent);
+  }
 
   // Listen for tab highlight changes to update button text
   chrome.tabs.onHighlighted.addListener(() => {
@@ -1065,17 +1076,26 @@ function renderPickerItems(filter: string = ""): void {
           </svg>
         </div>
         <div class="picker-icon">
-          ${
-            item.favicon
-              ? `<img src="${item.favicon}" alt="" onerror="this.style.display='none';this.parentNode.textContent='${initial}'">`
-              : initial
-          }
+          ${item.favicon ? `<img src="${escapeHtml(item.favicon)}" alt="">` : initial}
         </div>
         <div class="picker-info">
           <div class="picker-title">${escapeHtml(item.title)}</div>
           <div class="picker-url">${escapeHtml(domain)}</div>
         </div>
       `;
+
+      // Attach error handler safely (no inline JS)
+      if (item.favicon) {
+        const img = div.querySelector(".picker-icon img") as HTMLImageElement;
+        if (img) {
+          img.addEventListener("error", () => {
+            img.style.display = "none";
+            if (img.parentNode) {
+              img.parentNode.textContent = initial;
+            }
+          });
+        }
+      }
     }
 
     div.addEventListener("click", () => togglePickerItem(item.id));
@@ -1673,7 +1693,13 @@ async function handleTransform(
 
   elements.transformResult.classList.remove("hidden");
   elements.transformResultTitle.textContent = titles[type];
-  elements.transformContent.innerHTML = "<em>Generating...</em>";
+
+  // Show loading state
+  if (transformSandbox) {
+    await transformSandbox.render("<em>Generating...</em>");
+  } else {
+    elements.transformContent.innerHTML = "<em>Generating...</em>";
+  }
 
   // Disable buttons during generation
   const buttons = [
@@ -1702,15 +1728,27 @@ async function handleTransform(
         break;
     }
 
-    elements.transformContent.innerHTML = formatMarkdown(result);
+    // Render AI-generated content in sandbox for defense-in-depth
+    // Content is sanitized by formatMarkdown (DOMPurify) before going to sandbox
+    if (transformSandbox) {
+      await transformSandbox.render(formatMarkdown(result));
+    } else {
+      // Fallback to direct rendering (still sanitized by formatMarkdown)
+      elements.transformContent.innerHTML = formatMarkdown(result);
+    }
   } catch (error) {
     console.error("Transform failed:", error);
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    elements.transformContent.innerHTML = `
+    const errorHtml = `
       <p class="error">Failed to generate: ${escapeHtml(errorMessage)}</p>
       <p>Please check your API key in Settings.</p>
     `;
+    if (transformSandbox) {
+      await transformSandbox.render(errorHtml);
+    } else {
+      elements.transformContent.innerHTML = errorHtml;
+    }
   } finally {
     buttons.forEach((btn) => btn && (btn.disabled = false));
   }
@@ -1924,15 +1962,44 @@ async function handleMaxTokensChange(): Promise<void> {
 // Utilities
 // ============================================================================
 
+// Configure DOMPurify with strict settings for AI-generated content
+const DOMPURIFY_CONFIG: Config = {
+  ALLOWED_TAGS: [
+    "p", "br", "strong", "em", "b", "i", "code", "pre",
+    "ul", "ol", "li", "a", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6",
+    "span", "div"
+  ],
+  ALLOWED_ATTR: ["href", "target", "rel", "class"],
+  ALLOW_DATA_ATTR: false,
+  ADD_ATTR: ["target"], // Allow target for links
+  FORBID_TAGS: ["script", "style", "iframe", "form", "input", "object", "embed", "svg", "math"],
+  FORBID_ATTR: ["onerror", "onclick", "onload", "onmouseover", "onfocus", "onblur"],
+};
+
+// Hook to force safe link attributes
+DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.tagName === "A") {
+    node.setAttribute("target", "_blank");
+    node.setAttribute("rel", "noopener noreferrer");
+  }
+});
+
 function escapeHtml(text: string): string {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
 }
 
+function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, DOMPURIFY_CONFIG) as string;
+}
+
 function formatMarkdown(text: string): string {
-  // Basic markdown formatting
-  return text
+  // First escape HTML entities in the raw text to prevent injection
+  const escaped = escapeHtml(text);
+
+  // Then apply markdown formatting
+  const formatted = escaped
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
     .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
@@ -1943,6 +2010,9 @@ function formatMarkdown(text: string): string {
     .replace(/^- (.*$)/gm, "<li>$1</li>")
     .replace(/\n\n/g, "</p><p>")
     .replace(/\n/g, "<br>");
+
+  // Finally sanitize the result with DOMPurify
+  return sanitizeHtml(formatted);
 }
 
 function copyToClipboard(text: string): void {
