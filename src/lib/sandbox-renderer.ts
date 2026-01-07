@@ -10,21 +10,45 @@
  * - Communication via postMessage only
  * - Auto-resizing iframe based on content height
  * - Content is pre-sanitized before being sent to sandbox
+ *
+ * Two rendering modes:
+ * - Standard mode: For markdown/text content, heavily sanitized
+ * - Interactive mode: For HTML/CSS/JS experiences (quiz, flashcards, etc.),
+ *   allows scripts/styles but still sandboxed
  */
 
 import DOMPurify, { Config } from "dompurify";
 
-// DOMPurify configuration for content going to sandbox
+// DOMPurify configuration for standard content going to sandbox
 const SANDBOX_DOMPURIFY_CONFIG: Config = {
   ALLOWED_TAGS: [
     "p", "br", "strong", "em", "b", "i", "code", "pre",
     "ul", "ol", "li", "a", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6",
-    "span", "div"
+    "span", "div", "table", "thead", "tbody", "tr", "th", "td", "hr",
+    "del", "sup", "sub", "input"
   ],
-  ALLOWED_ATTR: ["href", "class"],
+  ALLOWED_ATTR: ["href", "class", "type", "checked", "disabled"],
   ALLOW_DATA_ATTR: false,
-  FORBID_TAGS: ["script", "style", "iframe", "form", "input", "object", "embed", "svg", "math"],
+  FORBID_TAGS: ["script", "style", "iframe", "form", "object", "embed", "svg", "math"],
   FORBID_ATTR: ["onerror", "onclick", "onload", "onmouseover", "onfocus", "onblur", "target"],
+};
+
+// DOMPurify configuration for interactive content - allows style tags
+const INTERACTIVE_DOMPURIFY_CONFIG: Config = {
+  ALLOWED_TAGS: [
+    "p", "br", "strong", "em", "b", "i", "code", "pre",
+    "ul", "ol", "li", "a", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6",
+    "span", "div", "table", "thead", "tbody", "tr", "th", "td", "hr",
+    "del", "sup", "sub", "input", "label", "button", "style"
+  ],
+  ALLOWED_ATTR: [
+    "href", "class", "type", "checked", "disabled", "id", "for", "data-*",
+    "aria-label", "aria-hidden", "role", "tabindex"
+  ],
+  ALLOW_DATA_ATTR: true,
+  // Still forbid scripts - they'll be passed separately
+  FORBID_TAGS: ["script", "iframe", "object", "embed", "svg", "math", "form"],
+  FORBID_ATTR: ["onerror", "onload", "onmouseover", "onfocus", "onblur"],
 };
 
 interface PendingMessage {
@@ -112,7 +136,7 @@ export class SandboxRenderer {
   }
 
   /**
-   * Render sanitized HTML content in the sandbox
+   * Render sanitized HTML content in the sandbox (standard mode)
    */
   async render(html: string): Promise<void> {
     await this.readyPromise;
@@ -132,6 +156,55 @@ export class SandboxRenderer {
       this.iframe!.contentWindow!.postMessage({
         type: "RENDER_CONTENT",
         content: sanitizedHtml,
+        messageId: currentMessageId
+      }, "*");
+
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        if (this.pendingMessages.has(currentMessageId)) {
+          this.pendingMessages.delete(currentMessageId);
+          reject(new Error("Sandbox render timeout"));
+        }
+      }, 5000);
+    });
+  }
+
+  /**
+   * Render interactive HTML content (with CSS and JS) in the sandbox
+   * Used for quiz, flashcards, timeline, and other interactive transforms
+   */
+  async renderInteractive(html: string): Promise<void> {
+    await this.readyPromise;
+
+    if (!this.iframe?.contentWindow) {
+      throw new Error("Sandbox iframe not available");
+    }
+
+    // Extract script content before sanitization
+    const scriptMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi);
+    const scripts: string[] = [];
+    if (scriptMatch) {
+      for (const match of scriptMatch) {
+        const content = match.replace(/<script[^>]*>|<\/script>/gi, '');
+        scripts.push(content);
+      }
+    }
+
+    // Remove scripts from HTML before sanitization
+    const htmlWithoutScripts = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+
+    // Sanitize the HTML (allows style tags in interactive mode)
+    const sanitizedHtml = DOMPurify.sanitize(htmlWithoutScripts, INTERACTIVE_DOMPURIFY_CONFIG) as string;
+
+    const currentMessageId = ++this.messageId;
+
+    return new Promise((resolve, reject) => {
+      this.pendingMessages.set(currentMessageId, { resolve: resolve as (value: unknown) => void, reject });
+
+      this.iframe!.contentWindow!.postMessage({
+        type: "RENDER_INTERACTIVE",
+        content: sanitizedHtml,
+        scripts: scripts,
         messageId: currentMessageId
       }, "*");
 
