@@ -29,35 +29,43 @@ For development with hot reload, run `npm run dev` and load the extension from t
 ## Architecture
 
 ### Manifest V3 Chrome Extension
+
 - **Side Panel** (`src/sidepanel/`): Main UI for managing notebooks and sources
 - **Background Service Worker** (`src/background/`): Handles message passing, content extraction via scripting API
 - **Types** (`src/types/`): Shared TypeScript interfaces
 - **Lib** (`src/lib/`): Shared utilities for permissions and chrome.storage
 
 ### Key Data Models
+
 - `Notebook`: Collection of sources with metadata
 - `Source`: Individual content item (tab, bookmark, history entry, or manual)
 - Sources store extracted `textContent` for querying
 
 ### Permissions Strategy
+
 - **Required**: `storage`, `sidePanel`, `activeTab`, `scripting`
 - **Optional** (user must grant): `tabs`, `bookmarks`, `history`
 
 Use `src/lib/permissions.ts` for permission checking and requests.
 
 ### Message Passing
+
 Background script handles messages with types defined in `src/types/index.ts`:
+
 - `EXTRACT_CONTENT`: Extract content from active tab
 - `ADD_SOURCE`: Add extracted content to active notebook
 
 ### Storage
+
 All data persisted via `chrome.storage.local`:
+
 - `notebooks`: Array of Notebook objects
 - `activeNotebookId`: Currently selected notebook
 
 ## Icons
 
 Place PNG icons in `icons/` directory:
+
 - icon16.png, icon32.png, icon48.png, icon128.png
 
 ## Privacy Policy Maintenance
@@ -73,7 +81,32 @@ Place PNG icons in `icons/` directory:
 - Adding **analytics, telemetry, or tracking** (should be avoided, but must be documented)
 
 When updating `PRIVACY.md`:
+
 1. Update the "Last Updated" date at the top of the file to the current date
 2. Add or modify relevant sections to accurately reflect the new behavior
 3. Ensure the permissions list matches `manifest.json`
 4. Document any new third-party services and link to their privacy policies
+
+## Documentation Maintenance
+
+When making significant changes to the project, ensure documentation stays up to date:
+
+### README.md
+
+The README contains comprehensive architecture documentation. Update it when:
+
+- Adding new components or major features
+- Changing the project structure (new directories, renamed files)
+- Adding or removing dependencies
+- Modifying message types or data models
+- Changing permissions requirements
+- Adding new AI providers or transformation types
+
+### What to Update in README.md
+
+- **Architecture diagram**: If component relationships change
+- **Project Structure**: If files/directories are added, removed, or moved
+- **Data Models**: If types in `src/types/index.ts` change
+- **Message Passing table**: If message types are added/removed
+- **Permissions table**: If permissions change in manifest.json
+- **Tech Stack**: If major dependencies are added/removed

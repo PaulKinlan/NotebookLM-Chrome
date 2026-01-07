@@ -67,6 +67,13 @@ This is a Chrome Extension (Manifest V3) called FolioLM built with TypeScript an
 - Note functions that need unit tests
 - Check for testability of new code
 
+### 7. Documentation Accuracy
+- If changes affect architecture (new components, changed data flow), flag README.md as needing updates
+- If new message types are added to `src/types/index.ts`, verify README.md Message Passing table is current
+- If permissions change in manifest.json, verify README.md Permissions table is current
+- If new directories/files are added, verify README.md Project Structure is current
+- If data models change in `src/types/index.ts`, verify README.md Data Models section is current
+
 ## Output Format
 
 Organize your feedback into three priority levels:
