@@ -1188,12 +1188,17 @@ function handlePickerToggleAll(): void {
       )
     : pickerItems;
 
-  if (selectedPickerItems.size === 0) {
+  // Check if any visible items are selected
+  const anyVisibleSelected = visibleItems.some((item) =>
+    selectedPickerItems.has(item.id)
+  );
+
+  if (anyVisibleSelected) {
+    // Deselect all visible items
+    visibleItems.forEach((item) => selectedPickerItems.delete(item.id));
+  } else {
     // Select all visible items
     visibleItems.forEach((item) => selectedPickerItems.add(item.id));
-  } else {
-    // Deselect all
-    selectedPickerItems.clear();
   }
 
   // Update UI for all visible items
