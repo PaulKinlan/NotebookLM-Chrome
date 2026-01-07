@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
   <title>Sandboxed Content</title>
   <style>
     * {
@@ -39,6 +39,7 @@
     h1 { font-size: 1.5em; }
     h2 { font-size: 1.3em; }
     h3 { font-size: 1.15em; }
+    h4 { font-size: 1.05em; }
 
     p {
       margin: 0.75em 0;
@@ -88,7 +89,7 @@
       border-radius: 0 6px 6px 0;
     }
 
-    /* Links - disabled for security */
+    /* Links - disabled for security in standard mode */
     a {
       color: #6366f1;
       text-decoration: none;
@@ -112,6 +113,45 @@
       margin-top: 0.25em;
     }
 
+    /* Tables */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1em 0;
+      font-size: 13px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    th {
+      background: #f5f5f5;
+      font-weight: 600;
+    }
+
+    tr:nth-child(even) {
+      background: #fafafa;
+    }
+
+    tr:hover {
+      background: #f0f0f0;
+    }
+
+    /* Horizontal rule */
+    hr {
+      border: none;
+      border-top: 1px solid #ddd;
+      margin: 1.5em 0;
+    }
+
+    /* Task lists / checkboxes */
+    input[type="checkbox"] {
+      margin-right: 0.5em;
+    }
+
     /* Dark mode support via CSS custom properties */
     @media (prefers-color-scheme: dark) {
       body {
@@ -129,6 +169,26 @@
       blockquote {
         background: #1a1a2e;
         color: #b0b0b0;
+      }
+
+      th {
+        background: #2a2a2a;
+      }
+
+      th, td {
+        border-color: #444;
+      }
+
+      tr:nth-child(even) {
+        background: #1f1f1f;
+      }
+
+      tr:hover {
+        background: #2a2a2a;
+      }
+
+      hr {
+        border-color: #444;
       }
     }
 

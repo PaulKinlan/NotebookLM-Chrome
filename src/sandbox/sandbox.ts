@@ -1,3 +1,4 @@
+/* global requestAnimationFrame */
 /**
  * Sandbox Script
  *
@@ -10,6 +11,10 @@
  * - Additional sanitization layer using textContent for untrusted parts
  * - All links are disabled (pointer-events: none)
  * - Strict CSP in the HTML head
+ *
+ * Two rendering modes:
+ * - RENDER_CONTENT: Standard sanitized HTML content
+ * - RENDER_INTERACTIVE: HTML with CSS and JS for interactive experiences
  */
 
 const contentEl = document.getElementById("content");
@@ -24,7 +29,7 @@ window.addEventListener("message", (event) => {
     return;
   }
 
-  const { type, content, messageId } = event.data;
+  const { type, content, scripts, messageId } = event.data;
 
   if (type === "RENDER_CONTENT" && contentEl) {
     // Content has already been sanitized by DOMPurify in the parent
@@ -33,11 +38,46 @@ window.addEventListener("message", (event) => {
 
     // Notify parent that rendering is complete
     if (messageId) {
-      window.parent.postMessage({
-        type: "RENDER_COMPLETE",
-        messageId,
-        height: document.body.scrollHeight
-      }, "*");
+      // Small delay to ensure content is rendered
+      requestAnimationFrame(() => {
+        window.parent.postMessage({
+          type: "RENDER_COMPLETE",
+          messageId,
+          height: document.body.scrollHeight
+        }, "*");
+      });
+    }
+  } else if (type === "RENDER_INTERACTIVE" && contentEl) {
+    // Interactive content with HTML, CSS, and JS
+    // Content (HTML + CSS) has been sanitized by DOMPurify
+    // Scripts are passed separately and executed after HTML is rendered
+    contentEl.innerHTML = content;
+
+    // Execute scripts in order (they've been extracted from the HTML)
+    if (scripts && Array.isArray(scripts)) {
+      for (const scriptContent of scripts) {
+        try {
+          // Create and execute script
+          const scriptFn = new Function(scriptContent);
+          scriptFn();
+        } catch (error) {
+          console.error("Script execution error:", error);
+        }
+      }
+    }
+
+    // Notify parent that rendering is complete
+    if (messageId) {
+      // Delay to allow scripts to modify DOM
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          window.parent.postMessage({
+            type: "RENDER_COMPLETE",
+            messageId,
+            height: document.body.scrollHeight
+          }, "*");
+        }, 50);
+      });
     }
   } else if (type === "CLEAR_CONTENT" && contentEl) {
     contentEl.innerHTML = "";

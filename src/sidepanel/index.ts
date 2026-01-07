@@ -7,6 +7,7 @@ import type {
 } from "../types/index.ts";
 import DOMPurify, { Config } from "dompurify";
 import { checkPermissions, requestPermission } from "../lib/permissions.ts";
+import { renderMarkdown, isHtmlContent } from "../lib/markdown-renderer.ts";
 import {
   getNotebooks,
   saveNotebook,
@@ -2080,9 +2081,24 @@ async function handleTransform(type: TransformType): Promise<void> {
         break;
     }
 
+    // Determine if this is an interactive transform that returns HTML
+    const interactiveTypes: TransformType[] = [
+      "quiz",
+      "flashcards",
+      "timeline",
+      "slidedeck",
+      "mindmap",
+      "studyguide",
+    ];
+
     // Render AI-generated content in sandbox for defense-in-depth
-    // Content is sanitized by formatMarkdown (DOMPurify) before going to sandbox
-    await sandbox.render(formatMarkdown(result));
+    if (interactiveTypes.includes(type) && isHtmlContent(result)) {
+      // Interactive HTML content (quiz, flashcards, etc.)
+      await sandbox.renderInteractive(result);
+    } else {
+      // Standard markdown content - render with proper markdown parser
+      await sandbox.render(renderMarkdown(result));
+    }
   } catch (error) {
     console.error("Transform failed:", error);
     const errorMessage =
