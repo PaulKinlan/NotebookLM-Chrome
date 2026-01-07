@@ -1051,7 +1051,7 @@ input[type="text"]:focus {
 
 /* When transform-content contains an iframe sandbox, let the iframe handle sizing */
 .transform-content iframe {
-  max-height: 300px;
+  max-height: 500px;
   overflow-y: auto;
 }
 
