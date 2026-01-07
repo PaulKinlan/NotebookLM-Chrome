@@ -2291,7 +2291,7 @@ function populateModelDropdown(): void {
       { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
       { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
       { value: "claude-sonnet-4-5-20250514", label: "Claude 4.5 Sonnet (via OpenRouter)" },
-      { value: "claude-opus-4-5-20251101", label: "Claude 4.5 Opus (via OpenRouter)" },
+      { value: "claude-opus-4-5-20250514", label: "Claude 4.5 Opus (via OpenRouter)" },
     ],
     google: [
       { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
