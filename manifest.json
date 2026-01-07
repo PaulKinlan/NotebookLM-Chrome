@@ -19,6 +19,9 @@
   "host_permissions": [
     "<all_urls>"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://*.googleapis.com;"
+  },
   "background": {
     "service_worker": "src/background/index.ts",
     "type": "module"
@@ -46,6 +49,15 @@
       "matches": ["<all_urls>"],
       "js": ["src/content/index.ts"],
       "run_at": "document_idle"
+    }
+  ],
+  "sandbox": {
+    "pages": ["src/sandbox/sandbox.html"]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/sandbox/sandbox.html"],
+      "matches": ["<all_urls>"]
     }
   ]
 }
