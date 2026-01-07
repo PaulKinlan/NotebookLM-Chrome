@@ -76,6 +76,7 @@ export interface AISettings {
   apiKeys: Record<string, string>;
   temperature?: number;
   maxTokens?: number;
+  baseURL?: string;
 }
 
 export type TTSProvider = 'openai' | 'elevenlabs' | 'google' | 'browser';

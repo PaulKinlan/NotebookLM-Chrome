@@ -19,17 +19,29 @@ async function getModel(): Promise<LanguageModel | null> {
   switch (settings.provider) {
     case 'anthropic': {
       if (!apiKey) return null;
-      const provider = createAnthropic({ apiKey });
+      const providerConfig: { apiKey: string; baseURL?: string } = { apiKey };
+      if (settings.baseURL) {
+        providerConfig.baseURL = settings.baseURL;
+      }
+      const provider = createAnthropic(providerConfig);
       return provider(settings.model || 'claude-sonnet-4-5-20250514');
     }
     case 'openai': {
       if (!apiKey) return null;
-      const provider = createOpenAI({ apiKey });
+      const providerConfig: { apiKey: string; baseURL?: string } = { apiKey };
+      if (settings.baseURL) {
+        providerConfig.baseURL = settings.baseURL;
+      }
+      const provider = createOpenAI(providerConfig);
       return provider(settings.model || 'gpt-5');
     }
     case 'google': {
       if (!apiKey) return null;
-      const provider = createGoogleGenerativeAI({ apiKey });
+      const providerConfig: { apiKey: string; baseURL?: string } = { apiKey };
+      if (settings.baseURL) {
+        providerConfig.baseURL = settings.baseURL;
+      }
+      const provider = createGoogleGenerativeAI(providerConfig);
       return provider(settings.model || 'gemini-2.5-flash');
     }
     case 'chrome': {
