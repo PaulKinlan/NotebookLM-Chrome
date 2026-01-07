@@ -19,6 +19,15 @@
 
 const contentEl = document.getElementById("content");
 
+// Track pending render completion to ensure it's always sent
+let pendingRenderMessageId: number | null = null;
+
+// Global error handler to catch script errors and still send render complete
+window.addEventListener("error", (event) => {
+  console.error("Script error in sandbox:", event.error || event.message);
+  // Don't prevent the error from being logged, but ensure we still complete
+});
+
 // Listen for content from parent
 window.addEventListener("message", (event) => {
   // Only accept messages from our extension
@@ -53,6 +62,25 @@ window.addEventListener("message", (event) => {
     // Scripts are passed separately and executed after HTML is rendered
     contentEl.innerHTML = content;
 
+    // Store messageId for completion - schedule completion FIRST before scripts
+    // This ensures we always respond even if scripts throw errors
+    pendingRenderMessageId = messageId;
+
+    // Schedule render complete notification before executing any scripts
+    // This uses setTimeout which is resilient to script errors
+    if (messageId) {
+      setTimeout(() => {
+        if (pendingRenderMessageId === messageId) {
+          window.parent.postMessage({
+            type: "RENDER_COMPLETE",
+            messageId,
+            height: document.body.scrollHeight
+          }, "*");
+          pendingRenderMessageId = null;
+        }
+      }, 100);
+    }
+
     // Execute scripts in order (they've been extracted from the HTML)
     // We inject them as script elements rather than using new Function()
     // to avoid requiring 'unsafe-eval' in CSP
@@ -66,20 +94,6 @@ window.addEventListener("message", (event) => {
           console.error("Script execution error:", error);
         }
       }
-    }
-
-    // Notify parent that rendering is complete
-    if (messageId) {
-      // Delay to allow scripts to modify DOM
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          window.parent.postMessage({
-            type: "RENDER_COMPLETE",
-            messageId,
-            height: document.body.scrollHeight
-          }, "*");
-        }, 50);
-      });
     }
   } else if (type === "CLEAR_CONTENT" && contentEl) {
     contentEl.innerHTML = "";

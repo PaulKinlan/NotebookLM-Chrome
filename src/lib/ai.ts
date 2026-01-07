@@ -1,16 +1,16 @@
-import { streamText, generateText, type LanguageModel } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { builtInAI } from '@built-in-ai/core';
-import type { Source, Citation } from '../types/index.ts';
-import { getAISettings, getApiKey } from './settings.ts';
+import { streamText, generateText, type LanguageModel } from "ai";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { builtInAI } from "@built-in-ai/core";
+import type { Source, Citation } from "../types/index.ts";
+import { getAISettings, getApiKey } from "./settings.ts";
 
 // ============================================================================
 // Provider Factory
 // ============================================================================
 
-export type AIProvider = 'anthropic' | 'openai' | 'google' | 'chrome';
+export type AIProvider = "anthropic" | "openai" | "google" | "chrome";
 
 /**
  * Helper function to create provider config with optional baseURL
@@ -27,28 +27,28 @@ async function getModel(): Promise<LanguageModel | null> {
   const apiKey = await getApiKey(settings.provider);
 
   switch (settings.provider) {
-    case 'anthropic': {
+    case "anthropic": {
       if (!apiKey) return null;
       const provider = createAnthropic(
         createProviderConfig(apiKey, settings.baseURL)
       );
-      return provider(settings.model || 'claude-sonnet-4-5-20250514');
+      return provider(settings.model || "claude-sonnet-4-5-20250514");
     }
-    case 'openai': {
+    case "openai": {
       if (!apiKey) return null;
       const provider = createOpenAI(
         createProviderConfig(apiKey, settings.baseURL)
       );
-      return provider(settings.model || 'gpt-5');
+      return provider(settings.model || "gpt-5");
     }
-    case 'google': {
+    case "google": {
       if (!apiKey) return null;
       const provider = createGoogleGenerativeAI(
         createProviderConfig(apiKey, settings.baseURL)
       );
-      return provider(settings.model || 'gemini-2.5-flash');
+      return provider(settings.model || "gemini-2.5-flash");
     }
-    case 'chrome': {
+    case "chrome": {
       // Chrome Built-in AI - no API key needed
       return builtInAI();
     }
@@ -64,15 +64,17 @@ async function getModel(): Promise<LanguageModel | null> {
 function buildSourceContext(sources: Source[]): string {
   return sources
     .map((source, i) => {
-      return `[Source ${i + 1}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`;
+      return `[Source ${i + 1}] ID: ${source.id}\nTitle: ${
+        source.title
+      }\nURL: ${source.url}\n\n${source.content}`;
     })
-    .join('\n\n---\n\n');
+    .join("\n\n---\n\n");
 }
 
 function buildSourceList(sources: Source[]): string {
   return sources
     .map((source, i) => `  ${i + 1}. "${source.title}" (ID: ${source.id})`)
-    .join('\n');
+    .join("\n");
 }
 
 // ============================================================================
@@ -109,20 +111,29 @@ Source contents:
 ${buildSourceContext(sources)}`;
 }
 
-function parseCitations(content: string, sources: Source[]): { cleanContent: string; citations: Citation[] } {
+function parseCitations(
+  content: string,
+  sources: Source[]
+): { cleanContent: string; citations: Citation[] } {
   const citations: Citation[] = [];
   let cleanContent = content;
 
   // First, extract citations section and group by source number
   const citationsBySourceNum = new Map<number, string[]>();
 
-  const citationsMatch = content.match(/---CITATIONS---\n([\s\S]*?)\n---END CITATIONS---/);
+  const citationsMatch = content.match(
+    /---CITATIONS---\n([\s\S]*?)\n---END CITATIONS---/
+  );
   if (citationsMatch) {
-    cleanContent = content.replace(/\n?---CITATIONS---[\s\S]*?---END CITATIONS---\n?/, '').trim();
+    cleanContent = content
+      .replace(/\n?---CITATIONS---[\s\S]*?---END CITATIONS---\n?/, "")
+      .trim();
     const citationsText = citationsMatch[1];
 
     // Parse each citation line and group by source number
-    const citationLines = citationsText.split('\n').filter(line => line.trim());
+    const citationLines = citationsText
+      .split("\n")
+      .filter((line) => line.trim());
     for (const line of citationLines) {
       const match = line.match(/\[Source (\d+)\]:\s*"?([^"]+)"?/);
       if (match) {
@@ -141,7 +152,10 @@ function parseCitations(content: string, sources: Source[]): { cleanContent: str
   const sourceMatches = cleanContent.matchAll(/\[Source (\d+)\]/g);
   for (const match of sourceMatches) {
     const sourceNum = parseInt(match[1], 10);
-    sourceCountInText.set(sourceNum, (sourceCountInText.get(sourceNum) || 0) + 1);
+    sourceCountInText.set(
+      sourceNum,
+      (sourceCountInText.get(sourceNum) || 0) + 1
+    );
   }
 
   // Track occurrence index as we replace
@@ -177,7 +191,9 @@ function parseCitations(content: string, sources: Source[]): { cleanContent: str
       if (count > 1) {
         // Multiple occurrences - create citation for each
         for (let i = 0; i < count; i++) {
-          const excerpt = excerpts[i] || `Reference ${String.fromCharCode(97 + i)} from this source`;
+          const excerpt =
+            excerpts[i] ||
+            `Reference ${String.fromCharCode(97 + i)} from this source`;
           citations.push({
             sourceId: source.id,
             sourceTitle: source.title,
@@ -186,7 +202,7 @@ function parseCitations(content: string, sources: Source[]): { cleanContent: str
         }
       } else {
         // Single occurrence
-        const excerpt = excerpts[0] || 'Referenced in response';
+        const excerpt = excerpts[0] || "Referenced in response";
         citations.push({
           sourceId: source.id,
           sourceTitle: source.title,
@@ -205,7 +221,9 @@ export async function* streamChat(
 ): AsyncGenerator<string, ChatResult, unknown> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const systemPrompt = buildChatSystemPrompt(sources);
@@ -216,11 +234,11 @@ export async function* streamChat(
     prompt: question,
   });
 
-  let fullContent = '';
+  let fullContent = "";
   for await (const chunk of result.textStream) {
     fullContent += chunk;
     // Don't yield the citations section while streaming
-    yield chunk.replace(/---CITATIONS---[\s\S]*$/, '');
+    yield chunk.replace(/---CITATIONS---[\s\S]*$/, "");
   }
 
   const { cleanContent, citations } = parseCitations(fullContent, sources);
@@ -231,10 +249,15 @@ export async function* streamChat(
   };
 }
 
-export async function chat(sources: Source[], question: string): Promise<ChatResult> {
+export async function chat(
+  sources: Source[],
+  question: string
+): Promise<ChatResult> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const systemPrompt = buildChatSystemPrompt(sources);
@@ -260,7 +283,9 @@ export async function chat(sources: Source[], question: string): Promise<ChatRes
 export async function generateSummary(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -279,7 +304,9 @@ ${buildSourceContext(sources)}`,
 export async function generateKeyTakeaways(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -297,10 +324,15 @@ Format as a bulleted list with clear, concise points.`,
   return result.text;
 }
 
-export async function generateQuiz(sources: Source[], questionCount: number = 5): Promise<string> {
+export async function generateQuiz(
+  sources: Source[],
+  questionCount: number = 5
+): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -326,14 +358,14 @@ Generate a self-contained HTML quiz with:
 7. Clean, modern styling with good spacing and hover effects
 
 Structure your response as:
-<style>
-  /* CSS styles here */
-</style>
 <div class="quiz-container">
-  <!-- Quiz HTML here -->
+  <!-- Quiz HTML here - generate this FIRST so you have context for CSS/JS -->
 </div>
+<style>
+  /* CSS styles targeting the HTML structure above */
+</style>
 <script>
-  // Interactive JavaScript here
+  // Interactive JavaScript referencing elements from the HTML above
 </script>`,
   });
 
@@ -343,7 +375,9 @@ Structure your response as:
 export async function generateEmailSummary(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -365,7 +399,7 @@ Include:
 }
 
 export interface PodcastSegment {
-  speaker: 'host' | 'guest';
+  speaker: "host" | "guest";
   text: string;
 }
 
@@ -375,7 +409,9 @@ export async function generatePodcastScript(
 ): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -384,7 +420,9 @@ export async function generatePodcastScript(
 Write a natural conversation between two hosts discussing the topics.
 Make it engaging, informative, and conversational.
 The hosts should be curious, ask follow-up questions, and build on each other's points.`,
-    prompt: `Create a ${lengthMinutes}-minute podcast script (approximately ${lengthMinutes * 150} words) based on these sources:
+    prompt: `Create a ${lengthMinutes}-minute podcast script (approximately ${
+      lengthMinutes * 150
+    } words) based on these sources:
 
 ${buildSourceContext(sources)}
 
@@ -402,7 +440,9 @@ Make it engaging and educational, covering the key points from the sources.`,
 export async function generateSlideDeck(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -430,14 +470,14 @@ Generate a self-contained HTML slide deck with:
 10. Subtle background color or gradient
 
 Structure your response as:
-<style>
-  /* CSS styles for slide presentation */
-</style>
 <div class="slides-container">
-  <!-- Slides HTML here -->
+  <!-- Slides HTML here - generate ALL slides FIRST so you have context for CSS/JS -->
 </div>
+<style>
+  /* CSS styles targeting the slide structure above */
+</style>
 <script>
-  // Interactive JavaScript for navigation
+  // Interactive JavaScript for navigation - reference elements from HTML above
 </script>`,
   });
 
@@ -447,7 +487,9 @@ Structure your response as:
 export async function generateReport(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -479,7 +521,9 @@ Summary and recommendations`,
 export async function generateDataTable(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -506,7 +550,9 @@ Include relevant categories, metrics, or comparisons found in the sources.`,
 export async function generateMindMap(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -533,24 +579,29 @@ Generate a self-contained HTML mind map with:
 9. Clean, modern design with rounded nodes
 
 Structure your response as:
-<style>
-  /* CSS styles for mind map visualization */
-</style>
 <div class="mindmap-container">
-  <!-- Mind map HTML structure -->
+  <!-- Mind map HTML structure - generate FIRST so you have context for CSS/JS -->
 </div>
+<style>
+  /* CSS styles targeting the mind map structure above */
+</style>
 <script>
-  // Interactive JavaScript for expand/collapse
+  // Interactive JavaScript for expand/collapse - reference elements from HTML above
 </script>`,
   });
 
   return result.text;
 }
 
-export async function generateFlashcards(sources: Source[], cardCount: number = 10): Promise<string> {
+export async function generateFlashcards(
+  sources: Source[],
+  cardCount: number = 10
+): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -575,14 +626,14 @@ Generate self-contained HTML flashcards with:
 7. Visual cue that cards are clickable (e.g., "Click to reveal" text)
 
 Structure your response as:
-<style>
-  /* CSS styles with 3D flip animation */
-</style>
 <div class="flashcards-container">
-  <!-- Flashcards HTML here -->
+  <!-- Flashcards HTML here - generate ALL cards FIRST so you have context for CSS/JS -->
 </div>
+<style>
+  /* CSS styles with 3D flip animation targeting the flashcard structure above */
+</style>
 <script>
-  // Interactive JavaScript for flipping and navigation
+  // Interactive JavaScript for flipping and navigation - reference elements from HTML above
 </script>`,
   });
 
@@ -592,7 +643,9 @@ Structure your response as:
 export async function generateTimeline(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -620,14 +673,14 @@ Generate a self-contained HTML timeline with:
 If exact dates aren't available, use relative timing (e.g., "Phase 1", "Early Stage", "Later").
 
 Structure your response as:
-<style>
-  /* CSS styles for timeline visualization */
-</style>
 <div class="timeline-container">
-  <!-- Timeline HTML here -->
+  <!-- Timeline HTML here - generate ALL events FIRST so you have context for CSS/JS -->
 </div>
+<style>
+  /* CSS styles for timeline visualization targeting the structure above */
+</style>
 <script>
-  // Interactive JavaScript for expand/collapse
+  // Interactive JavaScript for expand/collapse - reference elements from HTML above
 </script>`,
   });
 
@@ -637,7 +690,9 @@ Structure your response as:
 export async function generateGlossary(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -665,7 +720,9 @@ Include technical terms, acronyms, and important concepts.`,
 export async function generateComparison(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -689,10 +746,15 @@ Include a summary of key differences and similarities after the table.`,
   return result.text;
 }
 
-export async function generateFAQ(sources: Source[], questionCount: number = 10): Promise<string> {
+export async function generateFAQ(
+  sources: Source[],
+  questionCount: number = 10
+): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -724,7 +786,9 @@ Cover the most important and likely questions about the topics.`,
 export async function generateActionItems(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -756,10 +820,14 @@ Include any deadlines, owners, or dependencies mentioned in the sources.`,
   return result.text;
 }
 
-export async function generateExecutiveBrief(sources: Source[]): Promise<string> {
+export async function generateExecutiveBrief(
+  sources: Source[]
+): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -797,7 +865,9 @@ Keep it concise and actionable.`,
 export async function generateStudyGuide(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -830,14 +900,14 @@ Structure should include:
 - Summary section
 
 Structure your response as:
-<style>
-  /* CSS styles for study guide */
-</style>
 <div class="study-guide-container">
-  <!-- Study guide HTML here -->
+  <!-- Study guide HTML here - generate ALL sections FIRST so you have context for CSS/JS -->
 </div>
+<style>
+  /* CSS styles for study guide targeting the structure above */
+</style>
 <script>
-  // Interactive JavaScript for expand/collapse and reveal
+  // Interactive JavaScript for expand/collapse and reveal - reference elements from HTML above
 </script>`,
   });
 
@@ -847,7 +917,9 @@ Structure your response as:
 export async function generateProsCons(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -886,7 +958,9 @@ If multiple topics can be analyzed, create separate sections for each.`,
 export async function generateCitationList(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -919,7 +993,9 @@ Use the actual titles and URLs from the sources provided.`,
 export async function generateOutline(sources: Source[]): Promise<string> {
   const model = await getModel();
   if (!model) {
-    throw new Error('AI provider not configured. Please add your API key in settings.');
+    throw new Error(
+      "AI provider not configured. Please add your API key in settings."
+    );
   }
 
   const result = await generateText({
@@ -965,11 +1041,14 @@ Create a comprehensive outline that captures all major themes and details.`,
 // Test Connection
 // ============================================================================
 
-export async function testConnection(): Promise<{ success: boolean; error?: string }> {
+export async function testConnection(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
   try {
     const model = await getModel();
     if (!model) {
-      return { success: false, error: 'No API key configured' };
+      return { success: false, error: "No API key configured" };
     }
 
     await generateText({
@@ -981,7 +1060,7 @@ export async function testConnection(): Promise<{ success: boolean; error?: stri
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
