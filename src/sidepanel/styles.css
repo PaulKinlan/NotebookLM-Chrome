@@ -1434,6 +1434,71 @@ input[type="text"]:focus {
   overflow: hidden;
 }
 
+/* Grouped Citations */
+.citation-group {
+  margin-bottom: 8px;
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.citation-group:last-child {
+  margin-bottom: 0;
+}
+
+.citation-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.citation-group-header .citation-number {
+  flex-shrink: 0;
+}
+
+.citation-group-header .citation-source {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.citation-excerpt-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.citation-group-excerpts {
+  background: var(--bg-primary);
+}
+
+.citation-sub-item {
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--border-muted);
+  margin-bottom: 0;
+}
+
+.citation-sub-item:last-child {
+  border-bottom: none;
+}
+
+.citation-sub-number {
+  font-size: 10px;
+  width: 22px;
+  height: 18px;
+}
+
 /* Offline indicator */
 .offline-indicator {
   display: inline-flex;

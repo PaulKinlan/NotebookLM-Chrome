@@ -97,44 +97,84 @@ function parseCitations(content: string, sources: Source[]): { cleanContent: str
   const citations: Citation[] = [];
   let cleanContent = content;
 
-  // Extract citations section if present
+  // First, extract citations section and group by source number
+  const citationsBySourceNum = new Map<number, string[]>();
+
   const citationsMatch = content.match(/---CITATIONS---\n([\s\S]*?)\n---END CITATIONS---/);
   if (citationsMatch) {
     cleanContent = content.replace(/\n?---CITATIONS---[\s\S]*?---END CITATIONS---\n?/, '').trim();
     const citationsText = citationsMatch[1];
 
-    // Parse each citation line
+    // Parse each citation line and group by source number
     const citationLines = citationsText.split('\n').filter(line => line.trim());
     for (const line of citationLines) {
       const match = line.match(/\[Source (\d+)\]:\s*"?([^"]+)"?/);
       if (match) {
-        const sourceIndex = parseInt(match[1], 10) - 1;
+        const sourceNum = parseInt(match[1], 10);
         const excerpt = match[2].trim();
-        if (sourceIndex >= 0 && sourceIndex < sources.length) {
-          citations.push({
-            sourceId: sources[sourceIndex].id,
-            sourceTitle: sources[sourceIndex].title,
-            excerpt,
-          });
+        if (!citationsBySourceNum.has(sourceNum)) {
+          citationsBySourceNum.set(sourceNum, []);
         }
+        citationsBySourceNum.get(sourceNum)!.push(excerpt);
       }
     }
   }
 
-  // Also extract inline citations like [Source 1] and map them
-  const inlineMatches = cleanContent.matchAll(/\[Source (\d+)\]/g);
-  const seenSourceIds = new Set(citations.map(c => c.sourceId));
+  // Count how many times each [Source N] appears in the text
+  const sourceCountInText = new Map<number, number>();
+  const sourceMatches = cleanContent.matchAll(/\[Source (\d+)\]/g);
+  for (const match of sourceMatches) {
+    const sourceNum = parseInt(match[1], 10);
+    sourceCountInText.set(sourceNum, (sourceCountInText.get(sourceNum) || 0) + 1);
+  }
 
-  for (const match of inlineMatches) {
-    const sourceIndex = parseInt(match[1], 10) - 1;
+  // Track occurrence index as we replace
+  const sourceOccurrenceIndex = new Map<number, number>();
+
+  // Replace inline [Source N] with [Source Na], [Source Nb], etc. if source appears multiple times in text
+  cleanContent = cleanContent.replace(/\[Source (\d+)\]/g, (match, numStr) => {
+    const sourceNum = parseInt(numStr, 10);
+    const countInText = sourceCountInText.get(sourceNum) || 1;
+
+    // Get current occurrence index for this source
+    const currentIndex = sourceOccurrenceIndex.get(sourceNum) || 0;
+    sourceOccurrenceIndex.set(sourceNum, currentIndex + 1);
+
+    // If this source appears multiple times in the text, use sub-labels
+    if (countInText > 1) {
+      const subLabel = String.fromCharCode(97 + currentIndex); // a, b, c, ...
+      return `[Source ${sourceNum}${subLabel}]`;
+    }
+
+    // Single occurrence - keep as is
+    return match;
+  });
+
+  // Build final citations list
+  // For sources with multiple text occurrences, create a citation for each occurrence
+  for (const [sourceNum, count] of sourceCountInText) {
+    const sourceIndex = sourceNum - 1;
     if (sourceIndex >= 0 && sourceIndex < sources.length) {
       const source = sources[sourceIndex];
-      if (!seenSourceIds.has(source.id)) {
-        seenSourceIds.add(source.id);
+      const excerpts = citationsBySourceNum.get(sourceNum) || [];
+
+      if (count > 1) {
+        // Multiple occurrences - create citation for each
+        for (let i = 0; i < count; i++) {
+          const excerpt = excerpts[i] || `Reference ${String.fromCharCode(97 + i)} from this source`;
+          citations.push({
+            sourceId: source.id,
+            sourceTitle: source.title,
+            excerpt,
+          });
+        }
+      } else {
+        // Single occurrence
+        const excerpt = excerpts[0] || 'Referenced in response';
         citations.push({
           sourceId: source.id,
           sourceTitle: source.title,
-          excerpt: 'Referenced in response',
+          excerpt,
         });
       }
     }

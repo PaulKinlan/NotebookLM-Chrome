@@ -1,5 +1,11 @@
-import type { Source, PermissionStatus, AISettings, ChatMessage, Citation } from '../types/index.ts';
-import { checkPermissions, requestPermission } from '../lib/permissions.ts';
+import type {
+  Source,
+  PermissionStatus,
+  AISettings,
+  ChatMessage,
+  Citation,
+} from "../types/index.ts";
+import { checkPermissions, requestPermission } from "../lib/permissions.ts";
 import {
   getNotebooks,
   saveNotebook,
@@ -19,7 +25,7 @@ import {
   saveCachedResponse,
   createCachedResponse,
   createCacheKey,
-} from '../lib/storage.ts';
+} from "../lib/storage.ts";
 import {
   streamChat,
   generatePodcastScript,
@@ -27,20 +33,25 @@ import {
   generateKeyTakeaways,
   generateEmailSummary,
   testConnection,
-} from '../lib/ai.ts';
+} from "../lib/ai.ts";
 import {
   getAISettings,
   setApiKey,
   setProvider,
   setModel,
-} from '../lib/settings.ts';
+} from "../lib/settings.ts";
 
 // ============================================================================
 // State
 // ============================================================================
 
 let currentNotebookId: string | null = null;
-let permissions: PermissionStatus = { tabs: false, tabGroups: false, bookmarks: false, history: false };
+let permissions: PermissionStatus = {
+  tabs: false,
+  tabGroups: false,
+  bookmarks: false,
+  history: false,
+};
 let aiSettings: AISettings | null = null;
 
 // Picker state
@@ -54,7 +65,7 @@ interface PickerItem {
 }
 let pickerItems: PickerItem[] = [];
 let selectedPickerItems: Set<string> = new Set();
-let pickerType: 'tab' | 'tabGroup' | 'bookmark' | 'history' | null = null;
+let pickerType: "tab" | "tabGroup" | "bookmark" | "history" | null = null;
 
 // ============================================================================
 // DOM Elements
@@ -62,83 +73,131 @@ let pickerType: 'tab' | 'tabGroup' | 'bookmark' | 'history' | null = null;
 
 const elements = {
   // Navigation
-  navItems: document.querySelectorAll('.nav-item') as NodeListOf<HTMLButtonElement>,
-  tabContents: document.querySelectorAll('.tab-content') as NodeListOf<HTMLElement>,
+  navItems: document.querySelectorAll(
+    ".nav-item"
+  ) as NodeListOf<HTMLButtonElement>,
+  tabContents: document.querySelectorAll(
+    ".tab-content"
+  ) as NodeListOf<HTMLElement>,
 
   // Add Sources tab
-  addCurrentTabBtn: document.getElementById('add-current-tab-btn') as HTMLButtonElement,
-  searchSources: document.getElementById('search-sources') as HTMLInputElement,
-  importTabs: document.getElementById('import-tabs') as HTMLButtonElement,
-  importTabGroups: document.getElementById('import-tab-groups') as HTMLButtonElement,
-  importBookmarks: document.getElementById('import-bookmarks') as HTMLButtonElement,
-  importHistory: document.getElementById('import-history') as HTMLButtonElement,
-  tabsCount: document.getElementById('tabs-count') as HTMLSpanElement,
-  sourcesList: document.getElementById('sources-list') as HTMLDivElement,
+  addCurrentTabBtn: document.getElementById(
+    "add-current-tab-btn"
+  ) as HTMLButtonElement,
+  searchSources: document.getElementById("search-sources") as HTMLInputElement,
+  importTabs: document.getElementById("import-tabs") as HTMLButtonElement,
+  importTabGroups: document.getElementById(
+    "import-tab-groups"
+  ) as HTMLButtonElement,
+  importBookmarks: document.getElementById(
+    "import-bookmarks"
+  ) as HTMLButtonElement,
+  importHistory: document.getElementById("import-history") as HTMLButtonElement,
+  tabsCount: document.getElementById("tabs-count") as HTMLSpanElement,
+  sourcesList: document.getElementById("sources-list") as HTMLDivElement,
 
   // Chat tab
-  notebookSelect: document.getElementById('notebook-select') as HTMLSelectElement,
-  newNotebookBtn: document.getElementById('new-notebook-btn') as HTMLButtonElement,
-  queryInput: document.getElementById('query-input') as HTMLInputElement,
-  queryBtn: document.getElementById('query-btn') as HTMLButtonElement,
-  sourceCount: document.getElementById('source-count') as HTMLSpanElement,
-  activeSources: document.getElementById('active-sources') as HTMLDivElement,
-  addPageBtn: document.getElementById('add-page-btn') as HTMLButtonElement,
-  chatMessages: document.getElementById('chat-messages') as HTMLDivElement,
-  clearChatBtn: document.getElementById('clear-chat-btn') as HTMLButtonElement,
-  chatStatus: document.getElementById('chat-status') as HTMLParagraphElement,
+  notebookSelect: document.getElementById(
+    "notebook-select"
+  ) as HTMLSelectElement,
+  newNotebookBtn: document.getElementById(
+    "new-notebook-btn"
+  ) as HTMLButtonElement,
+  queryInput: document.getElementById("query-input") as HTMLInputElement,
+  queryBtn: document.getElementById("query-btn") as HTMLButtonElement,
+  sourceCount: document.getElementById("source-count") as HTMLSpanElement,
+  activeSources: document.getElementById("active-sources") as HTMLDivElement,
+  addPageBtn: document.getElementById("add-page-btn") as HTMLButtonElement,
+  chatMessages: document.getElementById("chat-messages") as HTMLDivElement,
+  clearChatBtn: document.getElementById("clear-chat-btn") as HTMLButtonElement,
+  chatStatus: document.getElementById("chat-status") as HTMLParagraphElement,
 
   // Transform tab
-  transformPodcast: document.getElementById('transform-podcast') as HTMLButtonElement,
-  transformQuiz: document.getElementById('transform-quiz') as HTMLButtonElement,
-  transformTakeaways: document.getElementById('transform-takeaways') as HTMLButtonElement,
-  transformEmail: document.getElementById('transform-email') as HTMLButtonElement,
-  transformResult: document.getElementById('transform-result') as HTMLDivElement,
-  transformResultTitle: document.getElementById('transform-result-title') as HTMLHeadingElement,
-  transformContent: document.getElementById('transform-content') as HTMLDivElement,
-  copyTransform: document.getElementById('copy-transform') as HTMLButtonElement,
-  closeTransform: document.getElementById('close-transform') as HTMLButtonElement,
+  transformPodcast: document.getElementById(
+    "transform-podcast"
+  ) as HTMLButtonElement,
+  transformQuiz: document.getElementById("transform-quiz") as HTMLButtonElement,
+  transformTakeaways: document.getElementById(
+    "transform-takeaways"
+  ) as HTMLButtonElement,
+  transformEmail: document.getElementById(
+    "transform-email"
+  ) as HTMLButtonElement,
+  transformResult: document.getElementById(
+    "transform-result"
+  ) as HTMLDivElement,
+  transformResultTitle: document.getElementById(
+    "transform-result-title"
+  ) as HTMLHeadingElement,
+  transformContent: document.getElementById(
+    "transform-content"
+  ) as HTMLDivElement,
+  copyTransform: document.getElementById("copy-transform") as HTMLButtonElement,
+  closeTransform: document.getElementById(
+    "close-transform"
+  ) as HTMLButtonElement,
 
   // Library tab
-  notebooksList: document.getElementById('notebooks-list') as HTMLDivElement,
+  notebooksList: document.getElementById("notebooks-list") as HTMLDivElement,
 
   // Settings tab
-  aiProvider: document.getElementById('ai-provider') as HTMLSelectElement,
-  aiModel: document.getElementById('ai-model') as HTMLSelectElement,
-  apiKey: document.getElementById('api-key') as HTMLInputElement,
-  testApiBtn: document.getElementById('test-api') as HTMLButtonElement,
-  permTabs: document.getElementById('perm-tabs') as HTMLInputElement,
-  permTabGroups: document.getElementById('perm-tab-groups') as HTMLInputElement,
-  permBookmarks: document.getElementById('perm-bookmarks') as HTMLInputElement,
-  permHistory: document.getElementById('perm-history') as HTMLInputElement,
+  aiProvider: document.getElementById("ai-provider") as HTMLSelectElement,
+  aiModel: document.getElementById("ai-model") as HTMLSelectElement,
+  apiKey: document.getElementById("api-key") as HTMLInputElement,
+  testApiBtn: document.getElementById("test-api") as HTMLButtonElement,
+  permTabs: document.getElementById("perm-tabs") as HTMLInputElement,
+  permTabGroups: document.getElementById("perm-tab-groups") as HTMLInputElement,
+  permBookmarks: document.getElementById("perm-bookmarks") as HTMLInputElement,
+  permHistory: document.getElementById("perm-history") as HTMLInputElement,
 
   // FAB
-  fab: document.getElementById('fab') as HTMLButtonElement,
+  fab: document.getElementById("fab") as HTMLButtonElement,
 
   // Picker Modal
-  pickerModal: document.getElementById('picker-modal') as HTMLDivElement,
-  pickerTitle: document.getElementById('picker-title') as HTMLHeadingElement,
-  pickerSearch: document.getElementById('picker-search') as HTMLInputElement,
-  pickerList: document.getElementById('picker-list') as HTMLDivElement,
-  pickerSelectedCount: document.getElementById('picker-selected-count') as HTMLSpanElement,
-  pickerClose: document.getElementById('picker-close') as HTMLButtonElement,
-  pickerCancel: document.getElementById('picker-cancel') as HTMLButtonElement,
-  pickerAdd: document.getElementById('picker-add') as HTMLButtonElement,
-  pickerBackdrop: document.querySelector('.modal-backdrop') as HTMLDivElement,
+  pickerModal: document.getElementById("picker-modal") as HTMLDivElement,
+  pickerTitle: document.getElementById("picker-title") as HTMLHeadingElement,
+  pickerSearch: document.getElementById("picker-search") as HTMLInputElement,
+  pickerList: document.getElementById("picker-list") as HTMLDivElement,
+  pickerSelectedCount: document.getElementById(
+    "picker-selected-count"
+  ) as HTMLSpanElement,
+  pickerClose: document.getElementById("picker-close") as HTMLButtonElement,
+  pickerCancel: document.getElementById("picker-cancel") as HTMLButtonElement,
+  pickerAdd: document.getElementById("picker-add") as HTMLButtonElement,
+  pickerBackdrop: document.querySelector(".modal-backdrop") as HTMLDivElement,
 
   // Dialogs
-  notebookDialog: document.getElementById('notebook-dialog') as HTMLDialogElement,
-  notebookDialogTitle: document.getElementById('notebook-dialog-title') as HTMLHeadingElement,
-  notebookNameInput: document.getElementById('notebook-name-input') as HTMLInputElement,
-  notebookDialogCancel: document.getElementById('notebook-dialog-cancel') as HTMLButtonElement,
-  notebookDialogConfirm: document.getElementById('notebook-dialog-confirm') as HTMLButtonElement,
+  notebookDialog: document.getElementById(
+    "notebook-dialog"
+  ) as HTMLDialogElement,
+  notebookDialogTitle: document.getElementById(
+    "notebook-dialog-title"
+  ) as HTMLHeadingElement,
+  notebookNameInput: document.getElementById(
+    "notebook-name-input"
+  ) as HTMLInputElement,
+  notebookDialogCancel: document.getElementById(
+    "notebook-dialog-cancel"
+  ) as HTMLButtonElement,
+  notebookDialogConfirm: document.getElementById(
+    "notebook-dialog-confirm"
+  ) as HTMLButtonElement,
 
-  confirmDialog: document.getElementById('confirm-dialog') as HTMLDialogElement,
-  confirmDialogTitle: document.getElementById('confirm-dialog-title') as HTMLHeadingElement,
-  confirmDialogMessage: document.getElementById('confirm-dialog-message') as HTMLParagraphElement,
-  confirmDialogCancel: document.getElementById('confirm-dialog-cancel') as HTMLButtonElement,
-  confirmDialogConfirm: document.getElementById('confirm-dialog-confirm') as HTMLButtonElement,
+  confirmDialog: document.getElementById("confirm-dialog") as HTMLDialogElement,
+  confirmDialogTitle: document.getElementById(
+    "confirm-dialog-title"
+  ) as HTMLHeadingElement,
+  confirmDialogMessage: document.getElementById(
+    "confirm-dialog-message"
+  ) as HTMLParagraphElement,
+  confirmDialogCancel: document.getElementById(
+    "confirm-dialog-cancel"
+  ) as HTMLButtonElement,
+  confirmDialogConfirm: document.getElementById(
+    "confirm-dialog-confirm"
+  ) as HTMLButtonElement,
 
-  notification: document.getElementById('notification') as HTMLDivElement,
+  notification: document.getElementById("notification") as HTMLDivElement,
 };
 
 // ============================================================================
@@ -166,17 +225,17 @@ async function init(): Promise<void> {
 
   // Listen for messages from background script
   chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === 'SOURCE_ADDED') {
+    if (message.type === "SOURCE_ADDED") {
       loadNotebooks();
       loadSources();
-      showNotification('Source added');
-    } else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_PAGE') {
+      showNotification("Source added");
+    } else if (message.type === "CREATE_NOTEBOOK_AND_ADD_PAGE") {
       // Clear pending action to prevent duplicate processing
-      chrome.storage.session.remove('pendingAction').catch(() => {});
+      chrome.storage.session.remove("pendingAction").catch(() => {});
       handleCreateNotebookAndAddPage(message.payload.tabId);
-    } else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_LINK') {
+    } else if (message.type === "CREATE_NOTEBOOK_AND_ADD_LINK") {
       // Clear pending action to prevent duplicate processing
-      chrome.storage.session.remove('pendingAction').catch(() => {});
+      chrome.storage.session.remove("pendingAction").catch(() => {});
       handleCreateNotebookAndAddLink(message.payload.linkUrl);
     }
   });
@@ -187,32 +246,32 @@ async function init(): Promise<void> {
 
 async function checkPendingAction(): Promise<void> {
   try {
-    const result = await chrome.storage.session.get('pendingAction');
+    const result = await chrome.storage.session.get("pendingAction");
     if (result.pendingAction) {
       // Clear the pending action first to prevent duplicate processing
-      await chrome.storage.session.remove('pendingAction');
+      await chrome.storage.session.remove("pendingAction");
 
       const { type, payload } = result.pendingAction;
-      if (type === 'CREATE_NOTEBOOK_AND_ADD_PAGE' && payload.tabId) {
+      if (type === "CREATE_NOTEBOOK_AND_ADD_PAGE" && payload.tabId) {
         handleCreateNotebookAndAddPage(payload.tabId);
-      } else if (type === 'CREATE_NOTEBOOK_AND_ADD_LINK' && payload.linkUrl) {
+      } else if (type === "CREATE_NOTEBOOK_AND_ADD_LINK" && payload.linkUrl) {
         handleCreateNotebookAndAddLink(payload.linkUrl);
       }
     }
   } catch (error) {
-    console.error('Failed to check pending action:', error);
+    console.error("Failed to check pending action:", error);
   }
 }
 
 // Notify background script to rebuild context menus when notebooks change
 function notifyNotebooksChanged(): void {
-  chrome.runtime.sendMessage({ type: 'REBUILD_CONTEXT_MENUS' }).catch(() => {
+  chrome.runtime.sendMessage({ type: "REBUILD_CONTEXT_MENUS" }).catch(() => {
     // Background may not be ready
   });
 }
 
 async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
-  const name = await showNotebookDialog('New Notebook');
+  const name = await showNotebookDialog("New Notebook");
   if (!name) return;
 
   const notebook = createNotebook(name);
@@ -225,27 +284,29 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
 
   // Now extract and add the page
   try {
-    const result = await chrome.tabs.sendMessage(tabId, { action: 'extractContent' });
+    const result = await chrome.tabs.sendMessage(tabId, {
+      action: "extractContent",
+    });
     if (result) {
       const source = createSource(
         notebook.id,
-        'tab',
+        "tab",
         result.url,
         result.title,
         result.markdown
       );
       await saveSource(source);
       await loadSources();
-      showNotification('Notebook created and source added');
+      showNotification("Notebook created and source added");
     }
   } catch (error) {
-    console.error('Failed to add page:', error);
-    showNotification('Notebook created');
+    console.error("Failed to add page:", error);
+    showNotification("Notebook created");
   }
 }
 
 async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
-  const name = await showNotebookDialog('New Notebook');
+  const name = await showNotebookDialog("New Notebook");
   if (!name) return;
 
   const notebook = createNotebook(name);
@@ -256,91 +317,107 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
   elements.notebookSelect.value = notebook.id;
   notifyNotebooksChanged();
 
-  showNotification('Creating notebook and extracting content...');
+  showNotification("Creating notebook and extracting content...");
 
   // Now extract and add the link
   try {
     const response = await chrome.runtime.sendMessage({
-      type: 'EXTRACT_FROM_URL',
+      type: "EXTRACT_FROM_URL",
       payload: linkUrl,
     });
 
     if (response) {
       const source = createSource(
         notebook.id,
-        'tab',
+        "tab",
         response.url || linkUrl,
-        response.title || 'Untitled',
-        response.content || ''
+        response.title || "Untitled",
+        response.content || ""
       );
       await saveSource(source);
       await loadSources();
-      showNotification('Notebook created and source added');
+      showNotification("Notebook created and source added");
     }
   } catch (error) {
-    console.error('Failed to add link:', error);
-    showNotification('Notebook created but failed to add link');
+    console.error("Failed to add link:", error);
+    showNotification("Notebook created but failed to add link");
   }
 }
 
 function setupEventListeners(): void {
   // Navigation
   elements.navItems.forEach((item) => {
-    item.addEventListener('click', () => {
+    item.addEventListener("click", () => {
       const tab = item.dataset.tab;
       if (tab) switchTab(tab);
     });
   });
 
   // Add Sources tab
-  elements.addCurrentTabBtn.addEventListener('click', handleAddCurrentTab);
-  elements.importTabs.addEventListener('click', handleImportTabs);
-  elements.importTabGroups.addEventListener('click', handleImportTabGroups);
-  elements.importBookmarks.addEventListener('click', handleImportBookmarks);
-  elements.importHistory.addEventListener('click', handleImportHistory);
+  elements.addCurrentTabBtn.addEventListener("click", handleAddCurrentTab);
+  elements.importTabs.addEventListener("click", handleImportTabs);
+  elements.importTabGroups.addEventListener("click", handleImportTabGroups);
+  elements.importBookmarks.addEventListener("click", handleImportBookmarks);
+  elements.importHistory.addEventListener("click", handleImportHistory);
 
   // Chat tab
-  elements.notebookSelect.addEventListener('change', handleNotebookChange);
-  elements.newNotebookBtn.addEventListener('click', handleNewNotebook);
-  elements.queryBtn.addEventListener('click', handleQuery);
-  elements.queryInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleQuery();
+  elements.notebookSelect.addEventListener("change", handleNotebookChange);
+  elements.newNotebookBtn.addEventListener("click", handleNewNotebook);
+  elements.queryBtn.addEventListener("click", handleQuery);
+  elements.queryInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") handleQuery();
   });
-  elements.addPageBtn.addEventListener('click', handleAddCurrentTab);
-  elements.clearChatBtn?.addEventListener('click', handleClearChat);
-  elements.chatMessages?.addEventListener('click', handleCitationClick);
+  elements.addPageBtn.addEventListener("click", handleAddCurrentTab);
+  elements.clearChatBtn?.addEventListener("click", handleClearChat);
+  elements.chatMessages?.addEventListener("click", handleCitationClick);
 
   // Transform tab
-  elements.transformPodcast?.addEventListener('click', () => handleTransform('podcast'));
-  elements.transformQuiz?.addEventListener('click', () => handleTransform('quiz'));
-  elements.transformTakeaways?.addEventListener('click', () => handleTransform('takeaways'));
-  elements.transformEmail?.addEventListener('click', () => handleTransform('email'));
-  elements.copyTransform?.addEventListener('click', () => {
-    copyToClipboard(elements.transformContent.textContent || '');
+  elements.transformPodcast?.addEventListener("click", () =>
+    handleTransform("podcast")
+  );
+  elements.transformQuiz?.addEventListener("click", () =>
+    handleTransform("quiz")
+  );
+  elements.transformTakeaways?.addEventListener("click", () =>
+    handleTransform("takeaways")
+  );
+  elements.transformEmail?.addEventListener("click", () =>
+    handleTransform("email")
+  );
+  elements.copyTransform?.addEventListener("click", () => {
+    copyToClipboard(elements.transformContent.textContent || "");
   });
-  elements.closeTransform?.addEventListener('click', () => {
-    elements.transformResult.classList.add('hidden');
+  elements.closeTransform?.addEventListener("click", () => {
+    elements.transformResult.classList.add("hidden");
   });
 
   // Settings tab
-  elements.permTabs.addEventListener('change', () => handlePermissionToggle('tabs'));
-  elements.permTabGroups.addEventListener('change', () => handlePermissionToggle('tabGroups'));
-  elements.permBookmarks.addEventListener('change', () => handlePermissionToggle('bookmarks'));
-  elements.permHistory.addEventListener('change', () => handlePermissionToggle('history'));
-  elements.aiProvider.addEventListener('change', handleProviderChange);
-  elements.aiModel.addEventListener('change', handleModelChange);
-  elements.apiKey.addEventListener('change', handleApiKeyChange);
-  elements.testApiBtn.addEventListener('click', handleTestApi);
+  elements.permTabs.addEventListener("change", () =>
+    handlePermissionToggle("tabs")
+  );
+  elements.permTabGroups.addEventListener("change", () =>
+    handlePermissionToggle("tabGroups")
+  );
+  elements.permBookmarks.addEventListener("change", () =>
+    handlePermissionToggle("bookmarks")
+  );
+  elements.permHistory.addEventListener("change", () =>
+    handlePermissionToggle("history")
+  );
+  elements.aiProvider.addEventListener("change", handleProviderChange);
+  elements.aiModel.addEventListener("change", handleModelChange);
+  elements.apiKey.addEventListener("change", handleApiKeyChange);
+  elements.testApiBtn.addEventListener("click", handleTestApi);
 
   // FAB
-  elements.fab.addEventListener('click', () => switchTab('add'));
+  elements.fab.addEventListener("click", () => switchTab("add"));
 
   // Picker Modal
-  elements.pickerClose?.addEventListener('click', closePicker);
-  elements.pickerCancel?.addEventListener('click', closePicker);
-  elements.pickerBackdrop?.addEventListener('click', closePicker);
-  elements.pickerAdd?.addEventListener('click', handlePickerAdd);
-  elements.pickerSearch?.addEventListener('input', handlePickerSearch);
+  elements.pickerClose?.addEventListener("click", closePicker);
+  elements.pickerCancel?.addEventListener("click", closePicker);
+  elements.pickerBackdrop?.addEventListener("click", closePicker);
+  elements.pickerAdd?.addEventListener("click", handlePickerAdd);
+  elements.pickerSearch?.addEventListener("input", handlePickerSearch);
 }
 
 // ============================================================================
@@ -350,24 +427,27 @@ function setupEventListeners(): void {
 function switchTab(tabName: string): void {
   // Update nav items
   elements.navItems.forEach((item) => {
-    item.classList.toggle('active', item.dataset.tab === tabName);
+    item.classList.toggle("active", item.dataset.tab === tabName);
   });
 
   // Update tab content
   elements.tabContents.forEach((content) => {
-    content.classList.toggle('active', content.id === `tab-${tabName}`);
+    content.classList.toggle("active", content.id === `tab-${tabName}`);
   });
 
   // Show/hide FAB based on tab
-  elements.fab.classList.toggle('hidden', tabName === 'add' || tabName === 'settings');
+  elements.fab.classList.toggle(
+    "hidden",
+    tabName === "add" || tabName === "settings"
+  );
 
   // Refresh data when switching tabs
-  if (tabName === 'library') {
+  if (tabName === "library") {
     loadNotebooksList();
-  } else if (tabName === 'chat') {
+  } else if (tabName === "chat") {
     loadSources();
     loadChatHistory();
-  } else if (tabName === 'transform') {
+  } else if (tabName === "transform") {
     loadSources();
   }
 }
@@ -379,10 +459,11 @@ function switchTab(tabName: string): void {
 async function loadNotebooks(): Promise<void> {
   const notebooks = await getNotebooks();
 
-  elements.notebookSelect.innerHTML = '<option value="">Select a notebook...</option>';
+  elements.notebookSelect.innerHTML =
+    '<option value="">Select a notebook...</option>';
 
   for (const notebook of notebooks) {
-    const option = document.createElement('option');
+    const option = document.createElement("option");
     option.value = notebook.id;
     option.textContent = notebook.name;
     elements.notebookSelect.appendChild(option);
@@ -405,12 +486,12 @@ async function loadNotebooksList(): Promise<void> {
     return;
   }
 
-  elements.notebooksList.innerHTML = '';
+  elements.notebooksList.innerHTML = "";
 
   for (const notebook of notebooks) {
     const sources = await getSourcesByNotebook(notebook.id);
-    const div = document.createElement('div');
-    div.className = 'notebook-item';
+    const div = document.createElement("div");
+    div.className = "notebook-item";
     div.innerHTML = `
       <div class="notebook-icon">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -422,7 +503,9 @@ async function loadNotebooksList(): Promise<void> {
         <div class="notebook-name">${escapeHtml(notebook.name)}</div>
         <div class="notebook-meta">${sources.length} sources</div>
       </div>
-      <button class="icon-btn btn-delete-notebook" data-id="${notebook.id}" title="Delete notebook">
+      <button class="icon-btn btn-delete-notebook" data-id="${
+        notebook.id
+      }" title="Delete notebook">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="3 6 5 6 21 6"></polyline>
           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -430,11 +513,13 @@ async function loadNotebooksList(): Promise<void> {
       </button>
     `;
 
-    const notebookClickArea = div.querySelector('.notebook-info');
-    notebookClickArea?.addEventListener('click', () => selectNotebook(notebook.id));
+    const notebookClickArea = div.querySelector(".notebook-info");
+    notebookClickArea?.addEventListener("click", () =>
+      selectNotebook(notebook.id)
+    );
 
-    const deleteBtn = div.querySelector('.btn-delete-notebook');
-    deleteBtn?.addEventListener('click', (e) => {
+    const deleteBtn = div.querySelector(".btn-delete-notebook");
+    deleteBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
       handleDeleteNotebook(notebook.id, notebook.name);
     });
@@ -445,7 +530,7 @@ async function loadNotebooksList(): Promise<void> {
 
 async function handleDeleteNotebook(id: string, name: string): Promise<void> {
   const confirmed = await showConfirmDialog(
-    'Delete Notebook',
+    "Delete Notebook",
     `Are you sure you want to delete "${name}"? This will also delete all sources in this notebook.`
   );
 
@@ -462,11 +547,11 @@ async function handleDeleteNotebook(id: string, name: string): Promise<void> {
   await loadNotebooksList();
   await loadSources();
   notifyNotebooksChanged();
-  showNotification('Notebook deleted');
+  showNotification("Notebook deleted");
 }
 
 async function handleNewNotebook(): Promise<void> {
-  const name = await showNotebookDialog('New Notebook');
+  const name = await showNotebookDialog("New Notebook");
   if (!name) return;
 
   const notebook = createNotebook(name);
@@ -476,7 +561,7 @@ async function handleNewNotebook(): Promise<void> {
   await loadNotebooks();
   elements.notebookSelect.value = notebook.id;
   notifyNotebooksChanged();
-  showNotification('Notebook created');
+  showNotification("Notebook created");
 }
 
 async function handleNotebookChange(): Promise<void> {
@@ -492,7 +577,7 @@ async function selectNotebook(id: string): Promise<void> {
   await setActiveNotebookId(id);
   await loadNotebooks();
   elements.notebookSelect.value = id;
-  switchTab('chat');
+  switchTab("chat");
   await loadSources();
   await loadChatHistory();
 }
@@ -508,8 +593,8 @@ async function loadSources(): Promise<void> {
         <p>Select or create a notebook to add sources.</p>
       </div>
     `;
-    elements.sourceCount.textContent = '0';
-    elements.sourcesList.innerHTML = '';
+    elements.sourceCount.textContent = "0";
+    elements.sourcesList.innerHTML = "";
     return;
   }
 
@@ -533,13 +618,13 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
     return;
   }
 
-  container.innerHTML = '';
+  container.innerHTML = "";
 
   for (const source of sources) {
-    const div = document.createElement('div');
-    div.className = 'source-item';
+    const div = document.createElement("div");
+    div.className = "source-item";
 
-    const domain = new URL(source.url).hostname.replace('www.', '');
+    const domain = new URL(source.url).hostname.replace("www.", "");
     const initial = source.title.charAt(0).toUpperCase();
 
     div.innerHTML = `
@@ -549,7 +634,9 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
         <div class="source-url">${escapeHtml(domain)}</div>
       </div>
       <div class="source-actions">
-        <button class="icon-btn btn-remove" data-id="${source.id}" title="Remove">
+        <button class="icon-btn btn-remove" data-id="${
+          source.id
+        }" title="Remove">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -558,8 +645,8 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
       </div>
     `;
 
-    const removeBtn = div.querySelector('.btn-remove');
-    removeBtn?.addEventListener('click', (e) => {
+    const removeBtn = div.querySelector(".btn-remove");
+    removeBtn?.addEventListener("click", (e) => {
       e.stopPropagation();
       handleRemoveSource(source.id);
     });
@@ -570,7 +657,7 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
 
 async function handleAddCurrentTab(): Promise<void> {
   if (!currentNotebookId) {
-    const name = await showNotebookDialog('Create a notebook first');
+    const name = await showNotebookDialog("Create a notebook first");
     if (!name) return;
 
     const notebook = createNotebook(name);
@@ -585,8 +672,13 @@ async function handleAddCurrentTab(): Promise<void> {
 
   try {
     // Check for multiple highlighted tabs
-    const highlightedTabs = await chrome.tabs.query({ highlighted: true, currentWindow: true });
-    const tabsToAdd = highlightedTabs.filter(tab => tab.url && !tab.url.startsWith('chrome://'));
+    const highlightedTabs = await chrome.tabs.query({
+      highlighted: true,
+      currentWindow: true,
+    });
+    const tabsToAdd = highlightedTabs.filter(
+      (tab) => tab.url && !tab.url.startsWith("chrome://")
+    );
 
     if (tabsToAdd.length > 1) {
       // Multiple tabs selected - send message directly to content scripts
@@ -598,15 +690,17 @@ async function handleAddCurrentTab(): Promise<void> {
 
         try {
           // Send message directly to the content script in the tab
-          const result = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' });
+          const result = await chrome.tabs.sendMessage(tab.id, {
+            action: "extractContent",
+          });
 
           if (result) {
             const source = createSource(
               currentNotebookId!,
-              'tab',
+              "tab",
               result.url || tab.url,
-              result.title || tab.title || 'Untitled',
-              result.markdown || ''
+              result.title || tab.title || "Untitled",
+              result.markdown || ""
             );
             await saveSource(source);
             addedCount++;
@@ -616,9 +710,9 @@ async function handleAddCurrentTab(): Promise<void> {
           // Fallback: add with just title/url if content script not available
           const source = createSource(
             currentNotebookId!,
-            'tab',
+            "tab",
             tab.url,
-            tab.title || 'Untitled',
+            tab.title || "Untitled",
             `Content from: ${tab.url}`
           );
           await saveSource(source);
@@ -627,16 +721,20 @@ async function handleAddCurrentTab(): Promise<void> {
       }
 
       await loadSources();
-      showNotification(`Added ${addedCount} source${addedCount > 1 ? 's' : ''}`);
+      showNotification(
+        `Added ${addedCount} source${addedCount > 1 ? "s" : ""}`
+      );
     } else {
       // Single tab - use existing logic
-      elements.addCurrentTabBtn.textContent = 'Adding...';
-      const response = await chrome.runtime.sendMessage({ type: 'EXTRACT_CONTENT' });
+      elements.addCurrentTabBtn.textContent = "Adding...";
+      const response = await chrome.runtime.sendMessage({
+        type: "EXTRACT_CONTENT",
+      });
 
       if (response) {
         const source = createSource(
           currentNotebookId!,
-          'tab',
+          "tab",
           response.url,
           response.title,
           response.content
@@ -646,7 +744,7 @@ async function handleAddCurrentTab(): Promise<void> {
       }
     }
   } catch (error) {
-    console.error('Failed to add tab(s):', error);
+    console.error("Failed to add tab(s):", error);
   } finally {
     elements.addCurrentTabBtn.disabled = false;
     updateAddTabButton();
@@ -655,8 +753,13 @@ async function handleAddCurrentTab(): Promise<void> {
 
 async function updateAddTabButton(): Promise<void> {
   try {
-    const highlightedTabs = await chrome.tabs.query({ highlighted: true, currentWindow: true });
-    const validTabs = highlightedTabs.filter(tab => tab.url && !tab.url.startsWith('chrome://'));
+    const highlightedTabs = await chrome.tabs.query({
+      highlighted: true,
+      currentWindow: true,
+    });
+    const validTabs = highlightedTabs.filter(
+      (tab) => tab.url && !tab.url.startsWith("chrome://")
+    );
 
     if (validTabs.length > 1) {
       elements.addCurrentTabBtn.innerHTML = `
@@ -691,38 +794,40 @@ async function handleRemoveSource(sourceId: string): Promise<void> {
 
 async function handleImportTabs(): Promise<void> {
   if (!permissions.tabs) {
-    const granted = await requestPermission('tabs');
+    const granted = await requestPermission("tabs");
     if (!granted) return;
     permissions = await checkPermissions();
     updatePermissionUI();
   }
 
-  pickerType = 'tab';
-  elements.pickerTitle.textContent = 'Select Tabs';
-  elements.pickerList.innerHTML = '<div class="picker-loading">Loading tabs...</div>';
+  pickerType = "tab";
+  elements.pickerTitle.textContent = "Select Tabs";
+  elements.pickerList.innerHTML =
+    '<div class="picker-loading">Loading tabs...</div>';
   openPicker();
 
   try {
     const tabs = await chrome.tabs.query({});
     pickerItems = tabs
-      .filter((tab) => tab.url && !tab.url.startsWith('chrome://'))
+      .filter((tab) => tab.url && !tab.url.startsWith("chrome://"))
       .map((tab) => ({
-        id: tab.id?.toString() || '',
-        url: tab.url || '',
-        title: tab.title || 'Untitled',
+        id: tab.id?.toString() || "",
+        url: tab.url || "",
+        title: tab.title || "Untitled",
         favicon: tab.favIconUrl,
       }));
     renderPickerItems();
   } catch (error) {
-    console.error('Failed to load tabs:', error);
-    elements.pickerList.innerHTML = '<div class="picker-empty">Failed to load tabs</div>';
+    console.error("Failed to load tabs:", error);
+    elements.pickerList.innerHTML =
+      '<div class="picker-empty">Failed to load tabs</div>';
   }
 }
 
 async function handleImportTabGroups(): Promise<void> {
   // Tab groups require both tabs and tabGroups permissions
   if (!permissions.tabGroups) {
-    const granted = await requestPermission('tabGroups');
+    const granted = await requestPermission("tabGroups");
     if (!granted) return;
     permissions = await checkPermissions();
     updatePermissionUI();
@@ -730,22 +835,24 @@ async function handleImportTabGroups(): Promise<void> {
 
   // Also need tabs permission to query tabs in groups
   if (!permissions.tabs) {
-    const granted = await requestPermission('tabs');
+    const granted = await requestPermission("tabs");
     if (!granted) return;
     permissions = await checkPermissions();
     updatePermissionUI();
   }
 
-  pickerType = 'tabGroup';
-  elements.pickerTitle.textContent = 'Select Tab Groups';
-  elements.pickerList.innerHTML = '<div class="picker-loading">Loading tab groups...</div>';
+  pickerType = "tabGroup";
+  elements.pickerTitle.textContent = "Select Tab Groups";
+  elements.pickerList.innerHTML =
+    '<div class="picker-loading">Loading tab groups...</div>';
   openPicker();
 
   try {
     const groups = await chrome.tabGroups.query({});
 
     if (groups.length === 0) {
-      elements.pickerList.innerHTML = '<div class="picker-empty">No tab groups found. Create a tab group first by right-clicking a tab.</div>';
+      elements.pickerList.innerHTML =
+        '<div class="picker-empty">No tab groups found. Create a tab group first by right-clicking a tab.</div>';
       return;
     }
 
@@ -762,7 +869,7 @@ async function handleImportTabGroups(): Promise<void> {
 
     pickerItems = groupsWithCounts.map((group) => ({
       id: group.id.toString(),
-      url: '', // Tab groups don't have URLs
+      url: "", // Tab groups don't have URLs
       title: group.title || `Unnamed ${group.color} group`,
       color: group.color,
       tabCount: group.tabCount,
@@ -770,22 +877,24 @@ async function handleImportTabGroups(): Promise<void> {
 
     renderPickerItems();
   } catch (error) {
-    console.error('Failed to load tab groups:', error);
-    elements.pickerList.innerHTML = '<div class="picker-empty">Failed to load tab groups</div>';
+    console.error("Failed to load tab groups:", error);
+    elements.pickerList.innerHTML =
+      '<div class="picker-empty">Failed to load tab groups</div>';
   }
 }
 
 async function handleImportBookmarks(): Promise<void> {
   if (!permissions.bookmarks) {
-    const granted = await requestPermission('bookmarks');
+    const granted = await requestPermission("bookmarks");
     if (!granted) return;
     permissions = await checkPermissions();
     updatePermissionUI();
   }
 
-  pickerType = 'bookmark';
-  elements.pickerTitle.textContent = 'Select Bookmarks';
-  elements.pickerList.innerHTML = '<div class="picker-loading">Loading bookmarks...</div>';
+  pickerType = "bookmark";
+  elements.pickerTitle.textContent = "Select Bookmarks";
+  elements.pickerList.innerHTML =
+    '<div class="picker-loading">Loading bookmarks...</div>';
   openPicker();
 
   try {
@@ -793,12 +902,15 @@ async function handleImportBookmarks(): Promise<void> {
     pickerItems = flattenBookmarks(bookmarkTree);
     renderPickerItems();
   } catch (error) {
-    console.error('Failed to load bookmarks:', error);
-    elements.pickerList.innerHTML = '<div class="picker-empty">Failed to load bookmarks</div>';
+    console.error("Failed to load bookmarks:", error);
+    elements.pickerList.innerHTML =
+      '<div class="picker-empty">Failed to load bookmarks</div>';
   }
 }
 
-function flattenBookmarks(nodes: chrome.bookmarks.BookmarkTreeNode[]): PickerItem[] {
+function flattenBookmarks(
+  nodes: chrome.bookmarks.BookmarkTreeNode[]
+): PickerItem[] {
   const items: PickerItem[] = [];
 
   function traverse(nodes: chrome.bookmarks.BookmarkTreeNode[]): void {
@@ -807,7 +919,7 @@ function flattenBookmarks(nodes: chrome.bookmarks.BookmarkTreeNode[]): PickerIte
         items.push({
           id: node.id,
           url: node.url,
-          title: node.title || 'Untitled',
+          title: node.title || "Untitled",
         });
       }
       if (node.children) {
@@ -822,34 +934,36 @@ function flattenBookmarks(nodes: chrome.bookmarks.BookmarkTreeNode[]): PickerIte
 
 async function handleImportHistory(): Promise<void> {
   if (!permissions.history) {
-    const granted = await requestPermission('history');
+    const granted = await requestPermission("history");
     if (!granted) return;
     permissions = await checkPermissions();
     updatePermissionUI();
   }
 
-  pickerType = 'history';
-  elements.pickerTitle.textContent = 'Select from History';
-  elements.pickerList.innerHTML = '<div class="picker-loading">Loading history...</div>';
+  pickerType = "history";
+  elements.pickerTitle.textContent = "Select from History";
+  elements.pickerList.innerHTML =
+    '<div class="picker-loading">Loading history...</div>';
   openPicker();
 
   try {
     const historyItems = await chrome.history.search({
-      text: '',
+      text: "",
       maxResults: 100,
       startTime: Date.now() - 7 * 24 * 60 * 60 * 1000, // Last 7 days
     });
     pickerItems = historyItems
       .filter((item) => item.url && item.title)
       .map((item) => ({
-        id: item.id || item.url || '',
-        url: item.url || '',
-        title: item.title || 'Untitled',
+        id: item.id || item.url || "",
+        url: item.url || "",
+        title: item.title || "Untitled",
       }));
     renderPickerItems();
   } catch (error) {
-    console.error('Failed to load history:', error);
-    elements.pickerList.innerHTML = '<div class="picker-empty">Failed to load history</div>';
+    console.error("Failed to load history:", error);
+    elements.pickerList.innerHTML =
+      '<div class="picker-empty">Failed to load history</div>';
   }
 }
 
@@ -870,19 +984,19 @@ async function updateTabCount(): Promise<void> {
 
 function openPicker(): void {
   selectedPickerItems.clear();
-  elements.pickerSearch.value = '';
+  elements.pickerSearch.value = "";
   updatePickerSelectedCount();
-  elements.pickerModal.classList.remove('hidden');
+  elements.pickerModal.classList.remove("hidden");
 }
 
 function closePicker(): void {
-  elements.pickerModal.classList.add('hidden');
+  elements.pickerModal.classList.add("hidden");
   pickerItems = [];
   selectedPickerItems.clear();
   pickerType = null;
 }
 
-function renderPickerItems(filter: string = ''): void {
+function renderPickerItems(filter: string = ""): void {
   const filteredItems = filter
     ? pickerItems.filter(
         (item) =>
@@ -892,29 +1006,34 @@ function renderPickerItems(filter: string = ''): void {
     : pickerItems;
 
   if (filteredItems.length === 0) {
-    elements.pickerList.innerHTML = '<div class="picker-empty">No items found</div>';
+    elements.pickerList.innerHTML =
+      '<div class="picker-empty">No items found</div>';
     return;
   }
 
-  elements.pickerList.innerHTML = '';
+  elements.pickerList.innerHTML = "";
 
   for (const item of filteredItems) {
-    const div = document.createElement('div');
-    div.className = `picker-item${selectedPickerItems.has(item.id) ? ' selected' : ''}`;
+    const div = document.createElement("div");
+    div.className = `picker-item${
+      selectedPickerItems.has(item.id) ? " selected" : ""
+    }`;
     div.dataset.id = item.id;
 
     const initial = item.title.charAt(0).toUpperCase();
 
     // Handle tab groups differently
-    if (pickerType === 'tabGroup') {
-      const colorClass = item.color ? `tab-group-color-${item.color}` : '';
+    if (pickerType === "tabGroup") {
+      const colorClass = item.color ? `tab-group-color-${item.color}` : "";
       div.innerHTML = `
         <div class="picker-checkbox">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         </div>
-        <div class="picker-icon ${colorClass}" style="background-color: var(--tab-group-${item.color || 'grey'});">
+        <div class="picker-icon ${colorClass}" style="background-color: var(--tab-group-${
+        item.color || "grey"
+      });">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7" rx="1"></rect>
             <rect x="14" y="3" width="7" height="7" rx="1"></rect>
@@ -924,7 +1043,9 @@ function renderPickerItems(filter: string = ''): void {
         </div>
         <div class="picker-info">
           <div class="picker-title">${escapeHtml(item.title)}</div>
-          <div class="picker-url">${item.tabCount} tab${item.tabCount !== 1 ? 's' : ''}</div>
+          <div class="picker-url">${item.tabCount} tab${
+        item.tabCount !== 1 ? "s" : ""
+      }</div>
         </div>
       `;
     } else {
@@ -936,7 +1057,11 @@ function renderPickerItems(filter: string = ''): void {
           </svg>
         </div>
         <div class="picker-icon">
-          ${item.favicon ? `<img src="${item.favicon}" alt="" onerror="this.style.display='none';this.parentNode.textContent='${initial}'">` : initial}
+          ${
+            item.favicon
+              ? `<img src="${item.favicon}" alt="" onerror="this.style.display='none';this.parentNode.textContent='${initial}'">`
+              : initial
+          }
         </div>
         <div class="picker-info">
           <div class="picker-title">${escapeHtml(item.title)}</div>
@@ -945,7 +1070,7 @@ function renderPickerItems(filter: string = ''): void {
       `;
     }
 
-    div.addEventListener('click', () => togglePickerItem(item.id));
+    div.addEventListener("click", () => togglePickerItem(item.id));
     elements.pickerList.appendChild(div);
   }
 }
@@ -959,7 +1084,7 @@ function togglePickerItem(id: string): void {
 
   // Update UI
   const item = elements.pickerList.querySelector(`[data-id="${id}"]`);
-  item?.classList.toggle('selected', selectedPickerItems.has(id));
+  item?.classList.toggle("selected", selectedPickerItems.has(id));
   updatePickerSelectedCount();
 }
 
@@ -979,7 +1104,7 @@ async function handlePickerAdd(): Promise<void> {
 
   // Ensure notebook exists
   if (!currentNotebookId) {
-    const name = await showNotebookDialog('Create a notebook first');
+    const name = await showNotebookDialog("Create a notebook first");
     if (!name) return;
 
     const notebook = createNotebook(name);
@@ -990,33 +1115,37 @@ async function handlePickerAdd(): Promise<void> {
     elements.notebookSelect.value = notebook.id;
   }
 
-  const selectedItems = pickerItems.filter((item) => selectedPickerItems.has(item.id));
+  const selectedItems = pickerItems.filter((item) =>
+    selectedPickerItems.has(item.id)
+  );
   elements.pickerAdd.disabled = true;
-  elements.pickerAdd.textContent = 'Adding...';
+  elements.pickerAdd.textContent = "Adding...";
 
   let addedCount = 0;
 
   // Handle tab groups specially - need to get all tabs in the group
-  if (pickerType === 'tabGroup') {
+  if (pickerType === "tabGroup") {
     for (const groupItem of selectedItems) {
       try {
         const groupId = parseInt(groupItem.id, 10);
         const tabsInGroup = await chrome.tabs.query({ groupId });
 
         for (const tab of tabsInGroup) {
-          if (!tab.id || !tab.url || tab.url.startsWith('chrome://')) continue;
+          if (!tab.id || !tab.url || tab.url.startsWith("chrome://")) continue;
 
           try {
             // Send message directly to content script
-            const result = await chrome.tabs.sendMessage(tab.id, { action: 'extractContent' });
+            const result = await chrome.tabs.sendMessage(tab.id, {
+              action: "extractContent",
+            });
 
             if (result) {
               const source = createSource(
                 currentNotebookId!,
-                'tab',
+                "tab",
                 result.url || tab.url,
-                result.title || tab.title || 'Untitled',
-                result.markdown || ''
+                result.title || tab.title || "Untitled",
+                result.markdown || ""
               );
               await saveSource(source);
               addedCount++;
@@ -1026,9 +1155,9 @@ async function handlePickerAdd(): Promise<void> {
             // Fallback: add with just title/url
             const source = createSource(
               currentNotebookId!,
-              'tab',
+              "tab",
               tab.url,
-              tab.title || 'Untitled',
+              tab.title || "Untitled",
               `Content from: ${tab.url}`
             );
             await saveSource(source);
@@ -1045,17 +1174,17 @@ async function handlePickerAdd(): Promise<void> {
       try {
         // Extract content from the URL
         const response = await chrome.runtime.sendMessage({
-          type: 'EXTRACT_FROM_URL',
+          type: "EXTRACT_FROM_URL",
           payload: item.url,
         });
 
         if (response) {
           const source = createSource(
             currentNotebookId!,
-            pickerType || 'tab',
+            pickerType || "tab",
             response.url || item.url,
             response.title || item.title,
-            response.content || ''
+            response.content || ""
           );
           await saveSource(source);
           addedCount++;
@@ -1065,7 +1194,7 @@ async function handlePickerAdd(): Promise<void> {
         // If extraction fails, add with just the title/url
         const source = createSource(
           currentNotebookId!,
-          pickerType || 'tab',
+          pickerType || "tab",
           item.url,
           item.title,
           `Content from: ${item.url}`
@@ -1080,16 +1209,16 @@ async function handlePickerAdd(): Promise<void> {
   await loadSources();
 
   if (addedCount > 0) {
-    showNotification(`Added ${addedCount} source${addedCount > 1 ? 's' : ''}`);
+    showNotification(`Added ${addedCount} source${addedCount > 1 ? "s" : ""}`);
   }
 
   elements.pickerAdd.disabled = false;
-  elements.pickerAdd.textContent = 'Add Selected';
+  elements.pickerAdd.textContent = "Add Selected";
 }
 
 function getDomain(url: string): string {
   try {
-    return new URL(url).hostname.replace('www.', '');
+    return new URL(url).hostname.replace("www.", "");
   } catch {
     return url;
   }
@@ -1123,7 +1252,7 @@ async function loadChatHistory(): Promise<void> {
   // Fetch sources for citation rendering
   const sources = await getSourcesByNotebook(currentNotebookId);
 
-  elements.chatMessages.innerHTML = '';
+  elements.chatMessages.innerHTML = "";
 
   for (const message of messages) {
     appendChatMessage(message, sources);
@@ -1133,9 +1262,13 @@ async function loadChatHistory(): Promise<void> {
   elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 }
 
-function appendChatMessage(message: ChatMessage, sources: Source[] = [], isStreaming: boolean = false): HTMLDivElement {
+function appendChatMessage(
+  message: ChatMessage,
+  sources: Source[] = [],
+  isStreaming: boolean = false
+): HTMLDivElement {
   // Remove empty state if present
-  const emptyState = elements.chatMessages.querySelector('.empty-state');
+  const emptyState = elements.chatMessages.querySelector(".empty-state");
   if (emptyState) {
     emptyState.remove();
   }
@@ -1143,16 +1276,16 @@ function appendChatMessage(message: ChatMessage, sources: Source[] = [], isStrea
   const existingMessage = document.getElementById(`msg-${message.id}`);
   if (existingMessage) {
     // Update existing message
-    const contentEl = existingMessage.querySelector('.chat-message-content');
+    const contentEl = existingMessage.querySelector(".chat-message-content");
     if (contentEl) {
       contentEl.innerHTML = formatMarkdown(message.content);
     }
     // Update citations if present
     if (message.citations && message.citations.length > 0 && !isStreaming) {
-      let citationsEl = existingMessage.querySelector('.chat-citations');
+      let citationsEl = existingMessage.querySelector(".chat-citations");
       if (!citationsEl) {
-        citationsEl = document.createElement('div');
-        citationsEl.className = 'chat-citations';
+        citationsEl = document.createElement("div");
+        citationsEl.className = "chat-citations";
         existingMessage.appendChild(citationsEl);
       }
       citationsEl.innerHTML = renderCitations(message.citations, sources);
@@ -1160,21 +1293,25 @@ function appendChatMessage(message: ChatMessage, sources: Source[] = [], isStrea
     return existingMessage as HTMLDivElement;
   }
 
-  const div = document.createElement('div');
+  const div = document.createElement("div");
   div.id = `msg-${message.id}`;
   div.className = `chat-message ${message.role}`;
 
-  const roleLabel = message.role === 'user' ? 'You' : 'Assistant';
+  const roleLabel = message.role === "user" ? "You" : "Assistant";
   const timeStr = formatRelativeTime(message.timestamp);
 
   div.innerHTML = `
     <div class="chat-message-role">${roleLabel}</div>
     <div class="chat-message-content">${formatMarkdown(message.content)}</div>
-    ${message.citations && message.citations.length > 0 && !isStreaming ? `
+    ${
+      message.citations && message.citations.length > 0 && !isStreaming
+        ? `
       <div class="chat-citations">
         ${renderCitations(message.citations, sources)}
       </div>
-    ` : ''}
+    `
+        : ""
+    }
     <div class="chat-message-time">${timeStr}</div>
   `;
 
@@ -1184,24 +1321,87 @@ function appendChatMessage(message: ChatMessage, sources: Source[] = [], isStrea
   return div;
 }
 
+interface GroupedCitation {
+  sourceId: string;
+  sourceTitle: string;
+  sourceUrl: string;
+  excerpts: string[];
+}
+
 function renderCitations(citations: Citation[], sources: Source[]): string {
-  if (citations.length === 0) return '';
+  if (citations.length === 0) return "";
+
+  // Group citations by sourceId
+  const groupedMap = new Map<string, GroupedCitation>();
+
+  for (const citation of citations) {
+    const source = sources.find((s) => s.id === citation.sourceId);
+    const sourceUrl = source?.url || "";
+
+    if (groupedMap.has(citation.sourceId)) {
+      const group = groupedMap.get(citation.sourceId)!;
+      // Only add unique excerpts
+      if (!group.excerpts.includes(citation.excerpt)) {
+        group.excerpts.push(citation.excerpt);
+      }
+    } else {
+      groupedMap.set(citation.sourceId, {
+        sourceId: citation.sourceId,
+        sourceTitle: citation.sourceTitle,
+        sourceUrl,
+        excerpts: [citation.excerpt],
+      });
+    }
+  }
+
+  const grouped = Array.from(groupedMap.values());
 
   return `
-    <div class="chat-citations-title">Sources cited</div>
-    ${citations.map((citation, index) => {
-      const source = sources.find(s => s.id === citation.sourceId);
-      const sourceUrl = source?.url || '';
-      return `
-      <div class="citation-item" data-source-id="${citation.sourceId}" data-source-url="${escapeHtml(sourceUrl)}" data-excerpt="${escapeHtml(citation.excerpt)}">
-        <div class="citation-number">${index + 1}</div>
-        <div class="citation-content">
-          <div class="citation-source">${escapeHtml(citation.sourceTitle)}</div>
-          <div class="citation-excerpt">${escapeHtml(citation.excerpt)}</div>
-        </div>
-      </div>
-    `;
-    }).join('')}
+    <div class="chat-citations-title">Sources cited (${grouped.length} source${grouped.length !== 1 ? "s" : ""})</div>
+    ${grouped
+      .map((group, sourceIndex) => {
+        const sourceNumber = sourceIndex + 1;
+
+        if (group.excerpts.length === 1) {
+          // Single excerpt - show simple format
+          return `
+          <div class="citation-item" data-source-id="${group.sourceId}" data-source-url="${escapeHtml(group.sourceUrl)}" data-excerpt="${escapeHtml(group.excerpts[0])}">
+            <div class="citation-number">${sourceNumber}</div>
+            <div class="citation-content">
+              <div class="citation-source">${escapeHtml(group.sourceTitle)}</div>
+              <div class="citation-excerpt">${escapeHtml(group.excerpts[0])}</div>
+            </div>
+          </div>
+        `;
+        } else {
+          // Multiple excerpts - show grouped format with sub-labels
+          return `
+          <div class="citation-group">
+            <div class="citation-group-header">
+              <div class="citation-number">${sourceNumber}</div>
+              <div class="citation-source">${escapeHtml(group.sourceTitle)}</div>
+              <div class="citation-excerpt-count">${group.excerpts.length} references</div>
+            </div>
+            <div class="citation-group-excerpts">
+              ${group.excerpts
+                .map((excerpt, excerptIndex) => {
+                  const subLabel = String.fromCharCode(97 + excerptIndex); // a, b, c, ...
+                  return `
+                <div class="citation-item citation-sub-item" data-source-id="${group.sourceId}" data-source-url="${escapeHtml(group.sourceUrl)}" data-excerpt="${escapeHtml(excerpt)}">
+                  <div class="citation-number citation-sub-number">${sourceNumber}${subLabel}</div>
+                  <div class="citation-content">
+                    <div class="citation-excerpt">${escapeHtml(excerpt)}</div>
+                  </div>
+                </div>
+              `;
+                })
+                .join("")}
+            </div>
+          </div>
+        `;
+        }
+      })
+      .join("")}
   `;
 }
 
@@ -1212,14 +1412,14 @@ function createTextFragmentUrl(baseUrl: string, excerpt: string): string {
   if (text.length > 100) {
     // Try to cut at a word boundary
     text = text.substring(0, 100);
-    const lastSpace = text.lastIndexOf(' ');
+    const lastSpace = text.lastIndexOf(" ");
     if (lastSpace > 50) {
       text = text.substring(0, lastSpace);
     }
   }
 
   // Remove any existing fragment
-  const urlWithoutFragment = baseUrl.split('#')[0];
+  const urlWithoutFragment = baseUrl.split("#")[0];
 
   // Encode the text for URL
   const encodedText = encodeURIComponent(text);
@@ -1229,7 +1429,7 @@ function createTextFragmentUrl(baseUrl: string, excerpt: string): string {
 
 function handleCitationClick(event: Event): void {
   const target = event.target as HTMLElement;
-  const citationItem = target.closest('.citation-item') as HTMLElement;
+  const citationItem = target.closest(".citation-item") as HTMLElement;
 
   if (!citationItem) return;
 
@@ -1237,12 +1437,12 @@ function handleCitationClick(event: Event): void {
   const excerpt = citationItem.dataset.excerpt;
 
   if (!sourceUrl) {
-    showNotification('Source URL not available');
+    showNotification("Source URL not available");
     return;
   }
 
   // Skip if excerpt is generic
-  if (!excerpt || excerpt === 'Referenced in response') {
+  if (!excerpt || excerpt === "Referenced in response") {
     // Just open the URL without text fragment
     chrome.tabs.create({ url: sourceUrl });
     return;
@@ -1259,7 +1459,7 @@ function formatRelativeTime(timestamp: number): string {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (minutes < 1) return 'Just now';
+  if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   return `${days}d ago`;
@@ -1271,21 +1471,21 @@ async function handleQuery(): Promise<void> {
 
   const sources = await getSourcesByNotebook(currentNotebookId);
   if (sources.length === 0) {
-    showNotification('Add some sources first');
+    showNotification("Add some sources first");
     return;
   }
 
-  elements.queryInput.value = '';
+  elements.queryInput.value = "";
   elements.queryBtn.disabled = true;
-  elements.chatStatus.textContent = 'Generating response...';
+  elements.chatStatus.textContent = "Generating response...";
 
   // Save user message
-  const userMessage = createChatMessage(currentNotebookId, 'user', query);
+  const userMessage = createChatMessage(currentNotebookId, "user", query);
   await saveChatMessage(userMessage);
   appendChatMessage(userMessage, sources);
 
   // Check cache first
-  const sourceIds = sources.map(s => s.id);
+  const sourceIds = sources.map((s) => s.id);
   const cacheKey = createCacheKey(query, sourceIds);
   const cached = await getCachedResponse(cacheKey);
 
@@ -1293,26 +1493,34 @@ async function handleQuery(): Promise<void> {
     // Use cached response when offline
     const assistantMessage = createChatMessage(
       currentNotebookId,
-      'assistant',
+      "assistant",
       cached.response,
       cached.citations
     );
     await saveChatMessage(assistantMessage);
     appendChatMessage(assistantMessage, sources);
     elements.queryBtn.disabled = false;
-    elements.chatStatus.innerHTML = 'Response loaded from cache <span class="offline-indicator">Offline</span>';
+    elements.chatStatus.innerHTML =
+      'Response loaded from cache <span class="offline-indicator">Offline</span>';
     return;
   }
 
   // Create placeholder for assistant message
-  const assistantMessage = createChatMessage(currentNotebookId, 'assistant', '');
+  const assistantMessage = createChatMessage(
+    currentNotebookId,
+    "assistant",
+    ""
+  );
   const messageDiv = appendChatMessage(assistantMessage, sources, true);
 
   try {
     const stream = streamChat(sources, query);
-    let fullContent = '';
+    let fullContent = "";
     let citations: Citation[] = [];
-    let streamResult: IteratorResult<string, { content: string; citations: Citation[] }>;
+    let streamResult: IteratorResult<
+      string,
+      { content: string; citations: Citation[] }
+    >;
 
     // Consume the stream
     while (true) {
@@ -1326,10 +1534,10 @@ async function handleQuery(): Promise<void> {
 
       fullContent += streamResult.value;
       // Update message content as it streams
-      const contentEl = messageDiv.querySelector('.chat-message-content');
+      const contentEl = messageDiv.querySelector(".chat-message-content");
       if (contentEl) {
         // Remove citations section from displayed content during streaming
-        const cleanContent = fullContent.replace(/---CITATIONS---[\s\S]*$/, '');
+        const cleanContent = fullContent.replace(/---CITATIONS---[\s\S]*$/, "");
         contentEl.innerHTML = formatMarkdown(cleanContent);
       }
       elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
@@ -1341,17 +1549,20 @@ async function handleQuery(): Promise<void> {
     await saveChatMessage(assistantMessage);
 
     // Re-render with citations
-    const contentEl = messageDiv.querySelector('.chat-message-content');
+    const contentEl = messageDiv.querySelector(".chat-message-content");
     if (contentEl) {
       contentEl.innerHTML = formatMarkdown(fullContent);
     }
 
     // Add citations if present
     if (citations.length > 0) {
-      const citationsDiv = document.createElement('div');
-      citationsDiv.className = 'chat-citations';
+      const citationsDiv = document.createElement("div");
+      citationsDiv.className = "chat-citations";
       citationsDiv.innerHTML = renderCitations(citations, sources);
-      messageDiv.insertBefore(citationsDiv, messageDiv.querySelector('.chat-message-time'));
+      messageDiv.insertBefore(
+        citationsDiv,
+        messageDiv.querySelector(".chat-message-time")
+      );
     }
 
     // Cache the response for offline use
@@ -1364,10 +1575,12 @@ async function handleQuery(): Promise<void> {
     );
     await saveCachedResponse(cachedResponse);
 
-    elements.chatStatus.textContent = 'Ask questions to synthesize information from your sources.';
+    elements.chatStatus.textContent =
+      "Ask questions to synthesize information from your sources.";
   } catch (error) {
-    console.error('Query failed:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Query failed:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
 
     // Check if we have a cached response to fall back to
     if (cached) {
@@ -1375,30 +1588,35 @@ async function handleQuery(): Promise<void> {
       assistantMessage.citations = cached.citations;
       await saveChatMessage(assistantMessage);
 
-      const contentEl = messageDiv.querySelector('.chat-message-content');
+      const contentEl = messageDiv.querySelector(".chat-message-content");
       if (contentEl) {
         contentEl.innerHTML = formatMarkdown(cached.response);
       }
 
       if (cached.citations.length > 0) {
-        const citationsDiv = document.createElement('div');
-        citationsDiv.className = 'chat-citations';
+        const citationsDiv = document.createElement("div");
+        citationsDiv.className = "chat-citations";
         citationsDiv.innerHTML = renderCitations(cached.citations, sources);
-        messageDiv.insertBefore(citationsDiv, messageDiv.querySelector('.chat-message-time'));
+        messageDiv.insertBefore(
+          citationsDiv,
+          messageDiv.querySelector(".chat-message-time")
+        );
       }
 
-      elements.chatStatus.innerHTML = 'Response loaded from cache (API error)';
-      showNotification('Using cached response due to API error');
+      elements.chatStatus.innerHTML = "Response loaded from cache (API error)";
+      showNotification("Using cached response due to API error");
     } else {
       // Show error in the message
       assistantMessage.content = `Failed to generate response: ${errorMessage}\n\nPlease check your API key in Settings.`;
       await saveChatMessage(assistantMessage);
 
-      const contentEl = messageDiv.querySelector('.chat-message-content');
+      const contentEl = messageDiv.querySelector(".chat-message-content");
       if (contentEl) {
-        contentEl.innerHTML = `<p class="error">${escapeHtml(assistantMessage.content)}</p>`;
+        contentEl.innerHTML = `<p class="error">${escapeHtml(
+          assistantMessage.content
+        )}</p>`;
       }
-      elements.chatStatus.textContent = 'Error occurred. Please try again.';
+      elements.chatStatus.textContent = "Error occurred. Please try again.";
     }
   } finally {
     elements.queryBtn.disabled = false;
@@ -1409,43 +1627,45 @@ async function handleClearChat(): Promise<void> {
   if (!currentNotebookId) return;
 
   const confirmed = await showConfirmDialog(
-    'Clear Chat History',
-    'Are you sure you want to clear all chat messages for this notebook?'
+    "Clear Chat History",
+    "Are you sure you want to clear all chat messages for this notebook?"
   );
 
   if (!confirmed) return;
 
   await clearChatHistory(currentNotebookId);
   await loadChatHistory();
-  showNotification('Chat history cleared');
+  showNotification("Chat history cleared");
 }
 
 // ============================================================================
 // Transformations
 // ============================================================================
 
-async function handleTransform(type: 'podcast' | 'quiz' | 'takeaways' | 'email'): Promise<void> {
+async function handleTransform(
+  type: "podcast" | "quiz" | "takeaways" | "email"
+): Promise<void> {
   if (!currentNotebookId) {
-    showNotification('Please select a notebook first');
+    showNotification("Please select a notebook first");
     return;
   }
 
   const sources = await getSourcesByNotebook(currentNotebookId);
   if (sources.length === 0) {
-    showNotification('Add some sources first');
+    showNotification("Add some sources first");
     return;
   }
 
   const titles: Record<string, string> = {
-    podcast: 'Podcast Script',
-    quiz: 'Study Quiz',
-    takeaways: 'Key Takeaways',
-    email: 'Email Summary',
+    podcast: "Podcast Script",
+    quiz: "Study Quiz",
+    takeaways: "Key Takeaways",
+    email: "Email Summary",
   };
 
-  elements.transformResult.classList.remove('hidden');
+  elements.transformResult.classList.remove("hidden");
   elements.transformResultTitle.textContent = titles[type];
-  elements.transformContent.innerHTML = '<em>Generating...</em>';
+  elements.transformContent.innerHTML = "<em>Generating...</em>";
 
   // Disable buttons during generation
   const buttons = [
@@ -1460,24 +1680,25 @@ async function handleTransform(type: 'podcast' | 'quiz' | 'takeaways' | 'email')
     let result: string;
 
     switch (type) {
-      case 'podcast':
+      case "podcast":
         result = await generatePodcastScript(sources, 5);
         break;
-      case 'quiz':
+      case "quiz":
         result = await generateQuiz(sources, 5);
         break;
-      case 'takeaways':
+      case "takeaways":
         result = await generateKeyTakeaways(sources);
         break;
-      case 'email':
+      case "email":
         result = await generateEmailSummary(sources);
         break;
     }
 
     elements.transformContent.innerHTML = formatMarkdown(result);
   } catch (error) {
-    console.error('Transform failed:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Transform failed:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     elements.transformContent.innerHTML = `
       <p class="error">Failed to generate: ${escapeHtml(errorMessage)}</p>
       <p>Please check your API key in Settings.</p>
@@ -1517,14 +1738,14 @@ function updateSettingsUI(): void {
 }
 
 async function handlePermissionToggle(
-  permission: 'tabs' | 'tabGroups' | 'bookmarks' | 'history'
+  permission: "tabs" | "tabGroups" | "bookmarks" | "history"
 ): Promise<void> {
   // Map permission names to element property names
   const elementMap: Record<string, keyof typeof elements> = {
-    tabs: 'permTabs',
-    tabGroups: 'permTabGroups',
-    bookmarks: 'permBookmarks',
-    history: 'permHistory',
+    tabs: "permTabs",
+    tabGroups: "permTabGroups",
+    bookmarks: "permBookmarks",
+    history: "permHistory",
   };
 
   const checkbox = elements[elementMap[permission]] as HTMLInputElement;
@@ -1540,35 +1761,33 @@ async function handlePermissionToggle(
 }
 
 async function handleProviderChange(): Promise<void> {
-  const provider = elements.aiProvider.value as AISettings['provider'];
+  const provider = elements.aiProvider.value as AISettings["provider"];
 
   const modelOptions: Record<string, { value: string; label: string }[]> = {
     anthropic: [
-      { value: 'claude-sonnet-4-5-20250514', label: 'Claude 4.5 Sonnet' },
-      { value: 'claude-opus-4-5-20250514', label: 'Claude 4.5 Opus' },
-      { value: 'claude-haiku-4-5-20250514', label: 'Claude 4.5 Haiku' },
+      { value: "claude-sonnet-4-5-20250514", label: "Claude 4.5 Sonnet" },
+      { value: "claude-opus-4-5-20250514", label: "Claude 4.5 Opus" },
+      { value: "claude-haiku-4-5-20250514", label: "Claude 4.5 Haiku" },
     ],
     openai: [
-      { value: 'gpt-5', label: 'GPT-5' },
-      { value: 'gpt-5-mini', label: 'GPT-5 Mini' },
-      { value: 'gpt-5.1-instant', label: 'GPT-5.1 Instant' },
+      { value: "gpt-5", label: "GPT-5" },
+      { value: "gpt-5-mini", label: "GPT-5 Mini" },
+      { value: "gpt-5.1-instant", label: "GPT-5.1 Instant" },
     ],
     google: [
-      { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-      { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-      { value: 'gemini-3.0-pro-preview', label: 'Gemini 3 Pro (Preview)' },
-      { value: 'gemini-3.0-flash-preview', label: 'Gemini 3 Flash (Preview)' },
+      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+      { value: "gemini-3-pro-preview", label: "Gemini 3 Pro (Preview)" },
+      { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (Preview)" },
     ],
-    chrome: [
-      { value: 'built-in', label: 'Chrome Built-in AI' },
-    ],
+    chrome: [{ value: "built-in", label: "Chrome Built-in AI" }],
   };
 
   const models = modelOptions[provider] || [];
-  elements.aiModel.innerHTML = '';
+  elements.aiModel.innerHTML = "";
 
   for (const model of models) {
-    const option = document.createElement('option');
+    const option = document.createElement("option");
     option.value = model.value;
     option.textContent = model.label;
     elements.aiModel.appendChild(option);
@@ -1576,12 +1795,12 @@ async function handleProviderChange(): Promise<void> {
 
   const apiKeyRow = elements.apiKey.parentElement;
   if (apiKeyRow) {
-    apiKeyRow.style.display = provider === 'chrome' ? 'none' : 'flex';
+    apiKeyRow.style.display = provider === "chrome" ? "none" : "flex";
   }
 
   // Load saved API key for this provider
   if (aiSettings) {
-    const savedKey = aiSettings.apiKeys[provider] || '';
+    const savedKey = aiSettings.apiKeys[provider] || "";
     elements.apiKey.value = savedKey;
   }
 
@@ -1606,8 +1825,8 @@ async function handleTestApi(): Promise<void> {
   const provider = elements.aiProvider.value;
   const apiKey = elements.apiKey.value.trim();
 
-  if (!apiKey && provider !== 'chrome') {
-    showNotification('Please enter an API key');
+  if (!apiKey && provider !== "chrome") {
+    showNotification("Please enter an API key");
     return;
   }
 
@@ -1615,21 +1834,22 @@ async function handleTestApi(): Promise<void> {
   await handleApiKeyChange();
 
   elements.testApiBtn.disabled = true;
-  elements.testApiBtn.textContent = 'Testing...';
+  elements.testApiBtn.textContent = "Testing...";
 
   try {
     const result = await testConnection();
     if (result.success) {
-      showNotification('Connection successful!');
+      showNotification("Connection successful!");
     } else {
       showNotification(`Connection failed: ${result.error}`, 4000);
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     showNotification(`Connection failed: ${errorMessage}`, 4000);
   } finally {
     elements.testApiBtn.disabled = false;
-    elements.testApiBtn.textContent = 'Test';
+    elements.testApiBtn.textContent = "Test";
   }
 }
 
@@ -1638,7 +1858,7 @@ async function handleTestApi(): Promise<void> {
 // ============================================================================
 
 function escapeHtml(text: string): string {
-  const div = document.createElement('div');
+  const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
 }
@@ -1646,24 +1866,27 @@ function escapeHtml(text: string): string {
 function formatMarkdown(text: string): string {
   // Basic markdown formatting
   return text
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-    .replace(/`(.*?)`/g, '<code>$1</code>')
-    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-    .replace(/^- (.*$)/gm, '<li>$1</li>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br>');
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
+    .replace(/`(.*?)`/g, "<code>$1</code>")
+    .replace(/^### (.*$)/gm, "<h3>$1</h3>")
+    .replace(/^## (.*$)/gm, "<h2>$1</h2>")
+    .replace(/^# (.*$)/gm, "<h1>$1</h1>")
+    .replace(/^- (.*$)/gm, "<li>$1</li>")
+    .replace(/\n\n/g, "</p><p>")
+    .replace(/\n/g, "<br>");
 }
 
 function copyToClipboard(text: string): void {
-  navigator.clipboard.writeText(text).then(() => {
-    showNotification('Copied to clipboard');
-  }).catch((err) => {
-    console.error('Failed to copy:', err);
-  });
+  navigator.clipboard
+    .writeText(text)
+    .then(() => {
+      showNotification("Copied to clipboard");
+    })
+    .catch((err) => {
+      console.error("Failed to copy:", err);
+    });
 }
 
 // ============================================================================
@@ -1673,16 +1896,18 @@ function copyToClipboard(text: string): void {
 function showNotification(message: string, duration: number = 2000): void {
   if (!elements.notification) return;
   elements.notification.textContent = message;
-  elements.notification.classList.add('show');
+  elements.notification.classList.add("show");
   setTimeout(() => {
-    elements.notification.classList.remove('show');
+    elements.notification.classList.remove("show");
   }, duration);
 }
 
-function showNotebookDialog(title: string = 'New Notebook'): Promise<string | null> {
+function showNotebookDialog(
+  title: string = "New Notebook"
+): Promise<string | null> {
   return new Promise((resolve) => {
     elements.notebookDialogTitle.textContent = title;
-    elements.notebookNameInput.value = '';
+    elements.notebookNameInput.value = "";
     elements.notebookDialog.showModal();
 
     const handleCancel = () => {
@@ -1699,21 +1924,24 @@ function showNotebookDialog(title: string = 'New Notebook'): Promise<string | nu
     };
 
     const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter') {
+      if (e.key === "Enter") {
         e.preventDefault();
         handleConfirm();
       }
     };
 
     const cleanup = () => {
-      elements.notebookDialogCancel.removeEventListener('click', handleCancel);
-      elements.notebookDialogConfirm.removeEventListener('click', handleConfirm);
-      elements.notebookNameInput.removeEventListener('keydown', handleKeydown);
+      elements.notebookDialogCancel.removeEventListener("click", handleCancel);
+      elements.notebookDialogConfirm.removeEventListener(
+        "click",
+        handleConfirm
+      );
+      elements.notebookNameInput.removeEventListener("keydown", handleKeydown);
     };
 
-    elements.notebookDialogCancel.addEventListener('click', handleCancel);
-    elements.notebookDialogConfirm.addEventListener('click', handleConfirm);
-    elements.notebookNameInput.addEventListener('keydown', handleKeydown);
+    elements.notebookDialogCancel.addEventListener("click", handleCancel);
+    elements.notebookDialogConfirm.addEventListener("click", handleConfirm);
+    elements.notebookNameInput.addEventListener("keydown", handleKeydown);
     elements.notebookNameInput.focus();
   });
 }
@@ -1737,12 +1965,12 @@ function showConfirmDialog(title: string, message: string): Promise<boolean> {
     };
 
     const cleanup = () => {
-      elements.confirmDialogCancel.removeEventListener('click', handleCancel);
-      elements.confirmDialogConfirm.removeEventListener('click', handleConfirm);
+      elements.confirmDialogCancel.removeEventListener("click", handleCancel);
+      elements.confirmDialogConfirm.removeEventListener("click", handleConfirm);
     };
 
-    elements.confirmDialogCancel.addEventListener('click', handleCancel);
-    elements.confirmDialogConfirm.addEventListener('click', handleConfirm);
+    elements.confirmDialogCancel.addEventListener("click", handleCancel);
+    elements.confirmDialogConfirm.addEventListener("click", handleConfirm);
   });
 }
 
