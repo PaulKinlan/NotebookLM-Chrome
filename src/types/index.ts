@@ -76,6 +76,11 @@ export interface AISettings {
   apiKeys: Record<string, string>;
   temperature?: number;
   maxTokens?: number;
+  /**
+   * Custom API endpoint URL for the AI provider.
+   * When set, this overrides the default endpoint for the selected provider.
+   * Expected format is a fully qualified URL (e.g., "https://api.example.com/v1").
+   */
   baseURL?: string;
 }
 
