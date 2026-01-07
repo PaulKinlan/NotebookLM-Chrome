@@ -368,6 +368,507 @@ Make it engaging and educational, covering the key points from the sources.`,
   return result.text;
 }
 
+export async function generateSlideDeck(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates slide deck outlines.
+Create a professional presentation outline with slide titles and bullet points.
+Each slide should have a clear title and 3-5 key points.`,
+    prompt: `Create a slide deck outline based on these sources:
+
+${buildSourceContext(sources)}
+
+Format as:
+## Slide 1: [Title]
+- Key point 1
+- Key point 2
+- Key point 3
+
+## Slide 2: [Title]
+...and so on.
+
+Include an introduction slide, main content slides, and a conclusion slide.`,
+  });
+
+  return result.text;
+}
+
+export async function generateReport(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates formal reports.
+Write a well-structured report with clear sections and professional language.
+Include an executive summary, main body sections, and conclusions.`,
+    prompt: `Create a formal report based on these sources:
+
+${buildSourceContext(sources)}
+
+Format with:
+# Executive Summary
+Brief overview of key findings
+
+# Introduction
+Background and context
+
+# Main Findings
+Detailed analysis organized by topic
+
+# Conclusions
+Summary and recommendations`,
+  });
+
+  return result.text;
+}
+
+export async function generateDataTable(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that extracts and organizes data into tables.
+Identify key data points, facts, statistics, or comparisons from the sources.
+Present them in a clear tabular format using markdown tables.`,
+    prompt: `Extract key data and facts from these sources and organize them into tables:
+
+${buildSourceContext(sources)}
+
+Create one or more markdown tables that capture the most important data points.
+Use format:
+| Column 1 | Column 2 | Column 3 |
+|----------|----------|----------|
+| Data     | Data     | Data     |
+
+Include relevant categories, metrics, or comparisons found in the sources.`,
+  });
+
+  return result.text;
+}
+
+export async function generateMindMap(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates hierarchical mind maps.
+Organize concepts in a tree structure showing relationships between ideas.
+Use indentation to show hierarchy and connections.`,
+    prompt: `Create a mind map structure based on these sources:
+
+${buildSourceContext(sources)}
+
+Format as a hierarchical text structure:
+# Central Topic
+## Main Branch 1
+### Sub-topic 1.1
+### Sub-topic 1.2
+## Main Branch 2
+### Sub-topic 2.1
+#### Detail 2.1.1
+...
+
+Show the relationships and hierarchy of concepts from the sources.`,
+  });
+
+  return result.text;
+}
+
+export async function generateFlashcards(sources: Source[], cardCount: number = 10): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates study flashcards.
+Create clear question-and-answer pairs that test understanding of key concepts.
+Questions should be specific and answers should be concise but complete.`,
+    prompt: `Create ${cardCount} flashcards based on these sources:
+
+${buildSourceContext(sources)}
+
+Format each flashcard as:
+**Q1:** [Question]
+**A1:** [Answer]
+
+**Q2:** [Question]
+**A2:** [Answer]
+
+...and so on. Focus on the most important concepts and facts.`,
+  });
+
+  return result.text;
+}
+
+export async function generateTimeline(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates chronological timelines.
+Extract events, dates, and milestones from the sources.
+Present them in chronological order with clear descriptions.`,
+    prompt: `Create a timeline based on events and dates found in these sources:
+
+${buildSourceContext(sources)}
+
+Format as:
+## Timeline
+
+**[Date/Period 1]** - Event description
+- Key details
+
+**[Date/Period 2]** - Event description
+- Key details
+
+...
+
+If exact dates aren't available, use relative timing (e.g., "First", "Then", "Later").`,
+  });
+
+  return result.text;
+}
+
+export async function generateGlossary(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates glossaries.
+Identify key terms, concepts, and jargon from the sources.
+Provide clear, concise definitions for each term.`,
+    prompt: `Create a glossary of key terms from these sources:
+
+${buildSourceContext(sources)}
+
+Format as an alphabetically organized list:
+## Glossary
+
+**Term 1**: Definition of the term in clear, accessible language.
+
+**Term 2**: Definition...
+
+Include technical terms, acronyms, and important concepts.`,
+  });
+
+  return result.text;
+}
+
+export async function generateComparison(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates comparison charts.
+Identify items, concepts, or options that can be compared from the sources.
+Present a balanced side-by-side comparison with relevant criteria.`,
+    prompt: `Create a comparison chart based on these sources:
+
+${buildSourceContext(sources)}
+
+Format as a markdown table comparing key items:
+| Criteria | Option A | Option B | Option C |
+|----------|----------|----------|----------|
+| Feature 1| Detail   | Detail   | Detail   |
+| Feature 2| Detail   | Detail   | Detail   |
+
+Include a summary of key differences and similarities after the table.`,
+  });
+
+  return result.text;
+}
+
+export async function generateFAQ(sources: Source[], questionCount: number = 10): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates FAQ documents.
+Anticipate common questions readers might have about the topics.
+Provide clear, helpful answers based on the source content.`,
+    prompt: `Create a FAQ with ${questionCount} questions based on these sources:
+
+${buildSourceContext(sources)}
+
+Format as:
+## Frequently Asked Questions
+
+### Q: [Question 1]?
+**A:** [Detailed answer based on the sources]
+
+### Q: [Question 2]?
+**A:** [Detailed answer based on the sources]
+
+...
+
+Cover the most important and likely questions about the topics.`,
+  });
+
+  return result.text;
+}
+
+export async function generateActionItems(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that extracts action items and tasks.
+Identify actionable steps, recommendations, and to-dos from the sources.
+Organize them by priority or category.`,
+    prompt: `Extract action items and tasks from these sources:
+
+${buildSourceContext(sources)}
+
+Format as:
+## Action Items
+
+### High Priority
+- [ ] Action item 1
+- [ ] Action item 2
+
+### Medium Priority
+- [ ] Action item 3
+- [ ] Action item 4
+
+### Low Priority / Future
+- [ ] Action item 5
+
+Include any deadlines, owners, or dependencies mentioned in the sources.`,
+  });
+
+  return result.text;
+}
+
+export async function generateExecutiveBrief(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates executive briefs.
+Write a concise one-page summary for busy decision-makers.
+Focus on key insights, implications, and recommended actions.`,
+    prompt: `Create an executive brief (one-page summary) based on these sources:
+
+${buildSourceContext(sources)}
+
+Format as:
+## Executive Brief
+
+### Situation
+Brief context (2-3 sentences)
+
+### Key Findings
+- Finding 1
+- Finding 2
+- Finding 3
+
+### Implications
+What this means for the reader
+
+### Recommendations
+Suggested next steps
+
+Keep it concise and actionable.`,
+  });
+
+  return result.text;
+}
+
+export async function generateStudyGuide(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates comprehensive study guides.
+Organize material for effective learning and review.
+Include summaries, key concepts, and review questions.`,
+    prompt: `Create a study guide based on these sources:
+
+${buildSourceContext(sources)}
+
+Format as:
+## Study Guide
+
+### Overview
+Brief introduction to the topics
+
+### Key Concepts
+Important ideas and definitions to understand
+
+### Main Topics
+
+#### Topic 1
+- Key points
+- Important details
+
+#### Topic 2
+- Key points
+- Important details
+
+### Review Questions
+Questions to test understanding
+
+### Summary
+Concise recap of the most important points`,
+  });
+
+  return result.text;
+}
+
+export async function generateProsCons(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates balanced pros and cons analyses.
+Identify advantages and disadvantages of topics, decisions, or options.
+Present a fair, objective analysis.`,
+    prompt: `Create a pros and cons analysis based on these sources:
+
+${buildSourceContext(sources)}
+
+Format as:
+## Pros & Cons Analysis
+
+### Topic/Option: [Main subject]
+
+#### Pros (Advantages)
+- **Pro 1**: Explanation
+- **Pro 2**: Explanation
+- **Pro 3**: Explanation
+
+#### Cons (Disadvantages)
+- **Con 1**: Explanation
+- **Con 2**: Explanation
+- **Con 3**: Explanation
+
+### Bottom Line
+Brief balanced conclusion
+
+If multiple topics can be analyzed, create separate sections for each.`,
+  });
+
+  return result.text;
+}
+
+export async function generateCitationList(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates formatted citation lists.
+Generate properly formatted references and bibliography entries.
+Include all available source information.`,
+    prompt: `Create a citation list for these sources:
+
+${buildSourceContext(sources)}
+
+Format as:
+## References
+
+1. [Author if available]. "[Title]." [Source/Website]. [URL]. Accessed [Date if available].
+
+2. ...
+
+Also provide:
+- APA format citations
+- MLA format citations
+- Chicago format citations
+
+Use the actual titles and URLs from the sources provided.`,
+  });
+
+  return result.text;
+}
+
+export async function generateOutline(sources: Source[]): Promise<string> {
+  const model = await getModel();
+  if (!model) {
+    throw new Error('AI provider not configured. Please add your API key in settings.');
+  }
+
+  const result = await generateText({
+    model,
+    system: `You are a helpful AI assistant that creates detailed outlines.
+Organize content into a hierarchical document structure.
+Use standard outline formatting with clear sections and subsections.`,
+    prompt: `Create a detailed outline based on these sources:
+
+${buildSourceContext(sources)}
+
+Format as:
+# Main Topic
+
+## I. Introduction
+   A. Background
+   B. Purpose
+   C. Scope
+
+## II. First Major Section
+   A. Subtopic 1
+      1. Detail
+      2. Detail
+   B. Subtopic 2
+      1. Detail
+      2. Detail
+
+## III. Second Major Section
+   A. Subtopic 1
+   B. Subtopic 2
+
+## IV. Conclusion
+   A. Summary
+   B. Key takeaways
+
+Create a comprehensive outline that captures all major themes and details.`,
+  });
+
+  return result.text;
+}
+
 // ============================================================================
 // Test Connection
 // ============================================================================
