@@ -39,6 +39,8 @@ import {
   setApiKey,
   setProvider,
   setModel,
+  setTemperature,
+  setMaxTokens,
 } from "../lib/settings.ts";
 
 // ============================================================================
@@ -145,6 +147,10 @@ const elements = {
   aiModel: document.getElementById("ai-model") as HTMLSelectElement,
   apiKey: document.getElementById("api-key") as HTMLInputElement,
   testApiBtn: document.getElementById("test-api") as HTMLButtonElement,
+  apiKeyLink: document.getElementById("api-key-link") as HTMLAnchorElement,
+  aiTemperature: document.getElementById("ai-temperature") as HTMLInputElement,
+  temperatureValue: document.getElementById("temperature-value") as HTMLSpanElement,
+  aiMaxTokens: document.getElementById("ai-max-tokens") as HTMLInputElement,
   permTabs: document.getElementById("perm-tabs") as HTMLInputElement,
   permTabGroups: document.getElementById("perm-tab-groups") as HTMLInputElement,
   permBookmarks: document.getElementById("perm-bookmarks") as HTMLInputElement,
@@ -408,6 +414,8 @@ function setupEventListeners(): void {
   elements.aiModel.addEventListener("change", handleModelChange);
   elements.apiKey.addEventListener("change", handleApiKeyChange);
   elements.testApiBtn.addEventListener("click", handleTestApi);
+  elements.aiTemperature.addEventListener("input", handleTemperatureChange);
+  elements.aiMaxTokens.addEventListener("change", handleMaxTokensChange);
 
   // FAB
   elements.fab.addEventListener("click", () => switchTab("add"));
@@ -1735,6 +1743,17 @@ function updateSettingsUI(): void {
   if (apiKey) {
     elements.apiKey.value = apiKey;
   }
+
+  // Load advanced settings
+  const temperature = aiSettings.temperature ?? 1;
+  elements.aiTemperature.value = temperature.toString();
+  elements.temperatureValue.textContent = temperature.toFixed(1);
+
+  if (aiSettings.maxTokens) {
+    elements.aiMaxTokens.value = aiSettings.maxTokens.toString();
+  } else {
+    elements.aiMaxTokens.value = "";
+  }
 }
 
 async function handlePermissionToggle(
@@ -1794,8 +1813,43 @@ async function handleProviderChange(): Promise<void> {
   }
 
   const apiKeyRow = elements.apiKey.parentElement;
+  const apiKeyLabel = apiKeyRow?.previousElementSibling as HTMLElement;
   if (apiKeyRow) {
     apiKeyRow.style.display = provider === "chrome" ? "none" : "flex";
+  }
+  if (apiKeyLabel) {
+    apiKeyLabel.style.display = provider === "chrome" ? "none" : "block";
+  }
+
+  // Update API key link based on provider
+  const apiKeyLinks: Record<string, { url: string; text: string }> = {
+    anthropic: {
+      url: "https://console.anthropic.com/settings/keys",
+      text: "Get a Claude API key",
+    },
+    openai: {
+      url: "https://platform.openai.com/api-keys",
+      text: "Get an OpenAI API key",
+    },
+    google: {
+      url: "https://aistudio.google.com/apikey",
+      text: "Get a Gemini API key",
+    },
+  };
+
+  const linkInfo = apiKeyLinks[provider];
+  if (linkInfo) {
+    elements.apiKeyLink.href = linkInfo.url;
+    elements.apiKeyLink.textContent = linkInfo.text;
+    elements.apiKeyLink.style.display = "inline-block";
+  } else {
+    elements.apiKeyLink.style.display = "none";
+  }
+
+  // Hide advanced settings for Chrome built-in AI
+  const advancedSettings = document.querySelector(".advanced-settings") as HTMLDetailsElement;
+  if (advancedSettings) {
+    advancedSettings.style.display = provider === "chrome" ? "none" : "block";
   }
 
   // Load saved API key for this provider
@@ -1851,6 +1905,19 @@ async function handleTestApi(): Promise<void> {
     elements.testApiBtn.disabled = false;
     elements.testApiBtn.textContent = "Test";
   }
+}
+
+function handleTemperatureChange(): void {
+  const value = parseFloat(elements.aiTemperature.value);
+  elements.temperatureValue.textContent = value.toFixed(1);
+  setTemperature(value);
+}
+
+async function handleMaxTokensChange(): Promise<void> {
+  const value = elements.aiMaxTokens.value.trim();
+  const maxTokens = value ? parseInt(value, 10) : undefined;
+  await setMaxTokens(maxTokens);
+  aiSettings = await getAISettings();
 }
 
 // ============================================================================
