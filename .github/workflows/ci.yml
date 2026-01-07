@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: foliolm-extension-${{ github.sha }}
+          path: dist/
+          retention-days: 30
+
+  release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Package extension
+        run: npm run package
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+
+          # Generate release notes
+          NOTES=$(cat <<EOF
+          ## FolioLM v${VERSION}
+
+          ### Installation
+
+          See [INSTALL.md](https://github.com/PaulKinlan/NotebookLM-Chrome/blob/main/INSTALL.md) for detailed instructions.
+
+          ### Quick Install (ZIP)
+
+          1. Download \`foliolm-extension-v${VERSION}.zip\`
+          2. Extract to a folder
+          3. Open \`chrome://extensions/\`
+          4. Enable "Developer mode"
+          5. Click "Load unpacked" and select the extracted folder
+
+          ### What's Changed
+
+          Full Changelog: https://github.com/PaulKinlan/NotebookLM-Chrome/commits/v${VERSION}
+          EOF
+          )
+
+          # Ensure packaged ZIP file(s) exist before creating the release
+          ZIP_FILES=(foliolm-extension-*.zip)
+          if [ ${#ZIP_FILES[@]} -eq 0 ]; then
+            echo "Error: No foliolm-extension-*.zip files found. Ensure 'npm run package' completed successfully."
+            exit 1
+          fi
+
+          # Create release with files
+          gh release create "${GITHUB_REF#refs/tags/}" \
+            --title "FolioLM v${VERSION}" \
+            --notes "$NOTES" \
+            "${ZIP_FILES[@]}"
