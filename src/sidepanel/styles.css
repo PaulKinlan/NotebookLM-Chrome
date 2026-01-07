@@ -973,10 +973,15 @@ input[type="text"]:focus {
   font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+/* When transform-content contains an iframe sandbox, let the iframe handle sizing */
+.transform-content iframe {
   max-height: 300px;
   overflow-y: auto;
 }
 
+/* Scrollbar styling for transform-content (fallback when no iframe) */
 .transform-content::-webkit-scrollbar {
   width: 6px;
 }
