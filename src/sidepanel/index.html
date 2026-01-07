@@ -541,9 +541,24 @@
 
             <label class="input-label">Model</label>
             <div class="model-dropdown" id="model-dropdown">
-              <input type="text" id="ai-model" placeholder="Select or type model ID" />
-              <button type="button" id="model-dropdown-toggle" class="dropdown-toggle">▼</button>
-              <div class="dropdown-menu" id="model-dropdown-menu" hidden></div>
+              <input
+                type="text"
+                id="ai-model"
+                placeholder="Select or type model ID"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded="false"
+                aria-controls="model-dropdown-menu"
+              />
+              <button
+                type="button"
+                id="model-dropdown-toggle"
+                class="dropdown-toggle"
+                aria-label="Toggle model dropdown"
+              >
+                ▼
+              </button>
+              <div class="dropdown-menu" id="model-dropdown-menu" role="listbox" hidden></div>
             </div>
 
             <label class="input-label">API Key</label>
