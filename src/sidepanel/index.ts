@@ -2439,7 +2439,7 @@ async function handleClearAllData(): Promise<void> {
     location.reload();
   } catch (error) {
     console.error("Failed to clear all data:", error);
-    alert("Failed to clear all data. Please try again.");
+    showNotification("Failed to clear all data. Please try again.");
   }
 }
 
