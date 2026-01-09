@@ -16,6 +16,7 @@ import {
   dbPut,
   dbDelete,
   dbDeleteByIndex,
+  dbClearAll,
 } from './db.ts';
 
 // ============================================================================
@@ -207,6 +208,10 @@ class IndexedDBStorage implements StorageAdapter {
       await this.setSetting('activeNotebookId', id);
     }
   }
+
+  async clearAll(): Promise<void> {
+    await dbClearAll();
+  }
 }
 
 // ============================================================================
@@ -366,3 +371,5 @@ export function createSummary(
     updatedAt: now,
   };
 }
+
+export const clearAllData = () => storage.clearAll();
