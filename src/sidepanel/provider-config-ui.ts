@@ -206,12 +206,26 @@ function renderProfilesList(): void {
     return;
   }
 
-  // Empty state - automatically show new profile form
+  // Empty state - show message with option to create a new profile
   if (profiles.length === 0) {
-    isNewProfile = true;
-    selectedProviderIdForNew = 'chrome'; // Default to Chrome built-in provider for new users
-    const formCard = createProfileFormCard();
-    container.appendChild(formCard);
+    const emptyState = document.createElement('div');
+    emptyState.className = 'ai-profiles-empty-state';
+
+    const message = document.createElement('p');
+    message.textContent = 'No AI profiles have been created yet.';
+    emptyState.appendChild(message);
+
+    const addButton = document.createElement('button');
+    addButton.type = 'button';
+    addButton.textContent = 'Add profile';
+    addButton.addEventListener('click', () => {
+      isNewProfile = true;
+      selectedProviderIdForNew = 'chrome'; // Default to Chrome built-in provider for new users
+      renderProfilesList();
+    });
+    emptyState.appendChild(addButton);
+
+    container.appendChild(emptyState);
     return;
   }
 
