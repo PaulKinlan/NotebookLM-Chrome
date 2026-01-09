@@ -67,10 +67,10 @@ async function getModel(): Promise<LanguageModel | null> {
   }
 
   // Create provider instance using SDK factory
-  // apiKey is guaranteed to be non-null here due to the requiresApiKey check
+  // apiKey is guaranteed to be defined here due to the requiresApiKey check above
   return createProviderInstance(
     providerType,
-    apiKey ?? '',
+    apiKey,
     modelId || defaultModel,
     baseURL
   );
@@ -1096,7 +1096,8 @@ export async function testConnection(): Promise<{
 export async function testConnectionWithConfig(
   providerType: string,
   apiKey: string,
-  modelId: string
+  modelId: string,
+  timeoutMs: number = 15000
 ): Promise<{
   success: boolean;
   error?: string;
@@ -1114,10 +1115,16 @@ export async function testConnectionWithConfig(
       return { success: false, error: "Failed to create model instance" };
     }
 
-    await generateText({
-      model,
-      prompt: 'Say "Connection successful" in exactly those words.',
-    });
+    // Add timeout to prevent indefinite waiting
+    await Promise.race([
+      generateText({
+        model,
+        prompt: 'Say "Connection successful" in exactly those words.',
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Connection test timed out after ${timeoutMs}ms`)), timeoutMs)
+      ),
+    ]);
 
     return { success: true };
   } catch (error) {
