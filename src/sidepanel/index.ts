@@ -1,7 +1,6 @@
 import type {
   Source,
   PermissionStatus,
-  AISettings,
   ChatMessage,
   Citation,
 } from "../types/index.ts";
@@ -13,6 +12,7 @@ import {
   saveNotebook,
   createNotebook,
   deleteNotebook,
+  getNotebook,
   getActiveNotebookId,
   setActiveNotebookId,
   getSourcesByNotebook,
@@ -30,6 +30,7 @@ import {
   getSummary,
   saveSummary,
   createSummary,
+  clearAllData,
 } from "../lib/storage.ts";
 import {
   streamChat,
@@ -53,17 +54,12 @@ import {
   generateCitationList,
   generateOutline,
   generateSummary,
-  testConnection,
 } from "../lib/ai.ts";
 import {
-  getAISettings,
-  setApiKey,
-  setProvider,
-  setModel,
-  setTemperature,
-  setMaxTokens,
-  setBaseURL,
-} from "../lib/settings.ts";
+  getModelConfigs,
+  getDefaultModelConfig,
+} from "../lib/model-configs.ts";
+import { initProviderConfigUI } from './provider-config-ui.ts';
 import { SandboxRenderer } from "../lib/sandbox-renderer.ts";
 
 // ============================================================================
@@ -78,7 +74,6 @@ let permissions: PermissionStatus = {
   bookmarks: false,
   history: false,
 };
-let aiSettings: AISettings | null = null;
 
 // Picker state
 interface PickerItem {
@@ -99,12 +94,12 @@ let pickerType: "tab" | "tabGroup" | "bookmark" | "history" | null = null;
 
 const elements = {
   // Navigation
-  navItems: document.querySelectorAll(
-    ".nav-item"
-  ) as NodeListOf<HTMLButtonElement>,
-  tabContents: document.querySelectorAll(
-    ".tab-content"
-  ) as NodeListOf<HTMLElement>,
+  navItems: Array.from(
+    document.querySelectorAll(".nav-item")
+  ).filter((item): item is HTMLElement => item instanceof HTMLElement),
+  tabContents: Array.from(
+    document.querySelectorAll(".tab-content")
+  ).filter((item): item is HTMLElement => item instanceof HTMLElement),
 
   // Header buttons
   headerLibraryBtn: document.getElementById(
@@ -133,6 +128,9 @@ const elements = {
   // Chat tab
   notebookSelect: document.getElementById(
     "notebook-select"
+  ) as HTMLSelectElement,
+  aiConfigSelect: document.getElementById(
+    "ai-config-select"
   ) as HTMLSelectElement,
   newNotebookBtn: document.getElementById(
     "new-notebook-btn"
@@ -216,30 +214,12 @@ const elements = {
   // Library tab
   notebooksList: document.getElementById("notebooks-list") as HTMLDivElement,
 
-  // Settings tab
-  aiProvider: document.getElementById("ai-provider") as HTMLSelectElement,
-  aiModel: document.getElementById("ai-model") as HTMLInputElement,
-  modelDropdown: document.getElementById("model-dropdown") as HTMLDivElement,
-  modelDropdownToggle: document.getElementById(
-    "model-dropdown-toggle"
-  ) as HTMLButtonElement,
-  modelDropdownMenu: document.getElementById(
-    "model-dropdown-menu"
-  ) as HTMLDivElement,
-  apiKey: document.getElementById("api-key") as HTMLInputElement,
-  testApiBtn: document.getElementById("test-api") as HTMLButtonElement,
-  apiKeyLink: document.getElementById("api-key-link") as HTMLAnchorElement,
-  aiTemperature: document.getElementById("ai-temperature") as HTMLInputElement,
-  temperatureValue: document.getElementById(
-    "temperature-value"
-  ) as HTMLSpanElement,
-  aiMaxTokens: document.getElementById("ai-max-tokens") as HTMLInputElement,
-  aiBaseURL: document.getElementById("ai-base-url") as HTMLInputElement,
-  baseURLLabel: document.getElementById("base-url-label") as HTMLLabelElement,
+  // Settings tab (permissions only - AI provider configs are in provider-config-ui.ts)
   permTabs: document.getElementById("perm-tabs") as HTMLInputElement,
   permTabGroups: document.getElementById("perm-tab-groups") as HTMLInputElement,
   permBookmarks: document.getElementById("perm-bookmarks") as HTMLInputElement,
   permHistory: document.getElementById("perm-history") as HTMLInputElement,
+  clearAllDataBtn: document.getElementById("clear-all-data-btn") as HTMLButtonElement,
 
   // FAB
   fab: document.getElementById("fab") as HTMLButtonElement,
@@ -298,16 +278,19 @@ const elements = {
 async function init(): Promise<void> {
   permissions = await checkPermissions();
   currentNotebookId = await getActiveNotebookId();
-  aiSettings = await getAISettings();
 
   updatePermissionUI();
-  updateSettingsUI();
+  // updateSettingsUI() is now handled by provider-config-ui.ts
   setupEventListeners();
   await loadNotebooks();
+  await loadAIConfigs();
   await loadSources();
   await loadChatHistory();
   updateTabCount();
   updateAddTabButton();
+
+  // Initialize provider config UI
+  await initProviderConfigUI();
 
   // Listen for tab highlight changes to update button text
   chrome.tabs.onHighlighted.addListener(() => {
@@ -479,6 +462,7 @@ function setupEventListeners(): void {
 
   // Chat tab
   elements.notebookSelect.addEventListener("change", handleNotebookChange);
+  elements.aiConfigSelect.addEventListener("change", handleAIConfigChange);
   elements.newNotebookBtn.addEventListener("click", handleNewNotebook);
   elements.queryBtn.addEventListener("click", handleQuery);
   elements.queryInput.addEventListener("keypress", (e) => {
@@ -564,6 +548,10 @@ function setupEventListeners(): void {
   elements.permHistory.addEventListener("change", () =>
     handlePermissionToggle("history")
   );
+  elements.clearAllDataBtn.addEventListener("click", handleClearAllData);
+
+  // Old AI settings event listeners - replaced by provider-config-ui.ts
+  /*
   elements.aiProvider.addEventListener("change", handleProviderChange);
   elements.aiModel.addEventListener("change", handleModelChange);
   elements.aiModel.addEventListener("focus", () => toggleDropdown(true));
@@ -589,7 +577,8 @@ function setupEventListeners(): void {
   elements.testApiBtn.addEventListener("click", handleTestApi);
   elements.aiTemperature.addEventListener("input", handleTemperatureChange);
   elements.aiMaxTokens.addEventListener("change", handleMaxTokensChange);
-  elements.aiBaseURL.addEventListener("change", handleBaseURLChange);
+  elements.aiBaseUrl.addEventListener("change", handleBaseUrlChange);
+  */
 
   // FAB
   elements.fab.addEventListener("click", () => switchTab("add"));
@@ -653,6 +642,74 @@ async function loadNotebooks(): Promise<void> {
 
   if (currentNotebookId) {
     elements.notebookSelect.value = currentNotebookId;
+  }
+}
+
+/**
+ * Load AI model configs into the selector dropdown
+ */
+async function loadAIConfigs(): Promise<void> {
+  const modelConfigs = await getModelConfigs();
+  const defaultConfig = await getDefaultModelConfig();
+
+  elements.aiConfigSelect.innerHTML = '';
+
+  // Add "Default" option which uses the default model config
+  const defaultOption = document.createElement("option");
+  defaultOption.value = ""; // Empty string means use default
+  defaultOption.textContent = defaultConfig ? `Default: ${truncateName(defaultConfig.name, 12)}` : 'Default';
+  elements.aiConfigSelect.appendChild(defaultOption);
+
+  // Add all model configs
+  for (const config of modelConfigs) {
+    const option = document.createElement("option");
+    option.value = config.id;
+    option.textContent = truncateName(config.name, 15);
+    elements.aiConfigSelect.appendChild(option);
+  }
+
+  // Update selection based on current notebook
+  await updateAIConfigForNotebook();
+}
+
+/**
+ * Truncate name to fit in select dropdown
+ */
+function truncateName(name: string, maxLength: number): string {
+  return name.length > maxLength ? name.substring(0, maxLength - 1) + '…' : name;
+}
+
+/**
+ * Update the AI config select based on the current notebook's setting
+ */
+async function updateAIConfigForNotebook(): Promise<void> {
+  if (!currentNotebookId) {
+    elements.aiConfigSelect.value = "";
+    return;
+  }
+
+  const notebook = await getNotebook(currentNotebookId);
+  if (notebook?.modelConfigId) {
+    elements.aiConfigSelect.value = notebook.modelConfigId;
+  } else {
+    elements.aiConfigSelect.value = ""; // Use default
+  }
+}
+
+/**
+ * Handle AI config selection change
+ */
+async function handleAIConfigChange(): Promise<void> {
+  if (!currentNotebookId) {
+    return;
+  }
+
+  const selectedConfigId = elements.aiConfigSelect.value || undefined;
+  const notebook = await getNotebook(currentNotebookId);
+
+  if (notebook) {
+    notebook.modelConfigId = selectedConfigId;
+    await saveNotebook(notebook);
   }
 }
 
@@ -750,6 +807,7 @@ async function handleNotebookChange(): Promise<void> {
   const id = elements.notebookSelect.value;
   currentNotebookId = id || null;
   await setActiveNotebookId(currentNotebookId);
+  await updateAIConfigForNotebook();
   await loadSources();
   await loadChatHistory();
 }
@@ -759,6 +817,7 @@ async function selectNotebook(id: string): Promise<void> {
   await setActiveNotebookId(id);
   await loadNotebooks();
   elements.notebookSelect.value = id;
+  await updateAIConfigForNotebook();
   switchTab("chat");
   await loadSources();
   await loadChatHistory();
@@ -962,6 +1021,10 @@ async function handleAddCurrentTab(): Promise<void> {
     elements.notebookSelect.value = notebook.id;
   }
 
+  // After the guard, currentNotebookId is guaranteed to be set
+  const notebookId = currentNotebookId;
+  if (!notebookId) return;
+
   elements.addCurrentTabBtn.disabled = true;
 
   try {
@@ -990,7 +1053,7 @@ async function handleAddCurrentTab(): Promise<void> {
 
           if (result) {
             const source = createSource(
-              currentNotebookId!,
+              notebookId,
               "tab",
               result.url || tab.url,
               result.title || tab.title || "Untitled",
@@ -1003,7 +1066,7 @@ async function handleAddCurrentTab(): Promise<void> {
           console.error(`Failed to add tab ${tab.url}:`, error);
           // Fallback: add with just title/url if content script not available
           const source = createSource(
-            currentNotebookId!,
+            notebookId,
             "tab",
             tab.url,
             tab.title || "Untitled",
@@ -1027,7 +1090,7 @@ async function handleAddCurrentTab(): Promise<void> {
 
       if (response) {
         const source = createSource(
-          currentNotebookId!,
+          notebookId,
           "tab",
           response.url,
           response.title,
@@ -1455,6 +1518,10 @@ async function handlePickerAdd(): Promise<void> {
     elements.notebookSelect.value = notebook.id;
   }
 
+  // After the guard, currentNotebookId is guaranteed to be set
+  const notebookId = currentNotebookId;
+  if (!notebookId) return;
+
   const selectedItems = pickerItems.filter((item) =>
     selectedPickerItems.has(item.id)
   );
@@ -1481,7 +1548,7 @@ async function handlePickerAdd(): Promise<void> {
 
             if (result) {
               const source = createSource(
-                currentNotebookId!,
+                notebookId,
                 "tab",
                 result.url || tab.url,
                 result.title || tab.title || "Untitled",
@@ -1494,7 +1561,7 @@ async function handlePickerAdd(): Promise<void> {
             console.error(`Failed to extract from tab ${tab.url}:`, error);
             // Fallback: add with just title/url
             const source = createSource(
-              currentNotebookId!,
+              notebookId,
               "tab",
               tab.url,
               tab.title || "Untitled",
@@ -1520,7 +1587,7 @@ async function handlePickerAdd(): Promise<void> {
 
         if (response) {
           const source = createSource(
-            currentNotebookId!,
+            notebookId,
             pickerType || "tab",
             response.url || item.url,
             response.title || item.title,
@@ -1533,7 +1600,7 @@ async function handlePickerAdd(): Promise<void> {
         console.error(`Failed to add ${item.url}:`, error);
         // If extraction fails, add with just the title/url
         const source = createSource(
-          currentNotebookId!,
+          notebookId,
           pickerType || "tab",
           item.url,
           item.title,
@@ -1679,10 +1746,12 @@ function renderCitations(citations: Citation[], sources: Source[]): string {
     const sourceUrl = source?.url || "";
 
     if (groupedMap.has(citation.sourceId)) {
-      const group = groupedMap.get(citation.sourceId)!;
-      // Only add unique excerpts
-      if (!group.excerpts.includes(citation.excerpt)) {
-        group.excerpts.push(citation.excerpt);
+      const group = groupedMap.get(citation.sourceId);
+      if (group) {
+        // Only add unique excerpts
+        if (!group.excerpts.includes(citation.excerpt)) {
+          group.excerpts.push(citation.excerpt);
+        }
       }
     } else {
       groupedMap.set(citation.sourceId, {
@@ -2292,6 +2361,8 @@ function updatePermissionUI(): void {
   elements.importHistory.disabled = false;
 }
 
+// Old settings UI - replaced by provider-config-ui.ts
+/*
 function updateSettingsUI(): void {
   if (!aiSettings) return;
 
@@ -2316,11 +2387,12 @@ function updateSettingsUI(): void {
   }
 
   if (aiSettings.baseURL) {
-    elements.aiBaseURL.value = aiSettings.baseURL;
+    elements.aiBaseUrl.value = aiSettings.baseURL;
   } else {
-    elements.aiBaseURL.value = "";
+    elements.aiBaseUrl.value = "";
   }
 }
+*/
 
 async function handlePermissionToggle(
   permission: "tabs" | "tabGroups" | "bookmarks" | "history"
@@ -2345,10 +2417,38 @@ async function handlePermissionToggle(
   updateTabCount();
 }
 
+/**
+ * Handle clearing all data (notebooks, sources, chat history, AI profiles)
+ */
+async function handleClearAllData(): Promise<void> {
+  const confirmed = await showConfirmDialog(
+    "Clear All Data",
+    "This will permanently delete all notebooks, sources, chat history, and AI profiles. This action cannot be undone."
+  );
+
+  if (!confirmed) return;
+
+  try {
+    // Clear all IndexedDB data
+    await clearAllData();
+
+    // Clear chrome.storage.local model cache (provider model lists)
+    await chrome.storage.local.clear();
+
+    // Reload the sidepanel to refresh UI
+    location.reload();
+  } catch (error) {
+    console.error("Failed to clear all data:", error);
+    alert("Failed to clear all data. Please try again.");
+  }
+}
+
 // ============================================================================
 // Model Dropdown
 // ============================================================================
 
+// Old model dropdown - replaced by provider-config-ui.ts
+/*
 let dropdownOpen = false;
 let highlightedIndex = -1;
 
@@ -2529,14 +2629,8 @@ function populateModelDropdown(): void {
       { value: "gpt-4o-mini", label: "GPT-4o Mini" },
       { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
       { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
-      {
-        value: "claude-sonnet-4-5-20250514",
-        label: "Claude 4.5 Sonnet (via OpenRouter)",
-      },
-      {
-        value: "claude-opus-4-5-20250514",
-        label: "Claude 4.5 Opus (via OpenRouter)",
-      },
+      { value: "claude-sonnet-4-5-20250514", label: "Claude 4.5 Sonnet (via OpenRouter)" },
+      { value: "claude-opus-4-5-20251101", label: "Claude 4.5 Opus (via OpenRouter)" },
     ],
     google: [
       { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
@@ -2610,11 +2704,14 @@ function populateModelDropdown(): void {
     elements.modelDropdownMenu.appendChild(item);
   }
 }
+*/
 
 // ============================================================================
 // Settings
 // ============================================================================
 
+// Old AI settings handlers - replaced by provider-config-ui.ts
+/*
 async function handleProviderChange(): Promise<void> {
   const provider = elements.aiProvider.value as AISettings["provider"];
 
@@ -2654,25 +2751,6 @@ async function handleProviderChange(): Promise<void> {
     elements.apiKeyLink.style.display = "inline-block";
   } else {
     elements.apiKeyLink.style.display = "none";
-  }
-
-  // Hide advanced settings for Chrome built-in AI
-  const advancedSettings = document.querySelector(
-    ".advanced-settings"
-  ) as HTMLDetailsElement;
-  if (advancedSettings) {
-    advancedSettings.style.display = provider === "chrome" ? "none" : "block";
-  }
-
-  // Hide baseURL field for Chrome built-in AI
-  if (elements.aiBaseURL && elements.baseURLLabel) {
-    const showBaseUrlField = provider !== "chrome";
-    elements.aiBaseURL.style.display = showBaseUrlField ? "block" : "none";
-    elements.baseURLLabel.style.display = showBaseUrlField ? "block" : "none";
-    const baseUrlHint = elements.aiBaseURL.nextElementSibling as HTMLElement;
-    if (baseUrlHint && baseUrlHint.classList.contains("setting-hint")) {
-      baseUrlHint.style.display = showBaseUrlField ? "block" : "none";
-    }
   }
 
   // Load saved API key for this provider
@@ -2755,33 +2833,13 @@ async function handleMaxTokensChange(): Promise<void> {
   aiSettings = await getAISettings();
 }
 
-async function handleBaseURLChange(): Promise<void> {
-  const value = elements.aiBaseURL.value.trim();
-
-  // Treat empty string as undefined (use default behavior)
-  if (!value) {
-    await setBaseURL(undefined);
-    aiSettings = await getAISettings();
-    return;
-  }
-
-  // Validate that the provided value is a well-formed URL
-  try {
-    // This will throw if the URL is invalid
-    // We don't need the parsed result; just validation
-    new URL(value);
-  } catch {
-    showNotification(
-      "Please enter a valid URL (including http:// or https://) for the base URL."
-    );
-    // Reset the input field to the previously saved valid value
-    elements.aiBaseURL.value = aiSettings?.baseURL || "";
-    return;
-  }
-
-  await setBaseURL(value);
+async function handleBaseUrlChange(): Promise<void> {
+  const value = elements.aiBaseUrl.value.trim();
+  const baseURL = value || undefined;
+  await setBaseURL(baseURL);
   aiSettings = await getAISettings();
 }
+*/
 
 // ============================================================================
 // Utilities
@@ -2851,7 +2909,7 @@ function escapeHtml(text: string): string {
 }
 
 function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, DOMPURIFY_CONFIG) as string;
+  return DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
 }
 
 function formatMarkdown(text: string): string {

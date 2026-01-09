@@ -30,6 +30,9 @@
           <select id="notebook-select" class="header-notebook-select">
             <option value="">Select a folio...</option>
           </select>
+          <select id="ai-config-select" class="header-ai-config-select" title="AI Model Config">
+            <option value="">Loading...</option>
+          </select>
           <button id="new-notebook-btn" class="header-icon-btn" title="New Folio">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -545,63 +548,22 @@
           <h2>Settings</h2>
 
           <div class="settings-group">
-            <h3 class="section-title">AI Provider</h3>
-            <select id="ai-provider">
-              <option value="anthropic">Anthropic (Claude)</option>
-              <option value="openai">OpenAI</option>
-              <option value="openai-compatible">OpenAI-Compatible</option>
-              <option value="google">Google (Gemini)</option>
-              <option value="chrome">Chrome Built-in AI</option>
-            </select>
-
-            <label class="input-label">Model</label>
-            <div class="model-dropdown" id="model-dropdown">
-              <input
-                type="text"
-                id="ai-model"
-                placeholder="Select or type model ID"
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded="false"
-                aria-controls="model-dropdown-menu"
-              />
-              <button
-                type="button"
-                id="model-dropdown-toggle"
-                class="dropdown-toggle"
-                aria-label="Toggle model dropdown"
-              >
-                ▼
+            <h3 class="section-title">
+              AI Profiles
+              <button id="add-profile-btn" class="btn btn-small btn-outline">
+                + Add
               </button>
-              <div class="dropdown-menu" id="model-dropdown-menu" role="listbox" hidden></div>
-            </div>
+            </h3>
+            <div id="profiles-list" class="profiles-list"></div>
+          </div>
 
-            <label class="input-label">API Key</label>
-            <div class="api-key-row">
-              <input type="password" id="api-key" placeholder="sk-ant-..." />
-              <button id="test-api" class="btn btn-small">Test</button>
-            </div>
-            <a id="api-key-link" href="#" target="_blank" class="api-key-link">Get an API key</a>
-
-            <details class="advanced-settings">
-              <summary>Advanced Settings</summary>
-              <div class="advanced-settings-content">
-                <label class="input-label">Temperature</label>
-                <div class="range-input-row">
-                  <input type="range" id="ai-temperature" min="0" max="2" step="0.1" value="1" />
-                  <span id="temperature-value">1.0</span>
-                </div>
-                <p class="setting-hint">Controls randomness. Lower values are more focused, higher values are more creative.</p>
-
-                <label class="input-label">Max Tokens</label>
-                <input type="number" id="ai-max-tokens" min="100" max="128000" step="100" placeholder="Default (varies by model)" />
-                <p class="setting-hint">Maximum length of the response. Leave empty for model default.</p>
-
-                <label class="input-label" id="base-url-label">Base URL</label>
-                <input type="text" id="ai-base-url" placeholder="Default provider URL" />
-                <p class="setting-hint">Custom API endpoint URL. Leave empty to use the provider's default endpoint.</p>
-              </div>
-            </details>
+          <div class="settings-group" id="notebook-settings-group" style="display: none;">
+            <h3 class="section-title">Notebook Settings</h3>
+            <label class="input-label">Model Configuration</label>
+            <select id="notebook-model-select">
+              <option value="">Use Default</option>
+            </select>
+            <p class="setting-hint">Override the default AI model for this notebook.</p>
           </div>
 
           <div class="settings-group">
@@ -622,6 +584,12 @@
               <input type="checkbox" id="perm-history" />
               <span>History - Access browsing history</span>
             </label>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="section-title">Data Management</h3>
+            <p class="setting-hint">Clear all notebooks, sources, chat history, and AI profiles. This action cannot be undone.</p>
+            <button id="clear-all-data-btn" class="btn btn-danger btn-small">Clear All Data</button>
           </div>
         </section>
       </main>
