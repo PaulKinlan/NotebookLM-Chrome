@@ -52,7 +52,7 @@ const INTERACTIVE_DOMPURIFY_CONFIG: Config = {
 };
 
 interface PendingMessage {
-  resolve: (value: unknown) => void;
+  handler: (height?: number) => void;
   reject: (reason?: unknown) => void;
 }
 
@@ -127,7 +127,7 @@ export class SandboxRenderer {
         if (messageId !== undefined) {
           const pending = this.pendingMessages.get(messageId);
           if (pending) {
-            pending.resolve(height);
+            pending.handler(height);
             this.pendingMessages.delete(messageId);
           }
         }
@@ -137,8 +137,9 @@ export class SandboxRenderer {
 
   /**
    * Render sanitized HTML content in the sandbox (standard mode)
+   * @returns The height of the rendered content
    */
-  async render(html: string): Promise<void> {
+  async render(html: string): Promise<number | undefined> {
     await this.readyPromise;
 
     if (!this.iframe?.contentWindow) {
@@ -146,14 +147,23 @@ export class SandboxRenderer {
     }
 
     // Sanitize content before sending to sandbox
-    const sanitizedHtml = DOMPurify.sanitize(html, SANDBOX_DOMPURIFY_CONFIG) as string;
+    const sanitizedHtml = DOMPurify.sanitize(html, SANDBOX_DOMPURIFY_CONFIG);
 
     const currentMessageId = ++this.messageId;
 
     return new Promise((resolve, reject) => {
-      this.pendingMessages.set(currentMessageId, { resolve: resolve as (value: unknown) => void, reject });
+      this.pendingMessages.set(currentMessageId, {
+        handler: resolve,
+        reject
+      });
 
-      this.iframe!.contentWindow!.postMessage({
+      const iframe = this.iframe;
+      if (!iframe?.contentWindow) {
+        reject(new Error("Sandbox iframe not available"));
+        return;
+      }
+
+      iframe.contentWindow.postMessage({
         type: "RENDER_CONTENT",
         content: sanitizedHtml,
         messageId: currentMessageId
@@ -172,8 +182,9 @@ export class SandboxRenderer {
   /**
    * Render interactive HTML content (with CSS and JS) in the sandbox
    * Used for quiz, flashcards, timeline, and other interactive transforms
+   * @returns The height of the rendered content
    */
-  async renderInteractive(html: string): Promise<void> {
+  async renderInteractive(html: string): Promise<number | undefined> {
     await this.readyPromise;
 
     if (!this.iframe?.contentWindow) {
@@ -194,14 +205,23 @@ export class SandboxRenderer {
     const htmlWithoutScripts = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
 
     // Sanitize the HTML (allows style tags in interactive mode)
-    const sanitizedHtml = DOMPurify.sanitize(htmlWithoutScripts, INTERACTIVE_DOMPURIFY_CONFIG) as string;
+    const sanitizedHtml = DOMPurify.sanitize(htmlWithoutScripts, INTERACTIVE_DOMPURIFY_CONFIG);
 
     const currentMessageId = ++this.messageId;
 
     return new Promise((resolve, reject) => {
-      this.pendingMessages.set(currentMessageId, { resolve: resolve as (value: unknown) => void, reject });
+      this.pendingMessages.set(currentMessageId, {
+        handler: resolve,
+        reject
+      });
 
-      this.iframe!.contentWindow!.postMessage({
+      const iframe = this.iframe;
+      if (!iframe?.contentWindow) {
+        reject(new Error("Sandbox iframe not available"));
+        return;
+      }
+
+      iframe.contentWindow.postMessage({
         type: "RENDER_INTERACTIVE",
         content: sanitizedHtml,
         scripts: scripts,

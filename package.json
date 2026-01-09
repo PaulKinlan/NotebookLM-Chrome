@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "watch": "npm run build -- --watch",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
@@ -19,9 +20,12 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.7",
     "@ai-sdk/google": "^3.0.5",
+    "@ai-sdk/groq": "^3.0.4",
+    "@ai-sdk/huggingface": "^1.0.4",
     "@ai-sdk/openai": "^3.0.7",
     "@ai-sdk/openai-compatible": "^2.0.4",
     "@built-in-ai/core": "^3.0.1",
+    "@openrouter/ai-sdk-provider": "^1.5.4",
     "@types/marked": "^5.0.2",
     "ai": "^6.0.14",
     "dompurify": "^3.3.1",
@@ -38,5 +42,10 @@
     "eslint": "^9.17.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.6"
+  },
+  "overrides": {
+    "@openrouter/ai-sdk-provider": {
+      "ai": "^6.0.14"
+    }
   }
 }

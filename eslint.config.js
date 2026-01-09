@@ -11,6 +11,8 @@ export default [
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
       globals: {
         // Chrome extension APIs
@@ -83,6 +85,13 @@ export default [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      // Disallow type coercion
+      'no-implicit-coercion': 'error',
+      'no-eq-null': 'error',
+      'eqeqeq': ['error', 'always', { null: 'ignore' }],
+      // Disallow unsafe type assertions
+      '@typescript-eslint/no-non-null-assertion': 'error',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
