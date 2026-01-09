@@ -8,6 +8,8 @@ A browser extension that helps you collect sources from tabs, bookmarks, and his
 
 - **Source Collection**: Gather content from open tabs, bookmarks, browser history, or paste text manually
 - **AI-Powered Chat**: Query your collected sources with natural language, with citations back to original content
+- **Multi-Provider Support**: 16+ AI providers including Anthropic, OpenAI, Google, Groq, Mistral, and Chrome Built-in AI
+- **Flexible Configuration**: Named credentials, per-notebook model overrides, and custom endpoints
 - **Transformations**: Convert your sources into 19 different formats:
   - **Educational**: Quiz, Flashcards, Study Guide
   - **Creative**: Podcast Script, Email, Slide Deck
@@ -93,10 +95,10 @@ FolioLM is a Chrome Manifest V3 extension built with TypeScript and Vite.
 │                                                                      │
 │                     ▼ (HTTPS)                                       │
 │         ┌─────────────────────────────┐                             │
-│         │  AI Providers               │                             │
-│         │  - Anthropic (Claude)       │                             │
-│         │  - OpenAI (GPT)             │                             │
-│         │  - Google (Gemini)          │                             │
+│         │  AI Providers (16+)         │                             │
+│         │  - Anthropic, OpenAI        │                             │
+│         │  - Google, OpenRouter       │                             │
+│         │  - Groq, Mistral, and more  │                             │
 │         │  - Chrome Built-in AI       │                             │
 │         └─────────────────────────────┘                             │
 │                                                                      │
@@ -113,9 +115,13 @@ src/
 │   └── index.ts         # HTML→Markdown extraction using Turndown
 ├── lib/                 # Shared utilities
 │   ├── ai.ts            # AI provider abstraction (Vercel AI SDK)
-│   ├── db.ts            # IndexedDB schema and helpers
+│   ├── credentials.ts   # Named API key management
+│   ├── db.ts            # IndexedDB schema and helpers (v3)
+│   ├── markdown-renderer.ts  # Markdown to HTML conversion
+│   ├── model-configs.ts # Model configuration management
 │   ├── permissions.ts   # Chrome permissions management
-│   ├── sandbox-renderer.ts  # Secure iframe rendering
+│   ├── provider-registry.ts  # Centralized provider configuration
+│   ├── sandbox-renderer.ts   # Secure iframe rendering
 │   ├── settings.ts      # AI settings persistence
 │   └── storage.ts       # Storage adapter implementation
 ├── sandbox/             # Sandboxed iframe for AI content
@@ -123,9 +129,12 @@ src/
 │   └── sandbox.ts
 ├── sidepanel/           # Main UI
 │   ├── index.html
-│   └── index.ts         # Tabs, chat, transforms, library, settings
+│   ├── index.ts         # Tabs, chat, transforms, library, settings
+│   ├── dropdown.ts      # Reusable dropdown component
+│   ├── provider-config-ui.ts  # Provider and model configuration UI
+│   └── styles.css       # UI styling
 └── types/               # TypeScript interfaces
-    └── index.ts         # Notebook, Source, ChatMessage, etc.
+    └── index.ts         # Notebook, Source, ChatMessage, Credential, ModelConfig, etc.
 ```
 
 ### Key Components
@@ -155,18 +164,34 @@ The main user interface with five tabs:
 
 #### Storage Layer (`src/lib/storage.ts`, `src/lib/db.ts`)
 
-IndexedDB-backed persistence:
-- **Stores**: notebooks, sources, chatMessages, transformations, settings, responseCache
+IndexedDB-backed persistence (schema v3):
+- **Stores**: notebooks, sources, chatMessages, transformations, settings, responseCache, summaries, providerConfigs
 - **Factory Functions**: `createNotebook()`, `createSource()`, `createChatMessage()`
 - **Sync Ready**: Data model includes `syncStatus` for future cloud sync
 
-#### AI Integration (`src/lib/ai.ts`)
+#### AI Integration (`src/lib/ai.ts`, `src/lib/provider-registry.ts`)
 
 Unified AI provider interface using Vercel AI SDK:
-- **Providers**: Anthropic, OpenAI, Google, Chrome Built-in AI
+- **16+ Providers**: Anthropic, OpenAI, Google, OpenRouter, Groq, Mistral, Together AI, DeepInfra, Perplexity, Fireworks AI, Hugging Face, z.ai, Chrome Built-in AI, and more
+- **Provider Registry**: Centralized configuration for all provider metadata, endpoints, and authentication
 - **Chat**: Streaming responses with citation parsing
 - **Transformations**: 19 specialized generation functions
 - **Custom Endpoints**: Supports custom `baseURL` for enterprise/local deployments
+
+#### Credential Management (`src/lib/credentials.ts`)
+
+Named API key management:
+- **Named Credentials**: Store multiple API keys with user-defined names (e.g., "Work OpenAI", "Personal Anthropic")
+- **Default Credential**: Set a default credential for quick access
+- **Deduplication**: Prevents duplicate API keys
+
+#### Model Configuration (`src/lib/model-configs.ts`)
+
+Flexible model configuration system:
+- **Model Configs**: Named configurations linking credentials to provider/model selections
+- **Per-Notebook Override**: Each notebook can use a specific model config
+- **Default Chrome Built-in Profile**: Automatically created on first install
+- **Legacy Migration**: Seamlessly migrates from older AISettings format
 
 #### Sandbox Renderer (`src/lib/sandbox-renderer.ts`)
 
@@ -184,6 +209,7 @@ interface Notebook {
   id: string;
   name: string;
   syncStatus: 'local' | 'synced' | 'pending' | 'conflict';
+  modelConfigId?: string;  // Optional per-notebook model override
   createdAt: number;
   updatedAt: number;
 }
@@ -214,6 +240,28 @@ interface Citation {
   sourceId: string;
   sourceTitle: string;
   excerpt: string;
+}
+
+// AI Configuration (from src/types/index.ts)
+
+interface Credential {
+  id: string;
+  name: string;           // User-defined name (e.g., "Work OpenAI")
+  apiKey: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface ModelConfig {
+  id: string;
+  name: string;           // Profile name (e.g., "Fast Responses")
+  credentialId: string;   // References a Credential
+  providerId: string;     // Provider from registry
+  modelId: string;        // Model identifier
+  temperature?: number;
+  maxTokens?: number;
+  createdAt: number;
+  updatedAt: number;
 }
 ```
 
@@ -255,26 +303,53 @@ Messages between components (defined in `src/types/index.ts`):
 
 ### AI Providers
 
-Configure in Settings tab:
-1. Select provider (Anthropic, OpenAI, Google, or Chrome Built-in)
-2. Enter API key (not required for Chrome Built-in)
-3. Select model
-4. Optional: Set custom base URL for enterprise deployments
+FolioLM supports 16+ AI providers through a centralized provider registry:
+
+| Provider | Default Model | API Key Required |
+|----------|---------------|------------------|
+| Anthropic | claude-sonnet-4-5-20250514 | Yes |
+| OpenAI | gpt-5 | Yes |
+| Google Gemini | gemini-3-pro-preview | Yes |
+| Google Vertex Express | gemini-2.5-flash | Yes |
+| OpenRouter | anthropic/claude-3.5-sonnet | Yes |
+| Groq | llama-3.3-70b-versatile | Yes |
+| Mistral | mistral-large-latest | Yes |
+| Together AI | meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo | Yes |
+| DeepInfra | meta-llama/Meta-Llama-3.1-70B-Instruct | Yes |
+| Perplexity | sonar | Yes |
+| Fireworks AI | llama-v3p1-70b-instruct | Yes |
+| Hugging Face | Qwen/Qwen2.5-Coder-32B-Instruct | Yes |
+| z.ai (Anthropic) | glm-4.7 | Yes |
+| z.ai (OpenAI) | glm-4.7 | Yes |
+| z.ai (Coding) | glm-4.7 | Yes |
+| Chrome Built-in | — | No |
+
+### Setting Up AI
+
+1. **Create a Credential**: In Settings, add a named API key (e.g., "Work OpenAI")
+2. **Create a Model Config**: Link a credential to a provider and model
+3. **Set Default**: Choose your default model config for new notebooks
+4. **Per-Notebook Override**: Optionally assign different configs to specific notebooks
 
 ### Advanced Settings
 
 - **Temperature**: Controls response creativity (0-2)
 - **Max Tokens**: Limits response length
-- **Base URL**: Custom endpoint for local/enterprise LLM deployments
+- **Dynamic Model Lists**: Many providers support fetching available models via API
 
 ## Tech Stack
 
 - **Runtime**: Chrome Extension Manifest V3
 - **Language**: TypeScript
-- **Build**: Vite + [@crxjs/vite-plugin](https://crxjs.dev/vite-plugin)
-- **AI**: [Vercel AI SDK](https://sdk.vercel.ai/docs) with provider packages
+- **Build**: Vite 6 + [@crxjs/vite-plugin](https://crxjs.dev/vite-plugin)
+- **AI**: [Vercel AI SDK](https://sdk.vercel.ai/docs) with provider packages:
+  - `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`
+  - `@ai-sdk/groq`, `@ai-sdk/mistral`, `@ai-sdk/huggingface`
+  - `@ai-sdk/openai-compatible` (for compatible providers)
+  - `@openrouter/ai-sdk-provider`
+  - `@anthropic-ai/sdk`, `@built-in-ai/core`
+- **Markdown**: [marked](https://github.com/markedjs/marked) (parsing), [Turndown](https://github.com/mixmark-io/turndown) (HTML→Markdown)
 - **Sanitization**: [DOMPurify](https://github.com/cure53/DOMPurify)
-- **HTML→Markdown**: [Turndown](https://github.com/mixmark-io/turndown)
 
 ## License
 
