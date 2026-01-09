@@ -265,6 +265,9 @@ async function extractContentFromActiveTab(): Promise<ContentExtractionResult | 
   }
 
   try {
+    // Wait for the tab to finish loading (resolves immediately if already loaded)
+    await waitForTabLoad(tab.id);
+
     // Ensure content script is injected
     await ensureContentScript(tab.id);
 
