@@ -93,6 +93,13 @@ export default [
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      // Chrome extension - disallow alert(), use chrome.notifications or showNotification()
+      'no-restricted-globals': ['error', {
+        name: 'alert',
+        message: 'Use chrome.notifications or showNotification() instead of alert()',
+      }],
+      // Console - only allow warn/error for production
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
 ];
