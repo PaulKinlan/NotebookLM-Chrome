@@ -56,7 +56,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text-primary);
@@ -707,19 +708,33 @@ input[type="text"]:focus {
    Summary Section
    ============================================================================ */
 
-.summary-section {
+/* Summary section as collapsible details element */
+details.summary-section {
   margin-top: 16px;
-  padding: 16px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+}
+
+details.summary-section > summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+details.summary-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.summary-section[open] > summary {
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .summary-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
 }
 
 .summary-header .section-title {
@@ -729,16 +744,34 @@ input[type="text"]:focus {
   gap: 8px;
 }
 
+.summary-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-chevron {
+  transition: transform 0.2s ease;
+  color: var(--text-secondary);
+}
+
+details.summary-section[open] .summary-chevron {
+  transform: rotate(180deg);
+}
+
 .summary-section .section-title {
   margin-top: 0;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   color: var(--text-primary);
 }
 
 .summary-content {
+  padding: 16px;
   font-size: 14px;
   line-height: 1.7;
   color: var(--text-primary);
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .summary-content p {

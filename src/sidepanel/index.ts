@@ -147,9 +147,13 @@ const elements = {
   chatStatus: document.getElementById("chat-status") as HTMLParagraphElement,
 
   // Summary section
-  summarySection: document.getElementById("summary-section") as HTMLDivElement,
-  notebookSummary: document.getElementById("notebook-summary") as HTMLDivElement,
-  regenerateSummaryBtn: document.getElementById("regenerate-summary-btn") as HTMLButtonElement,
+  summarySection: document.getElementById("summary-section") as HTMLDetailsElement,
+  notebookSummary: document.getElementById(
+    "notebook-summary"
+  ) as HTMLDivElement,
+  regenerateSummaryBtn: document.getElementById(
+    "regenerate-summary-btn"
+  ) as HTMLButtonElement,
 
   // Transform tab
   transformPodcast: document.getElementById(
@@ -186,9 +190,7 @@ const elements = {
   transformComparison: document.getElementById(
     "transform-comparison"
   ) as HTMLButtonElement,
-  transformFaq: document.getElementById(
-    "transform-faq"
-  ) as HTMLButtonElement,
+  transformFaq: document.getElementById("transform-faq") as HTMLButtonElement,
   transformActionitems: document.getElementById(
     "transform-actionitems"
   ) as HTMLButtonElement,
@@ -218,13 +220,19 @@ const elements = {
   aiProvider: document.getElementById("ai-provider") as HTMLSelectElement,
   aiModel: document.getElementById("ai-model") as HTMLInputElement,
   modelDropdown: document.getElementById("model-dropdown") as HTMLDivElement,
-  modelDropdownToggle: document.getElementById("model-dropdown-toggle") as HTMLButtonElement,
-  modelDropdownMenu: document.getElementById("model-dropdown-menu") as HTMLDivElement,
+  modelDropdownToggle: document.getElementById(
+    "model-dropdown-toggle"
+  ) as HTMLButtonElement,
+  modelDropdownMenu: document.getElementById(
+    "model-dropdown-menu"
+  ) as HTMLDivElement,
   apiKey: document.getElementById("api-key") as HTMLInputElement,
   testApiBtn: document.getElementById("test-api") as HTMLButtonElement,
   apiKeyLink: document.getElementById("api-key-link") as HTMLAnchorElement,
   aiTemperature: document.getElementById("ai-temperature") as HTMLInputElement,
-  temperatureValue: document.getElementById("temperature-value") as HTMLSpanElement,
+  temperatureValue: document.getElementById(
+    "temperature-value"
+  ) as HTMLSpanElement,
   aiMaxTokens: document.getElementById("ai-max-tokens") as HTMLInputElement,
   aiBaseURL: document.getElementById("ai-base-url") as HTMLInputElement,
   baseURLLabel: document.getElementById("base-url-label") as HTMLLabelElement,
@@ -455,8 +463,12 @@ function setupEventListeners(): void {
   });
 
   // Header buttons
-  elements.headerLibraryBtn.addEventListener("click", () => switchTab("library"));
-  elements.headerSettingsBtn.addEventListener("click", () => switchTab("settings"));
+  elements.headerLibraryBtn.addEventListener("click", () =>
+    switchTab("library")
+  );
+  elements.headerSettingsBtn.addEventListener("click", () =>
+    switchTab("settings")
+  );
 
   // Add Sources tab
   elements.addCurrentTabBtn.addEventListener("click", handleAddCurrentTab);
@@ -475,7 +487,10 @@ function setupEventListeners(): void {
   elements.addPageBtn.addEventListener("click", handleAddCurrentTab);
   elements.clearChatBtn?.addEventListener("click", handleClearChat);
   elements.chatMessages?.addEventListener("click", handleCitationClick);
-  elements.regenerateSummaryBtn?.addEventListener("click", handleRegenerateSummary);
+  elements.regenerateSummaryBtn?.addEventListener(
+    "click",
+    handleRegenerateSummary
+  );
 
   // Transform tab
   elements.transformPodcast?.addEventListener("click", () =>
@@ -836,6 +851,7 @@ function hideSummary(): void {
 
 function showSummary(): void {
   elements.summarySection.style.display = "block";
+  elements.summarySection.open = true;
 }
 
 function showSummaryLoading(): void {
@@ -1368,7 +1384,11 @@ function renderPickerItems(filter: string = ""): void {
           </svg>
         </div>
         <div class="picker-icon">
-          ${item.favicon ? `<img src="${escapeHtml(item.favicon)}" alt="">` : initial}
+          ${
+            item.favicon
+              ? `<img src="${escapeHtml(item.favicon)}" alt="">`
+              : initial
+          }
         </div>
         <div class="picker-info">
           <div class="picker-title">${escapeHtml(item.title)}</div>
@@ -1677,7 +1697,9 @@ function renderCitations(citations: Citation[], sources: Source[]): string {
   const grouped = Array.from(groupedMap.values());
 
   return `
-    <div class="chat-citations-title">Sources cited (${grouped.length} source${grouped.length !== 1 ? "s" : ""})</div>
+    <div class="chat-citations-title">Sources cited (${grouped.length} source${
+    grouped.length !== 1 ? "s" : ""
+  })</div>
     ${grouped
       .map((group, sourceIndex) => {
         const sourceNumber = sourceIndex + 1;
@@ -1685,11 +1707,19 @@ function renderCitations(citations: Citation[], sources: Source[]): string {
         if (group.excerpts.length === 1) {
           // Single excerpt - show simple format
           return `
-          <div class="citation-item" data-source-id="${group.sourceId}" data-source-url="${escapeHtml(group.sourceUrl)}" data-excerpt="${escapeHtml(group.excerpts[0])}">
+          <div class="citation-item" data-source-id="${
+            group.sourceId
+          }" data-source-url="${escapeHtml(
+            group.sourceUrl
+          )}" data-excerpt="${escapeHtml(group.excerpts[0])}">
             <div class="citation-number">${sourceNumber}</div>
             <div class="citation-content">
-              <div class="citation-source">${escapeHtml(group.sourceTitle)}</div>
-              <div class="citation-excerpt">${escapeHtml(group.excerpts[0])}</div>
+              <div class="citation-source">${escapeHtml(
+                group.sourceTitle
+              )}</div>
+              <div class="citation-excerpt">${escapeHtml(
+                group.excerpts[0]
+              )}</div>
             </div>
           </div>
         `;
@@ -1699,15 +1729,23 @@ function renderCitations(citations: Citation[], sources: Source[]): string {
           <div class="citation-group">
             <div class="citation-group-header">
               <div class="citation-number">${sourceNumber}</div>
-              <div class="citation-source">${escapeHtml(group.sourceTitle)}</div>
-              <div class="citation-excerpt-count">${group.excerpts.length} references</div>
+              <div class="citation-source">${escapeHtml(
+                group.sourceTitle
+              )}</div>
+              <div class="citation-excerpt-count">${
+                group.excerpts.length
+              } references</div>
             </div>
             <div class="citation-group-excerpts">
               ${group.excerpts
                 .map((excerpt, excerptIndex) => {
                   const subLabel = String.fromCharCode(97 + excerptIndex); // a, b, c, ...
                   return `
-                <div class="citation-item citation-sub-item" data-source-id="${group.sourceId}" data-source-url="${escapeHtml(group.sourceUrl)}" data-excerpt="${escapeHtml(excerpt)}">
+                <div class="citation-item citation-sub-item" data-source-id="${
+                  group.sourceId
+                }" data-source-url="${escapeHtml(
+                    group.sourceUrl
+                  )}" data-excerpt="${escapeHtml(excerpt)}">
                   <div class="citation-number citation-sub-number">${sourceNumber}${subLabel}</div>
                   <div class="citation-content">
                     <div class="citation-excerpt">${escapeHtml(excerpt)}</div>
@@ -2338,7 +2376,8 @@ function getDropdownItems(): HTMLElement[] {
 function handleKeyDown(e: KeyboardEvent): void {
   let items = getDropdownItems();
 
-  if (items.length === 0 && e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  if (items.length === 0 && e.key !== "ArrowDown" && e.key !== "ArrowUp")
+    return;
 
   switch (e.key) {
     case "ArrowDown":
@@ -2349,7 +2388,8 @@ function handleKeyDown(e: KeyboardEvent): void {
         items = getDropdownItems();
         setHighlightedIndex(0, items);
       } else {
-        const newIndex = highlightedIndex < items.length - 1 ? highlightedIndex + 1 : 0;
+        const newIndex =
+          highlightedIndex < items.length - 1 ? highlightedIndex + 1 : 0;
         setHighlightedIndex(newIndex, items);
       }
       break;
@@ -2362,7 +2402,8 @@ function handleKeyDown(e: KeyboardEvent): void {
         items = getDropdownItems();
         setHighlightedIndex(items.length - 1, items);
       } else {
-        const newIndex = highlightedIndex > 0 ? highlightedIndex - 1 : items.length - 1;
+        const newIndex =
+          highlightedIndex > 0 ? highlightedIndex - 1 : items.length - 1;
         setHighlightedIndex(newIndex, items);
       }
       break;
@@ -2385,7 +2426,9 @@ function handleKeyDown(e: KeyboardEvent): void {
       // If dropdown is open, check if first item is a match before auto-selecting
       if (dropdownOpen && items.length > 0) {
         const firstItem = items[0];
-        const firstScore = firstItem.dataset.score ? parseInt(firstItem.dataset.score, 10) : -1;
+        const firstScore = firstItem.dataset.score
+          ? parseInt(firstItem.dataset.score, 10)
+          : -1;
 
         // Only auto-select if it's an actual match (score >= 0)
         if (firstScore >= 0) {
@@ -2486,8 +2529,14 @@ function populateModelDropdown(): void {
       { value: "gpt-4o-mini", label: "GPT-4o Mini" },
       { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
       { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
-      { value: "claude-sonnet-4-5-20250514", label: "Claude 4.5 Sonnet (via OpenRouter)" },
-      { value: "claude-opus-4-5-20250514", label: "Claude 4.5 Opus (via OpenRouter)" },
+      {
+        value: "claude-sonnet-4-5-20250514",
+        label: "Claude 4.5 Sonnet (via OpenRouter)",
+      },
+      {
+        value: "claude-opus-4-5-20250514",
+        label: "Claude 4.5 Opus (via OpenRouter)",
+      },
     ],
     google: [
       { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
@@ -2608,7 +2657,9 @@ async function handleProviderChange(): Promise<void> {
   }
 
   // Hide advanced settings for Chrome built-in AI
-  const advancedSettings = document.querySelector(".advanced-settings") as HTMLDetailsElement;
+  const advancedSettings = document.querySelector(
+    ".advanced-settings"
+  ) as HTMLDetailsElement;
   if (advancedSettings) {
     advancedSettings.style.display = provider === "chrome" ? "none" : "block";
   }
@@ -2706,7 +2757,7 @@ async function handleMaxTokensChange(): Promise<void> {
 
 async function handleBaseURLChange(): Promise<void> {
   const value = elements.aiBaseURL.value.trim();
-  
+
   // Treat empty string as undefined (use default behavior)
   if (!value) {
     await setBaseURL(undefined);
@@ -2739,15 +2790,50 @@ async function handleBaseURLChange(): Promise<void> {
 // Configure DOMPurify with strict settings for AI-generated content
 const DOMPURIFY_CONFIG: Config = {
   ALLOWED_TAGS: [
-    "p", "br", "strong", "em", "b", "i", "code", "pre",
-    "ul", "ol", "li", "a", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6",
-    "span", "div"
+    "p",
+    "br",
+    "strong",
+    "em",
+    "b",
+    "i",
+    "code",
+    "pre",
+    "ul",
+    "ol",
+    "li",
+    "a",
+    "blockquote",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "span",
+    "div",
   ],
   ALLOWED_ATTR: ["href", "target", "rel", "class"],
   ALLOW_DATA_ATTR: false,
   ADD_ATTR: ["target"], // Allow target for links
-  FORBID_TAGS: ["script", "style", "iframe", "form", "input", "object", "embed", "svg", "math"],
-  FORBID_ATTR: ["onerror", "onclick", "onload", "onmouseover", "onfocus", "onblur"],
+  FORBID_TAGS: [
+    "script",
+    "style",
+    "iframe",
+    "form",
+    "input",
+    "object",
+    "embed",
+    "svg",
+    "math",
+  ],
+  FORBID_ATTR: [
+    "onerror",
+    "onclick",
+    "onload",
+    "onmouseover",
+    "onfocus",
+    "onblur",
+  ],
 };
 
 // Hook to force safe link attributes
