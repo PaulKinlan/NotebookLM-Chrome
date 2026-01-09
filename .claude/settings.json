@@ -1,0 +1,23 @@
+{
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm run dev)",
+      "Bash(cat:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(git *)",
+      "WebSearch",
+      "WebFetch(domain:ai-sdk.dev)",
+      "WebFetch(domain:developer.chrome.com)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}
