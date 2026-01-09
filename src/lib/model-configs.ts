@@ -271,8 +271,6 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
       maxTokens?: number;
     };
 
-    console.log('[ModelConfigs] Migrating AISettings to Credential + ModelConfig...');
-
     // Get the provider registry to verify the provider exists
     const { getAllProviders } = await import('./provider-registry.ts');
     const providers = getAllProviders();
@@ -295,7 +293,6 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
 
       if (existing) {
         credentialIds.set(providerType, existing.id);
-        console.log('[ModelConfigs] Reusing existing credential for', providerType);
       } else {
         // Create new credential (name includes provider type for identification)
         const { createCredential } = await import('./credentials.ts');
@@ -304,7 +301,6 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
           apiKey,
         });
         credentialIds.set(providerType, credential.id);
-        console.log('[ModelConfigs] Created credential for', providerType);
       }
     }
 
@@ -328,13 +324,11 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
         maxTokens: aiSettings.maxTokens,
         isDefault: true,
       });
-      console.log('[ModelConfigs] Created default model config');
     }
 
     // Clean up legacy settings
     const { dbDelete } = await import('./db.ts');
     await dbDelete('settings', LEGACY_AI_SETTINGS_KEY);
-    console.log('[ModelConfigs] Cleaned up legacy aiSettings');
 
     return true;
   } catch (error) {

@@ -658,10 +658,8 @@ async function getModelsByProvider(
     try {
       const cached = await getCachedModels<unknown>(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        console.log(`[ProviderRegistry] Using cached ${providerType} models`);
         return cached.data;
       }
-      console.log(`[ProviderRegistry] Cache expired or missing, fetching fresh ${providerType} models`);
     } catch (error) {
       console.error('[ProviderRegistry] Failed to read cache:', error);
     }
@@ -710,12 +708,10 @@ export async function autoFetchProviderModels(provider: { provider: AIProvider; 
   const providerType = provider.provider;
 
   if (!providerSupportsModelFetching(providerType)) {
-    console.log(`[ProviderRegistry] Provider ${providerType} does not support model fetching`);
     return 0;
   }
 
   if (providerRequiresApiKeyForFetching(providerType) && !provider.apiKey) {
-    console.log(`[ProviderRegistry] Provider ${providerType} requires API key for fetching, skipping`);
     return 0;
   }
 
@@ -726,7 +722,6 @@ export async function autoFetchProviderModels(provider: { provider: AIProvider; 
       true  // force refresh
     );
 
-    console.log(`[ProviderRegistry] Auto-fetched ${selectableModels.length} models for ${provider.name || providerType}`);
     return selectableModels.length;
   } catch (error) {
     console.error(`[ProviderRegistry] Auto-fetch failed for ${provider.name || providerType}:`, error);
@@ -745,7 +740,6 @@ export async function clearProviderModelsCache(provider: AIProvider): Promise<vo
       if (chrome.runtime.lastError) {
         reject(chrome.runtime.lastError);
       } else {
-        console.log(`[ProviderRegistry] Cache cleared for ${provider}`);
         resolve();
       }
     });
@@ -781,7 +775,6 @@ function setCachedModels<T>(cacheKey: string, models: T[]): Promise<void> {
       if (chrome.runtime.lastError) {
         reject(chrome.runtime.lastError);
       } else {
-        console.log(`[ProviderRegistry] Cached ${models.length} models for ${cacheKey}`);
         resolve();
       }
     });
