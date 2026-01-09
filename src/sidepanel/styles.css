@@ -2753,3 +2753,32 @@ details.summary-section[open] .summary-chevron {
   border-color: var(--error);
 }
 
+.ai-profiles-empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.ai-profiles-empty-state p {
+  font-size: 14px;
+  margin: 0 0 16px 0;
+}
+
+.ai-profiles-empty-state button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.ai-profiles-empty-state button:hover {
+  background: var(--accent-hover);
+}
+
