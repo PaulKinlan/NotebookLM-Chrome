@@ -147,6 +147,33 @@
 
         <!-- Chat Tab -->
         <section id="tab-chat" class="tab-content">
+          <!-- Summary Section -->
+          <div id="summary-section" class="summary-section" style="display: none;">
+            <div class="summary-header">
+              <h3 class="section-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                  <path d="M2 17l10 5 10-5"></path>
+                  <path d="M2 12l10 5 10-5"></path>
+                </svg>
+                Overview
+              </h3>
+              <button id="regenerate-summary-btn" class="btn btn-small btn-outline" title="Regenerate overview">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 4v6h-6"></path>
+                  <path d="M1 20v-6h6"></path>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+              </button>
+            </div>
+            <div id="notebook-summary" class="summary-content">
+              <div class="summary-loading">
+                <span class="loading-spinner"></span>
+                <span>Generating overview...</span>
+              </div>
+            </div>
+          </div>
+
           <h3 class="section-title">
             Active Sources (<span id="source-count">0</span>)
             <a href="#" id="manage-sources" class="link">Manage</a>
