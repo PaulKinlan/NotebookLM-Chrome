@@ -59,7 +59,7 @@ import {
   getModelConfigs,
   getDefaultModelConfig,
 } from "../lib/model-configs.ts";
-import { initProviderConfigUI } from './provider-config-ui.ts';
+import { initProviderConfigUI, AI_PROFILES_CHANGED_EVENT } from './provider-config-ui.ts';
 import { SandboxRenderer } from "../lib/sandbox-renderer.ts";
 
 // ============================================================================
@@ -291,6 +291,11 @@ async function init(): Promise<void> {
 
   // Initialize provider config UI
   await initProviderConfigUI();
+
+  // Listen for AI profile changes to update the AI config select
+  window.addEventListener(AI_PROFILES_CHANGED_EVENT, () => {
+    loadAIConfigs();
+  });
 
   // Listen for tab highlight changes to update button text
   chrome.tabs.onHighlighted.addListener(() => {

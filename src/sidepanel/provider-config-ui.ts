@@ -42,6 +42,16 @@ interface AIProfile {
   provider: ProviderConfig;
 }
 
+// Custom event for notifying when AI profiles change
+export const AI_PROFILES_CHANGED_EVENT = 'ai-profiles-changed';
+
+/**
+ * Dispatch event to notify that AI profiles have changed
+ */
+function notifyProfilesChanged(): void {
+  window.dispatchEvent(new CustomEvent(AI_PROFILES_CHANGED_EVENT));
+}
+
 // State
 let profiles: AIProfile[] = [];
 let editingProfileId: string | null = null;
@@ -1347,6 +1357,7 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
     isNewProfile = false;
     selectedProviderIdForNew = null;
     await loadData();
+    notifyProfilesChanged();
   } catch (error) {
     console.error('Failed to save profile:', error);
     showNotification(error instanceof Error ? error.message : 'Failed to save profile', 'error');
@@ -1381,6 +1392,7 @@ async function handleSetDefaultProfile(profileId: string): Promise<void> {
     await setDefaultModelConfig(profileId);
     showNotification('Default profile updated', 'success');
     await loadData();
+    notifyProfilesChanged();
   } catch (error) {
     console.error('Failed to set default:', error);
     showNotification('Failed to set default profile', 'error');
@@ -1405,6 +1417,7 @@ async function handleDeleteProfile(profileId: string): Promise<void> {
 
     showNotification('Profile deleted', 'success');
     await loadData();
+    notifyProfilesChanged();
   } catch (error) {
     console.error('Failed to delete profile:', error);
     showNotification(error instanceof Error ? error.message : 'Failed to delete profile', 'error');
