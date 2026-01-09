@@ -5,15 +5,15 @@
  * Changes here affect how the empty state behaves.
  */
 
-export type OnboardingMode = 'auto' | 'guided';
+export type OnboardingMode = 'auto';
 
 /**
  * ONBOARDING_MODE flag:
  *
- * 'auto': Pre-select Chrome Built-in provider in empty state (default)
- * 'guided': Same as auto - onboarding is implicit from application state
+ * 'auto': Pre-select Chrome Built-in provider in empty state (default).
  *
- * Both modes rely on the existing empty state UI flow.
- * The difference can be extended here if needed (e.g., different defaults).
+ * Additional modes should only be added when they are implemented with
+ * distinct behavior. Currently, onboarding is implicit from application
+ * state and relies on the existing empty state UI flow.
  */
 export const ONBOARDING_MODE: OnboardingMode = 'auto';
