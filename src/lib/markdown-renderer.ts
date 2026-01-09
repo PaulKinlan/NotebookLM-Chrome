@@ -32,8 +32,8 @@ const MARKDOWN_DOMPURIFY_CONFIG: Config = {
  * Render markdown text to sanitized HTML
  */
 export function renderMarkdown(text: string): string {
-  const html = marked.parse(text, { async: false }) as string;
-  return DOMPurify.sanitize(html, MARKDOWN_DOMPURIFY_CONFIG) as string;
+  const html = marked.parse(text, { async: false });
+  return DOMPurify.sanitize(html, MARKDOWN_DOMPURIFY_CONFIG);
 }
 
 /**
