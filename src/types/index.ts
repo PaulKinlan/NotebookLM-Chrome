@@ -33,6 +33,8 @@ export interface Source extends SyncableEntity {
 
 export interface Notebook extends SyncableEntity {
   name: string;
+  modelConfigId?: string;         // References ModelConfig.id. Optional: uses default if not set
+  credentialOverrideId?: string;  // Optional: override credential for this notebook only
 }
 
 export interface ChatMessage {
@@ -81,20 +83,56 @@ export interface NotebookSummary {
 // AI Configuration
 // ============================================================================
 
-export type AIProvider = 'anthropic' | 'openai' | 'openai-compatible' | 'google' | 'chrome';
+import type { AIProvider } from '../lib/provider-registry.js';
 
+// ============================================================================
+// AI Configuration System (Credentials + ModelConfigs)
+// ============================================================================
+
+// Credential: Named API key (user-managed)
+// e.g., "Work OpenAI", "Personal Anthropic"
+export interface Credential {
+  id: string;
+  name: string;              // User-defined name
+  apiKey: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ModelConfig: Model settings (user-managed)
+// References a Credential and a registry Provider entry
+export interface ModelConfig {
+  id: string;
+  name: string;                    // User-defined name, e.g., "GPT-4 Turbo"
+  credentialId: string;            // References Credential.id
+  providerId: string;              // References registry entry id (e.g., "openai-z-ai")
+  model: string;                   // Model ID: "gpt-4-turbo", "claude-3-5-sonnet-20241022"
+  temperature?: number;
+  maxTokens?: number;
+  isDefault?: boolean;             // Default model config
+  createdAt: number;
+  updatedAt: number;
+}
+
+// Settings storage for new system
+export interface CredentialSettings {
+  credentials: Credential[];
+  defaultCredentialId?: string;
+}
+
+export interface ModelConfigSettings {
+  modelConfigs: ModelConfig[];
+  defaultModelConfigId: string;
+}
+
+// Current AISettings (on main branch)
 export interface AISettings {
   provider: AIProvider;
   model: string;
   apiKeys: Record<string, string>;
   temperature?: number;
   maxTokens?: number;
-  /**
-   * Custom API endpoint URL for the AI provider.
-   * When set, this overrides the default endpoint for the selected provider.
-   * Expected format is a fully qualified URL (e.g., "https://api.example.com/v1").
-   */
-  baseURL?: string;
+  baseURL?: string;  // Deprecated: base URLs now hardcoded in registry
 }
 
 export type TTSProvider = 'openai' | 'elevenlabs' | 'google' | 'browser';
@@ -241,4 +279,7 @@ export interface StorageAdapter {
   getSummary(notebookId: string): Promise<NotebookSummary | null>;
   saveSummary(summary: NotebookSummary): Promise<void>;
   deleteSummary(notebookId: string): Promise<void>;
+
+  // Clear all data
+  clearAll(): Promise<void>;
 }
