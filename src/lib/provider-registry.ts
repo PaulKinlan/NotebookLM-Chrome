@@ -240,7 +240,7 @@ export const PROVIDER_REGISTRY = {
   google: {
     id: 'google',
     displayName: 'Google',
-    defaultModel: 'gemini-2.5-flash',
+    defaultModel: 'gemini-3-pro-preview',
     modelsAPIEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
     features: {
       supportsModelFetching: true,
@@ -285,6 +285,7 @@ export const PROVIDER_REGISTRY = {
       createVertexExpress(modelId, { apiKey }),
     commonModels: [
       // Gemini 3 series
+      { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
       { value: 'gemini-3-pro', label: 'Gemini 3 Pro' },
       { value: 'gemini-3-flash', label: 'Gemini 3 Flash' },
       // Gemini 2.5 series
