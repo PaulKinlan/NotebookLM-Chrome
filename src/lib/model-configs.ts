@@ -7,8 +7,11 @@
 
 import type { ModelConfig, ModelConfigSettings, Credential, Notebook } from '../types/index.ts';
 import { dbGet, dbPut } from './db.ts';
-import { getCredential } from './credentials.ts';
+import { getCredential, createCredential, findCredentialByApiKey } from './credentials.ts';
 import { getProviderConfigById } from './provider-registry.ts';
+
+// Special placeholder for providers that don't require API keys
+export const NO_API_KEY_PLACEHOLDER = '__NO_API_KEY__';
 
 const MODEL_CONFIG_SETTINGS_KEY = 'modelConfigSettings';
 
@@ -339,6 +342,54 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
     return true;
   } catch (error) {
     console.error('[ModelConfigs] Migration failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Initialize default Chrome Built-in profile if no profiles exist
+ *
+ * This is called on first install to provide a working AI profile out of the box.
+ * Returns true if a default profile was created, false otherwise.
+ */
+export async function initializeDefaultProfile(): Promise<boolean> {
+  try {
+    const existingConfigs = await getModelConfigs();
+
+    // Only create default if no profiles exist
+    if (existingConfigs.length > 0) {
+      return false;
+    }
+
+    console.log('[ModelConfigs] No profiles found, creating default Chrome Built-in profile...');
+
+    // Create a placeholder credential for Chrome Built-in (no API key needed)
+    let credentialId: string;
+    const existingCredential = await findCredentialByApiKey(NO_API_KEY_PLACEHOLDER);
+
+    if (existingCredential) {
+      credentialId = existingCredential.id;
+    } else {
+      const credential = await createCredential({
+        name: 'Chrome Built-in',
+        apiKey: NO_API_KEY_PLACEHOLDER,
+      });
+      credentialId = credential.id;
+    }
+
+    // Create the default Chrome Built-in model config
+    await createModelConfig({
+      name: 'Chrome Built-in',
+      credentialId,
+      providerId: 'chrome',
+      model: 'chrome-built-in',
+      isDefault: true,
+    });
+
+    console.log('[ModelConfigs] Created default Chrome Built-in profile');
+    return true;
+  } catch (error) {
+    console.error('[ModelConfigs] Failed to initialize default profile:', error);
     return false;
   }
 }

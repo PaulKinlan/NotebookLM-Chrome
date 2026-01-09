@@ -20,6 +20,8 @@ import {
   updateModelConfig,
   deleteModelConfig,
   setDefaultModelConfig,
+  initializeDefaultProfile,
+  NO_API_KEY_PLACEHOLDER,
 } from '../lib/model-configs.ts';
 import type { ProviderConfig, ModelOption, SelectableModel } from '../lib/provider-registry.ts';
 import {
@@ -143,6 +145,9 @@ export async function initProviderConfigUI(): Promise<void> {
 
   elements.addProfileBtn.addEventListener('click', handleAddProfile);
 
+  // Initialize default Chrome Built-in profile if no profiles exist
+  await initializeDefaultProfile();
+
   await loadData();
 
   console.log('[ConfigUI] Initialization complete');
@@ -249,6 +254,7 @@ function createProfileCard(profile: AIProfile): HTMLElement {
     setupProfileFormListeners(card, profile.modelConfig.id, false);
   } else {
     const { modelConfig, credential, provider } = profile;
+    const showApiKey = provider.features.requiresApiKey !== false && credential.apiKey !== NO_API_KEY_PLACEHOLDER;
 
     card.innerHTML = `
       <div class="profile-header" data-profile-id="${modelConfig.id}">
@@ -261,7 +267,7 @@ function createProfileCard(profile: AIProfile): HTMLElement {
         <div class="profile-details">
           <span class="profile-provider">${escapeHtml(provider.displayName)}</span>
           <span class="profile-model">${escapeHtml(modelConfig.model)}</span>
-          <span class="profile-api-key">${maskApiKey(credential.apiKey)}</span>
+          ${showApiKey ? `<span class="profile-api-key">${maskApiKey(credential.apiKey)}</span>` : ''}
           ${modelConfig.temperature !== undefined ? `<span class="profile-temp">Temp: ${modelConfig.temperature}</span>` : ''}
           ${modelConfig.maxTokens ? `<span class="profile-max-tokens">Max: ${modelConfig.maxTokens}</span>` : ''}
         </div>
@@ -318,6 +324,14 @@ function providerRequiresApiKeyForFetching(providerId: string): boolean {
 }
 
 /**
+ * Check if provider requires API key at all
+ */
+function providerRequiresApiKey(providerId: string): boolean {
+  const provider = getProviderConfigById(providerId);
+  return provider?.features.requiresApiKey ?? true;
+}
+
+/**
  * Simple fuzzy match scoring function
  * Returns higher score for better matches
  */
@@ -362,6 +376,8 @@ function renderProfileEditForm(profile: AIProfile | null): string {
   const isNew = !profile;
 
   const currentProviderId = profile ? profile.provider.id : (selectedProviderIdForNew || '');
+  const requiresApiKey = providerRequiresApiKey(currentProviderId);
+  const apiKeyValue = profile?.credential.apiKey === NO_API_KEY_PLACEHOLDER ? '' : (profile?.credential.apiKey || '');
 
   return `
     <div class="profile-form">
@@ -378,21 +394,23 @@ function renderProfileEditForm(profile: AIProfile | null): string {
       <div class="profile-provider-dropdown"></div>
       <input type="hidden" class="profile-provider-value" value="${currentProviderId}" />
 
-      <label class="input-label">API Key</label>
-      <div class="password-input-wrapper">
-        <input type="password" class="form-input profile-api-key-input"
-               placeholder="Required for most providers"
-               value="${profile ? escapeHtml(profile.credential.apiKey) : ''}" />
-        <button type="button" class="password-toggle" aria-label="Show API key" title="Show API key">
-          <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-          <svg class="eye-off-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M1 1l22 22"></path>
-            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-          </svg>
-        </button>
+      <div class="api-key-section" ${!requiresApiKey ? 'style="display: none;"' : ''}>
+        <label class="input-label">API Key</label>
+        <div class="password-input-wrapper">
+          <input type="password" class="form-input profile-api-key-input"
+                 placeholder="Required for most providers"
+                 value="${escapeHtml(apiKeyValue)}" />
+          <button type="button" class="password-toggle" aria-label="Show API key" title="Show API key">
+            <svg class="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg class="eye-off-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M1 1l22 22"></path>
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <label class="input-label">Model</label>
@@ -783,7 +801,8 @@ async function handleTestConnection(card: HTMLElement): Promise<void> {
   }
 
   const providerType = providerValueInput.value;
-  const apiKey = apiKeyInput.value.trim();
+  const requiresKey = providerRequiresApiKey(providerType);
+  const apiKey = requiresKey ? apiKeyInput.value.trim() : NO_API_KEY_PLACEHOLDER;
   const modelId = modelInput.value.trim();
 
   // Reset UI to testing state
@@ -798,8 +817,8 @@ async function handleTestConnection(card: HTMLElement): Promise<void> {
     return;
   }
 
-  // Check if API key is provided
-  if (!apiKey) {
+  // Check if API key is provided (only for providers that require it)
+  if (requiresKey && !apiKey) {
     showTestResult(testBtn, testStatus, 'error', 'Please enter an API key');
     testBtn.disabled = false;
     return;
@@ -941,19 +960,40 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
         providerValueInput.value = option.id;
         selectedProviderIdForNew = option.id;
 
-        // Clear model input value when provider changes
+        // Show/hide API key section based on provider requirements
+        const apiKeySection = card.querySelector('.api-key-section') as HTMLElement;
+        const requiresKey = providerRequiresApiKey(option.id);
+        if (apiKeySection) {
+          apiKeySection.style.display = requiresKey ? '' : 'none';
+        }
+
+        // Get the model input element
         const modelInput = card.querySelector('.profile-model-input') as HTMLInputElement;
-        if (modelInput) {
+
+        // For Chrome Built-in, auto-populate the model since it only has one
+        const provider = getProviderConfigById(option.id);
+        if (provider && !requiresKey && provider.defaultModel) {
+          // Auto-populate with the default model for providers that don't require API key
+          if (modelInput) {
+            modelInput.value = provider.defaultModel;
+          }
+          // Also auto-populate the profile name if empty
+          const nameInput = card.querySelector('.profile-name-input') as HTMLInputElement;
+          if (nameInput && !nameInput.value) {
+            nameInput.value = provider.displayName;
+          }
+        } else if (modelInput) {
+          // Clear model input value when provider changes to one that requires API key
           modelInput.value = '';
         }
 
-        if (isNew) {
+        if (isNew && requiresKey) {
           const apiKey = apiKeyInput?.value.trim();
           // Auto-fetch if provider supports it and has API key (or doesn't require one)
           const supportsFetching = providerSupportsFetching(option.id);
-          const requiresApiKey = providerRequiresApiKeyForFetching(option.id);
+          const requiresApiKeyForFetch = providerRequiresApiKeyForFetching(option.id);
 
-          if (supportsFetching && (!requiresApiKey || apiKey)) {
+          if (supportsFetching && (!requiresApiKeyForFetch || apiKey)) {
             fetchModelsForCard(card, option.id, apiKey || undefined);
           }
         }
@@ -1219,7 +1259,9 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
   const name = nameInput.value.trim();
   const providerId = providerValueInput?.value || '';
   const model = modelInput.value.trim();
-  const apiKey = apiKeyInput.value.trim();
+  const requiresKey = providerRequiresApiKey(providerId);
+  // Use placeholder for providers that don't require API key
+  const apiKey = requiresKey ? apiKeyInput.value.trim() : NO_API_KEY_PLACEHOLDER;
   const temperature = parseFloat(temperatureInput.value);
   const maxTokensStr = maxTokensInput.value.trim();
   const maxTokens = maxTokensStr ? parseInt(maxTokensStr, 10) : undefined;
@@ -1232,6 +1274,12 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
 
   if (!model) {
     showNotification('Please enter a model ID', 'error');
+    return;
+  }
+
+  // Validate API key only for providers that require it
+  if (requiresKey && !apiKey) {
+    showNotification('Please enter an API key', 'error');
     return;
   }
 
