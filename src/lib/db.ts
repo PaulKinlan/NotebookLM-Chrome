@@ -1,5 +1,5 @@
 const DB_NAME = 'notebooklm-chrome';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export interface DBSchema {
   notebooks: {
@@ -39,6 +39,12 @@ export interface DBSchema {
     indexes: {
       notebookId: string;
       createdAt: number;
+    };
+  };
+  summaries: {
+    key: string;
+    indexes: {
+      notebookId: string;
     };
   };
 }
@@ -104,6 +110,12 @@ export function getDB(): Promise<IDBDatabase> {
         const cacheStore = db.createObjectStore('responseCache', { keyPath: 'id' });
         cacheStore.createIndex('notebookId', 'notebookId', { unique: false });
         cacheStore.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+
+      // Summaries store (cached notebook overviews)
+      if (!db.objectStoreNames.contains('summaries')) {
+        const summariesStore = db.createObjectStore('summaries', { keyPath: 'id' });
+        summariesStore.createIndex('notebookId', 'notebookId', { unique: true });
       }
     };
   });
