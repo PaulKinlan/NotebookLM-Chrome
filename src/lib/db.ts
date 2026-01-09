@@ -47,6 +47,13 @@ export interface DBSchema {
       notebookId: string;
     };
   };
+  providerConfigs: {
+    key: string;
+    indexes: {
+      isDefault: boolean;
+      createdAt: number;
+    };
+  };
 }
 
 let dbInstance: IDBDatabase | null = null;
@@ -116,6 +123,13 @@ export function getDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('summaries')) {
         const summariesStore = db.createObjectStore('summaries', { keyPath: 'id' });
         summariesStore.createIndex('notebookId', 'notebookId', { unique: true });
+      }
+
+      // Provider configurations store
+      if (!db.objectStoreNames.contains('providerConfigs')) {
+        const configsStore = db.createObjectStore('providerConfigs', { keyPath: 'id' });
+        configsStore.createIndex('isDefault', 'isDefault', { unique: false });
+        configsStore.createIndex('createdAt', 'createdAt', { unique: false });
       }
     };
   });
@@ -222,5 +236,26 @@ export async function dbClear(storeName: string): Promise<void> {
 
     request.onerror = () => reject(new Error(`Failed to clear ${storeName}`));
     request.onsuccess = () => resolve();
+  });
+}
+
+/**
+ * Clear all data from the database
+ */
+export async function dbClearAll(): Promise<void> {
+  const db = await getDB();
+  const storeNames = ['notebooks', 'sources', 'chatMessages', 'transformations', 'responseCache', 'settings', 'providerConfigs'];
+
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeNames, 'readwrite');
+
+    transaction.onerror = () => reject(new Error('Failed to clear database'));
+
+    transaction.oncomplete = () => resolve();
+
+    for (const storeName of storeNames) {
+      const store = transaction.objectStore(storeName);
+      store.clear();
+    }
   });
 }
