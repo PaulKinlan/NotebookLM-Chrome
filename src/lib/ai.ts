@@ -1,71 +1,79 @@
 import { streamText, generateText, type LanguageModel } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { builtInAI } from '@built-in-ai/core';
-import type { Source, Citation, AIProvider } from '../types/index.ts';
-import { getAISettings, getApiKey } from './settings.ts';
+import type { Source, Citation, Notebook } from '../types/index.ts';
+import { getActiveNotebookId, getNotebook } from './storage.ts';
+import { resolveModelConfig } from './model-configs.ts';
+import {
+  getProviderConfig,
+  getProviderDefaultModel,
+  providerRequiresApiKey,
+  type AIProvider,
+} from './provider-registry.ts';
 
 // ============================================================================
 // Provider Factory
 // ============================================================================
 
-export { AIProvider };
-
 /**
- * Helper function to create provider config with optional baseURL
+ * Create a LanguageModel instance for the given provider
+ * Uses the provider registry's createModel function
  */
-function createProviderConfig(
+function createProviderInstance(
+  providerType: AIProvider,
   apiKey: string,
+  modelId: string,
   baseURL?: string
-): { apiKey: string; baseURL?: string } {
-  return baseURL ? { apiKey, baseURL } : { apiKey };
+): LanguageModel | null {
+  const config = getProviderConfig(providerType);
+
+  // If baseURL not provided, get from registry
+  if (!baseURL) {
+    baseURL = config.baseURL;
+  }
+
+  // Use the provider's createModel function from the registry
+  return config.createModel(apiKey, modelId, baseURL);
 }
 
 async function getModel(): Promise<LanguageModel | null> {
-  const settings = await getAISettings();
-  const apiKey = await getApiKey(settings.provider);
+  // Get active notebook to resolve model config with potential credential override
+  const activeNotebookId = await getActiveNotebookId();
 
-  switch (settings.provider) {
-    case "anthropic": {
-      if (!apiKey) return null;
-      const provider = createAnthropic(
-        createProviderConfig(apiKey, settings.baseURL)
-      );
-      return provider(settings.model || "claude-sonnet-4-5-20250514");
+  let notebook: Notebook | undefined;
+  if (activeNotebookId) {
+    const notebookResult = await getNotebook(activeNotebookId);
+    if (notebookResult) {
+      notebook = notebookResult;
     }
-    case "openai": {
-      if (!apiKey) return null;
-      const provider = createOpenAI(
-        createProviderConfig(apiKey, settings.baseURL)
-      );
-      return provider(settings.model || "gpt-5");
-    }
-    case 'openai-compatible': {
-      if (!apiKey) return null;
-      if (!settings.baseURL) return null;
-      const provider = createOpenAICompatible({
-        name: 'openai-compatible',
-        apiKey,
-        baseURL: settings.baseURL,
-      });
-      return provider(settings.model || 'gpt-4o');
-    }
-    case 'google': {
-      if (!apiKey) return null;
-      const provider = createGoogleGenerativeAI(
-        createProviderConfig(apiKey, settings.baseURL)
-      );
-      return provider(settings.model || "gemini-2.5-flash");
-    }
-    case "chrome": {
-      // Chrome Built-in AI - no API key needed
-      return builtInAI();
-    }
-    default:
-      return null;
   }
+
+  // Resolve model config (handles notebook-specific config and credential override)
+  const resolved = await resolveModelConfig(notebook);
+
+  if (!resolved) {
+    throw new Error('No AI model configured. Please add a model configuration in settings.');
+  }
+
+  const { modelConfig, credential, providerType, baseURL } = resolved;
+  const apiKey = credential.apiKey;
+  const modelId = modelConfig.model;
+
+  // Get defaults from registry
+  const defaultModel = getProviderDefaultModel(providerType);
+  const requiresApiKey = providerRequiresApiKey(providerType);
+
+  // Check API key requirement
+  if (requiresApiKey && !apiKey) {
+    return null;
+  }
+
+  // Create provider instance using SDK factory
+  // apiKey is guaranteed to be non-null here due to the requiresApiKey check
+  return createProviderInstance(
+    providerType,
+    apiKey ?? '',
+    modelId || defaultModel,
+    baseURL
+  );
 }
 
 // ============================================================================
@@ -153,7 +161,10 @@ function parseCitations(
         if (!citationsBySourceNum.has(sourceNum)) {
           citationsBySourceNum.set(sourceNum, []);
         }
-        citationsBySourceNum.get(sourceNum)!.push(excerpt);
+        const excerpts = citationsBySourceNum.get(sourceNum);
+        if (excerpts) {
+          excerpts.push(excerpt);
+        }
       }
     }
   }
@@ -1062,6 +1073,45 @@ export async function testConnection(): Promise<{
     const model = await getModel();
     if (!model) {
       return { success: false, error: "No API key configured" };
+    }
+
+    await generateText({
+      model,
+      prompt: 'Say "Connection successful" in exactly those words.',
+    });
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Test connection with specific provider, API key, and model
+ * Useful for testing a configuration before saving it
+ */
+export async function testConnectionWithConfig(
+  providerType: string,
+  apiKey: string,
+  modelId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const providerConfig = getProviderConfig(providerType);
+    if (!providerConfig) {
+      return { success: false, error: `Unknown provider: ${providerType}` };
+    }
+
+    const baseURL = providerConfig.baseURL;
+    const model = providerConfig.createModel(apiKey, modelId, baseURL);
+
+    if (!model) {
+      return { success: false, error: "Failed to create model instance" };
     }
 
     await generateText({
