@@ -7,6 +7,7 @@ import type {
   SyncStatus,
   CachedResponse,
   Citation,
+  NotebookSummary,
 } from '../types/index.ts';
 import {
   dbGet,
@@ -54,6 +55,7 @@ class IndexedDBStorage implements StorageAdapter {
     await dbDeleteByIndex('sources', 'notebookId', id);
     await dbDeleteByIndex('chatMessages', 'notebookId', id);
     await dbDeleteByIndex('transformations', 'notebookId', id);
+    await dbDeleteByIndex('summaries', 'notebookId', id);
 
     // Then delete the notebook
     await dbDelete('notebooks', id);
@@ -158,6 +160,23 @@ class IndexedDBStorage implements StorageAdapter {
 
   async clearResponseCache(notebookId: string): Promise<void> {
     await dbDeleteByIndex('responseCache', 'notebookId', notebookId);
+  }
+
+  // --------------------------------------------------------------------------
+  // Notebook Summary
+  // --------------------------------------------------------------------------
+
+  async getSummary(notebookId: string): Promise<NotebookSummary | null> {
+    const summaries = await dbGetByIndex<NotebookSummary>('summaries', 'notebookId', notebookId);
+    return summaries[0] ?? null;
+  }
+
+  async saveSummary(summary: NotebookSummary): Promise<void> {
+    await dbPut('summaries', summary);
+  }
+
+  async deleteSummary(notebookId: string): Promise<void> {
+    await dbDeleteByIndex('summaries', 'notebookId', notebookId);
   }
 
   // --------------------------------------------------------------------------
@@ -327,3 +346,23 @@ export const saveTransformation = (transformation: Transformation) => storage.sa
 export const getCachedResponse = (cacheKey: string) => storage.getCachedResponse(cacheKey);
 export const saveCachedResponse = (cached: CachedResponse) => storage.saveCachedResponse(cached);
 export const clearChatHistory = (notebookId: string) => storage.clearChatHistory(notebookId);
+
+export const getSummary = (notebookId: string) => storage.getSummary(notebookId);
+export const saveSummary = (summary: NotebookSummary) => storage.saveSummary(summary);
+export const deleteSummary = (notebookId: string) => storage.deleteSummary(notebookId);
+
+export function createSummary(
+  notebookId: string,
+  sourceIds: string[],
+  content: string
+): NotebookSummary {
+  const now = Date.now();
+  return {
+    id: `summary_${notebookId}`,
+    notebookId,
+    sourceIds,
+    content,
+    createdAt: now,
+    updatedAt: now,
+  };
+}

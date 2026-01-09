@@ -65,6 +65,19 @@ export interface CachedResponse {
 }
 
 // ============================================================================
+// Notebook Summary (Cached Overview)
+// ============================================================================
+
+export interface NotebookSummary {
+  id: string;
+  notebookId: string;
+  sourceIds: string[]; // Track which sources were used to generate
+  content: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ============================================================================
 // AI Configuration
 // ============================================================================
 
@@ -223,4 +236,9 @@ export interface StorageAdapter {
   saveCachedResponse(cached: CachedResponse): Promise<void>;
   getCachedResponsesByNotebook(notebookId: string): Promise<CachedResponse[]>;
   clearResponseCache(notebookId: string): Promise<void>;
+
+  // Notebook Summary
+  getSummary(notebookId: string): Promise<NotebookSummary | null>;
+  saveSummary(summary: NotebookSummary): Promise<void>;
+  deleteSummary(notebookId: string): Promise<void>;
 }

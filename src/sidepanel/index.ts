@@ -27,6 +27,9 @@ import {
   saveCachedResponse,
   createCachedResponse,
   createCacheKey,
+  getSummary,
+  saveSummary,
+  createSummary,
 } from "../lib/storage.ts";
 import {
   streamChat,
@@ -49,6 +52,7 @@ import {
   generateProsCons,
   generateCitationList,
   generateOutline,
+  generateSummary,
   testConnection,
 } from "../lib/ai.ts";
 import {
@@ -141,6 +145,11 @@ const elements = {
   chatMessages: document.getElementById("chat-messages") as HTMLDivElement,
   clearChatBtn: document.getElementById("clear-chat-btn") as HTMLButtonElement,
   chatStatus: document.getElementById("chat-status") as HTMLParagraphElement,
+
+  // Summary section
+  summarySection: document.getElementById("summary-section") as HTMLDivElement,
+  notebookSummary: document.getElementById("notebook-summary") as HTMLDivElement,
+  regenerateSummaryBtn: document.getElementById("regenerate-summary-btn") as HTMLButtonElement,
 
   // Transform tab
   transformPodcast: document.getElementById(
@@ -466,6 +475,7 @@ function setupEventListeners(): void {
   elements.addPageBtn.addEventListener("click", handleAddCurrentTab);
   elements.clearChatBtn?.addEventListener("click", handleClearChat);
   elements.chatMessages?.addEventListener("click", handleCitationClick);
+  elements.regenerateSummaryBtn?.addEventListener("click", handleRegenerateSummary);
 
   // Transform tab
   elements.transformPodcast?.addEventListener("click", () =>
@@ -752,6 +762,7 @@ async function loadSources(): Promise<void> {
     `;
     elements.sourceCount.textContent = "0";
     elements.sourcesList.innerHTML = "";
+    hideSummary();
     return;
   }
 
@@ -763,6 +774,9 @@ async function loadSources(): Promise<void> {
 
   // Render in Add tab (recent sources)
   renderSourcesList(elements.sourcesList, sources.slice(0, 5));
+
+  // Load or generate summary
+  await loadOrGenerateSummary(sources);
 }
 
 function renderSourcesList(container: HTMLElement, sources: Source[]): void {
@@ -810,6 +824,113 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
 
     container.appendChild(div);
   }
+}
+
+// ============================================================================
+// Summary
+// ============================================================================
+
+function hideSummary(): void {
+  elements.summarySection.style.display = "none";
+}
+
+function showSummary(): void {
+  elements.summarySection.style.display = "block";
+}
+
+function showSummaryLoading(): void {
+  showSummary();
+  elements.notebookSummary.innerHTML = `
+    <div class="summary-loading">
+      <span class="loading-spinner"></span>
+      <span>Generating summary...</span>
+    </div>
+  `;
+}
+
+function showSummaryError(message: string): void {
+  showSummary();
+  elements.notebookSummary.innerHTML = `
+    <div class="summary-error">${escapeHtml(message)}</div>
+  `;
+}
+
+function showSummaryContent(content: string): void {
+  showSummary();
+  // Render markdown content
+  const rendered = renderMarkdown(content);
+  elements.notebookSummary.innerHTML = rendered;
+}
+
+function sourceIdsMatch(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((id, i) => id === sortedB[i]);
+}
+
+async function loadOrGenerateSummary(sources: Source[]): Promise<void> {
+  if (!currentNotebookId) {
+    hideSummary();
+    return;
+  }
+
+  // Hide summary if no sources
+  if (sources.length === 0) {
+    hideSummary();
+    return;
+  }
+
+  const sourceIds = sources.map((s) => s.id);
+
+  // Check if we have a cached summary with matching source IDs
+  const cachedSummary = await getSummary(currentNotebookId);
+
+  if (cachedSummary && sourceIdsMatch(cachedSummary.sourceIds, sourceIds)) {
+    // Use cached summary
+    showSummaryContent(cachedSummary.content);
+    return;
+  }
+
+  // Need to generate a new summary
+  await generateAndSaveSummary(sources, sourceIds);
+}
+
+async function generateAndSaveSummary(
+  sources: Source[],
+  sourceIds: string[]
+): Promise<void> {
+  if (!currentNotebookId) return;
+
+  showSummaryLoading();
+
+  try {
+    const content = await generateSummary(sources);
+
+    // Save the summary
+    const summary = createSummary(currentNotebookId, sourceIds, content);
+    await saveSummary(summary);
+
+    // Display it
+    showSummaryContent(content);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to generate summary";
+    showSummaryError(message);
+  }
+}
+
+async function handleRegenerateSummary(): Promise<void> {
+  if (!currentNotebookId) return;
+
+  const sources = await getSourcesByNotebook(currentNotebookId);
+  if (sources.length === 0) {
+    hideSummary();
+    return;
+  }
+
+  const sourceIds = sources.map((s) => s.id);
+  await generateAndSaveSummary(sources, sourceIds);
 }
 
 async function handleAddCurrentTab(): Promise<void> {

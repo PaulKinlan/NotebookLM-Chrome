@@ -708,11 +708,25 @@ input[type="text"]:focus {
    ============================================================================ */
 
 .summary-section {
-  margin-top: 24px;
+  margin-top: 16px;
   padding: 16px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.summary-header .section-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .summary-section .section-title {
@@ -727,8 +741,44 @@ input[type="text"]:focus {
   color: var(--text-primary);
 }
 
+.summary-content p {
+  margin: 0 0 8px 0;
+}
+
+.summary-content p:last-child {
+  margin-bottom: 0;
+}
+
 .summary-content strong {
   color: var(--accent-primary);
+}
+
+.summary-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.summary-error {
+  color: var(--error-color, #ef4444);
+  font-size: 14px;
 }
 
 .summary-meta {
