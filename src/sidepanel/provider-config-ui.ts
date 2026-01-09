@@ -122,8 +122,6 @@ let elements: {
  * Initialize configuration UI
  */
 export async function initProviderConfigUI(): Promise<void> {
-  console.log('[ConfigUI] Initializing AI Profiles UI');
-
   const profilesListEl = document.getElementById('profiles-list');
   const addProfileBtnEl = document.getElementById('add-profile-btn');
   const notebookSettingsGroupEl = document.getElementById('notebook-settings-group');
@@ -144,8 +142,6 @@ export async function initProviderConfigUI(): Promise<void> {
   elements.addProfileBtn.addEventListener('click', handleAddProfile);
 
   await loadData();
-
-  console.log('[ConfigUI] Initialization complete');
 }
 
 /**
@@ -1168,7 +1164,6 @@ async function fetchModelsForCard(card: HTMLElement, providerId: string, apiKey?
   try {
     const models = await fetchProviderSelectableModels(providerId, apiKey, true);
     setCachedModels(providerId, models, apiKey);
-    console.log(`[ConfigUI] Fetched ${models.length} models from ${providerConfig.displayName}`);
     return true;
   } catch (error) {
     console.error('[ConfigUI] Failed to fetch models:', error);
