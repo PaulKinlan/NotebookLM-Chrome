@@ -509,7 +509,7 @@ function buildChatHistory(
 ): Array<{ role: 'user' | 'assistant'; content: string }> {
   if (!history) return [];
   return history.slice(-10).map((m) => ({
-    role: m.role,
+    role: m.role as 'user' | 'assistant',
     content: m.content,
   }));
 }
