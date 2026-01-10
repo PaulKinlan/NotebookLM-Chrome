@@ -11,6 +11,14 @@
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:unit": "vitest --project unit",
+    "test:integration": "vitest --project integration",
+    "test:all": "vitest run --project unit && vitest run --project integration",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:coverage:integration": "vitest run --project integration --coverage",
     "package:zip": "cd dist && zip -r ../foliolm-extension-v${npm_package_version}.zip .",
     "package": "npm run package:zip",
     "release:patch": "npm version patch --no-git-tag-version && npm run build && npm run package && git commit -am \"chore(release): v$npm_package_version\" && git tag v$npm_package_version",
@@ -41,9 +49,15 @@
     "@types/turndown": "^5.0.5",
     "@typescript-eslint/eslint-plugin": "^8.19.0",
     "@typescript-eslint/parser": "^8.19.0",
+    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/ui": "^4.0.16",
     "eslint": "^9.17.0",
+    "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^20.1.0",
+    "jsdom": "^27.4.0",
     "typescript": "^5.7.2",
-    "vite": "^6.0.6"
+    "vite": "^6.0.6",
+    "vitest": "^4.0.16"
   },
   "overrides": {
     "@openrouter/ai-sdk-provider": {
