@@ -1,6 +1,8 @@
+type PermissionType = "tabs" | "tabGroups" | "bookmarks" | "history";
+
 interface SettingsTabProps {
   active: boolean;
-  onPermissionToggle: (permission: string) => void;
+  onPermissionToggle: (permission: PermissionType) => void;
   onClearAllData: () => void;
 }
 

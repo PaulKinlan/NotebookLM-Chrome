@@ -41,9 +41,9 @@ function renderApp(): void {
     onQuery: () => handleQuery(),
     onClearChat: () => handleClearChat(),
     onRegenerateSummary: () => handleRegenerateSummary(),
-    onTransform: (type: string) => handleTransform(type as any),
-    onPermissionToggle: (permission: string) =>
-      handlePermissionToggle(permission as any),
+    onTransform: (type: TransformType) => handleTransform(type),
+    onPermissionToggle: (permission: PermissionType) =>
+      handlePermissionToggle(permission),
     onClearAllData: () => handleClearAllData(),
     onFabClick: () => switchTab("add"),
     onPickerClose: () => closePicker(),
@@ -2474,6 +2474,8 @@ type TransformType =
   | "proscons"
   | "citations"
   | "outline";
+
+type PermissionType = "tabs" | "tabGroups" | "bookmarks" | "history";
 
 // Track sandboxes for proper cleanup when cards are removed
 const cardSandboxes = new WeakMap<HTMLElement, SandboxRenderer>();
