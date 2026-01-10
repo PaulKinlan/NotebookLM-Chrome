@@ -212,6 +212,7 @@ describe('agent-tools', () => {
       agentTools = await import('./agent-tools.ts');
 
       const tool = agentTools.listSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await (tool.execute as any)({ notebookId: 'notebook-1' }) as {
         sources: Array<{ id: string; wordCount: number }>;
         totalCount: number;
@@ -225,6 +226,7 @@ describe('agent-tools', () => {
   describe('readSource', () => {
     it('should return full content of a specific source', async () => {
       const tool = agentTools.readSource;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: { sourceId: string }) => Promise<{
         id: string;
         title: string;
@@ -243,6 +245,7 @@ describe('agent-tools', () => {
 
     it('should throw error for non-existent source', async () => {
       const tool = agentTools.readSource;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: { sourceId: string }) => Promise<unknown>;
 
       await expect(execute({ sourceId: 'source-nonexistent' }))
@@ -251,6 +254,7 @@ describe('agent-tools', () => {
 
     it('should include all metadata fields', async () => {
       const tool = agentTools.readSource;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: { sourceId: string }) => Promise<{
         metadata?: { wordCount: number };
       }>;
@@ -263,6 +267,7 @@ describe('agent-tools', () => {
   describe('findRelevantSources', () => {
     it('should rank sources by relevance score', async () => {
       const tool = agentTools.findRelevantSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: {
         notebookId: string;
         query: string;
@@ -290,6 +295,7 @@ describe('agent-tools', () => {
 
     it('should filter sources by minScore threshold', async () => {
       const tool = agentTools.findRelevantSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: {
         notebookId: string;
         query: string;
@@ -318,6 +324,7 @@ describe('agent-tools', () => {
 
     it('should limit results by maxSources', async () => {
       const tool = agentTools.findRelevantSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: {
         notebookId: string;
         query: string;
@@ -340,6 +347,7 @@ describe('agent-tools', () => {
 
     it('should include relevance reasons for each source', async () => {
       const tool = agentTools.findRelevantSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: {
         notebookId: string;
         query: string;
@@ -364,6 +372,7 @@ describe('agent-tools', () => {
 
     it('should return empty result when no sources match', async () => {
       const tool = agentTools.findRelevantSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: {
         notebookId: string;
         query: string;
@@ -386,6 +395,7 @@ describe('agent-tools', () => {
 
     it('should filter all sources when minScore is too high', async () => {
       const tool = agentTools.findRelevantSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: {
         notebookId: string;
         query: string;
@@ -415,6 +425,7 @@ describe('agent-tools', () => {
       // But we can test caching behavior by calling findRelevantSources twice
 
       const tool = agentTools.findRelevantSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: {
         notebookId: string;
         query: string;
@@ -440,6 +451,7 @@ describe('agent-tools', () => {
 
     it('should generate different cache keys for different parameters', async () => {
       const tool = agentTools.findRelevantSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: {
         notebookId: string;
         query: string;
@@ -474,6 +486,7 @@ describe('agent-tools', () => {
   describe('cache behavior', () => {
     it('should return cached result on subsequent calls', async () => {
       const tool = agentTools.findRelevantSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: {
         notebookId: string;
         query: string;
@@ -506,6 +519,7 @@ describe('agent-tools', () => {
 
     it('should cache and retrieve listSources results', async () => {
       const tool = agentTools.listSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: { notebookId: string }) => Promise<{
         totalCount: number;
       }>;
@@ -521,6 +535,7 @@ describe('agent-tools', () => {
 
     it('should cache and retrieve readSource results', async () => {
       const tool = agentTools.readSource;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: { sourceId: string }) => Promise<{
         id: string;
       }>;
@@ -538,6 +553,7 @@ describe('agent-tools', () => {
   describe('error handling', () => {
     it('should handle missing notebook gracefully', async () => {
       const tool = agentTools.listSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: { notebookId: string }) => Promise<{
         totalCount: number;
         sources: unknown[];
@@ -559,6 +575,7 @@ describe('agent-tools', () => {
 
     it('should handle empty notebook in findRelevantSources', async () => {
       const tool = agentTools.findRelevantSources;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const execute = tool.execute as any as (args: {
         notebookId: string;
         query: string;
