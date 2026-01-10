@@ -230,9 +230,11 @@ async function summarizeSources(
     .map((s, i) => `[Source ${i + 1}] "${s.title}"\n${s.content.slice(0, 500)}...`)
     .join('\n\n---\n\n');
 
-  const result = await generateText({
-    model,
-    system: `You are a precise summarizer. Create 2-3 sentence summaries that capture the main points and key information.
+  let summaryResult;
+  try {
+    summaryResult = await generateText({
+      model,
+      system: `You are a precise summarizer. Create 2-3 sentence summaries that capture the main points and key information.
 
 Return ONLY a JSON array of objects:
 [
@@ -241,11 +243,16 @@ Return ONLY a JSON array of objects:
 ]
 
 Be accurate and concise. Focus on substantive content.`,
-    prompt: `Summarize these sources:\n\n${sourcesText}\n\nReturn the JSON summaries.`,
-  });
+      prompt: `Summarize these sources:\n\n${sourcesText}\n\nReturn the JSON summaries.`,
+    });
+  } catch (error) {
+    console.error('Failed to generate summaries:', error);
+    // Return empty map on API error - sources will show full content instead
+    return summaries;
+  }
 
   try {
-    const parsed = JSON.parse(result.text.trim()) as Array<{
+    const parsed = JSON.parse(summaryResult.text.trim()) as Array<{
       index: number;
       summary: string;
     }>;
