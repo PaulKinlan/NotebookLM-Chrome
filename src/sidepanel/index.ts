@@ -7,6 +7,68 @@ import type {
 import DOMPurify, { Config } from "dompurify";
 import { checkPermissions, requestPermission } from "../lib/permissions.ts";
 import { renderMarkdown, isHtmlContent } from "../lib/markdown-renderer.ts";
+import { App } from "./App.tsx";
+
+// ============================================================================
+// Render App
+// ============================================================================
+
+let activeTabState = "add";
+let fabHiddenState = false;
+
+function renderApp(): void {
+  const appContainer = document.getElementById("app");
+  if (!appContainer) return;
+
+  // Render the App component
+  const appElement = App({
+    activeTab: activeTabState,
+    fabHidden: fabHiddenState,
+    onTabClick: (tab: string) => {
+      activeTabState = tab;
+      switchTab(tab);
+    },
+    onHeaderLibraryClick: () => switchTab("library"),
+    onHeaderSettingsClick: () => switchTab("settings"),
+    onNotebookChange: (_id: string) => handleNotebookChange(),
+    onAIConfigChange: () => handleAIConfigChange(),
+    onNewNotebook: () => handleNewNotebook(),
+    onAddCurrentTab: () => handleAddCurrentTab(),
+    onImportTabs: () => handleImportTabs(),
+    onImportTabGroups: () => handleImportTabGroups(),
+    onImportBookmarks: () => handleImportBookmarks(),
+    onImportHistory: () => handleImportHistory(),
+    onQuery: () => handleQuery(),
+    onClearChat: () => handleClearChat(),
+    onRegenerateSummary: () => handleRegenerateSummary(),
+    onTransform: (type: string) => handleTransform(type as any),
+    onPermissionToggle: (permission: string) =>
+      handlePermissionToggle(permission as any),
+    onClearAllData: () => handleClearAllData(),
+    onFabClick: () => switchTab("add"),
+    onPickerClose: () => closePicker(),
+    onPickerAdd: () => handlePickerAdd(),
+    onNotebookDialogCancel: () =>
+      elements.notebookDialog?.close(),
+    onNotebookDialogConfirm: () => {
+      const name = elements.notebookNameInput?.value.trim();
+      if (name) {
+        elements.notebookDialog?.close();
+        // Continue with existing logic
+      }
+    },
+    onConfirmDialogCancel: () => elements.confirmDialog?.close(),
+    onConfirmDialogConfirm: () => {
+      // Handle confirm dialog confirm
+      elements.confirmDialog?.close();
+    },
+    onOnboardingSkip: () => completeOnboarding(),
+    onOnboardingNext: () => nextOnboardingStep(),
+  });
+
+  appContainer.appendChild(appElement);
+}
+
 import {
   getNotebooks,
   saveNotebook,
@@ -298,6 +360,9 @@ const elements = {
 // ============================================================================
 
 async function init(): Promise<void> {
+  // Render the app first
+  renderApp();
+
   permissions = await checkPermissions();
   currentNotebookId = await getActiveNotebookId();
 
