@@ -18,6 +18,7 @@
  */
 
 import DOMPurify, { Config } from "dompurify";
+import browser from './browser';
 
 // DOMPurify configuration for standard content going to sandbox
 const SANDBOX_DOMPURIFY_CONFIG: Config = {
@@ -78,7 +79,7 @@ export class SandboxRenderer {
   private init(): void {
     // Create sandboxed iframe
     this.iframe = document.createElement("iframe");
-    this.iframe.src = chrome.runtime.getURL("src/sandbox/sandbox.html");
+    this.iframe.src = browser.runtime.getURL("src/sandbox/sandbox.html");
 
     // Apply sandbox attribute for additional restrictions
     // allow-scripts is needed for the sandbox.js to run

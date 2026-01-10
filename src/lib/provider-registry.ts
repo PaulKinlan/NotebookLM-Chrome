@@ -17,6 +17,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { builtInAI } from '@built-in-ai/core';
 import { createVertexExpress } from './vertex-express';
+import browser from './browser';
 import type { LanguageModel } from 'ai';
 
 /**
@@ -740,51 +741,26 @@ export async function autoFetchProviderModels(provider: { provider: AIProvider; 
  */
 export async function clearProviderModelsCache(provider: AIProvider): Promise<void> {
   const cacheKey = `${provider}_models_cache`;
-
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.remove([cacheKey], () => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        console.log(`[ProviderRegistry] Cache cleared for ${provider}`);
-        resolve();
-      }
-    });
-  });
+  await browser.storage.local.remove(cacheKey);
+  console.log(`[ProviderRegistry] Cache cleared for ${provider}`);
 }
 
 /**
- * Get models from chrome.storage.local cache
+ * Get models from browser.storage.local cache
  */
-function getCachedModels<T>(cacheKey: string): Promise<CachedModels<T> | null> {
-  return new Promise((resolve, reject) => {
-    chrome.storage.local.get([cacheKey], (result) => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        resolve(result[cacheKey] || null);
-      }
-    });
-  });
+async function getCachedModels<T>(cacheKey: string): Promise<CachedModels<T> | null> {
+  const result = await browser.storage.local.get(cacheKey) as Record<string, CachedModels<T>>;
+  return result[cacheKey] || null;
 }
 
 /**
- * Set models in chrome.storage.local cache
+ * Set models in browser.storage.local cache
  */
-function setCachedModels<T>(cacheKey: string, models: T[]): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const cached: CachedModels<T> = {
-      data: models,
-      timestamp: Date.now(),
-    };
-
-    chrome.storage.local.set({ [cacheKey]: cached }, () => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        console.log(`[ProviderRegistry] Cached ${models.length} models for ${cacheKey}`);
-        resolve();
-      }
-    });
-  });
+async function setCachedModels<T>(cacheKey: string, models: T[]): Promise<void> {
+  const cached: CachedModels<T> = {
+    data: models,
+    timestamp: Date.now(),
+  };
+  await browser.storage.local.set({ [cacheKey]: cached });
+  console.log(`[ProviderRegistry] Cached ${models.length} models for ${cacheKey}`);
 }
