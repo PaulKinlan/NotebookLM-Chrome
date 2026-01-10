@@ -624,7 +624,8 @@ function parseCitations(
 export async function* streamChat(
   sources: Source[],
   question: string,
-  history?: ChatMessage[]
+  history?: ChatMessage[],
+  onStatus?: (status: string) => void
 ): AsyncGenerator<string, ChatResult, unknown> {
   const model = await getModel();
   if (!model) {
@@ -634,7 +635,9 @@ export async function* streamChat(
   }
 
   const compressionMode = await getCompressionMode();
+  onStatus?.("Analyzing sources...");
   const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode);
+  onStatus?.("Generating response...");
 
   const messages = buildChatHistory(history);
 
@@ -665,7 +668,8 @@ export async function* streamChat(
 export async function chat(
   sources: Source[],
   question: string,
-  history?: ChatMessage[]
+  history?: ChatMessage[],
+  onStatus?: (status: string) => void
 ): Promise<ChatResult> {
   const model = await getModel();
   if (!model) {
@@ -675,7 +679,9 @@ export async function chat(
   }
 
   const compressionMode = await getCompressionMode();
+  onStatus?.("Analyzing sources...");
   const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode);
+  onStatus?.("Generating response...");
 
   const messages = buildChatHistory(history);
 

@@ -2057,7 +2057,7 @@ async function handleQuery(): Promise<void> {
 
   elements.queryInput.value = "";
   elements.queryBtn.disabled = true;
-  elements.chatStatus.textContent = "Generating response...";
+  elements.chatStatus.textContent = "Preparing...";
 
   // Save user message
   const userMessage = createChatMessage(currentNotebookId, "user", query);
@@ -2097,7 +2097,9 @@ async function handleQuery(): Promise<void> {
   const messageDiv = appendChatMessage(assistantMessage, sources, true);
 
   try {
-    const stream = streamChat(sources, query, history);
+    const stream = streamChat(sources, query, history, (status) => {
+      elements.chatStatus.textContent = status;
+    });
     let fullContent = "";
     let citations: Citation[] = [];
     let streamResult: IteratorResult<
