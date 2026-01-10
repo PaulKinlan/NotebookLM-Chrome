@@ -400,24 +400,27 @@ async function buildSourceContext(
   // Pass 1: Rank by relevance
   const ranked = await rankSourceRelevance(sources, query);
 
+  // Cap the number of full-content sources to prevent token overflow
+  const MAX_FULL_CONTENT_SOURCES = 15;
+
   // Categorize by relevance
   const highlyRelevant = ranked.filter(s => (s.relevanceScore ?? 0) >= 0.7);
-  const moderatelyRelevant = ranked.filter(
-    s => (s.relevanceScore ?? 0) >= 0.4 && (s.relevanceScore ?? 0) < 0.7
-  );
+  const fullContentHighlyRelevant = highlyRelevant.slice(0, MAX_FULL_CONTENT_SOURCES);
+  const summarizedHighlyRelevant = highlyRelevant.slice(MAX_FULL_CONTENT_SOURCES);
+  const moderatelyRelevant = ranked
+    .filter(s => (s.relevanceScore ?? 0) >= 0.4 && (s.relevanceScore ?? 0) < 0.7)
+    .concat(summarizedHighlyRelevant);
   const lessRelevant = ranked.filter(s => (s.relevanceScore ?? 0) < 0.4);
 
-  // Pass 2: Summarize moderately relevant sources
+  // Pass 2: Summarize moderately relevant sources (including overflow highly relevant)
   const summaries = await summarizeSources(moderatelyRelevant);
 
   // Build context with appropriate detail level
   const parts: string[] = [];
   let sourceIndex = 1; // Use sequential numeric indices for citations
 
-  // Full content for all highly relevant sources
-  // If the LLM ranked sources as highly relevant (≥0.7), include all of them
-  // rather than arbitrarily limiting to a fixed number. The ranking should be trusted.
-  for (const source of highlyRelevant) {
+  // Full content for top-N highly relevant sources
+  for (const source of fullContentHighlyRelevant) {
     parts.push(
       `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`
     );
