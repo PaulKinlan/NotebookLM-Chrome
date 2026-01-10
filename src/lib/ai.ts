@@ -589,6 +589,14 @@ export async function* streamChat(
 
   const messages = buildChatHistory(history);
 
+  // Build conversation history for LLM (last 10 messages)
+  const messages = history
+    ? history.slice(-10).map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }))
+    : [];
+
   const result = streamText({
     model,
     system: systemPrompt,
@@ -629,6 +637,14 @@ export async function chat(
   const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode);
 
   const messages = buildChatHistory(history);
+
+  // Build conversation history for LLM (last 10 messages)
+  const messages = history
+    ? history.slice(-10).map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }))
+    : [];
 
   // Use retry logic for recoverable errors (network, rate limits)
   const result = await withRetry(
