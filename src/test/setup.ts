@@ -296,7 +296,7 @@ afterEach(async () => {
 
     // Clear each store that exists
     for (const storeName of DB_STORES) {
-      if (testDB!.objectStoreNames.contains(storeName)) {
+      if (testDB?.objectStoreNames.contains(storeName)) {
         const store = tx.objectStore(storeName);
         store.clear();
       }
