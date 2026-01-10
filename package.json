@@ -38,6 +38,7 @@
     "@types/chrome": "^0.0.287",
     "@types/dompurify": "^3.0.5",
     "@types/mozilla__readability": "^0.4.2",
+    "@types/node": "^25.0.5",
     "@types/turndown": "^5.0.5",
     "@typescript-eslint/eslint-plugin": "^8.19.0",
     "@typescript-eslint/parser": "^8.19.0",
