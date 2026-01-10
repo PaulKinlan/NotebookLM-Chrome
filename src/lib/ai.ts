@@ -277,9 +277,21 @@ function buildSourceContextSinglePass(
 
   // Summaries for next 10 sources (basic extractive summary)
   for (const source of sources.slice(5, 15)) {
-    const sentences = source.content.split('. ').slice(0, 3).join('. ');
+    const content = source.content || '';
+    // Match sentence boundaries more robustly
+    const sentenceMatches = content.match(/[^.!?]+[.!?]*/g);
+    const rawSummary =
+      (sentenceMatches && sentenceMatches.slice(0, 3).join(' ')) || content;
+    const summary = rawSummary.trim();
+    const finalSummary =
+      summary === ''
+        ? '(no content available)'
+        : /[.!?]$/.test(summary)
+        ? summary
+        : summary + '.';
+
     parts.push(
-      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\nSummary: ${sentences}.`
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\nSummary: ${finalSummary}`
     );
     sourceIndex++;
   }
