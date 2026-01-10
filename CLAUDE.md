@@ -6,6 +6,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 FolioLM (https://foliolm.com) is a browser extension that helps users collect sources from tabs, bookmarks, and history, then query and transform that content (e.g., create quizzes, podcasts, summaries).
 
+## Browser Support
+
+**Target: Latest Chrome only (Chrome 140+ as of December 2025)**
+
+This extension exclusively targets the latest stable version of Chrome. This means:
+
+- **No polyfills needed**: All modern JavaScript/Web APIs are natively supported
+- **No legacy browser compatibility**: We do not support older Chrome versions, Firefox, Safari, or other browsers
+- **Manifest V3**: Uses Chrome's latest extension platform
+
+When adding dependencies or writing code:
+
+- Do not add polyfills for features supported in Chrome 140+
+- Use modern JavaScript features (ES2022+) freely
+- Leverage Chrome-specific extension APIs without cross-browser abstractions
+- The modulepreload polyfill is disabled in Vite config since Chrome 66+ supports it natively
+
 ## Build Commands
 
 ```bash
