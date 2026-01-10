@@ -181,7 +181,9 @@ Return the JSON ranking.`,
   }
 
   try {
-    const rankings = JSON.parse(rankingsResult.text.trim()) as Array<{
+    // Handle potential markdown code fences around JSON
+    const jsonText = rankingsResult.text.trim().replace(/^```json\s*|\s*```$/g, '');
+    const rankings = JSON.parse(jsonText) as Array<{
       index: number;
       score: number;
       reason: string;
