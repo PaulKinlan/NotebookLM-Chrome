@@ -187,9 +187,9 @@ const chromeMock = createChromeMock();
 (globalThis as unknown as { chrome: ChromeMock; browser: ChromeMock }).browser = chromeMock;
 
 // Store names in the database (matching db.ts schema)
-const DB_STORES = ['notebooks', 'sources', 'chatMessages', 'transformations', 'settings', 'responseCache', 'summaries', 'providerConfigs'] as const;
+const DB_STORES = ['notebooks', 'sources', 'chatMessages', 'transformations', 'settings', 'responseCache', 'summaries', 'providerConfigs', 'toolResults', 'approvalRequests'] as const;
 const DB_NAME = 'notebooklm-chrome';
-const DB_VERSION = 3;
+const DB_VERSION = 5;
 
 // Global reference to the test database for clearing
 let testDB: IDBDatabase | null = null;
@@ -255,6 +255,18 @@ beforeAll(async () => {
         const configsStore = db.createObjectStore('providerConfigs', { keyPath: 'id' });
         configsStore.createIndex('isDefault', 'isDefault', { unique: false });
         configsStore.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+
+      // Tool results cache (for agentic mode)
+      if (!db.objectStoreNames.contains('toolResults')) {
+        const toolsStore = db.createObjectStore('toolResults', { keyPath: 'key' });
+        toolsStore.createIndex('expiresAt', 'expiresAt', { unique: false });
+      }
+
+      // Approval requests (for tool requiring user approval)
+      if (!db.objectStoreNames.contains('approvalRequests')) {
+        const approvalStore = db.createObjectStore('approvalRequests', { keyPath: 'key' });
+        approvalStore.createIndex('status', 'status', { unique: false });
       }
     };
 
