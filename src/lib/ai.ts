@@ -274,6 +274,7 @@ Be accurate and concise. Focus on substantive content.`,
     // Handle potential markdown code fences around JSON
     const jsonText = summaryResult.text.trim().replace(/^```json\s*|\s*```$/g, '');
     const parsed = JSON.parse(jsonText) as Array<{
+>>>>>>> 92cc037 (Add LLM-based context compression for chat queries)
       index: number;
       summary: string;
     }>;
@@ -371,6 +372,8 @@ function buildSourceContextSinglePass(
 }
 
 /**
+=======
+>>>>>>> 92cc037 (Add LLM-based context compression for chat queries)
  * Build compressed context using two-pass LLM approach
  * - Pass 1: Rank all sources by relevance
  * - Pass 2: Full content for top sources, summaries for mid-tier, titles for rest
