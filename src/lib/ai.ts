@@ -254,17 +254,56 @@ Be accurate and concise. Focus on substantive content.`,
 }
 
 /**
+ * Single-pass compression: Fixed strategy without LLM ranking
+ * Faster but less intelligent than two-pass
+ */
+function buildSourceContextSinglePass(
+  sources: Source[],
+  _query: string // Unused in single-pass mode, but kept for signature consistency
+): string {
+  if (sources.length === 0) return '';
+
+  // Simple strategy: First 5 get full content, next 10 get summaries, rest get titles
+  const parts: string[] = [];
+
+  // Full content for first 5 sources
+  for (const source of sources.slice(0, 5)) {
+    parts.push(
+      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\n${source.content}`
+    );
+  }
+
+  // Summaries for next 10 sources (basic extractive summary)
+  for (const source of sources.slice(5, 15)) {
+    const sentences = source.content.split('. ').slice(0, 3).join('. ');
+    parts.push(
+      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\nSummary: ${sentences}.`
+    );
+  }
+
+  // Titles only for remaining sources
+  for (const source of sources.slice(15)) {
+    parts.push(
+      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\n(See source for details)`
+    );
+  }
+
+  return parts.join('\n\n---\n\n');
+}
+
+/**
  * Build compressed context using two-pass LLM approach
  * - Pass 1: Rank all sources by relevance
  * - Pass 2: Full content for top sources, summaries for mid-tier, titles for rest
  */
 async function buildSourceContext(
   sources: Source[],
-  query: string
+  query: string,
+  compressionMode: 'two-pass' | 'single-pass' = 'two-pass'
 ): Promise<string> {
   if (sources.length === 0) return '';
 
-  // If only a few sources, skip compression
+  // If only a few sources, skip compression regardless of mode
   if (sources.length <= 5) {
     return sources
       .map((source, i) => {
@@ -273,6 +312,12 @@ async function buildSourceContext(
       .join('\n\n---\n\n');
   }
 
+  // Single-pass mode: Use fixed strategy without LLM calls
+  if (compressionMode === 'single-pass') {
+    return buildSourceContextSinglePass(sources, query);
+  }
+
+  // Two-pass mode: Use LLM-based ranking and summarization
   // Pass 1: Rank by relevance
   const ranked = await rankSourceRelevance(sources, query);
 
@@ -343,9 +388,10 @@ export interface ChatResult {
 
 async function buildChatSystemPrompt(
   sources: Source[],
-  query: string
+  query: string,
+  compressionMode: 'two-pass' | 'single-pass' = 'two-pass'
 ): Promise<string> {
-  const sourceContext = await buildSourceContext(sources, query);
+  const sourceContext = await buildSourceContext(sources, query, compressionMode);
 
   return `You are a helpful AI assistant that answers questions based on the provided sources.
 
@@ -499,7 +545,8 @@ export async function* streamChat(
     );
   }
 
-  const systemPrompt = await buildChatSystemPrompt(sources, question);
+  const compressionMode = await getCompressionMode();
+  const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode);
 
   const messages = buildChatHistory(history);
 
@@ -539,7 +586,8 @@ export async function chat(
     );
   }
 
-  const systemPrompt = await buildChatSystemPrompt(sources, question);
+  const compressionMode = await getCompressionMode();
+  const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode);
 
   const messages = buildChatHistory(history);
 
