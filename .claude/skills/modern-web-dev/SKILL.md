@@ -9,6 +9,8 @@ description: |
   - "Implement drag and drop" → ensures HTML Drag and Drop API, not legacy jQuery UI
   - "Add form validation" → ensures Constraint Validation API, not manual validation
   - "Fetch data from API" → ensures fetch() with modern patterns, not XMLHttpRequest
+
+  Additionally, always check for documented browser support requirements before recommending APIs.
 allowed-tools:
   - WebSearch
   - WebFetch
