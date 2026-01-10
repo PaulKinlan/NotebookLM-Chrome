@@ -1,5 +1,5 @@
-import { streamText, generateText, type LanguageModel } from 'ai';
-import type { Source, Citation, Notebook, ChatMessage } from '../types/index.ts';
+import { streamText, generateText, type LanguageModel, type ToolSet } from 'ai';
+import type { Source, Citation, Notebook, ChatMessage, ContextMode } from '../types/index.ts';
 import { getActiveNotebookId, getNotebook } from './storage.ts';
 import { resolveModelConfig } from './model-configs.ts';
 import {
@@ -475,6 +475,34 @@ export interface ChatResult {
   citations: Citation[];
 }
 
+/**
+ * Build system prompt for agentic mode
+ * In agentic mode, the LLM uses tools to explore sources on-demand
+ */
+function buildAgenticSystemPrompt(
+  notebookName: string,
+  sourceCount: number
+): string {
+  return `You are a helpful AI assistant analyzing sources from the notebook "${notebookName}".
+
+AVAILABLE TOOLS:
+- listSources: Get metadata for all ${sourceCount} sources (id, title, url, type, word count)
+- readSource: Read full content of a specific source by ID
+
+STRATEGY:
+1. Start by listing sources to understand what's available
+2. Identify which sources might be relevant to the user's query
+3. Read full content of relevant sources
+4. Always cite sources using [Source ID] format where ID is the source identifier
+5. Be efficient - don't read sources unless needed
+
+CITATION FORMAT:
+When referencing information from a source, use:
+---CITATIONS---
+[Source ID]: "exact quote or paraphrase"
+---END CITATIONS---`;
+}
+
 async function buildChatSystemPrompt(
   sources: Source[],
   query: string,
@@ -503,16 +531,6 @@ ${buildSourceList(sources)}
 Source contents:
 
 ${sourceContext}`;
-}
-
-function buildChatHistory(
-  history?: ChatMessage[]
-): Array<{ role: 'user' | 'assistant'; content: string }> {
-  if (!history) return [];
-  return history.slice(-10).map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
 }
 
 function buildChatHistory(
@@ -636,7 +654,11 @@ export async function* streamChat(
   sources: Source[],
   question: string,
   history?: ChatMessage[],
-  onStatus?: (status: string) => void
+  options?: {
+    tools?: ToolSet;
+    contextMode?: ContextMode;
+    onStatus?: (status: string) => void;
+  }
 ): AsyncGenerator<string, ChatResult, unknown> {
   const model = await getModel();
   if (!model) {
@@ -645,12 +667,47 @@ export async function* streamChat(
     );
   }
 
+  const { tools, contextMode, onStatus } = options || {};
+
+  // Agentic mode: Pass tools to LLM, minimal initial context
+  if (tools && contextMode === 'agentic') {
+    const notebookName = sources[0]?.notebookId || 'this notebook';
+    const systemPrompt = buildAgenticSystemPrompt(notebookName, sources.length);
+
+    const messages = buildChatHistory(history);
+
+    const result = streamText({
+      model,
+      system: systemPrompt,
+      messages: [
+        ...messages,
+        { role: 'user', content: question },
+      ],
+      tools,
+    });
+
+    let fullContent = "";
+    for await (const chunk of result.textStream) {
+      fullContent += chunk;
+      // Don't yield the citations section while streaming
+      yield chunk.replace(/---CITATIONS---[\s\S]*$/, "");
+    }
+
+    // In agentic mode, we still parse citations from the response
+    // The LLM should cite sources using [Source ID] format based on tool results
+    const { cleanContent, citations } = parseCitations(fullContent, sources);
+
+    return {
+      content: cleanContent,
+      citations,
+    };
+  }
+
+  // Classic mode: Pre-load sources with compression
   const compressionMode = await getCompressionMode();
   onStatus?.("Analyzing sources...");
   const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode);
   onStatus?.("Generating response...");
-
-  const messages = buildChatHistory(history);
 
   const messages = buildChatHistory(history);
 
@@ -695,8 +752,6 @@ export async function chat(
   onStatus?.("Analyzing sources...");
   const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode);
   onStatus?.("Generating response...");
-
-  const messages = buildChatHistory(history);
 
   const messages = buildChatHistory(history);
 
