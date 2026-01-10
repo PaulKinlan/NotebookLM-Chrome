@@ -7,11 +7,13 @@
   },
   "permissions": {
     "allow": [
-      "Bash(npm install)",
-      "Bash(npm run dev)",
       "Bash(cat:*)",
+      "Bash(npm install)",
+      "Bash(npm i)",
+      "Bash(npm run dev)",
       "Bash(npm run typecheck:*)",
       "Bash(npm run build:*)",
+      "Bash(npm run test:*)",
       "Bash(npm install:*)",
       "Bash(git:*)",
       "Bash(tree:*)",
