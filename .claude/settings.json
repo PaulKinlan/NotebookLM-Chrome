@@ -29,7 +29,9 @@
       "Bash(git add -A:*)",
       "Bash(git add --all:*)",
       "Bash(git commit -a:*)",
-      "Bash(git commit --all:*)"
+      "Bash(git commit --all:*)",
+      "Bash(git commit -am:*)",
+      "Bash(git commit -all:*)"
     ]
   }
 }
