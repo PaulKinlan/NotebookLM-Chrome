@@ -164,25 +164,96 @@ body {
   border-color: var(--accent-primary);
 }
 
-.header-ai-config-select {
-  max-width: 120px;
-  padding: 4px 8px;
-  font-size: 12px;
-  background: var(--bg-tertiary);
+/* AI Model Picker */
+.ai-model-picker {
+  position: relative;
+}
+
+.ai-model-picker .header-icon-btn.active {
+  background: var(--bg-hover);
+  color: var(--accent-primary);
+}
+
+.ai-model-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  min-width: 200px;
+  max-width: 280px;
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  z-index: 1000;
+}
+
+.ai-model-dropdown-content {
+  padding: 8px 0;
+}
+
+.ai-model-dropdown-header {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-muted);
+  margin-bottom: 4px;
+}
+
+.ai-model-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.ai-model-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
   cursor: pointer;
+  transition: background-color 0.15s;
 }
 
-.header-ai-config-select:hover {
-  border-color: var(--text-muted);
+.ai-model-item:hover {
+  background: var(--bg-hover);
+}
+
+.ai-model-item.selected {
+  background: var(--accent-muted);
+}
+
+.ai-model-item-check {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.ai-model-item-check.hidden {
+  visibility: hidden;
+}
+
+.ai-model-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-model-item-name {
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.header-ai-config-select:focus {
-  outline: none;
-  border-color: var(--accent-primary);
+.ai-model-item-default {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
 }
 
 /* ============================================================================

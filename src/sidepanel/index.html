@@ -30,9 +30,22 @@
           <select id="notebook-select" class="header-notebook-select">
             <option value="">Select a folio...</option>
           </select>
-          <select id="ai-config-select" class="header-ai-config-select" title="AI Model Config">
-            <option value="">Loading...</option>
-          </select>
+          <div class="ai-model-picker">
+            <button id="ai-model-btn" class="header-icon-btn" title="AI Model">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+                <circle cx="8.5" cy="16" r="1.5"></circle>
+                <circle cx="15.5" cy="16" r="1.5"></circle>
+                <path d="M8.5 11V7a3.5 3.5 0 0 1 7 0v4"></path>
+              </svg>
+            </button>
+            <div id="ai-model-dropdown" class="ai-model-dropdown hidden">
+              <div class="ai-model-dropdown-content">
+                <div class="ai-model-dropdown-header">Select AI Model</div>
+                <div id="ai-model-list" class="ai-model-list"></div>
+              </div>
+            </div>
+          </div>
           <button id="new-notebook-btn" class="header-icon-btn" title="New Folio">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="12" y1="5" x2="12" y2="19"></line>
