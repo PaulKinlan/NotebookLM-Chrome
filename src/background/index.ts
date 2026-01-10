@@ -9,6 +9,42 @@ import {
 import browser from "../lib/browser";
 
 // ============================================================================
+// Types
+// ============================================================================
+
+interface ContentScriptResponse {
+  url: string;
+  title: string;
+  markdown: string;
+}
+
+function isContentScriptResponse(value: unknown): value is ContentScriptResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'url' in value &&
+    'title' in value &&
+    'markdown' in value &&
+    typeof (value as ContentScriptResponse).url === 'string' &&
+    typeof (value as ContentScriptResponse).title === 'string' &&
+    typeof (value as ContentScriptResponse).markdown === 'string'
+  );
+}
+
+async function sendExtractContentMessage(
+  tabId: number
+): Promise<ContentScriptResponse | null> {
+  const result = await browser.tabs.sendMessage(tabId, {
+    action: "extractContent",
+  });
+
+  if (isContentScriptResponse(result)) {
+    return result;
+  }
+  return null;
+}
+
+// ============================================================================
 // Side Panel Setup
 // ============================================================================
 
@@ -173,9 +209,7 @@ async function handleAddPageFromContextMenu(
 ): Promise<void> {
   try {
     await ensureContentScript(tabId);
-    const result = await browser.tabs.sendMessage(tabId, {
-      action: "extractContent",
-    }) as { url: string; title: string; markdown: string } | undefined;
+    const result = await sendExtractContentMessage(tabId);
 
     if (result) {
       const source = createSource(
@@ -272,9 +306,11 @@ async function extractContentFromActiveTab(): Promise<ContentExtractionResult | 
     await ensureContentScript(tab.id);
 
     // Request extraction from content script
-    const result = await browser.tabs.sendMessage(tab.id, {
-      action: "extractContent",
-    }) as { url: string; title: string; markdown: string };
+    const result = await sendExtractContentMessage(tab.id);
+
+    if (!result) {
+      return null;
+    }
 
     return {
       url: result.url,
@@ -306,12 +342,14 @@ async function extractContentFromUrl(
     await ensureContentScript(tab.id);
 
     // Request extraction from content script
-    const result = await browser.tabs.sendMessage(tab.id, {
-      action: "extractContent",
-    }) as { url: string; title: string; markdown: string };
+    const result = await sendExtractContentMessage(tab.id);
 
     // Close the tab
     await browser.tabs.remove(tab.id);
+
+    if (!result) {
+      return null;
+    }
 
     return {
       url: result.url,
