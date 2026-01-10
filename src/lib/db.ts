@@ -1,5 +1,5 @@
 const DB_NAME = 'notebooklm-chrome';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export interface DBSchema {
   notebooks: {
@@ -52,6 +52,12 @@ export interface DBSchema {
     indexes: {
       isDefault: boolean;
       createdAt: number;
+    };
+  };
+  toolResults: {
+    key: string;
+    indexes: {
+      expiresAt: number;
     };
   };
 }
@@ -130,6 +136,12 @@ export function getDB(): Promise<IDBDatabase> {
         const configsStore = db.createObjectStore('providerConfigs', { keyPath: 'id' });
         configsStore.createIndex('isDefault', 'isDefault', { unique: false });
         configsStore.createIndex('createdAt', 'createdAt', { unique: false });
+      }
+
+      // Tool results cache (for agentic mode)
+      if (!db.objectStoreNames.contains('toolResults')) {
+        const toolsStore = db.createObjectStore('toolResults', { keyPath: 'key' });
+        toolsStore.createIndex('expiresAt', 'expiresAt', { unique: false });
       }
     };
   });
@@ -244,7 +256,7 @@ export async function dbClear(storeName: string): Promise<void> {
  */
 export async function dbClearAll(): Promise<void> {
   const db = await getDB();
-  const storeNames = ['notebooks', 'sources', 'chatMessages', 'transformations', 'responseCache', 'settings', 'providerConfigs'];
+  const storeNames = ['notebooks', 'sources', 'chatMessages', 'transformations', 'responseCache', 'settings', 'providerConfigs', 'toolResults'];
 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(storeNames, 'readwrite');
