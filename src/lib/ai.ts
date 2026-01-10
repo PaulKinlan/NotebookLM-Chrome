@@ -1,5 +1,5 @@
 import { streamText, generateText, type LanguageModel } from 'ai';
-import type { Source, Citation, Notebook } from '../types/index.ts';
+import type { Source, Citation, Notebook, ChatMessage } from '../types/index.ts';
 import { getActiveNotebookId, getNotebook } from './storage.ts';
 import { resolveModelConfig } from './model-configs.ts';
 import {
@@ -243,7 +243,8 @@ function parseCitations(
 
 export async function* streamChat(
   sources: Source[],
-  question: string
+  question: string,
+  history?: ChatMessage[]
 ): AsyncGenerator<string, ChatResult, unknown> {
   const model = await getModel();
   if (!model) {
@@ -254,10 +255,21 @@ export async function* streamChat(
 
   const systemPrompt = buildChatSystemPrompt(sources);
 
+  // Build conversation history for LLM (last 10 messages)
+  const messages = history
+    ? history.slice(-10).map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }))
+    : [];
+
   const result = streamText({
     model,
     system: systemPrompt,
-    prompt: question,
+    messages: [
+      ...messages,
+      { role: 'user', content: question },
+    ],
   });
 
   let fullContent = "";
@@ -277,7 +289,8 @@ export async function* streamChat(
 
 export async function chat(
   sources: Source[],
-  question: string
+  question: string,
+  history?: ChatMessage[]
 ): Promise<ChatResult> {
   const model = await getModel();
   if (!model) {
@@ -288,12 +301,23 @@ export async function chat(
 
   const systemPrompt = buildChatSystemPrompt(sources);
 
+  // Build conversation history for LLM (last 10 messages)
+  const messages = history
+    ? history.slice(-10).map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }))
+    : [];
+
   // Use retry logic for recoverable errors (network, rate limits)
   const result = await withRetry(
     async () => generateText({
       model,
       system: systemPrompt,
-      prompt: question,
+      messages: [
+        ...messages,
+        { role: 'user', content: question },
+      ],
     }),
     {
       maxAttempts: 3,
