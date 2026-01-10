@@ -63,6 +63,8 @@ interface NotebookDialogProps {
 }
 
 export function NotebookDialog(props: NotebookDialogProps) {
+  // Props are not used - this dialog is controlled by showNotebookDialog() Promise system
+  // which dynamically attaches and removes event listeners
   const { onCancel, onConfirm } = props;
 
   return (
@@ -70,10 +72,10 @@ export function NotebookDialog(props: NotebookDialogProps) {
       <h3 id="notebook-dialog-title">New Notebook</h3>
       <input type="text" id="notebook-name-input" placeholder="Enter notebook name..." />
       <div className="dialog-actions">
-        <button id="notebook-dialog-cancel" className="btn btn-outline" onClick={onCancel}>
+        <button id="notebook-dialog-cancel" className="btn btn-outline">
           Cancel
         </button>
-        <button id="notebook-dialog-confirm" className="btn btn-primary" onClick={onConfirm}>
+        <button id="notebook-dialog-confirm" className="btn btn-primary">
           Create
         </button>
       </div>
@@ -87,6 +89,8 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog(props: ConfirmDialogProps) {
+  // Props are not used - this dialog is controlled by showConfirmDialog() Promise system
+  // which dynamically attaches and removes event listeners
   const { onCancel, onConfirm } = props;
 
   return (
@@ -94,10 +98,10 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
       <h3 id="confirm-dialog-title">Confirm</h3>
       <p id="confirm-dialog-message"></p>
       <div className="dialog-actions">
-        <button id="confirm-dialog-cancel" className="btn btn-outline" onClick={onCancel}>
+        <button id="confirm-dialog-cancel" className="btn btn-outline">
           Cancel
         </button>
-        <button id="confirm-dialog-confirm" className="btn btn-danger" onClick={onConfirm}>
+        <button id="confirm-dialog-confirm" className="btn btn-danger">
           Delete
         </button>
       </div>

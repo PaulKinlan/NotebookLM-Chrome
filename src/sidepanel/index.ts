@@ -48,18 +48,12 @@ function renderApp(): void {
     onFabClick: () => switchTab("add"),
     onPickerClose: () => closePicker(),
     onPickerAdd: () => handlePickerAdd(),
-    onNotebookDialogCancel: () => {
-      // Handled by showNotebookDialog Promise system
-    },
-    onNotebookDialogConfirm: () => {
-      // Handled by showNotebookDialog Promise system
-    },
-    onConfirmDialogCancel: () => {
-      // Handled by showConfirmDialog Promise system
-    },
-    onConfirmDialogConfirm: () => {
-      // Handled by showConfirmDialog Promise system
-    },
+    // Dialog handlers are not used - dialogs use Promise-based system (showNotebookDialog/showConfirmDialog)
+    // which dynamically attaches event listeners when the dialog is shown
+    onNotebookDialogCancel: () => {},
+    onNotebookDialogConfirm: () => {},
+    onConfirmDialogCancel: () => {},
+    onConfirmDialogConfirm: () => {},
     onOnboardingSkip: () => completeOnboarding(),
     onOnboardingNext: () => nextOnboardingStep(),
   });
