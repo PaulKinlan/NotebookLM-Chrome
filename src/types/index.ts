@@ -29,6 +29,11 @@ export interface Source extends SyncableEntity {
     description?: string;
     wordCount?: number;
   };
+  aiSummary?: {
+    content: string;      // 2-3 sentence summary
+    keyPoints: string[];  // 3-5 bullet points
+    generatedAt: number;
+  };
 }
 
 export interface Notebook extends SyncableEntity {
@@ -113,6 +118,37 @@ export interface ModelConfig {
   compressionMode?: 'two-pass' | 'single-pass'; // Context compression strategy
   createdAt: number;
   updatedAt: number;
+}
+
+// ============================================================================
+// Agentic Tool-Calling
+// ============================================================================
+
+/**
+ * Context delivery mode - controls how sources are provided to the LLM
+ */
+export type ContextMode = 'agentic' | 'classic';
+
+/**
+ * Represents a single tool call made by the LLM
+ */
+export interface ToolCall {
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  timestamp: number;
+}
+
+/**
+ * Represents the result of a tool execution
+ */
+export interface ToolResult {
+  toolCallId: string;
+  toolName: string;
+  result: unknown;
+  error?: string;
+  timestamp: number;
+  duration: number; // milliseconds
 }
 
 // Settings storage for new system
