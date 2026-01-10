@@ -15,9 +15,12 @@
     "noFallthroughCasesInSwitch": true,
     "allowImportingTsExtensions": true,
     "types": ["chrome"],
-    "jsx": "react",
-    "jsxFactory": "h",
-    "jsxFragmentFactory": "Fragment"
+    "baseUrl": ".",
+    "paths": {
+      "jsx-runtime/jsx-runtime": ["./src/jsx-runtime/jsx-runtime.ts"]
+    },
+    "jsx": "react-jsx",
+    "jsxImportSource": "jsx-runtime"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
