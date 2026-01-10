@@ -274,7 +274,6 @@ Be accurate and concise. Focus on substantive content.`,
     // Handle potential markdown code fences around JSON
     const jsonText = summaryResult.text.trim().replace(/^```json\s*|\s*```$/g, '');
     const parsed = JSON.parse(jsonText) as Array<{
->>>>>>> 92cc037 (Add LLM-based context compression for chat queries)
       index: number;
       summary: string;
     }>;
