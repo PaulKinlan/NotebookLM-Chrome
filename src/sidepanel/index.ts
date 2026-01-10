@@ -196,15 +196,9 @@ const elements = {
   notebookSelect: document.getElementById(
     "notebook-select"
   ) as HTMLSelectElement,
-  aiModelBtn: document.getElementById(
-    "ai-model-btn"
-  ) as HTMLButtonElement,
-  aiModelDropdown: document.getElementById(
-    "ai-model-dropdown"
-  ) as HTMLDivElement,
-  aiModelList: document.getElementById(
-    "ai-model-list"
-  ) as HTMLDivElement,
+  aiConfigSelect: document.getElementById(
+    "ai-config-select"
+  ) as HTMLSelectElement,
   newNotebookBtn: document.getElementById(
     "new-notebook-btn"
   ) as HTMLButtonElement,
@@ -671,147 +665,49 @@ async function loadNotebooks(): Promise<void> {
 let currentSelectedModelConfigId: string | undefined = undefined;
 
 /**
- * Create a checkmark SVG element
+ * Handle AI config select change
  */
-function createCheckmarkSvg(): SVGSVGElement {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("width", "16");
-  svg.setAttribute("height", "16");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.classList.add("ai-model-item-check", "hidden");
+async function handleAIConfigChange(): Promise<void> {
+  const modelConfigId = elements.aiConfigSelect.value || undefined;
+  if (!currentNotebookId) {
+    return;
+  }
 
-  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  polyline.setAttribute("points", "20 6 9 17 4 12");
-  svg.appendChild(polyline);
+  const notebook = await getNotebook(currentNotebookId);
+  if (notebook) {
+    notebook.modelConfigId = modelConfigId;
+    await saveNotebook(notebook);
+  }
 
-  return svg;
+  currentSelectedModelConfigId = modelConfigId;
 }
 
 /**
- * Load AI model configs into the dropdown
+ * Load AI model configs into the select element
  */
 async function loadAIConfigs(): Promise<void> {
   const modelConfigs = await getModelConfigs();
   const defaultConfig = await getDefaultModelConfig();
 
-  // Clear existing items
-  while (elements.aiModelList.firstChild) {
-    elements.aiModelList.removeChild(elements.aiModelList.firstChild);
-  }
+  // Clear existing options
+  elements.aiConfigSelect.innerHTML = "";
 
   // Add "Default" option which uses the default model config
-  const defaultItem = createModelItem(
-    "",
-    defaultConfig ? `Default (${defaultConfig.name})` : 'Default',
-    true
-  );
-  elements.aiModelList.appendChild(defaultItem);
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = defaultConfig ? `Default (${defaultConfig.name})` : "Default";
+  elements.aiConfigSelect.appendChild(defaultOption);
 
   // Add all model configs
   for (const config of modelConfigs) {
-    const item = createModelItem(config.id, config.name, false);
-    elements.aiModelList.appendChild(item);
+    const option = document.createElement("option");
+    option.value = config.id;
+    option.textContent = config.name;
+    elements.aiConfigSelect.appendChild(option);
   }
 
   // Update selection based on current notebook
   await updateAIConfigForNotebook();
-}
-
-/**
- * Create a model item element for the dropdown
- */
-function createModelItem(id: string, name: string, isDefault: boolean): HTMLElement {
-  const item = document.createElement("div");
-  item.className = "ai-model-item";
-  item.dataset.modelId = id;
-
-  const checkmark = createCheckmarkSvg();
-
-  const content = document.createElement("div");
-  content.className = "ai-model-item-content";
-
-  const nameEl = document.createElement("div");
-  nameEl.className = "ai-model-item-name";
-  nameEl.textContent = name;
-  content.appendChild(nameEl);
-
-  if (isDefault) {
-    const defaultLabel = document.createElement("div");
-    defaultLabel.className = "ai-model-item-default";
-    defaultLabel.textContent = "Uses your default AI profile";
-    content.appendChild(defaultLabel);
-  }
-
-  item.appendChild(checkmark);
-  item.appendChild(content);
-
-  item.addEventListener("click", () => handleModelItemClick(id));
-
-  return item;
-}
-
-/**
- * Toggle the AI model dropdown visibility
- */
-function toggleAIModelDropdown(): void {
-  const isHidden = elements.aiModelDropdown.classList.contains("hidden");
-  if (isHidden) {
-    elements.aiModelDropdown.classList.remove("hidden");
-    elements.aiModelBtn.classList.add("active");
-  } else {
-    closeAIModelDropdown();
-  }
-}
-
-/**
- * Close the AI model dropdown
- */
-function closeAIModelDropdown(): void {
-  elements.aiModelDropdown.classList.add("hidden");
-  elements.aiModelBtn.classList.remove("active");
-}
-
-/**
- * Handle clicking on a model item in the dropdown
- */
-async function handleModelItemClick(modelId: string): Promise<void> {
-  if (!currentNotebookId) {
-    closeAIModelDropdown();
-    return;
-  }
-
-  // Update storage
-  const notebook = await getNotebook(currentNotebookId);
-  if (notebook) {
-    notebook.modelConfigId = modelId || undefined;
-    await saveNotebook(notebook);
-  }
-
-  // Update UI
-  currentSelectedModelConfigId = modelId || undefined;
-  updateModelDropdownSelection();
-  closeAIModelDropdown();
-}
-
-/**
- * Update the visual selection state in the dropdown
- */
-function updateModelDropdownSelection(): void {
-  const items = elements.aiModelList.querySelectorAll(".ai-model-item");
-  items.forEach((item) => {
-    const el = item as HTMLElement;
-    const modelId = el.dataset.modelId || "";
-    const isSelected = modelId === (currentSelectedModelConfigId || "");
-
-    el.classList.toggle("selected", isSelected);
-    const checkmark = el.querySelector(".ai-model-item-check");
-    if (checkmark) {
-      checkmark.classList.toggle("hidden", !isSelected);
-    }
-  });
 }
 
 /**
@@ -820,13 +716,13 @@ function updateModelDropdownSelection(): void {
 async function updateAIConfigForNotebook(): Promise<void> {
   if (!currentNotebookId) {
     currentSelectedModelConfigId = undefined;
-    updateModelDropdownSelection();
+    elements.aiConfigSelect.value = "";
     return;
   }
 
   const notebook = await getNotebook(currentNotebookId);
   currentSelectedModelConfigId = notebook?.modelConfigId || undefined;
-  updateModelDropdownSelection();
+  elements.aiConfigSelect.value = currentSelectedModelConfigId || "";
 }
 
 async function loadNotebooksList(): Promise<void> {
