@@ -142,9 +142,11 @@ async function rankSourceRelevance(
 
   const metadata = buildSourceMetadata(sources);
 
-  const result = await generateText({
-    model,
-    system: `You are a relevance ranking assistant. Given a user query and a list of sources with previews, rank them by relevance.
+  let rankingsResult;
+  try {
+    rankingsResult = await generateText({
+      model,
+      system: `You are a relevance ranking assistant. Given a user query and a list of sources with previews, rank them by relevance.
 
 Return ONLY a JSON array of objects with this exact structure:
 [
@@ -165,16 +167,21 @@ Score guidelines:
 - 0.0-0.3: Not relevant
 
 Be discerning - not all sources deserve high scores.`,
-    prompt: `Rank these sources by relevance to the query: "${query}"
+      prompt: `Rank these sources by relevance to the query: "${query}"
 
 Sources:
 ${metadata}
 
 Return the JSON ranking.`,
-  });
+    });
+  } catch (error) {
+    console.error('Failed to generate relevance ranking:', error);
+    // Fallback: return all sources with neutral score when ranking generation fails
+    return sources.map(s => ({ ...s, relevanceScore: 0.5 }));
+  }
 
   try {
-    const rankings = JSON.parse(result.text.trim()) as Array<{
+    const rankings = JSON.parse(rankingsResult.text.trim()) as Array<{
       index: number;
       score: number;
       reason: string;
@@ -184,6 +191,9 @@ Return the JSON ranking.`,
     const sourceMap = sources.map((s, i) => ({ ...s, originalIndex: i }));
     const ranked = sourceMap.map((source): SourceWithRelevance => {
       const ranking = rankings.find(r => r.index === source.originalIndex + 1);
+      if (!ranking) {
+        console.warn(`Source ${source.originalIndex + 1} ("${source.title}") missing from ranking response, assigning default score`);
+      }
       return {
         ...source,
         relevanceScore: ranking?.score ?? 0.5,
