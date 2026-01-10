@@ -108,7 +108,7 @@ async function getCompressionMode(): Promise<'two-pass' | 'single-pass'> {
 // Source Context Builder with LLM-Based Compression
 // ============================================================================
 
-interface SourceWithRelevance extends Source {
+export interface SourceWithRelevance extends Source {
   relevanceScore?: number;
   relevanceReason?: string;
 }
@@ -130,7 +130,7 @@ Preview: ${preview}${source.content.length > 150 ? '...' : ''}`;
 /**
  * Pass 1: Use LLM to rank sources by relevance to the query
  */
-async function rankSourceRelevance(
+export async function rankSourceRelevance(
   sources: Source[],
   query: string
 ): Promise<SourceWithRelevance[]> {
