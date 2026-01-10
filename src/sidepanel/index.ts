@@ -2059,15 +2059,12 @@ async function handleQuery(): Promise<void> {
   elements.queryBtn.disabled = true;
   elements.chatStatus.textContent = "Generating response...";
 
-  // Get conversation history (before saving current message, to avoid duplication)
-  const history = await getChatHistory(currentNotebookId);
-
   // Save user message
   const userMessage = createChatMessage(currentNotebookId, "user", query);
   await saveChatMessage(userMessage);
   appendChatMessage(userMessage, sources);
 
-  // Get conversation history
+  // Get conversation history (includes the message we just saved)
   const history = await getChatHistory(currentNotebookId);
 
   // Check cache first
