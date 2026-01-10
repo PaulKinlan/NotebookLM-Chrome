@@ -1742,16 +1742,31 @@ details.summary-section[open] .summary-chevron {
 }
 
 /* ============================================================================
-   Notebook Delete Button
+   Notebook Actions
    ============================================================================ */
 
-.notebook-item .btn-delete-notebook {
+.notebook-item .notebook-actions {
+  display: flex;
+  gap: 4px;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
 
-.notebook-item:hover .btn-delete-notebook {
+.notebook-item:hover .notebook-actions {
   opacity: 1;
+}
+
+.notebook-item .btn-export-notebook,
+.notebook-item .btn-delete-notebook {
+  color: var(--text-muted);
+}
+
+.notebook-item .btn-export-notebook:hover {
+  color: var(--accent-color);
+}
+
+.notebook-item .btn-delete-notebook:hover {
+  color: var(--error-color);
 }
 
 .notebook-item .notebook-info {
@@ -2780,5 +2795,118 @@ details.summary-section[open] .summary-chevron {
 
 .ai-profiles-empty-state button:hover {
   background: var(--accent-hover);
+}
+
+/* ============================================================================
+   Onboarding Overlay
+   ============================================================================ */
+
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+}
+
+.onboarding-overlay.hidden {
+  display: none;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.onboarding-content {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.onboarding-step {
+  margin-bottom: 24px;
+}
+
+.onboarding-icon {
+  color: var(--accent-primary);
+  margin-bottom: 16px;
+}
+
+.onboarding-icon svg {
+  width: 64px;
+  height: 64px;
+}
+
+#onboarding-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+}
+
+#onboarding-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.onboarding-progress {
+  margin-bottom: 24px;
+}
+
+.onboarding-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.onboarding-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  transition: background 0.2s, transform 0.2s;
+}
+
+.onboarding-dot.active {
+  background: var(--accent-primary);
+  transform: scale(1.2);
+}
+
+.onboarding-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.onboarding-actions .btn {
+  min-width: 100px;
 }
 

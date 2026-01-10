@@ -31,6 +31,7 @@ import {
   saveSummary,
   createSummary,
   clearAllData,
+  getTransformations,
 } from "../lib/storage.ts";
 import {
   streamChat,
@@ -54,6 +55,7 @@ import {
   generateCitationList,
   generateOutline,
   generateSummary,
+  formatErrorForUser,
 } from "../lib/ai.ts";
 import {
   getModelConfigs,
@@ -61,12 +63,23 @@ import {
 } from "../lib/model-configs.ts";
 import { initProviderConfigUI, AI_PROFILES_CHANGED_EVENT } from './provider-config-ui.ts';
 import { SandboxRenderer } from "../lib/sandbox-renderer.ts";
+import {
+  exportNotebook,
+  type NotebookExport,
+  type ExportFormat,
+} from "../lib/export.ts";
+import {
+  isOnboardingComplete,
+  markOnboardingComplete,
+  ONBOARDING_STEPS,
+} from "../lib/onboarding.ts";
 
 // ============================================================================
 // State
 // ============================================================================
 
 let currentNotebookId: string | null = null;
+let onboardingStep = 0;
 
 let permissions: PermissionStatus = {
   tabs: false,
@@ -269,6 +282,15 @@ const elements = {
   ) as HTMLButtonElement,
 
   notification: document.getElementById("notification") as HTMLDivElement,
+
+  // Onboarding elements
+  onboardingOverlay: document.getElementById("onboarding-overlay") as HTMLDivElement,
+  onboardingIcon: document.getElementById("onboarding-icon") as HTMLDivElement,
+  onboardingTitle: document.getElementById("onboarding-title") as HTMLHeadingElement,
+  onboardingDescription: document.getElementById("onboarding-description") as HTMLParagraphElement,
+  onboardingDots: document.getElementById("onboarding-dots") as HTMLDivElement,
+  onboardingSkip: document.getElementById("onboarding-skip") as HTMLButtonElement,
+  onboardingNext: document.getElementById("onboarding-next") as HTMLButtonElement,
 };
 
 // ============================================================================
@@ -278,6 +300,12 @@ const elements = {
 async function init(): Promise<void> {
   permissions = await checkPermissions();
   currentNotebookId = await getActiveNotebookId();
+
+  // Check for onboarding
+  const onboardingComplete = await isOnboardingComplete();
+  if (!onboardingComplete) {
+    showOnboarding();
+  }
 
   updatePermissionUI();
   // updateSettingsUI() is now handled by provider-config-ui.ts
@@ -736,34 +764,63 @@ async function loadNotebooksList(): Promise<void> {
     const sources = await getSourcesByNotebook(notebook.id);
     const div = document.createElement("div");
     div.className = "notebook-item";
-    div.innerHTML = `
-      <div class="notebook-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+    // Build notebook item using DOM methods for security
+    const iconDiv = document.createElement("div");
+    iconDiv.className = "notebook-icon";
+    iconDiv.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-        </svg>
-      </div>
-      <div class="notebook-info">
-        <div class="notebook-name">${escapeHtml(notebook.name)}</div>
-        <div class="notebook-meta">${sources.length} sources</div>
-      </div>
-      <button class="icon-btn btn-delete-notebook" data-id="${
-        notebook.id
-      }" title="Delete notebook">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </svg>
-      </button>
-    `;
+        </svg>`;
 
-    const notebookClickArea = div.querySelector(".notebook-info");
-    notebookClickArea?.addEventListener("click", () =>
-      selectNotebook(notebook.id)
-    );
+    const infoDiv = document.createElement("div");
+    infoDiv.className = "notebook-info";
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "notebook-name";
+    nameDiv.textContent = notebook.name;
+    const metaDiv = document.createElement("div");
+    metaDiv.className = "notebook-meta";
+    metaDiv.textContent = `${sources.length} sources`;
+    infoDiv.appendChild(nameDiv);
+    infoDiv.appendChild(metaDiv);
 
-    const deleteBtn = div.querySelector(".btn-delete-notebook");
-    deleteBtn?.addEventListener("click", (e) => {
+    const actionsDiv = document.createElement("div");
+    actionsDiv.className = "notebook-actions";
+
+    const exportBtn = document.createElement("button");
+    exportBtn.className = "icon-btn btn-export-notebook";
+    exportBtn.dataset.id = notebook.id;
+    exportBtn.title = "Export notebook";
+    exportBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>`;
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "icon-btn btn-delete-notebook";
+    deleteBtn.dataset.id = notebook.id;
+    deleteBtn.title = "Delete notebook";
+    deleteBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>`;
+
+    actionsDiv.appendChild(exportBtn);
+    actionsDiv.appendChild(deleteBtn);
+
+    div.appendChild(iconDiv);
+    div.appendChild(infoDiv);
+    div.appendChild(actionsDiv);
+
+    infoDiv.addEventListener("click", () => selectNotebook(notebook.id));
+
+    exportBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleExportNotebook(notebook.id);
+    });
+
+    deleteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       handleDeleteNotebook(notebook.id, notebook.name);
     });
@@ -792,6 +849,97 @@ async function handleDeleteNotebook(id: string, name: string): Promise<void> {
   await loadSources();
   notifyNotebooksChanged();
   showNotification("Notebook deleted");
+}
+
+async function handleExportNotebook(id: string): Promise<void> {
+  try {
+    const notebook = await getNotebook(id);
+    if (!notebook) {
+      showNotification("Notebook not found");
+      return;
+    }
+
+    const sources = await getSourcesByNotebook(id);
+    const chatHistory = await getChatHistory(id);
+    const transformations = await getTransformations(id);
+
+    const exportData: NotebookExport = {
+      notebook,
+      sources,
+      chatHistory,
+      transformations,
+      exportedAt: new Date().toISOString(),
+      version: "1.0.0",
+    };
+
+    // Show format selection dialog
+    const format = await showExportFormatDialog();
+    if (!format) return;
+
+    exportNotebook(exportData, format);
+    showNotification(`Exported as ${format.toUpperCase()}`);
+  } catch (error) {
+    console.error("Export failed:", error);
+    showNotification("Export failed");
+  }
+}
+
+async function showExportFormatDialog(): Promise<ExportFormat | null> {
+  return new Promise((resolve) => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "dialog";
+    dialog.innerHTML = `
+      <h3>Export Format</h3>
+      <p>Choose the format for your export:</p>
+      <div class="dialog-actions" style="flex-direction: column; gap: 8px;">
+        <button class="btn btn-primary btn-export-md" style="width: 100%;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          Markdown (.md)
+        </button>
+        <button class="btn btn-outline btn-export-json" style="width: 100%;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          JSON (.json)
+        </button>
+        <button class="btn btn-outline btn-export-cancel" style="width: 100%;">Cancel</button>
+      </div>
+    `;
+
+    const mdBtn = dialog.querySelector(".btn-export-md");
+    const jsonBtn = dialog.querySelector(".btn-export-json");
+    const cancelBtn = dialog.querySelector(".btn-export-cancel");
+
+    mdBtn?.addEventListener("click", () => {
+      dialog.close();
+      dialog.remove();
+      resolve("markdown");
+    });
+
+    jsonBtn?.addEventListener("click", () => {
+      dialog.close();
+      dialog.remove();
+      resolve("json");
+    });
+
+    cancelBtn?.addEventListener("click", () => {
+      dialog.close();
+      dialog.remove();
+      resolve(null);
+    });
+
+    dialog.addEventListener("close", () => {
+      dialog.remove();
+      resolve(null);
+    });
+
+    document.body.appendChild(dialog);
+    dialog.showModal();
+  });
 }
 
 async function handleNewNotebook(): Promise<void> {
@@ -2011,8 +2159,7 @@ async function handleQuery(): Promise<void> {
       "Ask questions to synthesize information from your sources.";
   } catch (error) {
     console.error("Query failed:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+    const userFriendlyError = formatErrorForUser(error);
 
     // Check if we have a cached response to fall back to
     if (cached) {
@@ -2038,8 +2185,8 @@ async function handleQuery(): Promise<void> {
       elements.chatStatus.innerHTML = "Response loaded from cache (API error)";
       showNotification("Using cached response due to API error");
     } else {
-      // Show error in the message
-      assistantMessage.content = `Failed to generate response: ${errorMessage}\n\nPlease check your API key in Settings.`;
+      // Show error in the message with user-friendly formatting
+      assistantMessage.content = `Failed to generate response: ${userFriendlyError}`;
       await saveChatMessage(assistantMessage);
 
       const contentEl = messageDiv.querySelector(".chat-message-content");
@@ -2048,7 +2195,7 @@ async function handleQuery(): Promise<void> {
           assistantMessage.content
         )}</p>`;
       }
-      elements.chatStatus.textContent = "Error occurred. Please try again.";
+      elements.chatStatus.textContent = userFriendlyError;
     }
   } finally {
     elements.queryBtn.disabled = false;
@@ -3032,6 +3179,61 @@ function showConfirmDialog(title: string, message: string): Promise<boolean> {
     elements.confirmDialogCancel.addEventListener("click", handleCancel);
     elements.confirmDialogConfirm.addEventListener("click", handleConfirm);
   });
+}
+
+// ============================================================================
+// Onboarding
+// ============================================================================
+
+function showOnboarding(): void {
+  onboardingStep = 0;
+  renderOnboardingStep();
+  elements.onboardingOverlay.classList.remove("hidden");
+
+  // Setup event listeners
+  elements.onboardingSkip.addEventListener("click", completeOnboarding);
+  elements.onboardingNext.addEventListener("click", nextOnboardingStep);
+}
+
+function renderOnboardingStep(): void {
+  const step = ONBOARDING_STEPS[onboardingStep];
+  if (!step) return;
+
+  elements.onboardingIcon.innerHTML = step.icon;
+  elements.onboardingTitle.textContent = step.title;
+  elements.onboardingDescription.textContent = step.description;
+
+  // Update dots
+  elements.onboardingDots.innerHTML = ONBOARDING_STEPS.map((_, index) => {
+    const activeClass = index === onboardingStep ? "active" : "";
+    return `<div class="onboarding-dot ${activeClass}"></div>`;
+  }).join("");
+
+  // Update button text
+  const isLastStep = onboardingStep === ONBOARDING_STEPS.length - 1;
+  elements.onboardingNext.textContent = isLastStep ? "Get Started" : "Next";
+}
+
+function nextOnboardingStep(): void {
+  if (onboardingStep < ONBOARDING_STEPS.length - 1) {
+    onboardingStep++;
+    renderOnboardingStep();
+  } else {
+    completeOnboarding();
+  }
+}
+
+async function completeOnboarding(): Promise<void> {
+  await markOnboardingComplete();
+  elements.onboardingOverlay.classList.add("hidden");
+
+  // Clean up event listeners
+  elements.onboardingSkip.removeEventListener("click", completeOnboarding);
+  elements.onboardingNext.removeEventListener("click", nextOnboardingStep);
+
+  // Switch to settings tab to prompt AI setup
+  switchTab("settings");
+  showNotification("Welcome to FolioLM! Set up an AI profile to get started.");
 }
 
 // ============================================================================

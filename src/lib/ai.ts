@@ -8,6 +8,10 @@ import {
   providerRequiresApiKey,
   type AIProvider,
 } from './provider-registry.ts';
+import { withRetry } from './errors.ts';
+
+// Re-export error utilities for convenience
+export { classifyError, formatErrorForUser, withRetry } from './errors.ts';
 
 // ============================================================================
 // Provider Factory
@@ -284,11 +288,18 @@ export async function chat(
 
   const systemPrompt = buildChatSystemPrompt(sources);
 
-  const result = await generateText({
-    model,
-    system: systemPrompt,
-    prompt: question,
-  });
+  // Use retry logic for recoverable errors (network, rate limits)
+  const result = await withRetry(
+    async () => generateText({
+      model,
+      system: systemPrompt,
+      prompt: question,
+    }),
+    {
+      maxAttempts: 3,
+      initialDelayMs: 1000,
+    }
+  );
 
   const { cleanContent, citations } = parseCitations(result.text, sources);
 
