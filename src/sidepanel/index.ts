@@ -2067,6 +2067,9 @@ async function handleQuery(): Promise<void> {
   await saveChatMessage(userMessage);
   appendChatMessage(userMessage, sources);
 
+  // Get conversation history
+  const history = await getChatHistory(currentNotebookId);
+
   // Check cache first
   const sourceIds = sources.map((s) => s.id);
   const cacheKey = createCacheKey(query, sourceIds);
