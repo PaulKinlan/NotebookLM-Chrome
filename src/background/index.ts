@@ -6,13 +6,15 @@ import {
   getActiveNotebookId,
   setActiveNotebookId,
 } from "../lib/storage.ts";
+import browser from "../lib/browser";
 
 // ============================================================================
 // Side Panel Setup
 // ============================================================================
 
-chrome.sidePanel
-  .setPanelBehavior({ openPanelOnActionClick: true })
+// @ts-expect-error - sidePanel API not yet in webextension-polyfill types
+browser.sidePanel
+  ?.setPanelBehavior({ openPanelOnActionClick: true })
   .catch(console.error);
 
 // ============================================================================
@@ -25,28 +27,28 @@ const LINK_MENU_PREFIX = "add-link-to-";
 const NEW_NOTEBOOK_SUFFIX = "new-notebook";
 
 // Build context menus on install and when notebooks change
-chrome.runtime.onInstalled.addListener(() => {
+browser.runtime.onInstalled.addListener(() => {
   buildContextMenus();
 });
 
 // Listen for requests to rebuild context menus (when notebooks change)
-// This is needed because IndexedDB changes don't trigger chrome.storage.onChanged
+// This is needed because IndexedDB changes don't trigger browser.storage.onChanged
 
 async function buildContextMenus(): Promise<void> {
   // Remove all existing menus first
-  await chrome.contextMenus.removeAll();
+  await browser.contextMenus.removeAll();
 
   const notebooks = await getNotebooks();
 
   // Create parent menu for pages
-  chrome.contextMenus.create({
+  browser.contextMenus.create({
     id: "add-page-parent",
     title: "Add page to Folio",
     contexts: ["page"],
   });
 
   // Create parent menu for links
-  chrome.contextMenus.create({
+  browser.contextMenus.create({
     id: "add-link-parent",
     title: "Add link to Folio",
     contexts: ["link"],
@@ -54,7 +56,7 @@ async function buildContextMenus(): Promise<void> {
 
   // Add notebook items for pages
   for (const notebook of notebooks) {
-    chrome.contextMenus.create({
+    browser.contextMenus.create({
       id: `${PAGE_MENU_PREFIX}${notebook.id}`,
       parentId: "add-page-parent",
       title: notebook.name,
@@ -64,7 +66,7 @@ async function buildContextMenus(): Promise<void> {
 
   // Add separator and "New Notebook" for pages
   if (notebooks.length > 0) {
-    chrome.contextMenus.create({
+    browser.contextMenus.create({
       id: "page-separator",
       parentId: "add-page-parent",
       type: "separator",
@@ -72,7 +74,7 @@ async function buildContextMenus(): Promise<void> {
     });
   }
 
-  chrome.contextMenus.create({
+  browser.contextMenus.create({
     id: `${PAGE_MENU_PREFIX}${NEW_NOTEBOOK_SUFFIX}`,
     parentId: "add-page-parent",
     title: "+ New Folio...",
@@ -81,7 +83,7 @@ async function buildContextMenus(): Promise<void> {
 
   // Add notebook items for links
   for (const notebook of notebooks) {
-    chrome.contextMenus.create({
+    browser.contextMenus.create({
       id: `${LINK_MENU_PREFIX}${notebook.id}`,
       parentId: "add-link-parent",
       title: notebook.name,
@@ -91,7 +93,7 @@ async function buildContextMenus(): Promise<void> {
 
   // Add separator and "New Notebook" for links
   if (notebooks.length > 0) {
-    chrome.contextMenus.create({
+    browser.contextMenus.create({
       id: "link-separator",
       parentId: "add-link-parent",
       type: "separator",
@@ -99,7 +101,7 @@ async function buildContextMenus(): Promise<void> {
     });
   }
 
-  chrome.contextMenus.create({
+  browser.contextMenus.create({
     id: `${LINK_MENU_PREFIX}${NEW_NOTEBOOK_SUFFIX}`,
     parentId: "add-link-parent",
     title: "+ New Folio...",
@@ -107,12 +109,13 @@ async function buildContextMenus(): Promise<void> {
   });
 }
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+browser.contextMenus.onClicked.addListener(async (info, tab) => {
   const menuId = info.menuItemId as string;
 
   // Open side panel immediately (must be in direct response to user gesture)
   if (tab?.id) {
-    await chrome.sidePanel.open({ tabId: tab.id });
+    // @ts-expect-error - sidePanel API not yet in webextension-polyfill types
+    await browser.sidePanel?.open({ tabId: tab.id });
   }
 
   // Handle page menu clicks
@@ -121,14 +124,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
     if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
       // Store pending action in session storage for side panel to pick up
-      await chrome.storage.session.set({
+      await browser.storage.session.set({
         pendingAction: {
           type: "CREATE_NOTEBOOK_AND_ADD_PAGE",
           payload: { tabId: tab.id },
         },
       });
       // Also try sending message in case side panel is already open
-      chrome.runtime
+      browser.runtime
         .sendMessage({
           type: "CREATE_NOTEBOOK_AND_ADD_PAGE",
           payload: { tabId: tab.id },
@@ -145,14 +148,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
     if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
       // Store pending action in session storage for side panel to pick up
-      await chrome.storage.session.set({
+      await browser.storage.session.set({
         pendingAction: {
           type: "CREATE_NOTEBOOK_AND_ADD_LINK",
           payload: { linkUrl: info.linkUrl },
         },
       });
       // Also try sending message in case side panel is already open
-      chrome.runtime
+      browser.runtime
         .sendMessage({
           type: "CREATE_NOTEBOOK_AND_ADD_LINK",
           payload: { linkUrl: info.linkUrl },
@@ -170,9 +173,9 @@ async function handleAddPageFromContextMenu(
 ): Promise<void> {
   try {
     await ensureContentScript(tabId);
-    const result = await chrome.tabs.sendMessage(tabId, {
+    const result = await browser.tabs.sendMessage(tabId, {
       action: "extractContent",
-    });
+    }) as { url: string; title: string; markdown: string } | undefined;
 
     if (result) {
       const source = createSource(
@@ -188,7 +191,7 @@ async function handleAddPageFromContextMenu(
       await setActiveNotebookId(notebookId);
 
       // Notify the side panel to refresh
-      chrome.runtime
+      browser.runtime
         .sendMessage({ type: "SOURCE_ADDED", payload: source })
         .catch(() => {
           // Side panel may not be listening yet
@@ -219,7 +222,7 @@ async function handleAddLinkFromContextMenu(
       await setActiveNotebookId(notebookId);
 
       // Notify the side panel to refresh its source list
-      chrome.runtime
+      browser.runtime
         .sendMessage({ type: "SOURCE_ADDED", payload: source })
         .catch(() => {
           // Side panel may not be listening yet
@@ -234,12 +237,9 @@ async function handleAddLinkFromContextMenu(
 // Message Handling
 // ============================================================================
 
-chrome.runtime.onMessage.addListener(
-  (message: Message, _sender, sendResponse) => {
-    handleMessage(message).then(sendResponse).catch(console.error);
-    return true;
-  }
-);
+browser.runtime.onMessage.addListener((message: unknown, _sender: unknown) => {
+  return handleMessage(message as Message);
+});
 
 async function handleMessage(message: Message): Promise<unknown> {
   switch (message.type) {
@@ -258,7 +258,7 @@ async function handleMessage(message: Message): Promise<unknown> {
 }
 
 async function extractContentFromActiveTab(): Promise<ContentExtractionResult | null> {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
 
   if (!tab?.id || !tab.url) {
     return null;
@@ -272,9 +272,9 @@ async function extractContentFromActiveTab(): Promise<ContentExtractionResult | 
     await ensureContentScript(tab.id);
 
     // Request extraction from content script
-    const result = await chrome.tabs.sendMessage(tab.id, {
+    const result = await browser.tabs.sendMessage(tab.id, {
       action: "extractContent",
-    });
+    }) as { url: string; title: string; markdown: string };
 
     return {
       url: result.url,
@@ -293,7 +293,7 @@ async function extractContentFromUrl(
 ): Promise<ContentExtractionResult | null> {
   try {
     // Create a new tab to load the URL
-    const tab = await chrome.tabs.create({ url, active: false });
+    const tab = await browser.tabs.create({ url, active: false });
 
     if (!tab.id) {
       return null;
@@ -306,12 +306,12 @@ async function extractContentFromUrl(
     await ensureContentScript(tab.id);
 
     // Request extraction from content script
-    const result = await chrome.tabs.sendMessage(tab.id, {
+    const result = await browser.tabs.sendMessage(tab.id, {
       action: "extractContent",
-    });
+    }) as { url: string; title: string; markdown: string };
 
     // Close the tab
-    await chrome.tabs.remove(tab.id);
+    await browser.tabs.remove(tab.id);
 
     return {
       url: result.url,
@@ -328,10 +328,10 @@ async function extractContentFromUrl(
 async function ensureContentScript(tabId: number): Promise<void> {
   try {
     // Try to ping the content script
-    await chrome.tabs.sendMessage(tabId, { action: "ping" });
+    await browser.tabs.sendMessage(tabId, { action: "ping" });
   } catch {
     // Content script not loaded - inject inline extraction function
-    await chrome.scripting.executeScript({
+    await browser.scripting.executeScript({
       target: { tabId },
       func: injectContentScript,
     });
@@ -339,6 +339,7 @@ async function ensureContentScript(tabId: number): Promise<void> {
 }
 
 // Inline content script injection for pages loaded before extension install
+// Note: This code runs in the content script context, so uses chrome.* directly
 function injectContentScript(): void {
   // Simple extraction if Turndown isn't available
   if (
@@ -349,13 +350,14 @@ function injectContentScript(): void {
   (window as unknown as { __notebookExtracted: boolean }).__notebookExtracted =
     true;
 
+  // Use chrome.runtime directly here as this code is injected into content script context
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message.action === "ping") {
+    if (typeof message === 'object' && message !== null && (message as { action: string }).action === "ping") {
       sendResponse({ status: "ok" });
       return true;
     }
 
-    if (message.action === "extractContent") {
+    if (typeof message === 'object' && message !== null && (message as { action: string }).action === "extractContent") {
       // Simple text extraction without Turndown
       const title = document.title || "Untitled";
       const url = window.location.href;
@@ -398,12 +400,12 @@ function waitForTabLoad(tabId: number, timeoutMs: number = 30000): Promise<void>
     let resolved = false;
 
     const cleanup = () => {
-      chrome.tabs.onUpdated.removeListener(listener);
+      browser.tabs.onUpdated.removeListener(listener);
     };
 
     const listener = (
       updatedTabId: number,
-      changeInfo: chrome.tabs.TabChangeInfo
+      changeInfo: { status?: string }
     ) => {
       if (updatedTabId === tabId && changeInfo.status === "complete") {
         if (!resolved) {
@@ -424,7 +426,7 @@ function waitForTabLoad(tabId: number, timeoutMs: number = 30000): Promise<void>
     }, timeoutMs);
 
     // Check if tab is already loaded before adding listener
-    chrome.tabs.get(tabId).then((tab) => {
+    browser.tabs.get(tabId).then((tab) => {
       if (tab.status === "complete") {
         if (!resolved) {
           resolved = true;
@@ -434,7 +436,7 @@ function waitForTabLoad(tabId: number, timeoutMs: number = 30000): Promise<void>
         }
       } else {
         // Only add listener if tab isn't already complete
-        chrome.tabs.onUpdated.addListener(listener);
+        browser.tabs.onUpdated.addListener(listener);
       }
     }).catch(() => {
       // Tab might not exist anymore
