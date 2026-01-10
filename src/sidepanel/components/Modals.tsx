@@ -62,10 +62,9 @@ interface NotebookDialogProps {
   onConfirm: () => void;
 }
 
-export function NotebookDialog(props: NotebookDialogProps) {
+export function NotebookDialog(_props: NotebookDialogProps) {
   // Props are not used - this dialog is controlled by showNotebookDialog() Promise system
   // which dynamically attaches and removes event listeners
-  const { onCancel, onConfirm } = props;
 
   return (
     <dialog id="notebook-dialog" className="dialog">
@@ -88,10 +87,9 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
 }
 
-export function ConfirmDialog(props: ConfirmDialogProps) {
+export function ConfirmDialog(_props: ConfirmDialogProps) {
   // Props are not used - this dialog is controlled by showConfirmDialog() Promise system
   // which dynamically attaches and removes event listeners
-  const { onCancel, onConfirm } = props;
 
   return (
     <dialog id="confirm-dialog" className="dialog">
