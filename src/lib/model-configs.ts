@@ -6,9 +6,9 @@
  */
 
 import type { ModelConfig, ModelConfigSettings, Credential, Notebook } from '../types/index.ts';
-import { dbGet, dbPut } from './db.ts';
+import { dbGet, dbPut, dbDelete } from './db.ts';
 import { getCredential, createCredential, findCredentialByApiKey } from './credentials.ts';
-import { getProviderConfigById } from './provider-registry.ts';
+import { getProviderConfigById, getAllProviders } from './provider-registry.ts';
 
 // Special placeholder for providers that don't require API keys
 export const NO_API_KEY_PLACEHOLDER = '__NO_API_KEY__';
@@ -277,7 +277,6 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
     console.log('[ModelConfigs] Migrating AISettings to Credential + ModelConfig...');
 
     // Get the provider registry to verify the provider exists
-    const { getAllProviders } = await import('./provider-registry.ts');
     const providers = getAllProviders();
     const providerConfig = providers.find((p: { id: string }) => p.id === aiSettings.provider);
 
@@ -293,7 +292,6 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
       if (!apiKey) continue;
 
       // Check if credential with this API key already exists (deduplication)
-      const { findCredentialByApiKey } = await import('./credentials.ts');
       const existing = await findCredentialByApiKey(apiKey);
 
       if (existing) {
@@ -301,7 +299,6 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
         console.log('[ModelConfigs] Reusing existing credential for', providerType);
       } else {
         // Create new credential (name includes provider type for identification)
-        const { createCredential } = await import('./credentials.ts');
         const credential = await createCredential({
           name: `Migrated ${providerType}`,
           apiKey,
@@ -335,7 +332,6 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
     }
 
     // Clean up legacy settings
-    const { dbDelete } = await import('./db.ts');
     await dbDelete('settings', LEGACY_AI_SETTINGS_KEY);
     console.log('[ModelConfigs] Cleaned up legacy aiSettings');
 
