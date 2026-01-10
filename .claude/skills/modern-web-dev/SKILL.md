@@ -11,6 +11,8 @@ description: |
   - "Fetch data from API" → ensures fetch() with modern patterns, not XMLHttpRequest
 
   Additionally, always check for documented browser support requirements before recommending APIs.
+
+  If you are asked about web development best practices or modern APIs, use this skill to provide up-to-date guidance.
 allowed-tools:
   - WebSearch
   - WebFetch
