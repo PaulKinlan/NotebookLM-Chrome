@@ -1,11 +1,32 @@
 import { Fragment } from 'jsx-runtime/jsx-runtime';
 
+type TransformType =
+  | "podcast"
+  | "quiz"
+  | "takeaways"
+  | "email"
+  | "slidedeck"
+  | "report"
+  | "datatable"
+  | "mindmap"
+  | "flashcards"
+  | "timeline"
+  | "glossary"
+  | "comparison"
+  | "faq"
+  | "actionitems"
+  | "executivebrief"
+  | "studyguide"
+  | "proscons"
+  | "citations"
+  | "outline";
+
 interface TransformTabProps {
   active: boolean;
-  onTransform: (type: string) => void;
+  onTransform: (type: TransformType) => void;
 }
 
-const transformTypes = [
+const transformTypes: Array<{ id: TransformType; title: string; desc: string }> = [
   { id: 'podcast', title: 'Podcast Script', desc: 'Generate a 2-person conversation' },
   { id: 'quiz', title: 'Study Quiz', desc: 'Test your knowledge' },
   { id: 'takeaways', title: 'Key Takeaways', desc: 'Extract main points' },
@@ -69,7 +90,7 @@ export function TransformTab(props: TransformTabProps) {
 }
 
 function TransformIcon({ id }: { id: string }) {
-  const icons: Record<string, any> = {
+  const icons: Record<string, Node> = {
     podcast: (
       <Fragment>
         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>

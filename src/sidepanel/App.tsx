@@ -12,6 +12,29 @@ import { ConfirmDialog } from './components/Modals';
 import { Notification } from './components/Notification';
 import { Onboarding } from './components/Onboarding';
 
+type TransformType =
+  | "podcast"
+  | "quiz"
+  | "takeaways"
+  | "email"
+  | "slidedeck"
+  | "report"
+  | "datatable"
+  | "mindmap"
+  | "flashcards"
+  | "timeline"
+  | "glossary"
+  | "comparison"
+  | "faq"
+  | "actionitems"
+  | "executivebrief"
+  | "studyguide"
+  | "proscons"
+  | "citations"
+  | "outline";
+
+type PermissionType = "tabs" | "tabGroups" | "bookmarks" | "history";
+
 interface AppProps {
   activeTab: string;
   fabHidden: boolean;
@@ -30,8 +53,8 @@ interface AppProps {
   onQuery: () => void;
   onClearChat: () => void;
   onRegenerateSummary: () => void;
-  onTransform: (type: string) => void;
-  onPermissionToggle: (permission: string) => void;
+  onTransform: (type: TransformType) => void;
+  onPermissionToggle: (permission: PermissionType) => void;
   onClearAllData: () => void;
   onFabClick: () => void;
   onPickerClose: () => void;

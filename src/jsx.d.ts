@@ -5,13 +5,13 @@ declare global {
     interface IntrinsicElements {
       [elemName: string]: {
         className?: string;
-        [attr: string]: any;
+        [attr: string]: unknown;
       };
     }
 
     type Element = Node;
     interface ElementChildrenAttribute {
-      children: {};
+      children: unknown;
     }
   }
 }

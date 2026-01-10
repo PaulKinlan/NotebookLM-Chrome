@@ -58,7 +58,7 @@ export function jsx(
         el.addEventListener(event, value as EventListener);
       } else if (value === true) {
         el.setAttribute(propKey, "");
-      } else if (value !== false && value != null && propKey !== "children") {
+      } else if (value !== false && value !== null && propKey !== "children") {
         el.setAttribute(propKey, String(value));
       }
     }
