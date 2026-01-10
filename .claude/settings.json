@@ -14,6 +14,7 @@
       "Bash(npm run typecheck:*)",
       "Bash(npm run build:*)",
       "Bash(npm run test:*)",
+      "Bash(npm test:*)",
       "Bash(npm install:*)",
       "Bash(git:*)",
       "Bash(tree:*)",
