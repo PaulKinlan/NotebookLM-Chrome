@@ -4,6 +4,10 @@ import manifest from './manifest.json';
 
 export default defineConfig({
   plugins: [crx({ manifest })],
+  esbuild: {
+    jsxFactory: 'h',
+    jsxFragment: 'Fragment',
+  },
   build: {
     outDir: 'dist',
     sourcemap: process.env.NODE_ENV === 'development',
