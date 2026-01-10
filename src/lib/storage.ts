@@ -339,6 +339,7 @@ export const getActiveNotebookId = () => storage.getActiveNotebookId();
 export const setActiveNotebookId = (id: string | null) => storage.setActiveNotebookId(id);
 
 export const getSourcesByNotebook = (notebookId: string) => storage.getSourcesByNotebook(notebookId);
+export const getSource = (id: string) => storage.getSource(id);
 export const saveSource = (source: Source) => storage.saveSource(source);
 export const deleteSource = (id: string) => storage.deleteSource(id);
 
