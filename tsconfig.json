@@ -14,7 +14,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "allowImportingTsExtensions": true,
-    "types": ["chrome"]
+    "types": ["chrome"],
+    "jsx": "react",
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
