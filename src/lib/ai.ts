@@ -368,8 +368,10 @@ async function buildSourceContext(
   const parts: string[] = [];
   let sourceIndex = 1; // Use sequential numeric indices for citations
 
-  // Full content for highly relevant (top 5)
-  for (const source of highlyRelevant.slice(0, 5)) {
+  // Full content for all highly relevant sources
+  // If the LLM ranked sources as highly relevant (≥0.7), include all of them
+  // rather than arbitrarily limiting to a fixed number. The ranking should be trusted.
+  for (const source of highlyRelevant) {
     parts.push(
       `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`
     );
