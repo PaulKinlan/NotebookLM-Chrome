@@ -134,6 +134,16 @@ Source contents:
 ${buildSourceContext(sources)}`;
 }
 
+function buildChatHistory(
+  history?: ChatMessage[]
+): Array<{ role: 'user' | 'assistant'; content: string }> {
+  if (!history) return [];
+  return history.slice(-10).map((m) => ({
+    role: m.role as 'user' | 'assistant',
+    content: m.content,
+  }));
+}
+
 function parseCitations(
   content: string,
   sources: Source[]
@@ -255,13 +265,7 @@ export async function* streamChat(
 
   const systemPrompt = buildChatSystemPrompt(sources);
 
-  // Build conversation history for LLM (last 10 messages)
-  const messages = history
-    ? history.slice(-10).map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }))
-    : [];
+  const messages = buildChatHistory(history);
 
   const result = streamText({
     model,
@@ -301,13 +305,7 @@ export async function chat(
 
   const systemPrompt = buildChatSystemPrompt(sources);
 
-  // Build conversation history for LLM (last 10 messages)
-  const messages = history
-    ? history.slice(-10).map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      }))
-    : [];
+  const messages = buildChatHistory(history);
 
   // Use retry logic for recoverable errors (network, rate limits)
   const result = await withRetry(
