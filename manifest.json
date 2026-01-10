@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json.schemastore.org/chrome-manifest",
+  "$schema": "https://json.schemastore.org/webextension",
   "manifest_version": 3,
   "name": "FolioLM",
   "version": "0.1.0",
@@ -60,5 +60,11 @@
       "resources": ["src/sandbox/sandbox.html"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "foliolm@foliolm.com",
+      "strict_min_version": "115.0"
+    }
+  }
 }
