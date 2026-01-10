@@ -80,6 +80,30 @@ async function getModel(): Promise<LanguageModel | null> {
   );
 }
 
+async function getCompressionMode(): Promise<'two-pass' | 'single-pass'> {
+  // Get active notebook to resolve model config
+  const activeNotebookId = await getActiveNotebookId();
+
+  let notebook: Notebook | undefined;
+  if (activeNotebookId) {
+    const notebookResult = await getNotebook(activeNotebookId);
+    if (notebookResult) {
+      notebook = notebookResult;
+    }
+  }
+
+  // Resolve model config (handles notebook-specific config)
+  const resolved = await resolveModelConfig(notebook);
+
+  // Default to two-pass if no config is set
+  if (!resolved) {
+    return 'two-pass';
+  }
+
+  // Return the compression mode from the config, defaulting to two-pass
+  return resolved.modelConfig.compressionMode || 'two-pass';
+}
+
 // ============================================================================
 // Source Context Builder with LLM-Based Compression
 // ============================================================================
