@@ -249,7 +249,24 @@ Be accurate and concise. Focus on substantive content.`,
     });
   } catch (error) {
     console.error('Failed to generate summaries:', error);
-    // Return empty map on API error - sources will show full content instead
+    // Fallback: generate extractive summaries for all sources
+    for (const source of sources) {
+      const content = source.content || '';
+      const sentenceMatches = content.match(/[^.!?]+[.!?]*/g) || [];
+      const sentences = sentenceMatches
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      const rawSummary =
+        (sentences.length > 0 ? sentences.slice(0, 3).join(' ') : '') || content;
+      const summary = rawSummary.trim();
+      const finalSummary =
+        summary === ''
+          ? '(no content available)'
+          : /[.!?]$/.test(summary)
+          ? summary
+          : summary + '.';
+      summaries.set(source.id, finalSummary);
+    }
     return summaries;
   }
 
@@ -269,6 +286,28 @@ Be accurate and concise. Focus on substantive content.`,
     }
   } catch (error) {
     console.error('Failed to parse summaries:', error);
+  }
+
+  // Fallback: add extractive summaries for sources that weren't processed
+  // (either beyond batch limit or missing from LLM response)
+  for (const source of sources) {
+    if (!summaries.has(source.id)) {
+      const content = source.content || '';
+      const sentenceMatches = content.match(/[^.!?]+[.!?]*/g) || [];
+      const sentences = sentenceMatches
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      const rawSummary =
+        (sentences.length > 0 ? sentences.slice(0, 3).join(' ') : '') || content;
+      const summary = rawSummary.trim();
+      const finalSummary =
+        summary === ''
+          ? '(no content available)'
+          : /[.!?]$/.test(summary)
+          ? summary
+          : summary + '.';
+      summaries.set(source.id, finalSummary);
+    }
   }
 
   return summaries;
