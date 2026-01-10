@@ -265,27 +265,31 @@ function buildSourceContextSinglePass(
 
   // Simple strategy: First 5 get full content, next 10 get summaries, rest get titles
   const parts: string[] = [];
+  let sourceIndex = 1; // Use sequential numeric indices for citations
 
   // Full content for first 5 sources
   for (const source of sources.slice(0, 5)) {
     parts.push(
-      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\n${source.content}`
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`
     );
+    sourceIndex++;
   }
 
   // Summaries for next 10 sources (basic extractive summary)
   for (const source of sources.slice(5, 15)) {
     const sentences = source.content.split('. ').slice(0, 3).join('. ');
     parts.push(
-      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\nSummary: ${sentences}.`
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\nSummary: ${sentences}.`
     );
+    sourceIndex++;
   }
 
   // Titles only for remaining sources
   for (const source of sources.slice(15)) {
     parts.push(
-      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\n(See source for details)`
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n(See source for details)`
     );
+    sourceIndex++;
   }
 
   return parts.join('\n\n---\n\n');
@@ -333,27 +337,31 @@ async function buildSourceContext(
 
   // Build context with appropriate detail level
   const parts: string[] = [];
+  let sourceIndex = 1; // Use sequential numeric indices for citations
 
   // Full content for highly relevant (top 5)
   for (const source of highlyRelevant.slice(0, 5)) {
     parts.push(
-      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\n${source.content}`
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`
     );
+    sourceIndex++;
   }
 
   // Summaries for moderately relevant
   for (const source of moderatelyRelevant) {
     const summary = summaries.get(source.id) ?? 'Summary not available.';
     parts.push(
-      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\nSummary: ${summary}`
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\nSummary: ${summary}`
     );
+    sourceIndex++;
   }
 
   // Titles only for less relevant
   for (const source of lessRelevant) {
     parts.push(
-      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\n(Referenced but not highly relevant to this query)`
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n(Referenced but not highly relevant to this query)`
     );
+    sourceIndex++;
   }
 
   return parts.join('\n\n---\n\n');
@@ -397,13 +405,13 @@ async function buildChatSystemPrompt(
 
 IMPORTANT INSTRUCTIONS:
 1. Base your answers ONLY on the provided sources
-2. When you use information from a source, cite it using the format [Source ID] where ID is the source's identifier
+2. When you use information from a source, cite it using the format [Source N] where N is the numeric index (e.g., [Source 1], [Source 2])
 3. Be accurate and well-structured
 4. If the sources don't contain relevant information, say so
 
 After your main response, add a CITATIONS section in this exact format:
 ---CITATIONS---
-[Source ID]: "exact quote or paraphrase from source"
+[Source 1]: "exact quote or paraphrase from source"
 ---END CITATIONS---
 
 Only include sources you actually referenced. If you didn't cite any sources, omit the citations section.
