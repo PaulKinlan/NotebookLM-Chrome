@@ -8,7 +8,6 @@ function append(el: Element | DocumentFragment, child: Child): void {
   if (child === null || child === undefined || child === false || child === true) return;
 
   if (Array.isArray(child)) {
-    // Shouldn't happen with our type, but safe
     for (const c of child as unknown as Child[]) append(el, c);
     return;
   }
@@ -34,34 +33,59 @@ export function Fragment(props: { children?: Child | Child[] }): DocumentFragmen
   return frag;
 }
 
-export function h(
-  tag: string | ((props: any) => Node),
-  props: Record<string, any> | null,
-  ...children: Child[]
+/**
+ * jsx is for elements with static children (known at compile time)
+ * Children are passed in props
+ */
+export function jsx(
+  tag: string | ((props: Record<string, unknown>) => Node),
+  props: Record<string, unknown> & { key?: string | number | null },
+  _key?: string | number | null
 ): Node {
   if (typeof tag === "function") {
-    return tag({ ...(props ?? {}), children });
+    return tag(props);
   }
 
   const el = document.createElement(tag);
 
   if (props) {
-    for (const [key, value] of Object.entries(props)) {
-      if (key === "className") {
+    for (const [propKey, value] of Object.entries(props)) {
+      if (propKey === "className") {
         el.setAttribute("class", String(value));
-      } else if (key.startsWith("on") && typeof value === "function") {
+      } else if (propKey.startsWith("on") && typeof value === "function") {
         // onClick -> click
-        const event = key.slice(2).toLowerCase();
+        const event = propKey.slice(2).toLowerCase();
         el.addEventListener(event, value as EventListener);
       } else if (value === true) {
-        el.setAttribute(key, "");
-      } else if (value !== false && value != null) {
-        el.setAttribute(key, String(value));
+        el.setAttribute(propKey, "");
+      } else if (value !== false && value != null && propKey !== "children") {
+        el.setAttribute(propKey, String(value));
+      }
+    }
+
+    // Handle children from props
+    if ("children" in props) {
+      const children = props.children as Child | Child[];
+      if (Array.isArray(children)) {
+        for (const c of children) append(el, c);
+      } else {
+        append(el, children);
       }
     }
   }
 
-  for (const c of children) append(el, c);
-
   return el;
+}
+
+/**
+ * jsxs is for elements with multiple/dynamic children (arrays)
+ * Children are passed in props
+ * Same implementation as jsx - kept separate for React compatibility
+ */
+export function jsxs(
+  tag: string | ((props: Record<string, unknown>) => Node),
+  props: Record<string, unknown> & { key?: string | number | null },
+  key?: string | number | null
+): Node {
+  return jsx(tag, props, key);
 }
