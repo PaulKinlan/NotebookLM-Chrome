@@ -16,6 +16,7 @@
       "Bash(npm run test:*)",
       "Bash(npm test:*)",
       "Bash(npm install:*)",
+      "Bash(npx vitest:*)",
       "Bash(git:*)",
       "Bash(tree:*)",
       "Bash(wc:*)",
