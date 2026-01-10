@@ -22,7 +22,10 @@
       "WebSearch",
       "WebFetch(domain:ai-sdk.dev)",
       "WebFetch(domain:developer.chrome.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:developer.mozilla.org)",
+      "WebFetch(domain:web.dev)",
+      "WebFetch(domain:developers.google.com)"
     ]
   }
 }
