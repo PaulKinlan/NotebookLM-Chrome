@@ -468,6 +468,17 @@ function renderProfileEditForm(profile: AIProfile | null): string {
         <input type="number" class="form-input profile-max-tokens-input" min="100" max="128000" step="100"
                placeholder="Default" value="${profile?.modelConfig.maxTokens || ''}" />
         <p class="setting-hint">Maximum length of the response. Leave empty for model default.</p>
+
+        <label class="input-label">Context Compression</label>
+        <select class="form-select profile-compression-mode-input">
+          <option value="two-pass" ${(!profile?.modelConfig.compressionMode || profile?.modelConfig.compressionMode === 'two-pass') ? 'selected' : ''}>
+            Smart (Two-Pass) - LLM ranks sources
+          </option>
+          <option value="single-pass" ${(profile?.modelConfig.compressionMode === 'single-pass') ? 'selected' : ''}>
+            Fast (Single-Pass) - Fixed compression
+          </option>
+        </select>
+        <p class="setting-hint">Smart mode uses AI to intelligently select relevant sources (slower). Fast mode uses a fixed strategy for quicker responses.</p>
       </details>
 
       <div class="form-actions">
@@ -1265,6 +1276,7 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
   const apiKeyInput = card.querySelector('.profile-api-key-input') as HTMLInputElement;
   const temperatureInput = card.querySelector('.profile-temperature-input') as HTMLInputElement;
   const maxTokensInput = card.querySelector('.profile-max-tokens-input') as HTMLInputElement;
+  const compressionModeInput = card.querySelector('.profile-compression-mode-input') as HTMLSelectElement;
 
   const name = nameInput.value.trim();
   const providerId = providerValueInput?.value || '';
@@ -1275,6 +1287,7 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
   const temperature = parseFloat(temperatureInput.value);
   const maxTokensStr = maxTokensInput.value.trim();
   const maxTokens = maxTokensStr ? parseInt(maxTokensStr, 10) : undefined;
+  const compressionMode = (compressionModeInput?.value || 'two-pass') as 'two-pass' | 'single-pass';
 
   // Validation
   if (!name) {
@@ -1338,6 +1351,7 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
         model,
         temperature,
         maxTokens,
+        compressionMode,
         isDefault: profiles.length === 0,
       });
       showNotification('Profile created', 'success');
@@ -1349,6 +1363,7 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
         model,
         temperature,
         maxTokens,
+        compressionMode,
       });
       showNotification('Profile updated', 'success');
     }
