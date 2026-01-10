@@ -206,6 +206,74 @@ export const readSource = tool({
   },
 });
 
+/**
+ * findRelevantSources - Use LLM to rank sources by relevance to a query
+ *
+ * Returns sources ranked by relevance score (0.0-1.0) with explanations.
+ * Use this when you need to find which sources are most relevant to a specific query
+ * before reading them in detail.
+ */
+export const findRelevantSources = tool({
+  description: `Find sources relevant to a specific query using LLM-based relevance ranking.
+
+Returns ranked sources with:
+- relevanceScore: 0.0-1.0 (higher = more relevant)
+- relevanceReason: explanation of why it's relevant
+
+Score guidelines:
+- 0.9-1.0: Directly answers the question
+- 0.7-0.9: Strongly relevant background
+- 0.5-0.7: Somewhat related
+- 0.3-0.5: Tangentially related
+- 0.0-0.3: Not relevant
+
+Use this tool to narrow down which sources to read in detail.`,
+  inputSchema: z.object({
+    notebookId: z.string().describe('The ID of the notebook to search'),
+    query: z.string().describe('The query to find relevant sources for'),
+    maxSources: z.number().min(1).max(50).default(10)
+      .describe('Maximum number of sources to return'),
+    minScore: z.number().min(0).max(1).default(0.4)
+      .describe('Minimum relevance score (0.0-1.0) to include'),
+  }),
+  execute: async ({ notebookId, query, maxSources, minScore }) => {
+    // Check cache first
+    const cacheKey = `${notebookId}:${query}:${maxSources}:${minScore}`;
+    const cached = await getCachedToolResult('findRelevantSources', { cacheKey });
+    if (cached) return cached;
+
+    // Import the router function
+    const { rankSourceRelevance } = await import('./ai.ts');
+    const sources = await getSourcesByNotebook(notebookId);
+
+    // Use the router to rank sources
+    const ranked = await rankSourceRelevance(sources, query);
+
+    // Filter by min score and limit
+    const filtered = ranked
+      .filter(s => (s.relevanceScore ?? 0) >= minScore)
+      .slice(0, maxSources);
+
+    const result = {
+      query,
+      totalMatches: filtered.length,
+      sources: filtered.map(s => ({
+        id: s.id,
+        title: s.title,
+        url: s.url,
+        type: s.type,
+        relevanceScore: s.relevanceScore,
+        relevanceReason: s.relevanceReason,
+      }))
+    };
+
+    // Cache the result
+    await setCachedToolResult('findRelevantSources', { cacheKey }, result);
+
+    return result;
+  },
+});
+
 // ============================================================================
 // Tool Types
 // ============================================================================
@@ -301,6 +369,7 @@ export function withApproval<TArgs extends Record<string, unknown>, TResult>(
 export const sourceTools = {
   listSources,
   readSource,
+  findRelevantSources,
 };
 
 /**
