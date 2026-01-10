@@ -288,7 +288,8 @@ beforeEach(() => {
 afterEach(async () => {
   if (!testDB) return;
 
-  const tx = testDB.transaction(DB_STORES, 'readwrite');
+  const db = testDB;
+  const tx = db.transaction(DB_STORES, 'readwrite');
 
   await new Promise<void>((resolve, reject) => {
     tx.oncomplete = () => resolve();
@@ -296,7 +297,7 @@ afterEach(async () => {
 
     // Clear each store that exists
     for (const storeName of DB_STORES) {
-      if (testDB!.objectStoreNames.contains(storeName)) {
+      if (db.objectStoreNames.contains(storeName)) {
         const store = tx.objectStore(storeName);
         store.clear();
       }
