@@ -23,6 +23,43 @@ When adding dependencies or writing code:
 - Leverage Chrome-specific extension APIs without cross-browser abstractions
 - The modulepreload polyfill is disabled in Vite config since Chrome 66+ supports it natively
 
+## Modern Web Development
+
+**IMPORTANT:** Always use the `/modernwebdev` skill when implementing features that interact with browser APIs.
+
+This project mandates modern web platform APIs over legacy patterns. Before implementing any feature:
+
+1. **Run `/modernwebdev`** to get guidance on the most current APIs
+2. **Search documentation** on MDN, web.dev, and developer.chrome.com
+3. **Verify browser support** meets Chrome 140+ requirements
+
+### Required Modern Patterns
+
+| Always Use | Never Use |
+|------------|-----------|
+| `fetch()` with async/await | `XMLHttpRequest` |
+| `navigator.clipboard` | `document.execCommand('copy')` |
+| ES Modules (`import`/`export`) | CommonJS, global scripts |
+| `async`/`await` | Callback chains |
+| Template literals | String concatenation |
+| `structuredClone()` | `JSON.parse(JSON.stringify())` |
+| `crypto.randomUUID()` | Manual UUID generation |
+| `<dialog>` element | Custom modal divs |
+| CSS Grid/Flexbox | Float layouts |
+| IntersectionObserver | Scroll event polling |
+| `URL`/`URLSearchParams` | Manual URL parsing |
+
+### Chrome Extension Modern Patterns
+
+| Always Use | Never Use |
+|------------|-----------|
+| Manifest V3 | Manifest V2 patterns |
+| `chrome.scripting` | `chrome.tabs.executeScript` |
+| Service workers | Background pages |
+| `chrome.action` | `chrome.browserAction` |
+
+When in doubt about which API to use, invoke `/modernwebdev` for research and recommendations.
+
 ## Build Commands
 
 ```bash
