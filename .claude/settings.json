@@ -23,6 +23,13 @@
       "WebFetch(domain:ai-sdk.dev)",
       "WebFetch(domain:developer.chrome.com)",
       "WebFetch(domain:github.com)"
+    ],
+    "deny": [
+      "Bash(git add .)",
+      "Bash(git add -A)",
+      "Bash(git add --all)",
+      "Bash(git commit -a:*)",
+      "Bash(git commit --all:*)"
     ]
   }
 }
