@@ -2097,8 +2097,10 @@ async function handleQuery(): Promise<void> {
   const messageDiv = appendChatMessage(assistantMessage, sources, true);
 
   try {
-    const stream = streamChat(sources, query, history, (status) => {
-      elements.chatStatus.textContent = status;
+    const stream = streamChat(sources, query, history, {
+      onStatus: (status) => {
+        elements.chatStatus.textContent = status;
+      }
     });
     let fullContent = "";
     let citations: Citation[] = [];
