@@ -9,6 +9,10 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { getSourcesByNotebook, getSource } from './storage.ts';
 import { dbGet, dbPut, dbDelete, dbGetAll } from './db.ts';
+import {
+  createApprovalRequest,
+  approvalEvents,
+} from './tool-approvals.ts';
 
 // ============================================================================
 // Tool Result Caching
@@ -234,6 +238,59 @@ export interface SourceContent {
 }
 
 // ============================================================================
+// Tool Approval Wrapper
+// ============================================================================
+
+/**
+ * Wraps a tool execute function to require user approval before execution.
+ *
+ * Usage:
+ *   export const deleteSource = tool({
+ *     description: 'Delete a source',
+ *     inputSchema: z.object({ sourceId: z.string() }),
+ *     execute: withApproval(
+ *       'deleteSource',
+ *       'This will permanently delete the source',
+ *       async ({ sourceId }) => {
+ *         await deleteSourceFromDB(sourceId);
+ *         return { success: true };
+ *       }
+ *     ),
+ *   });
+ */
+export function withApproval<TArgs extends Record<string, unknown>, TResult>(
+  toolName: string,
+  reason: string,
+  executeFn: (args: TArgs) => Promise<TResult>
+): (args: TArgs) => Promise<TResult> {
+  return async (args: TArgs): Promise<TResult> => {
+    const toolCallId = crypto.randomUUID();
+
+    // Create approval request (persisted to IndexedDB)
+    const request = await createApprovalRequest(
+      toolCallId,
+      toolName,
+      args,
+      reason
+    );
+
+    // Wait indefinitely for user decision via event
+    const approved = await new Promise<boolean>((resolve) => {
+      approvalEvents.on(request.id, (_requestId, approved) => {
+        resolve(approved);
+      });
+    });
+
+    // Execute the tool if approved, otherwise throw
+    if (!approved) {
+      throw new Error(`Tool execution rejected by user: ${reason}`);
+    }
+
+    return await executeFn(args);
+  };
+}
+
+// ============================================================================
 // Tool Registry
 // ============================================================================
 
@@ -250,3 +307,24 @@ export const sourceTools = {
  * Type for the source tools object
  */
 export type SourceTools = typeof sourceTools;
+
+// ============================================================================
+// Tool Approval Documentation
+// ============================================================================
+
+/**
+ * Tools can require user approval before execution by setting `needsApproval: true`.
+ *
+ * Approval workflow: pauses execution → shows dialog → waits for approve/reject → executes if approved
+ * Requests expire after 5 minutes.
+ *
+ * Example:
+ *   export const deleteSource = tool({
+ *     description: 'Delete a source',
+ *     inputSchema: z.object({ sourceId: z.string() }),
+ *     execute: async ({ sourceId }) => {
+ *       // tool implementation
+ *     },
+ *     needsApproval: true,
+ *   });
+ */
