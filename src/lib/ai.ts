@@ -1,5 +1,5 @@
 import { streamText, generateText, type LanguageModel } from 'ai';
-import type { Source, Citation, Notebook } from '../types/index.ts';
+import type { Source, Citation, Notebook, ChatMessage } from '../types/index.ts';
 import { getActiveNotebookId, getNotebook } from './storage.ts';
 import { resolveModelConfig } from './model-configs.ts';
 import {
@@ -134,6 +134,16 @@ Source contents:
 ${buildSourceContext(sources)}`;
 }
 
+function buildChatHistory(
+  history?: ChatMessage[]
+): Array<{ role: 'user' | 'assistant'; content: string }> {
+  if (!history) return [];
+  return history.slice(-10).map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
+}
+
 function parseCitations(
   content: string,
   sources: Source[]
@@ -243,7 +253,8 @@ function parseCitations(
 
 export async function* streamChat(
   sources: Source[],
-  question: string
+  question: string,
+  history?: ChatMessage[]
 ): AsyncGenerator<string, ChatResult, unknown> {
   const model = await getModel();
   if (!model) {
@@ -254,10 +265,15 @@ export async function* streamChat(
 
   const systemPrompt = buildChatSystemPrompt(sources);
 
+  const messages = buildChatHistory(history);
+
   const result = streamText({
     model,
     system: systemPrompt,
-    prompt: question,
+    messages: [
+      ...messages,
+      { role: 'user', content: question },
+    ],
   });
 
   let fullContent = "";
@@ -277,7 +293,8 @@ export async function* streamChat(
 
 export async function chat(
   sources: Source[],
-  question: string
+  question: string,
+  history?: ChatMessage[]
 ): Promise<ChatResult> {
   const model = await getModel();
   if (!model) {
@@ -288,12 +305,17 @@ export async function chat(
 
   const systemPrompt = buildChatSystemPrompt(sources);
 
+  const messages = buildChatHistory(history);
+
   // Use retry logic for recoverable errors (network, rate limits)
   const result = await withRetry(
     async () => generateText({
       model,
       system: systemPrompt,
-      prompt: question,
+      messages: [
+        ...messages,
+        { role: 'user', content: question },
+      ],
     }),
     {
       maxAttempts: 3,
