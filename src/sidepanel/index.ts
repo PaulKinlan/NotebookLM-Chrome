@@ -368,6 +368,10 @@ async function init(): Promise<void> {
       // Clear pending action to prevent duplicate processing
       chrome.storage.session.remove("pendingAction").catch(() => {});
       handleCreateNotebookAndAddLink(message.payload.linkUrl);
+    } else if (message.type === "CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS") {
+      // Clear pending action to prevent duplicate processing
+      chrome.storage.session.remove("pendingAction").catch(() => {});
+      handleCreateNotebookAndAddSelectionLinks(message.payload.links);
     }
   });
 
@@ -387,6 +391,8 @@ async function checkPendingAction(): Promise<void> {
         handleCreateNotebookAndAddPage(payload.tabId);
       } else if (type === "CREATE_NOTEBOOK_AND_ADD_LINK" && payload.linkUrl) {
         handleCreateNotebookAndAddLink(payload.linkUrl);
+      } else if (type === "CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS" && payload.links) {
+        handleCreateNotebookAndAddSelectionLinks(payload.links);
       }
     }
   } catch (error) {
@@ -473,6 +479,51 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
     console.error("Failed to add link:", error);
     showNotification("Notebook created but failed to add link");
   }
+}
+
+async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promise<void> {
+  const name = await showNotebookDialog("New Notebook");
+  if (!name) return;
+
+  const notebook = createNotebook(name);
+  await saveNotebook(notebook);
+  currentNotebookId = notebook.id;
+  await setActiveNotebookId(notebook.id);
+  await loadNotebooks();
+  elements.notebookSelect.value = notebook.id;
+  notifyNotebooksChanged();
+
+  const linkCount = links.length;
+  showNotification(`Creating notebook and extracting ${linkCount} link${linkCount === 1 ? '' : 's'}...`);
+
+  // Extract and add each link
+  let addedCount = 0;
+  for (const linkUrl of links) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "EXTRACT_FROM_URL",
+        payload: linkUrl,
+      });
+
+      if (response) {
+        const source = createSource(
+          notebook.id,
+          "tab",
+          response.url || linkUrl,
+          response.title || "Untitled",
+          response.content || ""
+        );
+        await saveSource(source);
+        addedCount++;
+      }
+    } catch (error) {
+      console.error(`Failed to add link ${linkUrl}:`, error);
+      // Continue with other links even if one fails
+    }
+  }
+
+  await loadSources();
+  showNotification(`Notebook created with ${addedCount} source${addedCount === 1 ? '' : 's'}`);
 }
 
 function setupEventListeners(): void {
