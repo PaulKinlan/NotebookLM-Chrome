@@ -7,6 +7,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: process.env.NODE_ENV === 'development',
+    // Disable modulepreload polyfill - Chrome 66+ supports modulepreload natively
+    // and this extension targets Chrome 140+
+    modulePreload: false,
   },
   server: {
     port: 5173,
