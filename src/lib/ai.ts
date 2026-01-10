@@ -81,17 +81,225 @@ async function getModel(): Promise<LanguageModel | null> {
 }
 
 // ============================================================================
-// Source Context Builder
+// Source Context Builder with LLM-Based Compression
 // ============================================================================
 
-function buildSourceContext(sources: Source[]): string {
+interface SourceWithRelevance extends Source {
+  relevanceScore?: number;
+  relevanceReason?: string;
+}
+
+/**
+ * Build lightweight metadata for relevance scoring
+ */
+function buildSourceMetadata(sources: Source[]): string {
   return sources
     .map((source, i) => {
-      return `[Source ${i + 1}] ID: ${source.id}\nTitle: ${
-        source.title
-      }\nURL: ${source.url}\n\n${source.content}`;
+      const preview = source.content.slice(0, 150).replace(/\n/g, ' ');
+      return `[${i + 1}] "${source.title}"
+URL: ${source.url}
+Preview: ${preview}${source.content.length > 150 ? '...' : ''}`;
     })
-    .join("\n\n---\n\n");
+    .join("\n\n");
+}
+
+/**
+ * Pass 1: Use LLM to rank sources by relevance to the query
+ */
+async function rankSourceRelevance(
+  sources: Source[],
+  query: string
+): Promise<SourceWithRelevance[]> {
+  const model = await getModel();
+  if (!model) {
+    // Fallback: return all sources without ranking if no model
+    return sources.map(s => ({ ...s, relevanceScore: 1.0 }));
+  }
+
+  const metadata = buildSourceMetadata(sources);
+
+  const result = await generateText({
+    model,
+    system: `You are a relevance ranking assistant. Given a user query and a list of sources with previews, rank them by relevance.
+
+Return ONLY a JSON array of objects with this exact structure:
+[
+  {"index": 1, "score": 0.9, "reason": "Directly addresses the core question"},
+  {"index": 2, "score": 0.3, "reason": "Marginally related context"}
+]
+
+Where:
+- index: The source number (1-based)
+- score: Relevance score from 0.0 (not relevant) to 1.0 (highly relevant)
+- reason: Brief explanation of the score
+
+Score guidelines:
+- 0.9-1.0: Directly answers the question or provides essential information
+- 0.7-0.9: Strongly relevant background or supporting information
+- 0.5-0.7: Somewhat related context
+- 0.3-0.5: Tangentially related
+- 0.0-0.3: Not relevant
+
+Be discerning - not all sources deserve high scores.`,
+    prompt: `Rank these sources by relevance to the query: "${query}"
+
+Sources:
+${metadata}
+
+Return the JSON ranking.`,
+  });
+
+  try {
+    const rankings = JSON.parse(result.text.trim()) as Array<{
+      index: number;
+      score: number;
+      reason: string;
+    }>;
+
+    // Map rankings back to sources
+    const sourceMap = sources.map((s, i) => ({ ...s, originalIndex: i }));
+    const ranked = sourceMap.map((source): SourceWithRelevance => {
+      const ranking = rankings.find(r => r.index === source.originalIndex + 1);
+      return {
+        ...source,
+        relevanceScore: ranking?.score ?? 0.5,
+        relevanceReason: ranking?.reason,
+      };
+    });
+
+    // Sort by relevance score descending
+    return ranked.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
+  } catch (error) {
+    console.error('Failed to parse relevance ranking:', error);
+    // Fallback: return all sources with neutral score
+    return sources.map(s => ({ ...s, relevanceScore: 0.5 }));
+  }
+}
+
+/**
+ * Pass 2: Summarize moderately relevant sources to save tokens
+ */
+async function summarizeSources(
+  sources: SourceWithRelevance[],
+  maxSummaries: number = 10
+): Promise<Map<string, string>> {
+  if (sources.length === 0) return new Map();
+
+  const model = await getModel();
+  if (!model) return new Map();
+
+  const summaries = new Map<string, string>();
+
+  // Batch summarize sources to reduce API calls
+  const batch = sources.slice(0, maxSummaries);
+  const sourcesText = batch
+    .map((s, i) => `[Source ${i + 1}] "${s.title}"\n${s.content.slice(0, 500)}...`)
+    .join('\n\n---\n\n');
+
+  const result = await generateText({
+    model,
+    system: `You are a precise summarizer. Create 2-3 sentence summaries that capture the main points and key information.
+
+Return ONLY a JSON array of objects:
+[
+  {"index": 1, "summary": "Two to three sentences capturing the main points..."},
+  {"index": 2, "summary": "Two to three sentences..."}
+]
+
+Be accurate and concise. Focus on substantive content.`,
+    prompt: `Summarize these sources:\n\n${sourcesText}\n\nReturn the JSON summaries.`,
+  });
+
+  try {
+    const parsed = JSON.parse(result.text.trim()) as Array<{
+      index: number;
+      summary: string;
+    }>;
+
+    for (const item of parsed) {
+      const source = batch[item.index - 1];
+      if (source) {
+        summaries.set(source.id, item.summary);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to parse summaries:', error);
+  }
+
+  return summaries;
+}
+
+/**
+ * Build compressed context using two-pass LLM approach
+ * - Pass 1: Rank all sources by relevance
+ * - Pass 2: Full content for top sources, summaries for mid-tier, titles for rest
+ */
+async function buildSourceContext(
+  sources: Source[],
+  query: string
+): Promise<string> {
+  if (sources.length === 0) return '';
+
+  // If only a few sources, skip compression
+  if (sources.length <= 5) {
+    return sources
+      .map((source, i) => {
+        return `[Source ${i + 1}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`;
+      })
+      .join('\n\n---\n\n');
+  }
+
+  // Pass 1: Rank by relevance
+  const ranked = await rankSourceRelevance(sources, query);
+
+  // Categorize by relevance
+  const highlyRelevant = ranked.filter(s => (s.relevanceScore ?? 0) >= 0.7);
+  const moderatelyRelevant = ranked.filter(
+    s => (s.relevanceScore ?? 0) >= 0.4 && (s.relevanceScore ?? 0) < 0.7
+  );
+  const lessRelevant = ranked.filter(s => (s.relevanceScore ?? 0) < 0.4);
+
+  // Pass 2: Summarize moderately relevant sources
+  const summaries = await summarizeSources(moderatelyRelevant);
+
+  // Build context with appropriate detail level
+  const parts: string[] = [];
+
+  // Full content for highly relevant (top 5)
+  for (const source of highlyRelevant.slice(0, 5)) {
+    parts.push(
+      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\n${source.content}`
+    );
+  }
+
+  // Summaries for moderately relevant
+  for (const source of moderatelyRelevant) {
+    const summary = summaries.get(source.id) ?? 'Summary not available.';
+    parts.push(
+      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\nSummary: ${summary}`
+    );
+  }
+
+  // Titles only for less relevant
+  for (const source of lessRelevant) {
+    parts.push(
+      `[Source ${source.id}] Title: ${source.title}\nURL: ${source.url}\n\n(Referenced but not highly relevant to this query)`
+    );
+  }
+
+  return parts.join('\n\n---\n\n');
+}
+
+/**
+ * Simple context builder for transformations (no compression)
+ * Used when there's no specific query to rank against
+ */
+function buildSourceContextSimple(sources: Source[]): string {
+  return sources
+    .map((source, i) => {
+      return `[Source ${i + 1}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`;
+    })
+    .join('\n\n---\n\n');
 }
 
 function buildSourceList(sources: Source[]): string {
@@ -109,19 +317,23 @@ export interface ChatResult {
   citations: Citation[];
 }
 
-function buildChatSystemPrompt(sources: Source[]): string {
+async function buildChatSystemPrompt(
+  sources: Source[],
+  query: string
+): Promise<string> {
+  const sourceContext = await buildSourceContext(sources, query);
+
   return `You are a helpful AI assistant that answers questions based on the provided sources.
 
 IMPORTANT INSTRUCTIONS:
 1. Base your answers ONLY on the provided sources
-2. When you use information from a source, cite it using the format [Source N] where N is the source number
+2. When you use information from a source, cite it using the format [Source ID] where ID is the source's identifier
 3. Be accurate and well-structured
 4. If the sources don't contain relevant information, say so
 
 After your main response, add a CITATIONS section in this exact format:
 ---CITATIONS---
-[Source 1]: "exact quote or paraphrase from source 1"
-[Source 2]: "exact quote or paraphrase from source 2"
+[Source ID]: "exact quote or paraphrase from source"
 ---END CITATIONS---
 
 Only include sources you actually referenced. If you didn't cite any sources, omit the citations section.
@@ -131,7 +343,7 @@ ${buildSourceList(sources)}
 
 Source contents:
 
-${buildSourceContext(sources)}`;
+${sourceContext}`;
 }
 
 function buildChatHistory(
@@ -263,7 +475,7 @@ export async function* streamChat(
     );
   }
 
-  const systemPrompt = buildChatSystemPrompt(sources);
+  const systemPrompt = await buildChatSystemPrompt(sources, question);
 
   const messages = buildChatHistory(history);
 
@@ -303,7 +515,7 @@ export async function chat(
     );
   }
 
-  const systemPrompt = buildChatSystemPrompt(sources);
+  const systemPrompt = await buildChatSystemPrompt(sources, question);
 
   const messages = buildChatHistory(history);
 
@@ -352,7 +564,7 @@ Be concise but thorough - the paragraph can be long if needed to capture the ess
 Do not use bullet points, headings, or multiple paragraphs. Output only the overview paragraph.`,
     prompt: `Write a concise overview paragraph for these sources:
 
-${buildSourceContext(sources)}`,
+${buildSourceContextSimple(sources)}`,
   });
 
   return result.text;
@@ -373,7 +585,7 @@ Create a bulleted list of the most important points from the sources.
 Each takeaway should be clear, actionable, and self-contained.`,
     prompt: `Extract the key takeaways from these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format as a bulleted list with clear, concise points.`,
   });
@@ -403,7 +615,7 @@ IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No 
 Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.`,
     prompt: `Create a ${questionCount}-question interactive multiple choice quiz based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Generate a self-contained HTML quiz with:
 1. Each question displayed one at a time with a question counter
@@ -444,7 +656,7 @@ Write a concise summary suitable for sharing via email.
 Use a professional tone and clear structure.`,
     prompt: `Create a professional email summary of these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Include:
 - A brief introduction
@@ -481,7 +693,7 @@ The hosts should be curious, ask follow-up questions, and build on each other's 
       lengthMinutes * 150
     } words) based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format as a dialogue between Host A and Host B:
 Host A: [Introduction and topic setup]
@@ -512,7 +724,7 @@ IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No 
 Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.`,
     prompt: `Create an interactive slide deck presentation based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Generate a self-contained HTML slide deck with:
 1. Full-width slides that display one at a time
@@ -556,7 +768,7 @@ Write a well-structured report with clear sections and professional language.
 Include an executive summary, main body sections, and conclusions.`,
     prompt: `Create a formal report based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format with:
 # Executive Summary
@@ -590,7 +802,7 @@ Identify key data points, facts, statistics, or comparisons from the sources.
 Present them in a clear tabular format using markdown tables.`,
     prompt: `Extract key data and facts from these sources and organize them into tables:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Create one or more markdown tables that capture the most important data points.
 Use format:
@@ -622,7 +834,7 @@ IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No 
 Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.`,
     prompt: `Create an interactive visual mind map based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Generate a self-contained HTML mind map with:
 1. A central topic node prominently displayed
@@ -671,7 +883,7 @@ IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No 
 Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.`,
     prompt: `Create ${cardCount} interactive flashcards based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Generate self-contained HTML flashcards with:
 1. A card counter showing current card / total cards
@@ -715,7 +927,7 @@ IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No 
 Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.`,
     prompt: `Create an interactive visual timeline based on events and dates found in these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Generate a self-contained HTML timeline with:
 1. A vertical or horizontal timeline with a connecting line
@@ -759,7 +971,7 @@ Identify key terms, concepts, and jargon from the sources.
 Provide clear, concise definitions for each term.`,
     prompt: `Create a glossary of key terms from these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format as an alphabetically organized list:
 ## Glossary
@@ -789,7 +1001,7 @@ Identify items, concepts, or options that can be compared from the sources.
 Present a balanced side-by-side comparison with relevant criteria.`,
     prompt: `Create a comparison chart based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format as a markdown table comparing key items:
 | Criteria | Option A | Option B | Option C |
@@ -821,7 +1033,7 @@ Anticipate common questions readers might have about the topics.
 Provide clear, helpful answers based on the source content.`,
     prompt: `Create a FAQ with ${questionCount} questions based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format as:
 ## Frequently Asked Questions
@@ -855,7 +1067,7 @@ Identify actionable steps, recommendations, and to-dos from the sources.
 Organize them by priority or category.`,
     prompt: `Extract action items and tasks from these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format as:
 ## Action Items
@@ -894,7 +1106,7 @@ Write a concise one-page summary for busy decision-makers.
 Focus on key insights, implications, and recommended actions.`,
     prompt: `Create an executive brief (one-page summary) based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format as:
 ## Executive Brief
@@ -937,7 +1149,7 @@ IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No 
 Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.`,
     prompt: `Create an interactive study guide based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Generate a self-contained HTML study guide with:
 1. Collapsible/expandable sections for each topic
@@ -986,7 +1198,7 @@ Identify advantages and disadvantages of topics, decisions, or options.
 Present a fair, objective analysis.`,
     prompt: `Create a pros and cons analysis based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format as:
 ## Pros & Cons Analysis
@@ -1027,7 +1239,7 @@ Generate properly formatted references and bibliography entries.
 Include all available source information.`,
     prompt: `Create a citation list for these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format as:
 ## References
@@ -1062,7 +1274,7 @@ Organize content into a hierarchical document structure.
 Use standard outline formatting with clear sections and subsections.`,
     prompt: `Create a detailed outline based on these sources:
 
-${buildSourceContext(sources)}
+${buildSourceContextSimple(sources)}
 
 Format as:
 # Main Topic
