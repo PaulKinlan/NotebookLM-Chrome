@@ -127,3 +127,37 @@ The README contains comprehensive architecture documentation. Update it when:
 - **Message Passing table**: If message types are added/removed
 - **Permissions table**: If permissions change in manifest.json
 - **Tech Stack**: If major dependencies are added/removed
+
+## Testing Requirements
+
+**IMPORTANT:** Unit tests are required for all code changes. Every feature and improvement must include corresponding tests.
+
+### When to Add Tests
+
+- **New features**: Every new feature must have unit tests that verify its functionality
+- **Bug fixes**: Every bug fix must include a test that reproduces the bug and verifies the fix
+- **Improvements/Refactoring**: Any code improvement or refactoring must maintain or improve test coverage
+- **Utility functions**: All utility functions in `src/lib/` must have comprehensive unit tests
+
+### Test Guidelines
+
+- Place test files adjacent to the code they test, using the naming convention `*.test.ts` or `*.spec.ts`
+- Test both success cases and error/edge cases
+- Keep tests focused and independent - each test should verify one specific behavior
+- Use descriptive test names that explain what is being tested
+- Mock Chrome APIs and external dependencies appropriately
+
+### Test Infrastructure
+
+If test infrastructure is not yet set up in the repository:
+
+1. Add a test framework (e.g., Vitest) as a dev dependency
+2. Add a `test` script to `package.json`
+3. Configure the test framework in the project configuration
+
+### Running Tests
+
+```bash
+npm run test         # Run all tests
+npm run test:watch   # Run tests in watch mode during development
+```
