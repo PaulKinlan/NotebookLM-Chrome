@@ -5,6 +5,7 @@ import type {
   Citation,
 } from "../types/index.ts";
 import DOMPurify, { Config } from "dompurify";
+import browser from "../lib/browser";
 import { checkPermissions, requestPermission } from "../lib/permissions.ts";
 import { renderMarkdown, isHtmlContent } from "../lib/markdown-renderer.ts";
 import {
@@ -326,22 +327,22 @@ async function init(): Promise<void> {
   });
 
   // Listen for tab highlight changes to update button text
-  chrome.tabs.onHighlighted.addListener(() => {
+  browser.tabs.onHighlighted.addListener(() => {
     updateAddTabButton();
   });
 
   // Listen for tab creation/removal to update tab count in real-time
-  chrome.tabs.onCreated.addListener(() => {
+  browser.tabs.onCreated.addListener(() => {
     updateTabCount();
     refreshPickerIfShowingTabs();
   });
 
-  chrome.tabs.onRemoved.addListener(() => {
+  browser.tabs.onRemoved.addListener(() => {
     updateTabCount();
     refreshPickerIfShowingTabs();
   });
 
-  chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
+  browser.tabs.onUpdated.addListener((_tabId, changeInfo) => {
     // Only refresh when URL or title changes (not for every status update)
     if (changeInfo.url || changeInfo.title) {
       refreshPickerIfShowingTabs();
@@ -349,19 +350,29 @@ async function init(): Promise<void> {
   });
 
   // Listen for messages from background script
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === "SOURCE_ADDED") {
+  browser.runtime.onMessage.addListener((message: unknown) => {
+    if (!message || typeof message !== 'object') return;
+
+    const msg = message as { type?: string; payload?: unknown };
+    const type = msg.type;
+    const payload = msg.payload;
+
+    if (type === "SOURCE_ADDED") {
       loadNotebooks();
       loadSources();
       showNotification("Source added");
-    } else if (message.type === "CREATE_NOTEBOOK_AND_ADD_PAGE") {
+    } else if (type === "CREATE_NOTEBOOK_AND_ADD_PAGE") {
       // Clear pending action to prevent duplicate processing
-      chrome.storage.session.remove("pendingAction").catch(() => {});
-      handleCreateNotebookAndAddPage(message.payload.tabId);
-    } else if (message.type === "CREATE_NOTEBOOK_AND_ADD_LINK") {
+      browser.storage.session.remove("pendingAction").catch(() => {});
+      if (payload && typeof payload === 'object' && 'tabId' in payload && typeof payload.tabId === 'number') {
+        handleCreateNotebookAndAddPage(payload.tabId);
+      }
+    } else if (type === "CREATE_NOTEBOOK_AND_ADD_LINK") {
       // Clear pending action to prevent duplicate processing
-      chrome.storage.session.remove("pendingAction").catch(() => {});
-      handleCreateNotebookAndAddLink(message.payload.linkUrl);
+      browser.storage.session.remove("pendingAction").catch(() => {});
+      if (payload && typeof payload === 'object' && 'linkUrl' in payload && typeof payload.linkUrl === 'string') {
+        handleCreateNotebookAndAddLink(payload.linkUrl);
+      }
     }
   });
 
@@ -371,15 +382,18 @@ async function init(): Promise<void> {
 
 async function checkPendingAction(): Promise<void> {
   try {
-    const result = await chrome.storage.session.get("pendingAction");
-    if (result.pendingAction) {
+    const result = await browser.storage.session.get("pendingAction");
+    const pendingAction = result.pendingAction;
+    if (pendingAction && typeof pendingAction === 'object') {
       // Clear the pending action first to prevent duplicate processing
-      await chrome.storage.session.remove("pendingAction");
+      await browser.storage.session.remove("pendingAction");
 
-      const { type, payload } = result.pendingAction;
-      if (type === "CREATE_NOTEBOOK_AND_ADD_PAGE" && payload.tabId) {
+      const type = 'type' in pendingAction && typeof pendingAction.type === 'string' ? pendingAction.type : null;
+      const payload = 'payload' in pendingAction ? pendingAction.payload : null;
+
+      if (type === "CREATE_NOTEBOOK_AND_ADD_PAGE" && payload && typeof payload === 'object' && 'tabId' in payload && typeof payload.tabId === 'number') {
         handleCreateNotebookAndAddPage(payload.tabId);
-      } else if (type === "CREATE_NOTEBOOK_AND_ADD_LINK" && payload.linkUrl) {
+      } else if (type === "CREATE_NOTEBOOK_AND_ADD_LINK" && payload && typeof payload === 'object' && 'linkUrl' in payload && typeof payload.linkUrl === 'string') {
         handleCreateNotebookAndAddLink(payload.linkUrl);
       }
     }
@@ -390,7 +404,7 @@ async function checkPendingAction(): Promise<void> {
 
 // Notify background script to rebuild context menus when notebooks change
 function notifyNotebooksChanged(): void {
-  chrome.runtime.sendMessage({ type: "REBUILD_CONTEXT_MENUS" }).catch(() => {
+  browser.runtime.sendMessage({ type: "REBUILD_CONTEXT_MENUS" }).catch(() => {
     // Background may not be ready
   });
 }
@@ -409,16 +423,16 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
 
   // Now extract and add the page
   try {
-    const result = await chrome.tabs.sendMessage(tabId, {
+    const result = await browser.tabs.sendMessage(tabId, {
       action: "extractContent",
     });
-    if (result) {
+    if (result && typeof result === 'object' && 'url' in result && 'title' in result && 'markdown' in result) {
       const source = createSource(
         notebook.id,
         "tab",
-        result.url,
-        result.title,
-        result.markdown
+        String(result.url),
+        String(result.title),
+        String(result.markdown)
       );
       await saveSource(source);
       await loadSources();
@@ -446,19 +460,16 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
 
   // Now extract and add the link
   try {
-    const response = await chrome.runtime.sendMessage({
+    const response = await browser.runtime.sendMessage({
       type: "EXTRACT_FROM_URL",
       payload: linkUrl,
     });
 
-    if (response) {
-      const source = createSource(
-        notebook.id,
-        "tab",
-        response.url || linkUrl,
-        response.title || "Untitled",
-        response.content || ""
-      );
+    if (response && typeof response === 'object') {
+      const url = 'url' in response && typeof response.url === 'string' ? response.url : linkUrl;
+      const title = 'title' in response && typeof response.title === 'string' ? response.title : "Untitled";
+      const content = 'content' in response && typeof response.content === 'string' ? response.content : "";
+      const source = createSource(notebook.id, "tab", url, title, content);
       await saveSource(source);
       await loadSources();
       showNotification("Notebook created and source added");
@@ -1182,7 +1193,7 @@ async function handleAddCurrentTab(): Promise<void> {
 
   try {
     // Check for multiple highlighted tabs
-    const highlightedTabs = await chrome.tabs.query({
+    const highlightedTabs = await browser.tabs.query({
       highlighted: true,
       currentWindow: true,
     });
@@ -1200,18 +1211,15 @@ async function handleAddCurrentTab(): Promise<void> {
 
         try {
           // Send message directly to the content script in the tab
-          const result = await chrome.tabs.sendMessage(tab.id, {
+          const result = await browser.tabs.sendMessage(tab.id, {
             action: "extractContent",
           });
 
-          if (result) {
-            const source = createSource(
-              notebookId,
-              "tab",
-              result.url || tab.url,
-              result.title || tab.title || "Untitled",
-              result.markdown || ""
-            );
+          if (result && typeof result === 'object') {
+            const url = 'url' in result && typeof result.url === 'string' ? result.url : tab.url;
+            const title = 'title' in result && typeof result.title === 'string' ? result.title : (tab.title || "Untitled");
+            const markdown = 'markdown' in result && typeof result.markdown === 'string' ? result.markdown : "";
+            const source = createSource(notebookId, "tab", url, title, markdown);
             await saveSource(source);
             addedCount++;
           }
@@ -1237,18 +1245,15 @@ async function handleAddCurrentTab(): Promise<void> {
     } else {
       // Single tab - use existing logic
       elements.addCurrentTabBtn.textContent = "Adding...";
-      const response = await chrome.runtime.sendMessage({
+      const response = await browser.runtime.sendMessage({
         type: "EXTRACT_CONTENT",
       });
 
-      if (response) {
-        const source = createSource(
-          notebookId,
-          "tab",
-          response.url,
-          response.title,
-          response.content
-        );
+      if (response && typeof response === 'object') {
+        const url = 'url' in response && typeof response.url === 'string' ? response.url : "";
+        const title = 'title' in response && typeof response.title === 'string' ? response.title : "Untitled";
+        const content = 'content' in response && typeof response.content === 'string' ? response.content : "";
+        const source = createSource(notebookId, "tab", url, title, content);
         await saveSource(source);
         await loadSources();
       }
@@ -1263,7 +1268,7 @@ async function handleAddCurrentTab(): Promise<void> {
 
 async function updateAddTabButton(): Promise<void> {
   try {
-    const highlightedTabs = await chrome.tabs.query({
+    const highlightedTabs = await browser.tabs.query({
       highlighted: true,
       currentWindow: true,
     });
@@ -1317,7 +1322,7 @@ async function handleImportTabs(): Promise<void> {
   openPicker();
 
   try {
-    const tabs = await chrome.tabs.query({});
+    const tabs = await browser.tabs.query({});
     pickerItems = tabs
       .filter((tab) => tab.url && !tab.url.startsWith("chrome://"))
       .map((tab) => ({
@@ -1358,7 +1363,7 @@ async function handleImportTabGroups(): Promise<void> {
   openPicker();
 
   try {
-    const groups = await chrome.tabGroups.query({});
+    const groups = await browser.tabGroups.query({});
 
     if (groups.length === 0) {
       elements.pickerList.innerHTML =
@@ -1369,7 +1374,7 @@ async function handleImportTabGroups(): Promise<void> {
     // Get tab counts for each group
     const groupsWithCounts = await Promise.all(
       groups.map(async (group) => {
-        const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+        const tabsInGroup = await browser.tabs.query({ groupId: group.id });
         return {
           ...group,
           tabCount: tabsInGroup.length,
@@ -1408,7 +1413,7 @@ async function handleImportBookmarks(): Promise<void> {
   openPicker();
 
   try {
-    const bookmarkTree = await chrome.bookmarks.getTree();
+    const bookmarkTree = await browser.bookmarks.getTree();
     pickerItems = flattenBookmarks(bookmarkTree);
     renderPickerItems();
   } catch (error) {
@@ -1419,20 +1424,20 @@ async function handleImportBookmarks(): Promise<void> {
 }
 
 function flattenBookmarks(
-  nodes: chrome.bookmarks.BookmarkTreeNode[]
+  nodes: unknown[]
 ): PickerItem[] {
   const items: PickerItem[] = [];
 
-  function traverse(nodes: chrome.bookmarks.BookmarkTreeNode[]): void {
+  function traverse(nodes: unknown[]): void {
     for (const node of nodes) {
-      if (node.url) {
+      if (node && typeof node === 'object' && 'url' in node && 'id' in node && typeof node.url === 'string') {
         items.push({
-          id: node.id,
+          id: String(node.id),
           url: node.url,
-          title: node.title || "Untitled",
+          title: 'title' in node && typeof node.title === 'string' ? node.title : "Untitled",
         });
       }
-      if (node.children) {
+      if (node && typeof node === 'object' && 'children' in node && Array.isArray(node.children)) {
         traverse(node.children);
       }
     }
@@ -1457,7 +1462,7 @@ async function handleImportHistory(): Promise<void> {
   openPicker();
 
   try {
-    const historyItems = await chrome.history.search({
+    const historyItems = await browser.history.search({
       text: "",
       maxResults: 100,
       startTime: Date.now() - 7 * 24 * 60 * 60 * 1000, // Last 7 days
@@ -1480,7 +1485,7 @@ async function handleImportHistory(): Promise<void> {
 async function updateTabCount(): Promise<void> {
   try {
     if (permissions.tabs) {
-      const tabs = await chrome.tabs.query({});
+      const tabs = await browser.tabs.query({});
       elements.tabsCount.textContent = `Choose from ${tabs.length} active tabs`;
     }
   } catch {
@@ -1512,7 +1517,7 @@ async function refreshPickerIfShowingTabs(): Promise<void> {
   if (elements.pickerModal.classList.contains("hidden")) return;
 
   try {
-    const tabs = await chrome.tabs.query({});
+    const tabs = await browser.tabs.query({});
     const currentFilter = elements.pickerSearch.value;
 
     pickerItems = tabs
@@ -1688,25 +1693,22 @@ async function handlePickerAdd(): Promise<void> {
     for (const groupItem of selectedItems) {
       try {
         const groupId = parseInt(groupItem.id, 10);
-        const tabsInGroup = await chrome.tabs.query({ groupId });
+        const tabsInGroup = await browser.tabs.query({ groupId });
 
         for (const tab of tabsInGroup) {
           if (!tab.id || !tab.url || tab.url.startsWith("chrome://")) continue;
 
           try {
             // Send message directly to content script
-            const result = await chrome.tabs.sendMessage(tab.id, {
+            const result = await browser.tabs.sendMessage(tab.id, {
               action: "extractContent",
             });
 
-            if (result) {
-              const source = createSource(
-                notebookId,
-                "tab",
-                result.url || tab.url,
-                result.title || tab.title || "Untitled",
-                result.markdown || ""
-              );
+            if (result && typeof result === 'object') {
+              const url = 'url' in result && typeof result.url === 'string' ? result.url : tab.url;
+              const title = 'title' in result && typeof result.title === 'string' ? result.title : (tab.title || "Untitled");
+              const markdown = 'markdown' in result && typeof result.markdown === 'string' ? result.markdown : "";
+              const source = createSource(notebookId, "tab", url, title, markdown);
               await saveSource(source);
               addedCount++;
             }
@@ -1733,19 +1735,16 @@ async function handlePickerAdd(): Promise<void> {
     for (const item of selectedItems) {
       try {
         // Extract content from the URL
-        const response = await chrome.runtime.sendMessage({
+        const response = await browser.runtime.sendMessage({
           type: "EXTRACT_FROM_URL",
           payload: item.url,
         });
 
-        if (response) {
-          const source = createSource(
-            notebookId,
-            pickerType || "tab",
-            response.url || item.url,
-            response.title || item.title,
-            response.content || ""
-          );
+        if (response && typeof response === 'object') {
+          const url = 'url' in response && typeof response.url === 'string' ? response.url : item.url;
+          const title = 'title' in response && typeof response.title === 'string' ? response.title : item.title;
+          const content = 'content' in response && typeof response.content === 'string' ? response.content : "";
+          const source = createSource(notebookId, pickerType || "tab", url, title, content);
           await saveSource(source);
           addedCount++;
         }
@@ -2024,13 +2023,13 @@ function handleCitationClick(event: Event): void {
   // Skip if excerpt is generic
   if (!excerpt || excerpt === "Referenced in response") {
     // Just open the URL without text fragment
-    chrome.tabs.create({ url: sourceUrl });
+    browser.tabs.create({ url: sourceUrl });
     return;
   }
 
   // Create URL with text fragment
   const fragmentUrl = createTextFragmentUrl(sourceUrl, excerpt);
-  chrome.tabs.create({ url: fragmentUrl });
+  browser.tabs.create({ url: fragmentUrl });
 }
 
 function formatRelativeTime(timestamp: number): string {
@@ -2587,8 +2586,8 @@ async function handleClearAllData(): Promise<void> {
     // Clear all IndexedDB data
     await clearAllData();
 
-    // Clear chrome.storage.local model cache (provider model lists)
-    await chrome.storage.local.clear();
+    // Clear browser.storage.local model cache (provider model lists)
+    await browser.storage.local.clear();
 
     // Reload the sidepanel to refresh UI
     location.reload();
