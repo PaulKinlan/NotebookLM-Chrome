@@ -10,6 +10,7 @@ Users frequently encounter valuable information across multiple web pages but la
 - Collect and organize content from different sources
 - Query across multiple sources simultaneously
 - Transform content into different formats (summaries, quizzes, podcasts)
+- Capture multimodal content (images, video, audio, PDFs) alongside text
 - Do all of this without leaving their browser
 
 ## Target Users
@@ -22,7 +23,19 @@ Users frequently encounter valuable information across multiple web pages but la
 
 ---
 
-## Core Features
+## Roadmap
+
+| Phase | Features | Priority | Status |
+|-------|----------|----------|--------|
+| Phase 1 | Text sources, notebooks, basic AI chat, transformations | P0 | Complete |
+| Phase 2 | PDF support (local + web), improved content extraction | P1 | Planned |
+| Phase 3 | Image extraction, multimodal AI context | P2 | Planned |
+| Phase 4 | Video/Audio sources, expanded context menu | P3 | Planned |
+| Future | Server sync, collaboration, mobile companion | P4 | Future |
+
+---
+
+## Core Features (P0)
 
 ### 1. Source Management
 
@@ -32,7 +45,15 @@ Users frequently encounter valuable information across multiple web pages but la
 - Notebooks persist in IndexedDB (with sync hooks for future server sync)
 - Active notebook tracked across sessions
 
+**Acceptance Criteria:**
+- [x] User can create a new notebook with a custom name
+- [x] User can rename an existing notebook
+- [x] User can delete a notebook and all its sources
+- [x] Active notebook persists across browser sessions
+- [x] Notebooks display source count
+
 #### 1.2 Source Types
+
 | Source Type | Permission Required | Description |
 |-------------|---------------------|-------------|
 | Current Tab | `activeTab` (required) | Add the currently active tab |
@@ -42,6 +63,15 @@ Users frequently encounter valuable information across multiple web pages but la
 | Bookmarks | `bookmarks` (optional) | Browse and select from bookmarks via picker |
 | History | `history` (optional) | Search and select from browsing history via picker |
 | Context Menu | `contextMenus` (required) | Right-click to add page or link |
+
+**Acceptance Criteria:**
+- [x] User can add the current tab with one click
+- [x] User can add multiple selected tabs simultaneously
+- [x] User can browse and multi-select from open tabs
+- [x] User can import all tabs from a tab group
+- [x] User can browse and select bookmarks
+- [x] User can search and select from history
+- [x] Sources display title, URL, and favicon
 
 #### 1.3 Content Extraction
 Uses **Turndown** library in a content script to convert HTML to clean markdown:
@@ -58,6 +88,12 @@ Uses **Turndown** library in a content script to convert HTML to clean markdown:
 
 **Output:** Markdown stored in `Source.content` for AI processing
 
+**Acceptance Criteria:**
+- [x] Content is extracted as clean markdown
+- [x] Navigation, ads, and boilerplate are removed
+- [x] Extraction works on pages loaded before extension install
+- [x] Failed extraction shows user-friendly error
+
 ### 2. AI Integration
 
 #### 2.1 Provider Support
@@ -70,6 +106,13 @@ Uses the Vercel AI SDK (`npm:ai`) with provider packages:
 | Google | `@ai-sdk/google` | Gemini 2.5 Flash/Pro, Gemini 3 Pro/Flash (Preview) | Cost-effective, multimodal capable |
 | Chrome Built-in | `@built-in-ai/core` | Gemini Nano | Offline, privacy-focused, free |
 
+**Acceptance Criteria:**
+- [x] User can select from multiple AI providers
+- [x] User can choose specific models per provider
+- [x] API keys are securely stored per provider
+- [x] Test connection validates API key
+- [x] Chrome Built-in AI works without API key
+
 #### 2.2 Settings UI
 - Model provider selection dropdown
 - Model selection per provider
@@ -81,6 +124,12 @@ Uses the Vercel AI SDK (`npm:ai`) with provider packages:
 - Combine source content into context for queries
 - Source attribution in prompts
 - Streaming responses for real-time feedback
+
+**Acceptance Criteria:**
+- [x] All notebook sources are included in AI context
+- [x] Sources are attributed in prompts for citation
+- [x] Responses stream in real-time
+- [x] Large context is handled gracefully
 
 ### 3. Query & Chat
 
@@ -95,6 +144,14 @@ Uses the Vercel AI SDK (`npm:ai`) with provider packages:
 - **Clickable citation cards** that open source URL with text fragment highlighting
 - **Offline response caching** - cached responses used when offline or API fails
 
+**Acceptance Criteria:**
+- [x] User can type and submit queries
+- [x] Responses stream with visible progress
+- [x] Markdown renders correctly (headers, lists, code)
+- [x] Chat history persists per notebook
+- [x] User can clear chat history
+- [x] Citations link to source with text highlighting
+
 #### 3.2 Query Types
 - Open-ended questions about sources
 - Comparison queries ("How does X differ from Y?")
@@ -107,6 +164,16 @@ The AI is instructed to cite sources using `[Source N]` markers. After the respo
 - Displayed as clickable cards below the response
 - Clicking opens the source URL with Chrome's text fragment highlighting (`#:~:text=...`)
 
+**Acceptance Criteria:**
+- [x] AI responses include [Source N] citations
+- [x] Citation cards display source title and excerpt
+- [x] Clicking citation opens source URL
+- [x] Text fragment highlighting works when available
+
+---
+
+## Enhanced Features (P1-P2)
+
 ### 4. Transformations
 
 Four transformation types accessible from the Transform tab:
@@ -116,33 +183,176 @@ Four transformation types accessible from the Transform tab:
 - Hosts discuss and explain the source content
 - Configurable length (default: 5 minutes)
 
+**Acceptance Criteria:**
+- [x] Generated script has two distinct host voices
+- [x] Content accurately reflects sources
+- [x] User can copy the generated script
+
 #### 4.2 Study Quiz
 - Multiple choice questions (default: 5 questions)
 - Questions with 4 options each
 - Answer and explanation provided
 
+**Acceptance Criteria:**
+- [x] Questions are relevant to source content
+- [x] Each question has exactly 4 options
+- [x] Correct answer and explanation are provided
+
 #### 4.3 Key Takeaways
 - Extract the most important bullet points
 - Formatted as a clear, actionable list
+
+**Acceptance Criteria:**
+- [x] Takeaways capture main points from sources
+- [x] Formatted as scannable bullet list
+- [x] User can copy takeaways
 
 #### 4.4 Email Summary
 - Professional email summary for sharing
 - Includes key findings and structure
 - Copy-ready format
 
-### 5. Context Menu Integration
+**Acceptance Criteria:**
+- [x] Summary is professional and well-structured
+- [x] Includes subject line suggestion
+- [x] User can copy to clipboard
+
+### 5. Multimodal Sources
+
+#### 5.1 PDF Documents (P1)
+
+| Source Type | Permission Required | Description |
+|-------------|---------------------|-------------|
+| PDF (Local) | none | Upload PDFs from computer via file picker |
+| PDF (Web) | `activeTab` | Extract from PDF links on web pages |
+
+**Features:**
+- Local PDF upload via file picker in Add Sources screen
+- Detect and extract PDFs linked on current page
+- Text extraction using PDF.js library
+- Store extracted text in `Source.content`
+- Original PDF reference stored in metadata
+
+**Acceptance Criteria:**
+- [ ] User can upload PDF from local computer
+- [ ] User can add PDF links from current page
+- [ ] Text content is extracted accurately
+- [ ] Multi-page PDFs are fully extracted
+- [ ] PDF metadata (title, pages) is captured
+- [ ] Error shown for encrypted/protected PDFs
+
+#### 5.2 Images (P2)
+
+| Source Type | Permission Required | Description |
+|-------------|---------------------|-------------|
+| Page Images | `activeTab` | Extract images from current page |
+| Context Menu | `contextMenus` | Right-click image to add |
+
+**Features:**
+- **Auto-detection**: Identify important images on page (large, in-content, not UI/ads)
+- **Image picker**: Modal to browse and select images from page
+- **Hybrid mode**: Auto-suggest important images, user can modify selection
+- **Context menu**: Right-click any image → "Add image to Notebook"
+- **Storage**: Image URL stored, fetched for multimodal AI context
+
+**Image Detection Heuristics:**
+- Minimum dimensions (e.g., 200x200px)
+- Within main content area (not header/footer/sidebar)
+- Not common UI elements (icons, avatars, buttons)
+- Has meaningful alt text or is figure/infographic
+
+**Acceptance Criteria:**
+- [ ] User can view images detected on current page
+- [ ] Auto-detection filters out UI/ad images
+- [ ] User can manually select/deselect images
+- [ ] Right-click adds single image to notebook
+- [ ] Images display as thumbnails in source list
+- [ ] Images are sent to multimodal AI providers
+
+#### 5.3 Video Content (P3)
+
+| Source Type | Permission Required | Description |
+|-------------|---------------------|-------------|
+| Web Video | `activeTab` | Video files linked from pages |
+| Embedded Video | `activeTab` | YouTube, Vimeo, and other embeds |
+| Context Menu | `contextMenus` | Right-click video to add |
+
+**Features:**
+- Detect video elements and embeds on current page
+- Extract video URL, thumbnail, title, duration
+- Context menu: Right-click video → "Add video to Notebook"
+- Store as media reference for multimodal AI analysis
+- Support for common platforms: YouTube, Vimeo, HTML5 video
+
+**Acceptance Criteria:**
+- [ ] User can add videos from current page
+- [ ] YouTube/Vimeo embeds are detected
+- [ ] HTML5 video elements are detected
+- [ ] Video thumbnail displays in source list
+- [ ] Video metadata (title, duration) is captured
+- [ ] Right-click context menu works on videos
+
+#### 5.4 Audio Content (P3)
+
+| Source Type | Permission Required | Description |
+|-------------|---------------------|-------------|
+| Audio Files | `activeTab` | Audio linked from pages (MP3, WAV, etc.) |
+| Podcast Embeds | `activeTab` | Embedded audio players |
+| Context Menu | `contextMenus` | Right-click audio to add |
+
+**Features:**
+- Detect audio elements on current page
+- Extract audio URL, title, duration
+- Context menu: Right-click audio → "Add audio to Notebook"
+- Store as media reference for multimodal AI
+- Support for HTML5 audio, podcast embeds
+
+**Acceptance Criteria:**
+- [ ] User can add audio from current page
+- [ ] HTML5 audio elements are detected
+- [ ] Audio metadata (title, duration) is captured
+- [ ] Audio displays in source list with icon
+- [ ] Right-click context menu works on audio
+
+---
+
+## Advanced Features (P3+)
+
+### 6. Context Menu Integration
 
 Right-click context menu for quick source addition:
-- **"Add page to Notebook"** - On any page, extracts and adds content
-- **"Add link to Notebook"** - On any link, opens URL in background, extracts content, closes tab
-- Opens side panel after adding (or if no notebook selected)
 
-### 6. Multi-Tab Selection
+| Menu Item | Context | Action |
+|-----------|---------|--------|
+| "Add page to Notebook" | Any page | Extract and add page content |
+| "Add link to Notebook" | Any link | Open URL, extract content, close tab |
+| "Add image to Notebook" | Any image | Add image to notebook for multimodal context |
+| "Add video to Notebook" | Any video | Add video reference to notebook |
+| "Add audio to Notebook" | Any audio | Add audio reference to notebook |
+
+**Behavior:**
+- Opens side panel after adding (or if no notebook selected)
+- Shows success/error notification
+
+**Acceptance Criteria:**
+- [x] "Add page" extracts and adds current page
+- [x] "Add link" opens, extracts, and closes background tab
+- [ ] "Add image" appears on right-click over images
+- [ ] "Add video" appears on right-click over videos
+- [ ] "Add audio" appears on right-click over audio
+- [x] Side panel opens after adding source
+
+### 7. Multi-Tab Selection
 
 When multiple tabs are highlighted in the browser:
 - Button automatically changes from "Add Current Tab" to "Add X Selected Tabs"
 - Clicking adds all selected tabs to the notebook
 - Updates dynamically as tab selection changes
+
+**Acceptance Criteria:**
+- [x] Button text updates based on selection count
+- [x] All selected tabs are added simultaneously
+- [x] Progress indicator shows extraction status
 
 ---
 
@@ -170,11 +380,13 @@ Bottom tab bar with five sections:
 | Header | "Add Sources" title |
 | Primary Action | Blue "Add Current Tab" / "Add X Selected Tabs" button |
 | Search | Search field to filter added sources |
-| Import Options | Four card-style buttons with picker modals: |
+| Import Options | Card-style buttons with picker modals: |
 | | - **Select from Open Tabs** - Multi-select picker |
-| | - **Import from Tab Groups** - Select tab group(s) to import all tabs |
+| | - **Import from Tab Groups** - Select tab group(s) to import |
 | | - **Add from Bookmarks** - Bookmark browser picker |
 | | - **Add from History** - History search picker |
+| | - **Upload PDF** - File picker for local PDFs (P1) |
+| | - **Add Images from Page** - Image picker modal (P2) |
 | Recent Sources | Previously added sources with title, domain, remove button |
 
 ### Chat Screen
@@ -207,13 +419,13 @@ Bottom tab bar with five sections:
 | Result Panel | Generated content with copy/close buttons |
 
 ### Picker Modal
-Shared modal for tabs, bookmarks, and history selection:
+Shared modal for tabs, bookmarks, history, and media selection:
 
 | Element | Description |
 |---------|-------------|
-| Header | Title (e.g., "Select Tabs") with close button |
+| Header | Title (e.g., "Select Tabs", "Select Images") with close button |
 | Search | Filter input to search items |
-| Item List | Scrollable list with checkbox, favicon/initial, title, URL |
+| Item List | Scrollable list with checkbox, favicon/thumbnail, title, URL |
 | Footer | Selected count + Cancel/Add Selected buttons |
 
 ### Settings Panel
@@ -267,6 +479,8 @@ src/
 │   ├── db.ts             # IndexedDB wrapper
 │   ├── permissions.ts    # Permission request handling
 │   ├── settings.ts       # AI settings storage
+│   ├── pdf.ts            # PDF extraction (P1)
+│   ├── media.ts          # Image/video/audio detection (P2-P3)
 │   └── storage.ts        # StorageAdapter implementation
 ├── sidepanel/
 │   ├── index.html        # Side panel UI structure
@@ -295,14 +509,23 @@ interface Notebook extends SyncableEntity {
 
 interface Source extends SyncableEntity {
   notebookId: string;
-  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text';
+  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'pdf' | 'image' | 'video' | 'audio';
   url: string;
   title: string;
-  content: string;
+  content: string; // Text content (empty for media-only sources)
+  mediaType?: 'text' | 'image' | 'video' | 'audio' | 'pdf';
+  mediaUrl?: string; // URL or blob URL for media content
   metadata?: {
     favicon?: string;
     description?: string;
     wordCount?: number;
+    // Media-specific fields
+    mimeType?: string;
+    fileSize?: number;
+    duration?: number; // For video/audio in seconds
+    dimensions?: { width: number; height: number }; // For images/video
+    thumbnail?: string; // Thumbnail URL for video/images
+    pageCount?: number; // For PDFs
   };
 }
 
@@ -376,7 +599,7 @@ async function getModel(): Promise<LanguageModel | null> {
 
 ## Implementation Status
 
-### Completed
+### Completed (P0)
 - [x] Project setup (TypeScript, Vite, CRXJS)
 - [x] Manifest V3 with optional permissions
 - [x] Side panel UI with dark theme
@@ -405,13 +628,39 @@ async function getModel(): Promise<LanguageModel | null> {
 - [x] Offline caching of AI responses (fall back to cached responses when offline or API errors)
 - [x] Basic markdown rendering in chat responses
 
-### Remaining
-- [ ] Improved content extraction (Readability.js fallback for better article parsing)
+### Phase 2 - PDF Support (P1)
+- [ ] PDF.js integration for text extraction
+- [ ] Local PDF upload via file picker
+- [ ] Web PDF link detection and extraction
+- [ ] PDF metadata capture (title, page count)
+- [ ] Error handling for encrypted PDFs
+
+### Phase 3 - Image Support (P2)
+- [ ] Image detection on current page
+- [ ] Auto-detection heuristics (size, position, content area)
+- [ ] Image picker modal UI
+- [ ] Context menu: "Add image to Notebook"
+- [ ] Image thumbnail display in source list
+- [ ] Multimodal AI context building with images
+
+### Phase 4 - Video/Audio Support (P3)
+- [ ] Video element detection (HTML5, YouTube, Vimeo)
+- [ ] Audio element detection
+- [ ] Context menu: "Add video to Notebook"
+- [ ] Context menu: "Add audio to Notebook"
+- [ ] Media metadata capture (duration, thumbnail)
+- [ ] Media display in source list
+
+### Future Enhancements
+- [ ] Improved content extraction (Readability.js fallback)
 - [ ] Audio generation for podcast scripts (TTS integration)
-- [ ] Export functionality (markdown, JSON export of notebooks/sources)
+- [ ] Export functionality (markdown, JSON export)
 - [ ] Onboarding flow (first-time user experience)
-- [ ] Error handling polish (better error messages, retry logic)
+- [ ] Error handling polish (better messages, retry logic)
 - [ ] Chrome Web Store listing (icons, screenshots, description)
+- [ ] Server sync implementation
+- [ ] Collaboration features
+- [ ] Mobile companion app
 
 ---
 
@@ -422,6 +671,8 @@ async function getModel(): Promise<LanguageModel | null> {
 - Transformation usage rate
 - User retention (weekly active users)
 - Chrome Web Store rating
+- **Multimodal source adoption** (% of notebooks with non-text sources)
+- **PDF sources per user** (target: avg 2+ for research users)
 
 ---
 
@@ -432,6 +683,7 @@ All data stored in IndexedDB for unlimited local storage capacity:
 - Notebooks and sources stored separately (sources reference notebookId)
 - Settings stored as key-value pairs
 - Designed for future sync with SyncableEntity base type
+- Media references stored as URLs (not blobs) to minimize storage
 
 ### Offline Support
 - Chrome Built-in AI works fully offline (Gemini Nano)
@@ -452,6 +704,12 @@ Uses `@built-in-ai/core` community package for Vercel AI SDK compatibility:
 - No API key required
 - Works offline
 - Requires Chrome 128+ with experimental flags
+
+### Multimodal AI Strategy
+- Text sources: All providers support text context
+- Image sources: Google Gemini, OpenAI GPT-4V+ support images
+- Video/Audio: Store references, use multimodal providers for analysis
+- Graceful degradation: Text-only providers receive text description of media
 
 ---
 
@@ -478,3 +736,4 @@ const model = builtInAI();
 - Limited context window
 - Requires Chrome flags to enable (for now)
 - Not available on all devices
+- Text-only (no multimodal support)
