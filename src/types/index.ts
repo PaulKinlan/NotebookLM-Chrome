@@ -29,6 +29,11 @@ export interface Source extends SyncableEntity {
     description?: string;
     wordCount?: number;
   };
+  aiSummary?: {
+    content: string;      // 2-3 sentence summary
+    keyPoints: string[];  // 3-5 bullet points
+    generatedAt: number;
+  };
 }
 
 export interface Notebook extends SyncableEntity {
@@ -113,6 +118,64 @@ export interface ModelConfig {
   compressionMode?: 'two-pass' | 'single-pass'; // Context compression strategy
   createdAt: number;
   updatedAt: number;
+}
+
+// ============================================================================
+// Agentic Tool-Calling
+// ============================================================================
+
+/**
+ * Context delivery mode - controls how sources are provided to the LLM
+ */
+export type ContextMode = 'agentic' | 'classic';
+
+/**
+ * Represents a single tool call made by the LLM
+ */
+export interface ToolCall {
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  timestamp: number;
+}
+
+/**
+ * Represents the result of a tool execution
+ */
+export interface ToolResult {
+  toolCallId: string;
+  toolName: string;
+  result: unknown;
+  error?: string;
+  timestamp: number;
+  duration: number; // milliseconds
+}
+
+/**
+ * Status of a tool approval request
+ */
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+/**
+ * A request for user approval before executing a tool
+ */
+export interface ToolApprovalRequest {
+  id: string; // Unique ID for this approval request
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  reason: string; // Human-readable explanation of why approval is needed
+  timestamp: number;
+  status: ApprovalStatus;
+}
+
+/**
+ * User's response to a tool approval request
+ */
+export interface ToolApprovalResponse {
+  requestId: string;
+  approved: boolean;
+  timestamp: number;
 }
 
 // Settings storage for new system
