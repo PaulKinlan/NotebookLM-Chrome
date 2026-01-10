@@ -65,14 +65,15 @@ export function jsx(
         typeof value === "object" &&
         !Array.isArray(value)
       ) {
-        const style = (el as HTMLElement).style as CSSStyleDeclaration;
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+        const style = (el as HTMLElement).style;
         for (const [styleName, styleValue] of Object.entries(
           value as Record<string, unknown>
         )) {
           if (styleValue === null || styleValue === undefined || styleValue === false) {
             continue;
           }
-          (style as any)[styleName] = String(styleValue);
+          style.setProperty(styleName, String(styleValue));
         }
       } else if (value !== false && value !== null && propKey !== "children") {
         el.setAttribute(propKey, String(value));
