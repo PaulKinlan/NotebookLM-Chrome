@@ -9,6 +9,11 @@ description: |
   - "Implement drag and drop" → ensures HTML Drag and Drop API, not legacy jQuery UI
   - "Add form validation" → ensures Constraint Validation API, not manual validation
   - "Fetch data from API" → ensures fetch() with modern patterns, not XMLHttpRequest
+allowed-tools:
+  - WebSearch
+  - WebFetch
+model: opus
+user-invokable: true
 ---
 
 # Modern Web Development Practices
