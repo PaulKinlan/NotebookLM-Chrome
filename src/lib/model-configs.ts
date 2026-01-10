@@ -129,6 +129,16 @@ export async function updateModelConfig(
 }
 
 /**
+ * Update compression mode for a model config
+ */
+export async function updateModelConfigCompressionMode(
+  modelConfigId: string,
+  compressionMode: 'two-pass' | 'single-pass'
+): Promise<void> {
+  await updateModelConfig(modelConfigId, { compressionMode });
+}
+
+/**
  * Delete a model config
  * @throws Error if trying to delete the last model config
  */

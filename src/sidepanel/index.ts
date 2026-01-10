@@ -2057,15 +2057,15 @@ async function handleQuery(): Promise<void> {
 
   elements.queryInput.value = "";
   elements.queryBtn.disabled = true;
-  elements.chatStatus.textContent = "Generating response...";
-
-  // Get conversation history (before saving current message, to avoid duplication)
-  const history = await getChatHistory(currentNotebookId);
+  elements.chatStatus.textContent = "Preparing...";
 
   // Save user message
   const userMessage = createChatMessage(currentNotebookId, "user", query);
   await saveChatMessage(userMessage);
   appendChatMessage(userMessage, sources);
+
+  // Get conversation history (includes the message we just saved)
+  const history = await getChatHistory(currentNotebookId);
 
   // Check cache first
   const sourceIds = sources.map((s) => s.id);
@@ -2097,7 +2097,9 @@ async function handleQuery(): Promise<void> {
   const messageDiv = appendChatMessage(assistantMessage, sources, true);
 
   try {
-    const stream = streamChat(sources, query, history);
+    const stream = streamChat(sources, query, history, (status) => {
+      elements.chatStatus.textContent = status;
+    });
     let fullContent = "";
     let citations: Citation[] = [];
     let streamResult: IteratorResult<
