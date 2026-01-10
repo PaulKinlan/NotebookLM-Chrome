@@ -58,6 +58,22 @@ export function jsx(
         el.addEventListener(event, value as EventListener);
       } else if (value === true) {
         el.setAttribute(propKey, "");
+      } else if (
+        propKey === "style" &&
+        value !== null &&
+        value !== undefined &&
+        typeof value === "object" &&
+        !Array.isArray(value)
+      ) {
+        const style = (el as HTMLElement).style as CSSStyleDeclaration;
+        for (const [styleName, styleValue] of Object.entries(
+          value as Record<string, unknown>
+        )) {
+          if (styleValue === null || styleValue === undefined || styleValue === false) {
+            continue;
+          }
+          (style as any)[styleName] = String(styleValue);
+        }
       } else if (value !== false && value !== null && propKey !== "children") {
         el.setAttribute(propKey, String(value));
       }

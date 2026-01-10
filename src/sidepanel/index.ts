@@ -48,19 +48,17 @@ function renderApp(): void {
     onFabClick: () => switchTab("add"),
     onPickerClose: () => closePicker(),
     onPickerAdd: () => handlePickerAdd(),
-    onNotebookDialogCancel: () =>
-      elements.notebookDialog?.close(),
-    onNotebookDialogConfirm: () => {
-      const name = elements.notebookNameInput?.value.trim();
-      if (name) {
-        elements.notebookDialog?.close();
-        // Continue with existing logic
-      }
+    onNotebookDialogCancel: () => {
+      // Handled by showNotebookDialog Promise system
     },
-    onConfirmDialogCancel: () => elements.confirmDialog?.close(),
+    onNotebookDialogConfirm: () => {
+      // Handled by showNotebookDialog Promise system
+    },
+    onConfirmDialogCancel: () => {
+      // Handled by showConfirmDialog Promise system
+    },
     onConfirmDialogConfirm: () => {
-      // Handle confirm dialog confirm
-      elements.confirmDialog?.close();
+      // Handled by showConfirmDialog Promise system
     },
     onOnboardingSkip: () => completeOnboarding(),
     onOnboardingNext: () => nextOnboardingStep(),
@@ -380,7 +378,9 @@ async function init(): Promise<void> {
 
   updatePermissionUI();
   // updateSettingsUI() is now handled by provider-config-ui.ts
-  setupEventListeners();
+  // Event handling is now primarily done via JSX onClick handlers in components
+  // setupDynamicEventListeners() handles special cases like keypress, change events
+  setupDynamicEventListeners();
   await loadNotebooks();
   await loadAIConfigs();
   await loadSources();
@@ -591,169 +591,32 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
   showNotification(`Notebook created with ${addedCount} source${addedCount === 1 ? '' : 's'}`);
 }
 
-function setupEventListeners(): void {
-  // Navigation
-  elements.navItems.forEach((item) => {
-    item.addEventListener("click", () => {
-      const tab = item.dataset.tab;
-      if (tab) switchTab(tab);
-    });
-  });
+function setupDynamicEventListeners(): void {
+  // These event listeners are for elements that:
+  // 1. Need dynamic behavior not easily handled by JSX (e.g., keypress, change events)
+  // 2. Are populated dynamically after initial render
+  // 3. Are part of the Promise-based dialog system
 
-  // Header buttons
-  elements.headerLibraryBtn.addEventListener("click", () =>
-    switchTab("library")
-  );
-  elements.headerSettingsBtn.addEventListener("click", () =>
-    switchTab("settings")
-  );
-
-  // Add Sources tab
-  elements.addCurrentTabBtn.addEventListener("click", handleAddCurrentTab);
-  elements.importTabs.addEventListener("click", handleImportTabs);
-  elements.importTabGroups.addEventListener("click", handleImportTabGroups);
-  elements.importBookmarks.addEventListener("click", handleImportBookmarks);
-  elements.importHistory.addEventListener("click", handleImportHistory);
-
-  // Chat tab
-  elements.notebookSelect.addEventListener("change", handleNotebookChange);
-  elements.aiModelBtn.addEventListener("click", toggleAIModelDropdown);
-  elements.newNotebookBtn.addEventListener("click", handleNewNotebook);
-
-  // Close AI model dropdown when clicking outside
-  document.addEventListener("click", (e) => {
-    if (!elements.aiModelDropdown.classList.contains("hidden")) {
-      const target = e.target as Node;
-      if (!elements.aiModelBtn.contains(target) && !elements.aiModelDropdown.contains(target)) {
-        closeAIModelDropdown();
-      }
-    }
-  });
-  elements.queryBtn.addEventListener("click", handleQuery);
-  elements.queryInput.addEventListener("keypress", (e) => {
+  // Query input - needs Enter key handling
+  const queryInput = document.getElementById("query-input") as HTMLInputElement;
+  queryInput?.addEventListener("keypress", (e) => {
     if (e.key === "Enter") handleQuery();
   });
-  elements.addPageBtn.addEventListener("click", handleAddCurrentTab);
-  elements.clearChatBtn?.addEventListener("click", handleClearChat);
-  elements.chatMessages?.addEventListener("click", handleCitationClick);
-  elements.regenerateSummaryBtn?.addEventListener(
-    "click",
-    handleRegenerateSummary
-  );
 
-  // Transform tab
-  elements.transformPodcast?.addEventListener("click", () =>
-    handleTransform("podcast")
-  );
-  elements.transformQuiz?.addEventListener("click", () =>
-    handleTransform("quiz")
-  );
-  elements.transformTakeaways?.addEventListener("click", () =>
-    handleTransform("takeaways")
-  );
-  elements.transformEmail?.addEventListener("click", () =>
-    handleTransform("email")
-  );
-  elements.transformSlidedeck?.addEventListener("click", () =>
-    handleTransform("slidedeck")
-  );
-  elements.transformReport?.addEventListener("click", () =>
-    handleTransform("report")
-  );
-  elements.transformDatatable?.addEventListener("click", () =>
-    handleTransform("datatable")
-  );
-  elements.transformMindmap?.addEventListener("click", () =>
-    handleTransform("mindmap")
-  );
-  elements.transformFlashcards?.addEventListener("click", () =>
-    handleTransform("flashcards")
-  );
-  elements.transformTimeline?.addEventListener("click", () =>
-    handleTransform("timeline")
-  );
-  elements.transformGlossary?.addEventListener("click", () =>
-    handleTransform("glossary")
-  );
-  elements.transformComparison?.addEventListener("click", () =>
-    handleTransform("comparison")
-  );
-  elements.transformFaq?.addEventListener("click", () =>
-    handleTransform("faq")
-  );
-  elements.transformActionitems?.addEventListener("click", () =>
-    handleTransform("actionitems")
-  );
-  elements.transformExecutivebrief?.addEventListener("click", () =>
-    handleTransform("executivebrief")
-  );
-  elements.transformStudyguide?.addEventListener("click", () =>
-    handleTransform("studyguide")
-  );
-  elements.transformProscons?.addEventListener("click", () =>
-    handleTransform("proscons")
-  );
-  elements.transformCitations?.addEventListener("click", () =>
-    handleTransform("citations")
-  );
-  elements.transformOutline?.addEventListener("click", () =>
-    handleTransform("outline")
-  );
+  // Select elements - need change event handlers
+  const notebookSelect = document.getElementById("notebook-select") as HTMLSelectElement;
+  notebookSelect?.addEventListener("change", handleNotebookChange);
 
-  // Settings tab
-  elements.permTabs.addEventListener("change", () =>
-    handlePermissionToggle("tabs")
-  );
-  elements.permTabGroups.addEventListener("change", () =>
-    handlePermissionToggle("tabGroups")
-  );
-  elements.permBookmarks.addEventListener("change", () =>
-    handlePermissionToggle("bookmarks")
-  );
-  elements.permHistory.addEventListener("change", () =>
-    handlePermissionToggle("history")
-  );
-  elements.clearAllDataBtn.addEventListener("click", handleClearAllData);
+  const aiConfigSelect = document.getElementById("ai-config-select") as HTMLSelectElement;
+  aiConfigSelect?.addEventListener("change", handleAIConfigChange);
 
-  // Old AI settings event listeners - replaced by provider-config-ui.ts
-  /*
-  elements.aiProvider.addEventListener("change", handleProviderChange);
-  elements.aiModel.addEventListener("change", handleModelChange);
-  elements.aiModel.addEventListener("focus", () => toggleDropdown(true));
-  elements.aiModel.addEventListener("input", () => {
-    if (!dropdownOpen) {
-      toggleDropdown(true);
-    } else {
-      populateModelDropdown();
-    }
-  });
-  elements.aiModel.addEventListener("keydown", handleKeyDown);
-  elements.modelDropdownToggle.addEventListener("click", (e) => {
-    e.stopPropagation();
-    toggleDropdown();
-    // Focus input so arrow keys work for accessibility
-    elements.aiModel.focus();
-  });
-  // Prevent clicks inside dropdown from closing it (set up once during initialization)
-  elements.modelDropdownMenu.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
-  elements.apiKey.addEventListener("change", handleApiKeyChange);
-  elements.testApiBtn.addEventListener("click", handleTestApi);
-  elements.aiTemperature.addEventListener("input", handleTemperatureChange);
-  elements.aiMaxTokens.addEventListener("change", handleMaxTokensChange);
-  elements.aiBaseUrl.addEventListener("change", handleBaseUrlChange);
-  */
+  // Chat messages - need click delegation for citations
+  const chatMessages = document.getElementById("chat-messages") as HTMLDivElement;
+  chatMessages?.addEventListener("click", handleCitationClick);
 
-  // FAB
-  elements.fab.addEventListener("click", () => switchTab("add"));
-
-  // Picker Modal
-  elements.pickerClose?.addEventListener("click", closePicker);
-  elements.pickerCancel?.addEventListener("click", closePicker);
-  elements.pickerBackdrop?.addEventListener("click", closePicker);
-  elements.pickerAdd?.addEventListener("click", handlePickerAdd);
-  elements.pickerSearch?.addEventListener("input", handlePickerSearch);
+  // Picker search - needs input event
+  const pickerSearch = document.getElementById("picker-search") as HTMLInputElement;
+  pickerSearch?.addEventListener("input", handlePickerSearch);
 }
 
 // ============================================================================
