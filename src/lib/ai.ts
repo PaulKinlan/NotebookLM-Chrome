@@ -420,6 +420,7 @@ async function buildSourceContext(
   let sourceIndex = 1; // Use sequential numeric indices for citations
 
   // Full content for top-N highly relevant sources
+  // Cap at MAX_FULL_CONTENT_SOURCES to prevent token overflow
   for (const source of fullContentHighlyRelevant) {
     parts.push(
       `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`
