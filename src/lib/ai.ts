@@ -254,7 +254,9 @@ Be accurate and concise. Focus on substantive content.`,
   }
 
   try {
-    const parsed = JSON.parse(summaryResult.text.trim()) as Array<{
+    // Handle potential markdown code fences around JSON
+    const jsonText = summaryResult.text.trim().replace(/^```json\s*|\s*```$/g, '');
+    const parsed = JSON.parse(jsonText) as Array<{
       index: number;
       summary: string;
     }>;
