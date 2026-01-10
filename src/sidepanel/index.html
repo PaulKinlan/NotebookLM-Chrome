@@ -681,6 +681,24 @@
 
       <!-- Notification -->
       <div id="notification" class="notification"></div>
+
+      <!-- Onboarding Overlay -->
+      <div id="onboarding-overlay" class="onboarding-overlay hidden">
+        <div class="onboarding-content">
+          <div class="onboarding-step" id="onboarding-step">
+            <div class="onboarding-icon" id="onboarding-icon"></div>
+            <h2 id="onboarding-title">Welcome</h2>
+            <p id="onboarding-description">Description</p>
+          </div>
+          <div class="onboarding-progress">
+            <div class="onboarding-dots" id="onboarding-dots"></div>
+          </div>
+          <div class="onboarding-actions">
+            <button id="onboarding-skip" class="btn btn-outline">Skip</button>
+            <button id="onboarding-next" class="btn btn-primary">Next</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="./index.ts"></script>
