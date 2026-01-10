@@ -110,6 +110,7 @@ export interface ModelConfig {
   temperature?: number;
   maxTokens?: number;
   isDefault?: boolean;             // Default model config
+  compressionMode?: 'two-pass' | 'single-pass'; // Context compression strategy
   createdAt: number;
   updatedAt: number;
 }
