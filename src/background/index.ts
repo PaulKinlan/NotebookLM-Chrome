@@ -6,6 +6,7 @@ import {
   getActiveNotebookId,
   setActiveNotebookId,
 } from "../lib/storage.ts";
+import { getLinksInSelection } from "../lib/selection-links.ts";
 
 // ============================================================================
 // Side Panel Setup
@@ -22,6 +23,7 @@ chrome.sidePanel
 // Menu ID prefixes
 const PAGE_MENU_PREFIX = "add-page-to-";
 const LINK_MENU_PREFIX = "add-link-to-";
+const SELECTION_LINKS_MENU_PREFIX = "add-selection-links-to-";
 const NEW_NOTEBOOK_SUFFIX = "new-notebook";
 
 // Build context menus on install and when notebooks change
@@ -105,6 +107,40 @@ async function buildContextMenus(): Promise<void> {
     title: "+ New Folio...",
     contexts: ["link"],
   });
+
+  // Create parent menu for selection links
+  chrome.contextMenus.create({
+    id: "add-selection-links-parent",
+    title: "Add links in selection to Folio",
+    contexts: ["selection"],
+  });
+
+  // Add notebook items for selection links
+  for (const notebook of notebooks) {
+    chrome.contextMenus.create({
+      id: `${SELECTION_LINKS_MENU_PREFIX}${notebook.id}`,
+      parentId: "add-selection-links-parent",
+      title: notebook.name,
+      contexts: ["selection"],
+    });
+  }
+
+  // Add separator and "New Notebook" for selection links
+  if (notebooks.length > 0) {
+    chrome.contextMenus.create({
+      id: "selection-links-separator",
+      parentId: "add-selection-links-parent",
+      type: "separator",
+      contexts: ["selection"],
+    });
+  }
+
+  chrome.contextMenus.create({
+    id: `${SELECTION_LINKS_MENU_PREFIX}${NEW_NOTEBOOK_SUFFIX}`,
+    parentId: "add-selection-links-parent",
+    title: "+ New Folio...",
+    contexts: ["selection"],
+  });
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -160,6 +196,38 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         .catch(() => {});
     } else {
       await handleAddLinkFromContextMenu(info.linkUrl, notebookIdOrNew);
+    }
+  }
+
+  // Handle selection links menu clicks
+  if (menuId.startsWith(SELECTION_LINKS_MENU_PREFIX) && tab?.id) {
+    const notebookIdOrNew = menuId.replace(SELECTION_LINKS_MENU_PREFIX, "");
+
+    // Extract links from the selection using scripting API
+    const links = await extractLinksFromSelection(tab.id);
+
+    if (links.length === 0) {
+      console.log("No links found in selection");
+      return;
+    }
+
+    if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
+      // Store pending action in session storage for side panel to pick up
+      await chrome.storage.session.set({
+        pendingAction: {
+          type: "CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS",
+          payload: { links },
+        },
+      });
+      // Also try sending message in case side panel is already open
+      chrome.runtime
+        .sendMessage({
+          type: "CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS",
+          payload: { links },
+        })
+        .catch(() => {});
+    } else {
+      await handleAddSelectionLinksFromContextMenu(links, notebookIdOrNew);
     }
   }
 });
@@ -227,6 +295,67 @@ async function handleAddLinkFromContextMenu(
     }
   } catch (error) {
     console.error("Failed to add link from context menu:", error);
+  }
+}
+
+/**
+ * Extract all links from the current text selection in a tab.
+ * Uses chrome.scripting.executeScript to run a function in the page context.
+ */
+async function extractLinksFromSelection(tabId: number): Promise<string[]> {
+  try {
+    const result = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: getLinksInSelection,
+    });
+
+    if (!result || result.length === 0) {
+      return [];
+    }
+
+    return (result[0].result as string[]) || [];
+  } catch (error) {
+    console.error("Error extracting links from selection:", error);
+    return [];
+  }
+}
+
+/**
+ * Handle adding multiple links from a text selection to a notebook.
+ * Extracts content from each link and saves them as sources.
+ */
+async function handleAddSelectionLinksFromContextMenu(
+  links: string[],
+  notebookId: string
+): Promise<void> {
+  // Set as active notebook first
+  await setActiveNotebookId(notebookId);
+
+  // Process each link and add as a source
+  for (const linkUrl of links) {
+    try {
+      const result = await extractContentFromUrl(linkUrl);
+      if (result) {
+        const source = createSource(
+          notebookId,
+          "tab",
+          result.url,
+          result.title,
+          result.content
+        );
+        await saveSource(source);
+
+        // Notify the side panel to refresh its source list
+        chrome.runtime
+          .sendMessage({ type: "SOURCE_ADDED", payload: source })
+          .catch(() => {
+            // Side panel may not be listening yet
+          });
+      }
+    } catch (error) {
+      console.error(`Failed to add link ${linkUrl} from selection:`, error);
+      // Continue with other links even if one fails
+    }
   }
 }
 

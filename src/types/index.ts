@@ -269,7 +269,8 @@ export type MessageType =
   | 'REBUILD_CONTEXT_MENUS'
   | 'SOURCE_ADDED'
   | 'CREATE_NOTEBOOK_AND_ADD_PAGE'
-  | 'CREATE_NOTEBOOK_AND_ADD_LINK';
+  | 'CREATE_NOTEBOOK_AND_ADD_LINK'
+  | 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS';
 
 export interface Message<T = unknown> {
   type: MessageType;
