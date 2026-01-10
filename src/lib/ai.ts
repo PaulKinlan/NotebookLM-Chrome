@@ -299,10 +299,13 @@ function buildSourceContextSinglePass(
   // Summaries for next 10 sources (basic extractive summary)
   for (const source of sources.slice(5, 15)) {
     const content = source.content || '';
-    // Match sentence boundaries more robustly
-    const sentenceMatches = content.match(/[^.!?]+[.!?]*/g);
+    // Match sentence boundaries more robustly and filter empty matches
+    const sentenceMatches = content.match(/[^.!?]+[.!?]*/g) || [];
+    const sentences = sentenceMatches
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
     const rawSummary =
-      (sentenceMatches && sentenceMatches.slice(0, 3).join(' ')) || content;
+      (sentences.length > 0 ? sentences.slice(0, 3).join(' ') : '') || content;
     const summary = rawSummary.trim();
     const finalSummary =
       summary === ''
