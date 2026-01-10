@@ -1,5 +1,5 @@
 const DB_NAME = 'notebooklm-chrome';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 export interface DBSchema {
   notebooks: {
@@ -58,6 +58,12 @@ export interface DBSchema {
     key: string;
     indexes: {
       expiresAt: number;
+    };
+  };
+  approvalRequests: {
+    key: string;
+    indexes: {
+      status: string;
     };
   };
 }
@@ -142,6 +148,12 @@ export function getDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('toolResults')) {
         const toolsStore = db.createObjectStore('toolResults', { keyPath: 'key' });
         toolsStore.createIndex('expiresAt', 'expiresAt', { unique: false });
+      }
+
+      // Approval requests (for tool requiring user approval)
+      if (!db.objectStoreNames.contains('approvalRequests')) {
+        const approvalStore = db.createObjectStore('approvalRequests', { keyPath: 'key' });
+        approvalStore.createIndex('status', 'status', { unique: false });
       }
     };
   });
@@ -256,7 +268,7 @@ export async function dbClear(storeName: string): Promise<void> {
  */
 export async function dbClearAll(): Promise<void> {
   const db = await getDB();
-  const storeNames = ['notebooks', 'sources', 'chatMessages', 'transformations', 'responseCache', 'settings', 'providerConfigs', 'toolResults'];
+  const storeNames = ['notebooks', 'sources', 'chatMessages', 'transformations', 'responseCache', 'settings', 'providerConfigs', 'toolResults', 'approvalRequests'];
 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(storeNames, 'readwrite');
