@@ -84,8 +84,10 @@ describe('agent-tools', () => {
       url: 'https://example.com/ts-intro',
       type: 'manual',
       content: 'TypeScript is a typed superset of JavaScript...',
-      addedAt: Date.now(),
       metadata: { wordCount: 150 },
+      syncStatus: 'synced',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     },
     {
       id: 'source-2',
@@ -94,8 +96,10 @@ describe('agent-tools', () => {
       url: 'https://example.com/ts-advanced',
       type: 'manual',
       content: 'Advanced TypeScript patterns include generics...',
-      addedAt: Date.now(),
       metadata: { wordCount: 300 },
+      syncStatus: 'synced',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     },
     {
       id: 'source-3',
@@ -104,8 +108,10 @@ describe('agent-tools', () => {
       url: 'https://example.com/js-best',
       type: 'manual',
       content: 'JavaScript best practices include...',
-      addedAt: Date.now(),
       metadata: { wordCount: 200 },
+      syncStatus: 'synced',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     },
     {
       id: 'source-4',
@@ -114,8 +120,10 @@ describe('agent-tools', () => {
       url: 'https://example.com/web-dev',
       type: 'manual',
       content: 'Web development requires...',
-      addedAt: Date.now(),
       metadata: { wordCount: 400 },
+      syncStatus: 'synced',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     },
     {
       id: 'source-5',
@@ -124,8 +132,10 @@ describe('agent-tools', () => {
       url: 'https://example.com/python',
       type: 'manual',
       content: 'Python is a versatile language...',
-      addedAt: Date.now(),
       metadata: { wordCount: 250 },
+      syncStatus: 'synced',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     },
   ];
 
@@ -144,10 +154,10 @@ describe('agent-tools', () => {
   describe('listSources', () => {
     it('should return metadata for all sources in a notebook', async () => {
       const tool = agentTools.listSources;
-      const result = await tool.execute({ notebookId: 'notebook-1' }) as {
+      const result = await (tool.execute as unknown as (args: { notebookId: string }) => Promise<{
         sources: Array<{ id: string; title: string; url: string; type: string; wordCount: number }>;
         totalCount: number;
-      };
+      }>)({ notebookId: 'notebook-1' });
 
       expect(result.totalCount).toBe(4);
       expect(result.sources).toHaveLength(4);
@@ -162,10 +172,10 @@ describe('agent-tools', () => {
 
     it('should return empty array for notebook with no sources', async () => {
       const tool = agentTools.listSources;
-      const result = await tool.execute({ notebookId: 'notebook-nonexistent' }) as {
+      const result = await (tool.execute as unknown as (args: { notebookId: string }) => Promise<{
         sources: unknown[];
         totalCount: number;
-      };
+      }>)({ notebookId: 'notebook-nonexistent' });
 
       expect(result.totalCount).toBe(0);
       expect(result.sources).toHaveLength(0);
@@ -173,9 +183,10 @@ describe('agent-tools', () => {
 
     it('should include wordCount from metadata', async () => {
       const tool = agentTools.listSources;
-      const result = await tool.execute({ notebookId: 'notebook-1' }) as {
+      const result = await (tool.execute as unknown as (args: { notebookId: string }) => Promise<{
         sources: Array<{ wordCount: number }>;
-      };
+        totalCount: number;
+      }>)({ notebookId: 'notebook-1' });
 
       expect(result.sources[0].wordCount).toBe(150);
       expect(result.sources[1].wordCount).toBe(300);
@@ -190,7 +201,10 @@ describe('agent-tools', () => {
         url: 'https://example.com/no-meta',
         type: 'manual',
         content: 'Content without metadata',
-        addedAt: Date.now(),
+        metadata: {},
+        syncStatus: 'synced',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
       };
       (globalThis as Record<string, unknown>).__mockSources = [...mockSources, sourceWithoutMetadata];
 
@@ -198,8 +212,9 @@ describe('agent-tools', () => {
       agentTools = await import('./agent-tools.ts');
 
       const tool = agentTools.listSources;
-      const result = await tool.execute({ notebookId: 'notebook-1' }) as {
+      const result = await (tool.execute as any)({ notebookId: 'notebook-1' }) as {
         sources: Array<{ id: string; wordCount: number }>;
+        totalCount: number;
       };
 
       const noMetaSource = result.sources.find(s => s.id === 'source-no-metadata');
@@ -210,14 +225,15 @@ describe('agent-tools', () => {
   describe('readSource', () => {
     it('should return full content of a specific source', async () => {
       const tool = agentTools.readSource;
-      const result = await tool.execute({ sourceId: 'source-1' }) as {
+      const execute = tool.execute as any as (args: { sourceId: string }) => Promise<{
         id: string;
         title: string;
         url: string;
         type: string;
         content: string;
         metadata?: { wordCount?: number };
-      };
+      }>;
+      const result = await execute({ sourceId: 'source-1' });
 
       expect(result.id).toBe('source-1');
       expect(result.title).toBe('Introduction to TypeScript');
@@ -227,16 +243,18 @@ describe('agent-tools', () => {
 
     it('should throw error for non-existent source', async () => {
       const tool = agentTools.readSource;
+      const execute = tool.execute as any as (args: { sourceId: string }) => Promise<unknown>;
 
-      await expect(tool.execute({ sourceId: 'source-nonexistent' }))
+      await expect(execute({ sourceId: 'source-nonexistent' }))
         .rejects.toThrow('Source source-nonexistent not found');
     });
 
     it('should include all metadata fields', async () => {
       const tool = agentTools.readSource;
-      const result = await tool.execute({ sourceId: 'source-2' }) as {
+      const execute = tool.execute as any as (args: { sourceId: string }) => Promise<{
         metadata?: { wordCount: number };
-      };
+      }>;
+      const result = await execute({ sourceId: 'source-2' });
 
       expect(result.metadata?.wordCount).toBe(300);
     });
@@ -245,16 +263,22 @@ describe('agent-tools', () => {
   describe('findRelevantSources', () => {
     it('should rank sources by relevance score', async () => {
       const tool = agentTools.findRelevantSources;
-      const result = await tool.execute({
+      const execute = tool.execute as any as (args: {
+        notebookId: string;
+        query: string;
+        maxSources: number;
+        minScore: number;
+      }) => Promise<{
+        query: string;
+        totalMatches: number;
+        sources: Array<{ id: string; relevanceScore: number; relevanceReason: string }>;
+      }>;
+      const result = await execute({
         notebookId: 'notebook-1',
         query: 'TypeScript patterns',
         maxSources: 10,
         minScore: 0.0,
-      }) as {
-        query: string;
-        totalMatches: number;
-        sources: Array<{ id: string; relevanceScore: number; relevanceReason: string }>;
-      };
+      });
 
       expect(result.query).toBe('TypeScript patterns');
       expect(result.totalMatches).toBe(4);
@@ -266,15 +290,21 @@ describe('agent-tools', () => {
 
     it('should filter sources by minScore threshold', async () => {
       const tool = agentTools.findRelevantSources;
-      const result = await tool.execute({
+      const execute = tool.execute as any as (args: {
+        notebookId: string;
+        query: string;
+        maxSources: number;
+        minScore: number;
+      }) => Promise<{
+        totalMatches: number;
+        sources: Array<{ relevanceScore: number }>;
+      }>;
+      const result = await execute({
         notebookId: 'notebook-1',
         query: 'TypeScript',
         maxSources: 10,
         minScore: 0.7, // Only include sources with score >= 0.7
-      }) as {
-        totalMatches: number;
-        sources: Array<{ relevanceScore: number }>;
-      };
+      });
 
       // Mock returns: 1.0, 0.8, 0.6, 0.4, 0.2
       // With minScore 0.7: only 1.0 and 0.8 should be included
@@ -288,15 +318,21 @@ describe('agent-tools', () => {
 
     it('should limit results by maxSources', async () => {
       const tool = agentTools.findRelevantSources;
-      const result = await tool.execute({
+      const execute = tool.execute as any as (args: {
+        notebookId: string;
+        query: string;
+        maxSources: number;
+        minScore: number;
+      }) => Promise<{
+        totalMatches: number;
+        sources: unknown[];
+      }>;
+      const result = await execute({
         notebookId: 'notebook-1',
         query: 'development',
         maxSources: 2,
         minScore: 0.0,
-      }) as {
-        totalMatches: number;
-        sources: unknown[];
-      };
+      });
 
       expect(result.totalMatches).toBe(2);
       expect(result.sources).toHaveLength(2);
@@ -304,14 +340,20 @@ describe('agent-tools', () => {
 
     it('should include relevance reasons for each source', async () => {
       const tool = agentTools.findRelevantSources;
-      const result = await tool.execute({
+      const execute = tool.execute as any as (args: {
+        notebookId: string;
+        query: string;
+        maxSources: number;
+        minScore: number;
+      }) => Promise<{
+        sources: Array<{ relevanceReason: string }>;
+      }>;
+      const result = await execute({
         notebookId: 'notebook-1',
         query: 'TypeScript',
         maxSources: 10,
         minScore: 0.0,
-      }) as {
-        sources: Array<{ relevanceReason: string }>;
-      };
+      });
 
       result.sources.forEach(source => {
         expect(source.relevanceReason).toBeDefined();
@@ -322,15 +364,21 @@ describe('agent-tools', () => {
 
     it('should return empty result when no sources match', async () => {
       const tool = agentTools.findRelevantSources;
-      const result = await tool.execute({
+      const execute = tool.execute as any as (args: {
+        notebookId: string;
+        query: string;
+        maxSources: number;
+        minScore: number;
+      }) => Promise<{
+        totalMatches: number;
+        sources: unknown[];
+      }>;
+      const result = await execute({
         notebookId: 'notebook-nonexistent',
         query: 'anything',
         maxSources: 10,
         minScore: 0.0,
-      }) as {
-        totalMatches: number;
-        sources: unknown[];
-      };
+      });
 
       expect(result.totalMatches).toBe(0);
       expect(result.sources).toHaveLength(0);
@@ -338,15 +386,21 @@ describe('agent-tools', () => {
 
     it('should filter all sources when minScore is too high', async () => {
       const tool = agentTools.findRelevantSources;
-      const result = await tool.execute({
+      const execute = tool.execute as any as (args: {
+        notebookId: string;
+        query: string;
+        maxSources: number;
+        minScore: number;
+      }) => Promise<{
+        totalMatches: number;
+        sources: Array<{ relevanceScore: number }>;
+      }>;
+      const result = await execute({
         notebookId: 'notebook-1',
         query: 'TypeScript',
         maxSources: 10,
         minScore: 0.95, // Only the first source (1.0) should match
-      }) as {
-        totalMatches: number;
-        sources: Array<{ relevanceScore: number }>;
-      };
+      });
 
       // Mock returns: 1.0, 0.8, 0.6, 0.4
       // Only 1.0 is >= 0.95
@@ -361,6 +415,13 @@ describe('agent-tools', () => {
       // But we can test caching behavior by calling findRelevantSources twice
 
       const tool = agentTools.findRelevantSources;
+      const execute = tool.execute as any as (args: {
+        notebookId: string;
+        query: string;
+        maxSources: number;
+        minScore: number;
+      }) => Promise<unknown>;
+
       const params = {
         notebookId: 'notebook-1',
         query: 'TypeScript',
@@ -369,27 +430,38 @@ describe('agent-tools', () => {
       };
 
       // First call
-      const result1 = await tool.execute(params);
+      const result1 = await execute(params);
 
       // Second call should return cached result
-      const result2 = await tool.execute(params);
+      const result2 = await execute(params);
 
       expect(result1).toEqual(result2);
     });
 
     it('should generate different cache keys for different parameters', async () => {
       const tool = agentTools.findRelevantSources;
+      const execute = tool.execute as any as (args: {
+        notebookId: string;
+        query: string;
+        maxSources: number;
+        minScore: number;
+      }) => Promise<{
+        totalMatches: number;
+      }>;
 
-      const result1 = await tool.execute({
+      const result1 = await execute({
         notebookId: 'notebook-1',
-        query: 'TypeScript',
+        query: 'cache key test 1', // Unique query to avoid cache collision
         maxSources: 10,
         minScore: 0.5,
       });
 
-      const result2 = await tool.execute({
+      // First call with minScore 0.5 should return 3 sources (scores: 1.0, 0.8, 0.6)
+      expect(result1.totalMatches).toBe(3);
+
+      const result2 = await execute({
         notebookId: 'notebook-1',
-        query: 'TypeScript',
+        query: 'cache key test 1', // Same query
         maxSources: 5, // Different maxSources
         minScore: 0.5,
       });
@@ -402,6 +474,16 @@ describe('agent-tools', () => {
   describe('cache behavior', () => {
     it('should return cached result on subsequent calls', async () => {
       const tool = agentTools.findRelevantSources;
+      const execute = tool.execute as any as (args: {
+        notebookId: string;
+        query: string;
+        maxSources: number;
+        minScore: number;
+      }) => Promise<{
+        query: string;
+        totalMatches: number;
+      }>;
+
       const params = {
         notebookId: 'notebook-1',
         query: 'cached query',
@@ -410,10 +492,10 @@ describe('agent-tools', () => {
       };
 
       // First call - should compute
-      const result1 = await tool.execute(params);
+      const result1 = await execute(params);
 
       // Second call - should use cache
-      const result2 = await tool.execute(params);
+      const result2 = await execute(params);
 
       expect(result1).toEqual(result2);
 
@@ -424,10 +506,14 @@ describe('agent-tools', () => {
 
     it('should cache and retrieve listSources results', async () => {
       const tool = agentTools.listSources;
+      const execute = tool.execute as any as (args: { notebookId: string }) => Promise<{
+        totalCount: number;
+      }>;
+
       const params = { notebookId: 'notebook-1' };
 
-      const result1 = await tool.execute(params);
-      const result2 = await tool.execute(params);
+      const result1 = await execute(params);
+      const result2 = await execute(params);
 
       expect(result1).toEqual(result2);
       expect(result2.totalCount).toBe(4);
@@ -435,10 +521,14 @@ describe('agent-tools', () => {
 
     it('should cache and retrieve readSource results', async () => {
       const tool = agentTools.readSource;
+      const execute = tool.execute as any as (args: { sourceId: string }) => Promise<{
+        id: string;
+      }>;
+
       const params = { sourceId: 'source-1' };
 
-      const result1 = await tool.execute(params);
-      const result2 = await tool.execute(params);
+      const result1 = await execute(params);
+      const result2 = await execute(params);
 
       expect(result1).toEqual(result2);
       expect(result2.id).toBe('source-1');
@@ -448,10 +538,12 @@ describe('agent-tools', () => {
   describe('error handling', () => {
     it('should handle missing notebook gracefully', async () => {
       const tool = agentTools.listSources;
-      const result = await tool.execute({ notebookId: 'nonexistent-notebook' }) as {
+      const execute = tool.execute as any as (args: { notebookId: string }) => Promise<{
         totalCount: number;
         sources: unknown[];
-      };
+      }>;
+
+      const result = await execute({ notebookId: 'nonexistent-notebook' });
 
       expect(result.totalCount).toBe(0);
       expect(result.sources).toHaveLength(0);
@@ -459,22 +551,30 @@ describe('agent-tools', () => {
 
     it('should handle missing source with error', async () => {
       const tool = agentTools.readSource;
+      const execute = tool.execute as (args: { sourceId: string }) => Promise<unknown>;
 
-      await expect(tool.execute({ sourceId: 'nonexistent-source' }))
+      await expect(execute({ sourceId: 'nonexistent-source' }))
         .rejects.toThrow('Source nonexistent-source not found');
     });
 
     it('should handle empty notebook in findRelevantSources', async () => {
       const tool = agentTools.findRelevantSources;
-      const result = await tool.execute({
+      const execute = tool.execute as any as (args: {
+        notebookId: string;
+        query: string;
+        maxSources: number;
+        minScore: number;
+      }) => Promise<{
+        totalMatches: number;
+        sources: unknown[];
+      }>;
+
+      const result = await execute({
         notebookId: 'empty-notebook',
         query: 'anything',
         maxSources: 10,
         minScore: 0.0,
-      }) as {
-        totalMatches: number;
-        sources: unknown[];
-      };
+      });
 
       expect(result.totalMatches).toBe(0);
       expect(result.sources).toHaveLength(0);
