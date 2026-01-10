@@ -1,5 +1,5 @@
 ---
-name: modernwebdev
+name: moder-web-dev
 description: |
   Use this skill when implementing web features to ensure modern APIs and techniques are used.
   Triggers: Building UI components, adding browser APIs, implementing features that could use legacy patterns.
@@ -9,8 +9,6 @@ description: |
   - "Implement drag and drop" → ensures HTML Drag and Drop API, not legacy jQuery UI
   - "Add form validation" → ensures Constraint Validation API, not manual validation
   - "Fetch data from API" → ensures fetch() with modern patterns, not XMLHttpRequest
-model: opus
-color: green
 ---
 
 # Modern Web Development Practices
@@ -185,7 +183,7 @@ When you need to look up modern APIs, use these search patterns:
 
 ```
 # For general web APIs
-WebSearch: "[feature] MDN web API 2024"
+WebSearch: "[feature] MDN web API 2025"
 WebSearch: "[feature] web.dev modern approach"
 
 # For browser support
