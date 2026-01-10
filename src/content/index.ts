@@ -1,5 +1,6 @@
 import TurndownService from 'turndown';
 import { Readability } from '@mozilla/readability';
+import browser from '../lib/browser';
 
 const turndownService = new TurndownService({
   headingStyle: 'atx',
@@ -110,12 +111,10 @@ function extractMarkdown(): { markdown: string; title: string; url: string } {
 }
 
 // Listen for extraction requests from background script
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-  if (request.action === 'extractContent') {
-    const result = extractMarkdown();
-    sendResponse(result);
+browser.runtime.onMessage.addListener((request: unknown, _sender: unknown) => {
+  if (typeof request === 'object' && request !== null && (request as { action: string }).action === 'extractContent') {
+    return Promise.resolve(extractMarkdown());
   }
-  return true;
 });
 
 export { extractMarkdown };
