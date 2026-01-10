@@ -151,6 +151,33 @@ export interface ToolResult {
   duration: number; // milliseconds
 }
 
+/**
+ * Status of a tool approval request
+ */
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+/**
+ * A request for user approval before executing a tool
+ */
+export interface ToolApprovalRequest {
+  id: string; // Unique ID for this approval request
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  reason: string; // Human-readable explanation of why approval is needed
+  timestamp: number;
+  status: ApprovalStatus;
+}
+
+/**
+ * User's response to a tool approval request
+ */
+export interface ToolApprovalResponse {
+  requestId: string;
+  approved: boolean;
+  timestamp: number;
+}
+
 // Settings storage for new system
 export interface CredentialSettings {
   credentials: Credential[];
