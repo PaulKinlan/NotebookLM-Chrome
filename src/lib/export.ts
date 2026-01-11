@@ -3,14 +3,14 @@
  * Supports Markdown and JSON formats
  */
 
-import type { Notebook, Source, ChatMessage, Transformation } from '../types/index.ts';
+import type { Notebook, Source, ChatEvent, Transformation } from '../types/index.ts';
 
 export type ExportFormat = 'markdown' | 'json';
 
 export interface NotebookExport {
   notebook: Notebook;
   sources: Source[];
-  chatHistory: ChatMessage[];
+  chatHistory: ChatEvent[];
   transformations: Transformation[];
   exportedAt: string;
   version: string;
@@ -72,19 +72,25 @@ export function exportToMarkdown(data: NotebookExport): string {
     lines.push('## Chat History');
     lines.push('');
 
-    for (const message of chatHistory) {
-      const role = message.role === 'user' ? 'You' : 'Assistant';
-      const time = new Date(message.timestamp).toLocaleString();
+    for (const event of chatHistory) {
+      // Skip tool-result events in markdown export
+      if (event.type === 'tool-result') continue;
+
+      // Only user and assistant events have content
+      if (event.type !== 'user' && event.type !== 'assistant') continue;
+
+      const role = event.type === 'user' ? 'You' : 'Assistant';
+      const time = new Date(event.timestamp).toLocaleString();
 
       lines.push(`**${role}** *(${time})*`);
       lines.push('');
-      lines.push(message.content);
+      lines.push(event.content);
       lines.push('');
 
-      // Include citations if present
-      if (message.citations && message.citations.length > 0) {
+      // Include citations if present (only on assistant events)
+      if (event.type === 'assistant' && event.citations && event.citations.length > 0) {
         lines.push('*Citations:*');
-        for (const citation of message.citations) {
+        for (const citation of event.citations) {
           lines.push(`- ${citation.sourceTitle}: "${citation.excerpt}"`);
         }
         lines.push('');
