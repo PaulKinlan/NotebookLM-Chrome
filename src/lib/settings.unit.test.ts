@@ -71,6 +71,7 @@ describe('settings', () => {
         provider: 'anthropic',
         model: 'claude-sonnet-4-5-20250514',
         apiKeys: {},
+        contextMode: 'classic',
       });
     });
 
@@ -449,6 +450,7 @@ describe('settings', () => {
         apiKeys: { openai: 'sk-openai-key' },
         temperature: 0.7,
         maxTokens: 4096,
+        contextMode: 'classic',
       });
 
       // Switch to Anthropic
