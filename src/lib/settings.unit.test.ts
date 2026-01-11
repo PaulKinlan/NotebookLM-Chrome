@@ -16,23 +16,30 @@ import type { AISettings as _AISettings } from '../types/index.ts';
 
 // Global mock storage that will be cleared in beforeEach
 // Use a global variable that vitest can see across module boundaries
-(globalThis as Record<string, unknown>).__mockSettingsStorage = {} as Record<string, unknown>;
+declare global {
+  var __mockSettingsStorage: Record<string, unknown>;
+}
+globalThis.__mockSettingsStorage = globalThis.__mockSettingsStorage ?? {};
 
 // Helper to clear the mock storage
 const clearMockStorage = () => {
-  (globalThis as Record<string, unknown>).__mockSettingsStorage = {};
+  globalThis.__mockSettingsStorage = {};
 };
+
+// Type guard to check if value is of type T
+function isType<T>(value: unknown): value is T {
+  return value !== undefined;
+}
 
 // Mock the storage module before importing settings
 vi.mock('./storage.ts', () => ({
   storage: {
     getSetting: vi.fn(async <T>(key: string): Promise<T | null> => {
-      const storage = (globalThis as Record<string, unknown>).__mockSettingsStorage as Record<string, unknown>;
-      return (storage[key] as T) ?? null;
+      const value = globalThis.__mockSettingsStorage[key];
+      return isType<T>(value) ? value : null;
     }),
     setSetting: vi.fn(async <T>(key: string, value: T): Promise<void> => {
-      const storage = (globalThis as Record<string, unknown>).__mockSettingsStorage as Record<string, unknown>;
-      storage[key] = value;
+      globalThis.__mockSettingsStorage[key] = value;
     }),
   },
 }));
