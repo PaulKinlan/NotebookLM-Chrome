@@ -1659,7 +1659,7 @@ details.suggested-links-section[open] .suggested-links-chevron {
   color: #d29922;
 }
 
-.tool-permission-status.disabled {
+.tool-permission-status.not-visible {
   background: rgba(148, 163, 184, 0.15);
   color: #94a3b8;
 }
