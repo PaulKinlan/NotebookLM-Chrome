@@ -162,21 +162,30 @@ export const listSources = tool({
     notebookId: z.string().describe('The ID of the notebook to list sources from'),
   }),
   execute: async ({ notebookId }: { notebookId: string }) => {
-    const sources = await getSourcesByNotebook(notebookId);
+    console.log('[listSources] Called with notebookId:', notebookId);
+    try {
+      const sources = await getSourcesByNotebook(notebookId);
+      console.log('[listSources] Found sources:', sources.length);
 
-    // Transform to lightweight metadata format
-    const sourceMetadata: SourceMetadata[] = sources.map((s) => ({
-      id: s.id,
-      title: s.title,
-      url: s.url,
-      type: s.type,
-      wordCount: s.metadata?.wordCount || 0,
-    }));
+      // Transform to lightweight metadata format
+      const sourceMetadata: SourceMetadata[] = sources.map((s) => ({
+        id: s.id,
+        title: s.title,
+        url: s.url,
+        type: s.type,
+        wordCount: s.metadata?.wordCount || 0,
+      }));
 
-    return {
-      sources: sourceMetadata,
-      totalCount: sources.length,
-    };
+      const result = {
+        sources: sourceMetadata,
+        totalCount: sources.length,
+      };
+      console.log('[listSources] Returning:', result);
+      return result;
+    } catch (error) {
+      console.error('[listSources] Error:', error);
+      throw error;
+    }
   },
 });
 
@@ -367,16 +376,20 @@ export async function getSourceTools() {
   const { getVisibleToolNames } = await import('./tool-permissions.ts');
   const visibleTools = await getVisibleToolNames();
 
+  console.log('[getSourceTools] Visible tools:', visibleTools);
+
   const result: Record<string, Tool> = {};
 
   for (const [name, config] of Object.entries(sourceToolsRegistry)) {
     // Only include visible tools
     if (!visibleTools.includes(name)) {
+      console.log('[getSourceTools] Skipping invisible tool:', name);
       continue;
     }
     result[name] = wrapToolWithCache(name, config.tool, config.cache ?? false);
   }
 
+  console.log('[getSourceTools] Returning tools:', Object.keys(result));
   return result;
 }
 

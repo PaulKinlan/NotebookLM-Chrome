@@ -557,6 +557,8 @@ STRATEGY:
 4. Always cite sources using [Source ID] format where ID is the source identifier
 5. Be efficient - don't read sources unless needed
 
+CRITICAL: After executing any tool, you MUST provide a text response to the user. Never end a conversation after a tool call without explaining the results or answering their question.
+
 TIPS FOR USING findRelevantSources:
 - Call this tool when you have a specific query or topic
 - It returns sources ranked by relevance with explanations
@@ -745,6 +747,8 @@ export async function* streamChat(
 
     const messages = buildChatHistory(history);
 
+    console.log('[Agentic Mode] Starting stream with tools:', Object.keys(tools));
+
     const result = streamText({
       model,
       system: systemPrompt,
@@ -755,12 +759,21 @@ export async function* streamChat(
       tools,
     });
 
+    // The AI SDK automatically executes tools when provided.
+    // We just stream the final text response - tool calls happen in the background.
     let fullContent = "";
+    let chunkCount = 0;
+
     for await (const chunk of result.textStream) {
       fullContent += chunk;
-      // Don't yield the citations section while streaming
-      yield chunk.replace(/---CITATIONS---[\s\S]*$/, "");
+      chunkCount++;
+      if (chunkCount === 1) {
+        console.log('[Agentic Mode] First chunk received:', chunk);
+      }
+      yield chunk;
     }
+
+    console.log('[Agentic Mode] Stream complete. Total chunks:', chunkCount, 'Content length:', fullContent.length);
 
     // Track usage after stream completes
     const usage = await result.usage;
