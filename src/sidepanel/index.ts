@@ -2971,72 +2971,89 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 /**
- * Append a tool call indicator to the chat message
+ * Append a tool call as a separate timeline entry
  */
-function appendToolCall(
-  messageDiv: HTMLDivElement,
+function appendToolCallMessage(
   toolName: string,
   args: Record<string, unknown>
-): void {
-  // Check if we already have a tool-call container
-  let toolCallsContainer = messageDiv.querySelector(".chat-tool-calls");
-  if (!toolCallsContainer) {
-    toolCallsContainer = document.createElement("div");
-    toolCallsContainer.className = "chat-tool-calls";
-    messageDiv.appendChild(toolCallsContainer);
+): HTMLDivElement {
+  // Remove empty state if present
+  const emptyState = elements.chatMessages.querySelector(".empty-state");
+  if (emptyState) {
+    emptyState.remove();
   }
 
-  const toolCallEl = document.createElement("div");
-  toolCallEl.className = "chat-tool-call";
-  toolCallEl.dataset.toolName = toolName;
+  const id = `tool-${crypto.randomUUID()}`;
+  const div = document.createElement("div");
+  div.id = id;
+  div.className = "chat-message tool-call";
 
   const argsStr = JSON.stringify(args, null, 2);
-  toolCallEl.innerHTML = `
-    <div class="tool-call-header">
-      <span class="tool-call-icon">🔧</span>
-      <span class="tool-call-name">${escapeHtml(toolName)}</span>
-      <span class="tool-call-status">Calling...</span>
+
+  div.innerHTML = `
+    <div class="chat-message-role">🔧 ${escapeHtml(toolName)}</div>
+    <div class="chat-message-content">
+      <div class="tool-call-status calling">Calling...</div>
+      <div class="tool-call-args"><pre>${escapeHtml(argsStr)}</pre></div>
     </div>
-    <div class="tool-call-args"><pre>${escapeHtml(argsStr)}</pre></div>
+    <div class="chat-message-time">${formatRelativeTime(Date.now())}</div>
   `;
 
-  toolCallsContainer.appendChild(toolCallEl);
+  elements.chatMessages.appendChild(div);
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+
+  return div;
 }
 
 /**
- * Append a tool result to the chat message
+ * Append a tool result as a separate timeline entry
  */
-function appendToolResult(
-  messageDiv: HTMLDivElement,
+function appendToolResultMessage(
   toolName: string,
   result: unknown
-): void {
-  const toolCallsContainer = messageDiv.querySelector(".chat-tool-calls");
-  if (!toolCallsContainer) return;
-
-  // Find the tool call element with matching name
-  const toolCallEl = toolCallsContainer.querySelector(
-    `.chat-tool-call[data-tool-name="${toolName}"]`
-  );
-  if (!toolCallEl) return;
-
-  // Update status
-  const statusEl = toolCallEl.querySelector(".tool-call-status");
-  if (statusEl) {
-    statusEl.textContent = "Done";
-    statusEl.classList.add("tool-call-status-done");
+): HTMLDivElement {
+  // Remove empty state if present
+  const emptyState = elements.chatMessages.querySelector(".empty-state");
+  if (emptyState) {
+    emptyState.remove();
   }
 
-  // Add result element
+  const id = `tool-result-${crypto.randomUUID()}`;
+  const div = document.createElement("div");
+  div.id = id;
+  div.className = "chat-message tool-result";
+
   const resultStr = JSON.stringify(result, null, 2);
-  const resultEl = document.createElement("div");
-  resultEl.className = "tool-call-result";
-  resultEl.innerHTML = `
-    <div class="tool-result-header">Result:</div>
-    <pre>${escapeHtml(resultStr)}</pre>
+
+  div.innerHTML = `
+    <div class="chat-message-role">📊 Result</div>
+    <div class="chat-message-content">
+      <div class="tool-result-source">from ${escapeHtml(toolName)}</div>
+      <div class="tool-result-data"><pre>${escapeHtml(resultStr)}</pre></div>
+    </div>
+    <div class="chat-message-time">${formatRelativeTime(Date.now())}</div>
   `;
 
-  toolCallEl.appendChild(resultEl);
+  elements.chatMessages.appendChild(div);
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+
+  return div;
+}
+
+/**
+ * Update a tool call message to show it completed
+ */
+function updateToolCallStatus(
+  toolCallDiv: HTMLDivElement,
+  status: "calling" | "done" | "error"
+): void {
+  const statusEl = toolCallDiv.querySelector(".tool-call-status");
+  if (statusEl) {
+    statusEl.className = `tool-call-status ${status}`;
+    statusEl.textContent = status === "calling" ? "Calling..." :
+                        status === "done" ? "Called" :
+                        "Error";
+  }
 }
 
 async function handleQuery(): Promise<void> {
@@ -3117,6 +3134,9 @@ async function handleQuery(): Promise<void> {
       { content: string; citations: Citation[] }
     >;
 
+    // Track pending tool calls to update their status
+    const pendingToolCalls = new Map<string, HTMLDivElement>();
+
     // Consume the stream
     while (true) {
       streamResult = await stream.next();
@@ -3138,11 +3158,17 @@ async function handleQuery(): Promise<void> {
           contentEl.innerHTML = formatMarkdown(fullContent);
         }
       } else if (event.type === 'tool-call') {
-        // Append tool call indicator to chat
-        appendToolCall(messageDiv, event.toolName, event.args);
+        // Create separate timeline entry for tool call
+        const toolCallDiv = appendToolCallMessage(event.toolName, event.args);
+        pendingToolCalls.set(event.toolCallId, toolCallDiv);
       } else if (event.type === 'tool-result') {
-        // Append tool result to chat
-        appendToolResult(messageDiv, event.toolName, event.result);
+        // Update tool call status and create result entry
+        const toolCallDiv = pendingToolCalls.get(event.toolCallId);
+        if (toolCallDiv) {
+          updateToolCallStatus(toolCallDiv, 'done');
+        }
+        // Create separate timeline entry for result
+        appendToolResultMessage(event.toolName, event.result);
       }
 
       elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;

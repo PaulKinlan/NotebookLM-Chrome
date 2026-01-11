@@ -2239,81 +2239,71 @@ details.suggested-links-section[open] .suggested-links-chevron {
   margin-top: 8px;
 }
 
-/* Tool Calls */
-.chat-tool-calls {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* Tool Calls (separate timeline entries) */
+.chat-message.tool-call {
+  background: rgba(210, 153, 34, 0.1);
+  border: 1px solid rgba(210, 153, 34, 0.3);
+  margin-left: 12px;
+  margin-right: 12px;
 }
 
-.chat-tool-call {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 12px;
-  font-size: 12px;
-}
-
-.tool-call-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.tool-call-icon {
-  font-size: 14px;
-}
-
-.tool-call-name {
-  font-weight: 600;
-  color: var(--text-primary);
-  flex: 1;
-}
-
-.tool-call-status {
+.chat-message.tool-call .chat-message-role {
   color: var(--warning);
-  font-size: 11px;
 }
 
-.tool-call-status-done {
+.chat-message.tool-result {
+  background: rgba(63, 185, 80, 0.1);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  margin-left: 12px;
+  margin-right: 12px;
+}
+
+.chat-message.tool-result .chat-message-role {
   color: var(--success);
 }
 
-.tool-call-args {
+.tool-call-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
   margin-bottom: 8px;
 }
 
-.tool-call-args pre {
+.tool-call-status.calling {
+  background: rgba(210, 153, 34, 0.2);
+  color: var(--warning);
+}
+
+.tool-call-status.done {
+  background: rgba(63, 185, 80, 0.2);
+  color: var(--success);
+}
+
+.tool-call-status.error {
+  background: rgba(248, 81, 73, 0.2);
+  color: var(--error);
+}
+
+.tool-call-args pre,
+.tool-result-data pre {
   margin: 0;
-  padding: 8px;
+  padding: 12px;
   background: var(--bg-secondary);
   border-radius: var(--radius-sm);
   font-size: 11px;
   overflow-x: auto;
   color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
-.tool-call-result {
-  margin-top: 8px;
-}
-
-.tool-result-header {
+.tool-result-source {
   font-size: 11px;
-  font-weight: 600;
   color: var(--text-muted);
-  margin-bottom: 4px;
-}
-
-.tool-call-result pre {
-  margin: 0;
-  padding: 8px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-sm);
-  font-size: 11px;
-  overflow-x: auto;
-  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-style: italic;
 }
 
 /* Citations */
