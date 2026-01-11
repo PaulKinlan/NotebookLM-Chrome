@@ -111,6 +111,30 @@ let suggestedLinksLoading = false;
 // DOM Elements
 // ============================================================================
 
+/**
+ * Get element by query selector, throwing if not found (for required elements)
+ */
+function getRequiredQuerySelector<T extends HTMLElement>(selector: string, expectedType: { new (): T; prototype: HTMLElement }, parent: ParentNode = document): T {
+  const element = parent.querySelector(selector);
+  if (element instanceof expectedType) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Safe because verified by instanceof check above
+    return element as T;
+  }
+  throw new Error(`Required element "${selector}" not found or is not ${expectedType.name}`);
+}
+
+/**
+ * Get element by ID, throwing if not found (for required elements)
+ */
+function getRequiredElementById<T extends HTMLElement>(id: string, expectedType: { new (): T; prototype: HTMLElement }): T {
+  const element = document.getElementById(id);
+  if (element instanceof expectedType) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Safe because verified by instanceof check above
+    return element as T;
+  }
+  throw new Error(`Required element #${id} not found or is not ${expectedType.name}`);
+}
+
 const elements = {
   // Navigation
   navItems: Array.from(
@@ -121,62 +145,38 @@ const elements = {
   ).filter((item): item is HTMLElement => item instanceof HTMLElement),
 
   // Header buttons
-  headerLibraryBtn: document.getElementById(
-    "header-library-btn"
-  ) as HTMLButtonElement,
-  headerSettingsBtn: document.getElementById(
-    "header-settings-btn"
-  ) as HTMLButtonElement,
+  headerLibraryBtn: getRequiredElementById("header-library-btn", HTMLButtonElement),
+  headerSettingsBtn: getRequiredElementById("header-settings-btn", HTMLButtonElement),
 
   // Add Sources tab
-  addCurrentTabBtn: document.getElementById(
-    "add-current-tab-btn"
-  ) as HTMLButtonElement,
-  searchSources: document.getElementById("search-sources") as HTMLInputElement,
-  importTabs: document.getElementById("import-tabs") as HTMLButtonElement,
-  importTabGroups: document.getElementById(
-    "import-tab-groups"
-  ) as HTMLButtonElement,
-  importBookmarks: document.getElementById(
-    "import-bookmarks"
-  ) as HTMLButtonElement,
-  importHistory: document.getElementById("import-history") as HTMLButtonElement,
-  tabsCount: document.getElementById("tabs-count") as HTMLSpanElement,
-  sourcesList: document.getElementById("sources-list") as HTMLDivElement,
+  addCurrentTabBtn: getRequiredElementById("add-current-tab-btn", HTMLButtonElement),
+  searchSources: getRequiredElementById("search-sources", HTMLInputElement),
+  importTabs: getRequiredElementById("import-tabs", HTMLButtonElement),
+  importTabGroups: getRequiredElementById("import-tab-groups", HTMLButtonElement),
+  importBookmarks: getRequiredElementById("import-bookmarks", HTMLButtonElement),
+  importHistory: getRequiredElementById("import-history", HTMLButtonElement),
+  tabsCount: getRequiredElementById("tabs-count", HTMLSpanElement),
+  sourcesList: getRequiredElementById("sources-list", HTMLDivElement),
 
   // Chat tab
-  notebookSelect: document.getElementById(
-    "notebook-select"
-  ) as HTMLSelectElement,
-  aiModelBtn: document.getElementById(
-    "ai-model-btn"
-  ) as HTMLButtonElement,
-  aiModelDropdown: document.getElementById(
-    "ai-model-dropdown"
-  ) as HTMLDivElement,
-  aiModelList: document.getElementById(
-    "ai-model-list"
-  ) as HTMLDivElement,
-  newNotebookBtn: document.getElementById(
-    "new-notebook-btn"
-  ) as HTMLButtonElement,
-  queryInput: document.getElementById("query-input") as HTMLInputElement,
-  queryBtn: document.getElementById("query-btn") as HTMLButtonElement,
-  sourceCount: document.getElementById("source-count") as HTMLSpanElement,
-  activeSources: document.getElementById("active-sources") as HTMLDivElement,
-  addPageBtn: document.getElementById("add-page-btn") as HTMLButtonElement,
-  chatMessages: document.getElementById("chat-messages") as HTMLDivElement,
-  clearChatBtn: document.getElementById("clear-chat-btn") as HTMLButtonElement,
-  chatStatus: document.getElementById("chat-status") as HTMLParagraphElement,
+  notebookSelect: getRequiredElementById("notebook-select", HTMLSelectElement),
+  aiModelBtn: getRequiredElementById("ai-model-btn", HTMLButtonElement),
+  aiModelDropdown: getRequiredElementById("ai-model-dropdown", HTMLDivElement),
+  aiModelList: getRequiredElementById("ai-model-list", HTMLDivElement),
+  newNotebookBtn: getRequiredElementById("new-notebook-btn", HTMLButtonElement),
+  queryInput: getRequiredElementById("query-input", HTMLInputElement),
+  queryBtn: getRequiredElementById("query-btn", HTMLButtonElement),
+  sourceCount: getRequiredElementById("source-count", HTMLSpanElement),
+  activeSources: getRequiredElementById("active-sources", HTMLDivElement),
+  addPageBtn: getRequiredElementById("add-page-btn", HTMLButtonElement),
+  chatMessages: getRequiredElementById("chat-messages", HTMLDivElement),
+  clearChatBtn: getRequiredElementById("clear-chat-btn", HTMLButtonElement),
+  chatStatus: getRequiredElementById("chat-status", HTMLParagraphElement),
 
   // Summary section
-  summarySection: document.getElementById("summary-section") as HTMLDetailsElement,
-  notebookSummary: document.getElementById(
-    "notebook-summary"
-  ) as HTMLDivElement,
-  regenerateSummaryBtn: document.getElementById(
-    "regenerate-summary-btn"
-  ) as HTMLButtonElement,
+  summarySection: getRequiredElementById("summary-section", HTMLDetailsElement),
+  notebookSummary: getRequiredElementById("notebook-summary", HTMLDivElement),
+  regenerateSummaryBtn: getRequiredElementById("regenerate-summary-btn", HTMLButtonElement),
 
   // Suggested links section
   suggestedLinksSection: document.getElementById("suggested-links-section") as HTMLDetailsElement,
@@ -186,127 +186,74 @@ const elements = {
   refreshLinksBtn: document.getElementById("refresh-links-btn") as HTMLButtonElement,
 
   // Transform tab
-  transformPodcast: document.getElementById(
-    "transform-podcast"
-  ) as HTMLButtonElement,
-  transformQuiz: document.getElementById("transform-quiz") as HTMLButtonElement,
-  transformTakeaways: document.getElementById(
-    "transform-takeaways"
-  ) as HTMLButtonElement,
-  transformEmail: document.getElementById(
-    "transform-email"
-  ) as HTMLButtonElement,
-  transformSlidedeck: document.getElementById(
-    "transform-slidedeck"
-  ) as HTMLButtonElement,
-  transformReport: document.getElementById(
-    "transform-report"
-  ) as HTMLButtonElement,
-  transformDatatable: document.getElementById(
-    "transform-datatable"
-  ) as HTMLButtonElement,
-  transformMindmap: document.getElementById(
-    "transform-mindmap"
-  ) as HTMLButtonElement,
-  transformFlashcards: document.getElementById(
-    "transform-flashcards"
-  ) as HTMLButtonElement,
-  transformTimeline: document.getElementById(
-    "transform-timeline"
-  ) as HTMLButtonElement,
-  transformGlossary: document.getElementById(
-    "transform-glossary"
-  ) as HTMLButtonElement,
-  transformComparison: document.getElementById(
-    "transform-comparison"
-  ) as HTMLButtonElement,
-  transformFaq: document.getElementById("transform-faq") as HTMLButtonElement,
-  transformActionitems: document.getElementById(
-    "transform-actionitems"
-  ) as HTMLButtonElement,
-  transformExecutivebrief: document.getElementById(
-    "transform-executivebrief"
-  ) as HTMLButtonElement,
-  transformStudyguide: document.getElementById(
-    "transform-studyguide"
-  ) as HTMLButtonElement,
-  transformProscons: document.getElementById(
-    "transform-proscons"
-  ) as HTMLButtonElement,
-  transformCitations: document.getElementById(
-    "transform-citations"
-  ) as HTMLButtonElement,
-  transformOutline: document.getElementById(
-    "transform-outline"
-  ) as HTMLButtonElement,
-  transformHistory: document.getElementById(
-    "transform-history"
-  ) as HTMLDivElement,
+  transformPodcast: getRequiredElementById("transform-podcast", HTMLButtonElement),
+  transformQuiz: getRequiredElementById("transform-quiz", HTMLButtonElement),
+  transformTakeaways: getRequiredElementById("transform-takeaways", HTMLButtonElement),
+  transformEmail: getRequiredElementById("transform-email", HTMLButtonElement),
+  transformSlidedeck: getRequiredElementById("transform-slidedeck", HTMLButtonElement),
+  transformReport: getRequiredElementById("transform-report", HTMLButtonElement),
+  transformDatatable: getRequiredElementById("transform-datatable", HTMLButtonElement),
+  transformMindmap: getRequiredElementById("transform-mindmap", HTMLButtonElement),
+  transformFlashcards: getRequiredElementById("transform-flashcards", HTMLButtonElement),
+  transformTimeline: getRequiredElementById("transform-timeline", HTMLButtonElement),
+  transformGlossary: getRequiredElementById("transform-glossary", HTMLButtonElement),
+  transformComparison: getRequiredElementById("transform-comparison", HTMLButtonElement),
+  transformFaq: getRequiredElementById("transform-faq", HTMLButtonElement),
+  transformActionitems: getRequiredElementById("transform-actionitems", HTMLButtonElement),
+  transformExecutivebrief: getRequiredElementById("transform-executivebrief", HTMLButtonElement),
+  transformStudyguide: getRequiredElementById("transform-studyguide", HTMLButtonElement),
+  transformProscons: getRequiredElementById("transform-proscons", HTMLButtonElement),
+  transformCitations: getRequiredElementById("transform-citations", HTMLButtonElement),
+  transformOutline: getRequiredElementById("transform-outline", HTMLButtonElement),
+  transformHistory: getRequiredElementById("transform-history", HTMLDivElement),
 
   // Library tab
-  notebooksList: document.getElementById("notebooks-list") as HTMLDivElement,
+  notebooksList: getRequiredElementById("notebooks-list", HTMLDivElement),
 
   // Settings tab (permissions only - AI provider configs are in provider-config-ui.ts)
-  permTabs: document.getElementById("perm-tabs") as HTMLInputElement,
-  permTabGroups: document.getElementById("perm-tab-groups") as HTMLInputElement,
-  permBookmarks: document.getElementById("perm-bookmarks") as HTMLInputElement,
-  permHistory: document.getElementById("perm-history") as HTMLInputElement,
-  clearAllDataBtn: document.getElementById("clear-all-data-btn") as HTMLButtonElement,
+  permTabs: getRequiredElementById("perm-tabs", HTMLInputElement),
+  permTabGroups: getRequiredElementById("perm-tab-groups", HTMLInputElement),
+  permBookmarks: getRequiredElementById("perm-bookmarks", HTMLInputElement),
+  permHistory: getRequiredElementById("perm-history", HTMLInputElement),
+  clearAllDataBtn: getRequiredElementById("clear-all-data-btn", HTMLButtonElement),
+
+  // FAB
+  fab: getRequiredElementById("fab", HTMLButtonElement),
 
   // Picker Modal
-  pickerModal: document.getElementById("picker-modal") as HTMLDivElement,
-  pickerTitle: document.getElementById("picker-title") as HTMLHeadingElement,
-  pickerSearch: document.getElementById("picker-search") as HTMLInputElement,
-  pickerList: document.getElementById("picker-list") as HTMLDivElement,
-  pickerSelectedCount: document.getElementById(
-    "picker-selected-count"
-  ) as HTMLSpanElement,
-  pickerClose: document.getElementById("picker-close") as HTMLButtonElement,
-  pickerCancel: document.getElementById("picker-cancel") as HTMLButtonElement,
-  pickerAdd: document.getElementById("picker-add") as HTMLButtonElement,
-  pickerBackdrop: document.querySelector(".modal-backdrop") as HTMLDivElement,
+  pickerModal: getRequiredElementById("picker-modal", HTMLDivElement),
+  pickerTitle: getRequiredElementById("picker-title", HTMLHeadingElement),
+  pickerSearch: getRequiredElementById("picker-search", HTMLInputElement),
+  pickerList: getRequiredElementById("picker-list", HTMLDivElement),
+  pickerSelectedCount: getRequiredElementById("picker-selected-count", HTMLSpanElement),
+  pickerClose: getRequiredElementById("picker-close", HTMLButtonElement),
+  pickerCancel: getRequiredElementById("picker-cancel", HTMLButtonElement),
+  pickerAdd: getRequiredElementById("picker-add", HTMLButtonElement),
+  pickerBackdrop: getRequiredQuerySelector(".modal-backdrop", HTMLDivElement),
 
   // Dialogs
-  notebookDialog: document.getElementById(
-    "notebook-dialog"
-  ) as HTMLDialogElement,
-  notebookDialogTitle: document.getElementById(
-    "notebook-dialog-title"
-  ) as HTMLHeadingElement,
-  notebookNameInput: document.getElementById(
-    "notebook-name-input"
-  ) as HTMLInputElement,
-  notebookDialogCancel: document.getElementById(
-    "notebook-dialog-cancel"
-  ) as HTMLButtonElement,
-  notebookDialogConfirm: document.getElementById(
-    "notebook-dialog-confirm"
-  ) as HTMLButtonElement,
+  notebookDialog: getRequiredElementById("notebook-dialog", HTMLDialogElement),
+  notebookDialogTitle: getRequiredElementById("notebook-dialog-title", HTMLHeadingElement),
+  notebookNameInput: getRequiredElementById("notebook-name-input", HTMLInputElement),
+  notebookDialogCancel: getRequiredElementById("notebook-dialog-cancel", HTMLButtonElement),
+  notebookDialogConfirm: getRequiredElementById("notebook-dialog-confirm", HTMLButtonElement),
 
-  confirmDialog: document.getElementById("confirm-dialog") as HTMLDialogElement,
-  confirmDialogTitle: document.getElementById(
-    "confirm-dialog-title"
-  ) as HTMLHeadingElement,
-  confirmDialogMessage: document.getElementById(
-    "confirm-dialog-message"
-  ) as HTMLParagraphElement,
-  confirmDialogCancel: document.getElementById(
-    "confirm-dialog-cancel"
-  ) as HTMLButtonElement,
-  confirmDialogConfirm: document.getElementById(
-    "confirm-dialog-confirm"
-  ) as HTMLButtonElement,
+  confirmDialog: getRequiredElementById("confirm-dialog", HTMLDialogElement),
+  confirmDialogTitle: getRequiredElementById("confirm-dialog-title", HTMLHeadingElement),
+  confirmDialogMessage: getRequiredElementById("confirm-dialog-message", HTMLParagraphElement),
+  confirmDialogCancel: getRequiredElementById("confirm-dialog-cancel", HTMLButtonElement),
+  confirmDialogConfirm: getRequiredElementById("confirm-dialog-confirm", HTMLButtonElement),
 
-  notification: document.getElementById("notification") as HTMLDivElement,
+  notification: getRequiredElementById("notification", HTMLDivElement),
 
   // Onboarding elements
-  onboardingOverlay: document.getElementById("onboarding-overlay") as HTMLDivElement,
-  onboardingIcon: document.getElementById("onboarding-icon") as HTMLDivElement,
-  onboardingTitle: document.getElementById("onboarding-title") as HTMLHeadingElement,
-  onboardingDescription: document.getElementById("onboarding-description") as HTMLParagraphElement,
-  onboardingDots: document.getElementById("onboarding-dots") as HTMLDivElement,
-  onboardingSkip: document.getElementById("onboarding-skip") as HTMLButtonElement,
-  onboardingNext: document.getElementById("onboarding-next") as HTMLButtonElement,
+  onboardingOverlay: getRequiredElementById("onboarding-overlay", HTMLDivElement),
+  onboardingIcon: getRequiredElementById("onboarding-icon", HTMLDivElement),
+  onboardingTitle: getRequiredElementById("onboarding-title", HTMLHeadingElement),
+  onboardingDescription: getRequiredElementById("onboarding-description", HTMLParagraphElement),
+  onboardingDots: getRequiredElementById("onboarding-dots", HTMLDivElement),
+  onboardingSkip: getRequiredElementById("onboarding-skip", HTMLButtonElement),
+  onboardingNext: getRequiredElementById("onboarding-next", HTMLButtonElement),
 };
 
 // ============================================================================
@@ -584,9 +531,11 @@ function setupEventListeners(): void {
 
   // Close AI model dropdown when clicking outside
   document.addEventListener("click", (e) => {
-    if (!elements.aiModelDropdown.classList.contains("hidden")) {
-      const target = e.target as Node;
-      if (!elements.aiModelBtn.contains(target) && !elements.aiModelDropdown.contains(target)) {
+    if (!elements.aiModelDropdown?.classList.contains("hidden")) {
+      const target = e.target;
+      if (target instanceof Node &&
+          !elements.aiModelBtn.contains(target) &&
+          !elements.aiModelDropdown.contains(target)) {
         closeAIModelDropdown();
       }
     }
@@ -902,7 +851,8 @@ async function handleModelItemClick(modelId: string): Promise<void> {
 function updateModelDropdownSelection(): void {
   const items = elements.aiModelList.querySelectorAll(".ai-model-item");
   items.forEach((item) => {
-    const el = item as HTMLElement;
+    if (!(item instanceof HTMLElement)) return;
+    const el = item;
     const modelId = el.dataset.modelId || "";
     const isSelected = modelId === (currentSelectedModelConfigId || "");
 
@@ -2075,8 +2025,8 @@ function renderPickerItems(filter: string = ""): void {
 
       // Attach error handler safely (no inline JS)
       if (item.favicon) {
-        const img = div.querySelector(".picker-icon img") as HTMLImageElement;
-        if (img) {
+        const img = div.querySelector(".picker-icon img");
+        if (img instanceof HTMLImageElement) {
           img.addEventListener("error", () => {
             img.style.display = "none";
             if (img.parentNode) {
@@ -2315,7 +2265,16 @@ function appendChatMessage(
       }
       citationsEl.innerHTML = renderCitations(message.citations, sources);
     }
-    return existingMessage as HTMLDivElement;
+    if (existingMessage instanceof HTMLDivElement) {
+      return existingMessage;
+    }
+    // If it exists but isn't an HTMLDivElement, create a new one
+    // This shouldn't happen in practice but handles edge cases
+    const div = document.createElement("div");
+    div.id = `msg-${message.id}`;
+    div.className = `chat-message ${message.role}`;
+    elements.chatMessages.appendChild(div);
+    return div;
   }
 
   const div = document.createElement("div");
@@ -2473,10 +2432,11 @@ function createTextFragmentUrl(baseUrl: string, excerpt: string): string {
 }
 
 function handleCitationClick(event: Event): void {
-  const target = event.target as HTMLElement;
-  const citationItem = target.closest(".citation-item") as HTMLElement;
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const citationItem = target.closest(".citation-item");
 
-  if (!citationItem) return;
+  if (!(citationItem instanceof HTMLElement)) return;
 
   const sourceUrl = citationItem.dataset.sourceUrl;
   const excerpt = citationItem.dataset.excerpt;
@@ -2798,8 +2758,10 @@ function removeTransformCard(card: HTMLElement): void {
 function enforceTransformHistoryLimit(): void {
   const cards = elements.transformHistory.children;
   while (cards.length > MAX_TRANSFORM_HISTORY) {
-    const oldestCard = cards[cards.length - 1] as HTMLElement;
-    removeTransformCard(oldestCard);
+    const oldestCard = cards[cards.length - 1];
+    if (oldestCard instanceof HTMLElement) {
+      removeTransformCard(oldestCard);
+    }
   }
 }
 
@@ -3029,9 +2991,9 @@ async function handlePermissionToggle(
     history: "permHistory",
   };
 
-  const checkbox = elements[elementMap[permission]] as HTMLInputElement;
+  const checkbox = elements[elementMap[permission]];
 
-  if (checkbox.checked) {
+  if (checkbox instanceof HTMLInputElement && checkbox.checked) {
     const granted = await requestPermission(permission);
     checkbox.checked = granted;
   }
