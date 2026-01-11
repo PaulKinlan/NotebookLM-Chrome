@@ -20,6 +20,7 @@
       "Bash(npx vitest:*)",
       "Bash(git:*)",
       "Bash(tree:*)",
+      "Bash(find:*)",
       "Bash(wc:*)",
       "Bash(ls:*)",
       "Bash(curl:*)",
