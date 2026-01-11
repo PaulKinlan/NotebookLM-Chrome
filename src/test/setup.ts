@@ -192,9 +192,9 @@ const chromeMock = createChromeMock();
 (globalThis as unknown as { chrome: typeof chromeMock; browser: typeof chromeMock }).browser = chromeMock;
 
 // Store names in the database (matching db.ts schema)
-const DB_STORES = ['notebooks', 'sources', 'chatMessages', 'transformations', 'settings', 'responseCache', 'summaries', 'providerConfigs', 'toolResults', 'approvalRequests'] as const;
+const DB_STORES = ['notebooks', 'sources', 'chatMessages', 'chatEvents', 'transformations', 'settings', 'responseCache', 'summaries', 'providerConfigs', 'toolResults', 'approvalRequests'] as const;
 const DB_NAME = 'notebooklm-chrome';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 // Global reference to the test database for clearing
 let testDB: IDBDatabase | null = null;
@@ -228,6 +228,14 @@ beforeAll(async () => {
         const chatStore = db.createObjectStore('chatMessages', { keyPath: 'id' });
         chatStore.createIndex('notebookId', 'notebookId', { unique: false });
         chatStore.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+
+      // Chat events store (new - replaces chatMessages)
+      if (!db.objectStoreNames.contains('chatEvents')) {
+        const chatEventsStore = db.createObjectStore('chatEvents', { keyPath: 'id' });
+        chatEventsStore.createIndex('notebookId', 'notebookId', { unique: false });
+        chatEventsStore.createIndex('timestamp', 'timestamp', { unique: false });
+        chatEventsStore.createIndex('type', 'type', { unique: false });
       }
 
       // Transformations store
