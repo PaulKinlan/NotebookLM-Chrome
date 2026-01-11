@@ -14,6 +14,26 @@ const USAGE_STORAGE_KEY = 'usageRecords';
 // Maximum number of records to keep (rolling window)
 const MAX_USAGE_RECORDS = 10000;
 
+/**
+ * Type guard to check if a value is an array of UsageRecord
+ */
+function isUsageRecordArray(value: unknown): value is UsageRecord[] {
+  if (!Array.isArray(value)) return false;
+
+  // Check if all items have required UsageRecord properties
+  return value.every(item =>
+    typeof item === 'object' &&
+    item !== null &&
+    'id' in item &&
+    'modelConfigId' in item &&
+    'providerId' in item &&
+    'model' in item &&
+    'inputTokens' in item &&
+    'outputTokens' in item &&
+    'timestamp' in item
+  );
+}
+
 // ============================================================================
 // Record Management
 // ============================================================================
@@ -23,7 +43,13 @@ const MAX_USAGE_RECORDS = 10000;
  */
 export async function getUsageRecords(): Promise<UsageRecord[]> {
   const result = await chrome.storage.local.get([USAGE_STORAGE_KEY]);
-  return (result[USAGE_STORAGE_KEY] as UsageRecord[] | undefined) || [];
+  const value = result[USAGE_STORAGE_KEY];
+
+  if (value === undefined) return [];
+  if (isUsageRecordArray(value)) return value;
+
+  // If format is invalid, return empty array
+  return [];
 }
 
 /**

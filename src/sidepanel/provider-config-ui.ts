@@ -1655,21 +1655,32 @@ function createUsageStatsModal(): HTMLElement {
 }
 
 /**
+ * Type guard to check if a value is a valid UsageTimeRange
+ */
+function isUsageTimeRange(value: string): value is UsageTimeRange {
+  return ['day', 'week', 'month', 'quarter', 'year'].includes(value);
+}
+
+/**
  * Setup time range selector buttons
  */
 function setupTimeRangeSelector(modal: HTMLElement, profileId: string): void {
   const buttons = modal.querySelectorAll('.time-range-btn');
   buttons.forEach((btn) => {
     btn.addEventListener('click', async (e) => {
-      const range = (e.target as HTMLButtonElement).dataset.range as UsageTimeRange;
-      if (!range) return;
+      if (!(e.target instanceof HTMLElement)) return;
+      const rangeRaw = e.target.dataset.range;
+      if (!rangeRaw) return;
+
+      // Validate that range is a valid UsageTimeRange
+      if (!isUsageTimeRange(rangeRaw)) return;
 
       // Update active state
       buttons.forEach((b) => b.classList.remove('active'));
-      (e.target as HTMLButtonElement).classList.add('active');
+      e.target.classList.add('active');
 
-      currentTimeRange = range;
-      await renderUsageStats(profileId, range);
+      currentTimeRange = rangeRaw;
+      await renderUsageStats(profileId, rangeRaw);
     });
   });
 }
@@ -1704,8 +1715,8 @@ async function renderUsageStats(profileId: string, timeRange: UsageTimeRange): P
  * Render usage chart using Canvas API
  */
 function renderUsageChart(dataPoints: Awaited<ReturnType<typeof getUsageDataPoints>>): void {
-  const canvas = document.getElementById('usage-chart') as HTMLCanvasElement;
-  if (!canvas) return;
+  const canvas = document.getElementById('usage-chart');
+  if (!(canvas instanceof HTMLCanvasElement)) return;
 
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
