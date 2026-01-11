@@ -2200,6 +2200,119 @@ function getDomain(url: string): string {
 }
 
 // ============================================================================
+// Slash Commands
+// ============================================================================
+
+/**
+ * Parse a slash command from user input
+ * Returns null if input is not a slash command
+ */
+function parseSlashCommand(input: string): { command: string; args: string } | null {
+  const trimmed = input.trim();
+  if (!trimmed.startsWith("/")) {
+    return null;
+  }
+
+  // Split on first space to get command and args
+  const parts = trimmed.slice(1).split(/\s+/);
+  const command = parts[0];
+  const args = parts.slice(1).join(" ");
+
+  return { command, args };
+}
+
+/**
+ * Execute a slash command
+ * Returns true if command was handled, false otherwise
+ */
+async function executeSlashCommand(
+  command: string,
+  args: string
+): Promise<boolean> {
+  switch (command) {
+    case "compact":
+      return await handleCompactCommand(args);
+    default:
+      showNotification(`Unknown command: /${command}`, 3000);
+      return false;
+  }
+}
+
+/**
+ * /compact - Summarize chat history
+ * Usage: /compact [optional custom summarization instructions]
+ */
+async function handleCompactCommand(customInstructions: string): Promise<boolean> {
+  if (!currentNotebookId) {
+    showNotification("Please select a notebook first");
+    return true;
+  }
+
+  const history = await getChatHistory(currentNotebookId);
+  if (history.length === 0) {
+    showNotification("No chat history to compact");
+    return true;
+  }
+
+  elements.chatStatus.textContent = "Compacting chat history...";
+  elements.queryBtn.disabled = true;
+
+  try {
+    // Build a summary from all messages
+    const conversationText = history
+      .map((msg) => `${msg.role}: ${msg.content}`)
+      .join("\n\n");
+
+    // Prepend instructions to the content for summarization
+    const contentToSummarize = customInstructions
+      ? `Instructions: ${customInstructions}\n\nConversation:\n${conversationText}`
+      : conversationText;
+
+    // Create a temporary source object for summarization
+    const now = Date.now();
+    const chatHistorySource: Source = {
+      id: "chat-history",
+      notebookId: currentNotebookId,
+      type: "text",
+      url: "",
+      title: "Chat History",
+      content: contentToSummarize,
+      syncStatus: "synced",
+      createdAt: now,
+      updatedAt: now,
+      metadata: { wordCount: contentToSummarize.split(/\s+/).length },
+    };
+
+    // Use the existing generateSummary function
+    const summary = await generateSummary([chatHistorySource]);
+
+    // Create a system message with the summary
+    const summaryMessage = createChatMessage(
+      currentNotebookId,
+      "assistant",
+      `**Chat Summary**\n\n${summary}`
+    );
+    await saveChatMessage(summaryMessage);
+
+    // Reload chat history to show the summary
+    await loadChatHistory();
+
+    showNotification("Chat history compacted");
+  } catch (error) {
+    console.error("Compact failed:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to compact chat";
+    showNotification(`Compact failed: ${errorMessage}`, 4000);
+  } finally {
+    elements.queryBtn.disabled = false;
+    elements.chatStatus.textContent =
+      "Ask questions to synthesize information from your sources.";
+  }
+
+  return true;
+}
+
+// ============================================================================
 // Chat History & Query
 // ============================================================================
 
@@ -2473,6 +2586,14 @@ function formatRelativeTime(timestamp: number): string {
 async function handleQuery(): Promise<void> {
   const query = elements.queryInput.value.trim();
   if (!query || !currentNotebookId) return;
+
+  // Check for slash commands first
+  const slashCommand = parseSlashCommand(query);
+  if (slashCommand) {
+    elements.queryInput.value = "";
+    await executeSlashCommand(slashCommand.command, slashCommand.args);
+    return;
+  }
 
   const sources = await getSourcesByNotebook(currentNotebookId);
   if (sources.length === 0) {
