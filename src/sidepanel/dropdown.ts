@@ -80,9 +80,23 @@ export class FuzzyDropdown {
       </div>
     `;
 
-    this.input = this.container.querySelector('.fuzzy-dropdown-input') as HTMLInputElement;
-    this.toggleBtn = this.container.querySelector('.fuzzy-dropdown-toggle') as HTMLButtonElement;
-    this.menu = this.container.querySelector('.fuzzy-dropdown-menu') as HTMLElement;
+    const inputEl = this.container.querySelector('.fuzzy-dropdown-input');
+    const toggleBtnEl = this.container.querySelector('.fuzzy-dropdown-toggle');
+    const menuEl = this.container.querySelector('.fuzzy-dropdown-menu');
+
+    if (!(inputEl instanceof HTMLInputElement)) {
+      throw new Error('Input element not found');
+    }
+    if (!(toggleBtnEl instanceof HTMLButtonElement)) {
+      throw new Error('Toggle button not found');
+    }
+    if (!(menuEl instanceof HTMLElement)) {
+      throw new Error('Menu element not found');
+    }
+
+    this.input = inputEl;
+    this.toggleBtn = toggleBtnEl;
+    this.menu = menuEl;
 
     // Initialize savedInputValue with the current display value
     // This ensures we have a fallback value even if dropdown is never opened
@@ -118,8 +132,9 @@ export class FuzzyDropdown {
 
     // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
-      const target = e.target as Node;
+      const target = e.target;
       // Don't close if clicking within the dropdown container
+      if (!(target instanceof Node)) return;
       if (this.container.contains(target)) {
         return;
       }
@@ -142,8 +157,11 @@ export class FuzzyDropdown {
 
     // Handle option selection
     this.menu.addEventListener('click', (e) => {
-      const item = (e.target as HTMLElement).closest('.dropdown-item') as HTMLElement;
-      if (item) {
+      if (!(e.target instanceof Node)) return;
+      const item = e.target instanceof HTMLElement
+        ? e.target.closest('.dropdown-item')
+        : null;
+      if (item instanceof HTMLElement) {
         const value = item.dataset.value;
         const option = this.options.find((o) => o.id === value);
         if (option) {

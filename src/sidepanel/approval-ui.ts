@@ -14,10 +14,14 @@ import {
 // DOM Elements
 // ============================================================================
 
-const elements = {
-  approvalDialog: null as HTMLDialogElement | null,
-  approvalList: null as HTMLDivElement | null,
-  approvalTemplate: null as HTMLTemplateElement | null,
+const elements: {
+  approvalDialog: HTMLDialogElement | null;
+  approvalList: HTMLDivElement | null;
+  approvalTemplate: HTMLTemplateElement | null;
+} = {
+  approvalDialog: null,
+  approvalList: null,
+  approvalTemplate: null,
 };
 
 // ============================================================================
@@ -28,9 +32,19 @@ const elements = {
  * Initialize approval UI components
  */
 export function initApprovalUI(): void {
-  elements.approvalDialog = document.getElementById('approval-dialog') as HTMLDialogElement;
-  elements.approvalList = document.getElementById('approval-list') as HTMLDivElement;
-  elements.approvalTemplate = document.getElementById('approval-request-template') as HTMLTemplateElement;
+  const dialog = document.getElementById('approval-dialog');
+  const list = document.getElementById('approval-list');
+  const template = document.getElementById('approval-request-template');
+
+  if (dialog instanceof HTMLDialogElement) {
+    elements.approvalDialog = dialog;
+  }
+  if (list instanceof HTMLDivElement) {
+    elements.approvalList = list;
+  }
+  if (template instanceof HTMLTemplateElement) {
+    elements.approvalTemplate = template;
+  }
 
   if (!elements.approvalDialog) {
     createApprovalDialog();
@@ -77,11 +91,17 @@ function createApprovalDialog(): void {
 
   document.body.appendChild(dialog);
   elements.approvalDialog = dialog;
-  elements.approvalList = dialog.querySelector('#approval-list') as HTMLDivElement;
+
+  const listElement = dialog.querySelector('#approval-list');
+  if (listElement instanceof HTMLDivElement) {
+    elements.approvalList = listElement;
+  }
 
   // Set up event listeners
-  const closeBtn = dialog.querySelector('.approval-close-btn') as HTMLButtonElement;
-  closeBtn.addEventListener('click', () => hideApprovalDialog());
+  const closeBtn = dialog.querySelector('.approval-close-btn');
+  if (closeBtn instanceof HTMLButtonElement) {
+    closeBtn.addEventListener('click', () => hideApprovalDialog());
+  }
 
   dialog.addEventListener('click', (e) => {
     if (e.target === dialog) {
@@ -89,11 +109,15 @@ function createApprovalDialog(): void {
     }
   });
 
-  const approveAllBtn = dialog.querySelector('.approval-approve-all-btn') as HTMLButtonElement;
-  const rejectAllBtn = dialog.querySelector('.approval-reject-all-btn') as HTMLButtonElement;
+  const approveAllBtn = dialog.querySelector('.approval-approve-all-btn');
+  const rejectAllBtn = dialog.querySelector('.approval-reject-all-btn');
 
-  approveAllBtn.addEventListener('click', () => approveAllPending());
-  rejectAllBtn.addEventListener('click', () => rejectAllPending());
+  if (approveAllBtn instanceof HTMLButtonElement) {
+    approveAllBtn.addEventListener('click', () => approveAllPending());
+  }
+  if (rejectAllBtn instanceof HTMLButtonElement) {
+    rejectAllBtn.addEventListener('click', () => rejectAllPending());
+  }
 }
 
 // ============================================================================
@@ -150,15 +174,19 @@ async function renderPendingApprovals(): Promise<void> {
 
   // Attach event listeners to buttons
   for (const request of pending) {
-    const approveBtn = elements.approvalList.querySelector(
+    const approveBtn = elements.approvalList?.querySelector(
       `[data-approve="${request.id}"]`
-    ) as HTMLButtonElement;
-    const rejectBtn = elements.approvalList.querySelector(
+    );
+    const rejectBtn = elements.approvalList?.querySelector(
       `[data-reject="${request.id}"]`
-    ) as HTMLButtonElement;
+    );
 
-    approveBtn?.addEventListener('click', () => handleApprove(request.id));
-    rejectBtn?.addEventListener('click', () => handleReject(request.id));
+    if (approveBtn instanceof HTMLButtonElement) {
+      approveBtn.addEventListener('click', () => handleApprove(request.id));
+    }
+    if (rejectBtn instanceof HTMLButtonElement) {
+      rejectBtn.addEventListener('click', () => handleReject(request.id));
+    }
   }
 }
 
