@@ -17,6 +17,134 @@ chrome.sidePanel
   .catch(console.error);
 
 // ============================================================================
+// Keyboard Command Handlers
+// ============================================================================
+
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  switch (command) {
+    case "add-page-to-notebook":
+      await handleAddPageCommand(tab);
+      break;
+    case "create-new-notebook":
+      await handleCreateNotebookCommand(tab);
+      break;
+    case "add-selection-as-source":
+      await handleAddSelectionCommand(tab);
+      break;
+  }
+});
+
+async function handleAddPageCommand(tab?: chrome.tabs.Tab): Promise<void> {
+  if (!tab?.id) return;
+
+  const notebookId = await getActiveNotebookId();
+  if (!notebookId) {
+    // No active notebook - open side panel and prompt to create one
+    await chrome.sidePanel.open({ tabId: tab.id });
+    await chrome.storage.session.set({
+      pendingAction: {
+        type: "CREATE_NOTEBOOK_AND_ADD_PAGE",
+        payload: { tabId: tab.id },
+      },
+    });
+    chrome.runtime
+      .sendMessage({
+        type: "CREATE_NOTEBOOK_AND_ADD_PAGE",
+        payload: { tabId: tab.id },
+      })
+      .catch(() => {});
+    return;
+  }
+
+  // Open side panel and add page to active notebook
+  await chrome.sidePanel.open({ tabId: tab.id });
+  await handleAddPageFromContextMenu(tab.id, notebookId);
+}
+
+async function handleCreateNotebookCommand(tab?: chrome.tabs.Tab): Promise<void> {
+  if (!tab?.id) return;
+
+  // Open side panel and trigger new notebook creation
+  await chrome.sidePanel.open({ tabId: tab.id });
+  await chrome.storage.session.set({
+    pendingAction: {
+      type: "CREATE_NOTEBOOK",
+    },
+  });
+  chrome.runtime
+    .sendMessage({ type: "CREATE_NOTEBOOK" })
+    .catch(() => {});
+}
+
+async function handleAddSelectionCommand(tab?: chrome.tabs.Tab): Promise<void> {
+  if (!tab?.id) return;
+
+  const notebookId = await getActiveNotebookId();
+  if (!notebookId) {
+    // No active notebook - open side panel and prompt to create one with selection
+    await chrome.sidePanel.open({ tabId: tab.id });
+    const selection = await extractSelectionText(tab.id);
+    if (selection) {
+      await chrome.storage.session.set({
+        pendingAction: {
+          type: "CREATE_NOTEBOOK_AND_ADD_SELECTION",
+          payload: { text: selection.text, url: selection.url, title: selection.title },
+        },
+      });
+      chrome.runtime
+        .sendMessage({
+          type: "CREATE_NOTEBOOK_AND_ADD_SELECTION",
+          payload: { text: selection.text, url: selection.url, title: selection.title },
+        })
+        .catch(() => {});
+    }
+    return;
+  }
+
+  // Extract selection and add as source
+  await chrome.sidePanel.open({ tabId: tab.id });
+  const selection = await extractSelectionText(tab.id);
+  if (selection && selection.text.trim()) {
+    const source = createSource(
+      notebookId,
+      "text",
+      selection.url,
+      selection.title || "Selected Text",
+      selection.text
+    );
+    await saveSource(source);
+    chrome.runtime
+      .sendMessage({ type: "SOURCE_ADDED", payload: source })
+      .catch(() => {});
+  }
+}
+
+async function extractSelectionText(tabId: number): Promise<{ text: string; url: string; title: string } | null> {
+  try {
+    const result = await chrome.scripting.executeScript({
+      target: { tabId },
+      func: () => {
+        const selection = window.getSelection();
+        return {
+          text: selection?.toString() || "",
+          url: window.location.href,
+          title: document.title,
+        };
+      },
+    });
+
+    if (!result || result.length === 0) {
+      return null;
+    }
+
+    return result[0].result as { text: string; url: string; title: string };
+  } catch (error) {
+    console.error("Error extracting selection text:", error);
+    return null;
+  }
+}
+
+// ============================================================================
 // Context Menu Setup
 // ============================================================================
 
