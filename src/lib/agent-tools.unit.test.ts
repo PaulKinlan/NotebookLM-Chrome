@@ -9,27 +9,29 @@
  * - Error handling when sources are unavailable
  */
 
+/* eslint-disable @typescript-eslint/no-unsafe-type-assertion -- Test mocks use controlled type assertions */
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Source } from '../types/index.ts';
 
 // Mock storage data
-(globalThis as Record<string, unknown>).__mockSources = [] as Source[];
-(globalThis as Record<string, unknown>).__mockToolCache = {} as Record<string, unknown>;
+(globalThis as unknown as Record<string, unknown>).__mockSources = [] as Source[];
+(globalThis as unknown as Record<string, unknown>).__mockToolCache = {} as Record<string, unknown>;
 
 // Helper to clear mocks
 const clearMocks = () => {
-  (globalThis as Record<string, unknown>).__mockSources = [];
-  (globalThis as Record<string, unknown>).__mockToolCache = {};
+  (globalThis as unknown as Record<string, unknown>).__mockSources = [];
+  (globalThis as unknown as Record<string, unknown>).__mockToolCache = {};
 };
 
 // Mock the storage module
 vi.mock('./storage.ts', () => ({
   getSourcesByNotebook: vi.fn(async (notebookId: string) => {
-    const sources = (globalThis as Record<string, unknown>).__mockSources as Source[];
+    const sources = (globalThis as unknown as Record<string, unknown>).__mockSources as Source[];
     return sources.filter(s => s.notebookId === notebookId);
   }),
   getSource: vi.fn(async (sourceId: string) => {
-    const sources = (globalThis as Record<string, unknown>).__mockSources as Source[];
+    const sources = (globalThis as unknown as Record<string, unknown>).__mockSources as Source[];
     return sources.find(s => s.id === sourceId) ?? null;
   }),
 }));
@@ -37,7 +39,7 @@ vi.mock('./storage.ts', () => ({
 // Mock the db module for caching
 vi.mock('./db.ts', () => ({
   dbGet: vi.fn(async (store: string, key: string) => {
-    const cache = (globalThis as Record<string, unknown>).__mockToolCache as Record<string, unknown>;
+    const cache = (globalThis as unknown as Record<string, unknown>).__mockToolCache as Record<string, unknown>;
     const cacheKey = `${store}:${key}`;
     const value = cache[cacheKey];
     if (!value) return null;
@@ -47,12 +49,12 @@ vi.mock('./db.ts', () => ({
     return { key, value: parsed };
   }),
   dbPut: vi.fn(async (store: string, { key, value }: { key: string; value: unknown }) => {
-    const cache = (globalThis as Record<string, unknown>).__mockToolCache as Record<string, unknown>;
+    const cache = (globalThis as unknown as Record<string, unknown>).__mockToolCache as Record<string, unknown>;
     const cacheKey = `${store}:${key}`;
     cache[cacheKey] = JSON.stringify(value);
   }),
   dbDelete: vi.fn(async (store: string, key: string) => {
-    const cache = (globalThis as Record<string, unknown>).__mockToolCache as Record<string, unknown>;
+    const cache = (globalThis as unknown as Record<string, unknown>).__mockToolCache as Record<string, unknown>;
     const cacheKey = `${store}:${key}`;
     delete cache[cacheKey];
   }),
@@ -212,11 +214,10 @@ describe('agent-tools', () => {
       agentTools = await import('./agent-tools.ts');
 
       const tool = agentTools.listSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await (tool.execute as any)({ notebookId: 'notebook-1' }) as {
+      const result = await (tool.execute as unknown as (args: { notebookId: string }) => Promise<{
         sources: Array<{ id: string; wordCount: number }>;
         totalCount: number;
-      };
+      }>)({ notebookId: 'notebook-1' });
 
       const noMetaSource = result.sources.find(s => s.id === 'source-no-metadata');
       expect(noMetaSource?.wordCount).toBe(0);
@@ -226,8 +227,7 @@ describe('agent-tools', () => {
   describe('readSource', () => {
     it('should return full content of a specific source', async () => {
       const tool = agentTools.readSource;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: { sourceId: string }) => Promise<{
+      const execute = tool.execute as unknown as (args: { sourceId: string }) => Promise<{
         id: string;
         title: string;
         url: string;
@@ -245,8 +245,7 @@ describe('agent-tools', () => {
 
     it('should throw error for non-existent source', async () => {
       const tool = agentTools.readSource;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: { sourceId: string }) => Promise<unknown>;
+      const execute = tool.execute as unknown as (args: { sourceId: string }) => Promise<unknown>;
 
       await expect(execute({ sourceId: 'source-nonexistent' }))
         .rejects.toThrow('Source source-nonexistent not found');
@@ -254,8 +253,7 @@ describe('agent-tools', () => {
 
     it('should include all metadata fields', async () => {
       const tool = agentTools.readSource;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: { sourceId: string }) => Promise<{
+      const execute = tool.execute as unknown as (args: { sourceId: string }) => Promise<{
         metadata?: { wordCount: number };
       }>;
       const result = await execute({ sourceId: 'source-2' });
@@ -267,8 +265,7 @@ describe('agent-tools', () => {
   describe('findRelevantSources', () => {
     it('should rank sources by relevance score', async () => {
       const tool = agentTools.findRelevantSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: {
+      const execute = tool.execute as unknown as (args: {
         notebookId: string;
         query: string;
         maxSources: number;
@@ -295,8 +292,7 @@ describe('agent-tools', () => {
 
     it('should filter sources by minScore threshold', async () => {
       const tool = agentTools.findRelevantSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: {
+      const execute = tool.execute as unknown as (args: {
         notebookId: string;
         query: string;
         maxSources: number;
@@ -324,8 +320,7 @@ describe('agent-tools', () => {
 
     it('should limit results by maxSources', async () => {
       const tool = agentTools.findRelevantSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: {
+      const execute = tool.execute as unknown as (args: {
         notebookId: string;
         query: string;
         maxSources: number;
@@ -347,8 +342,7 @@ describe('agent-tools', () => {
 
     it('should include relevance reasons for each source', async () => {
       const tool = agentTools.findRelevantSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: {
+      const execute = tool.execute as unknown as (args: {
         notebookId: string;
         query: string;
         maxSources: number;
@@ -372,8 +366,7 @@ describe('agent-tools', () => {
 
     it('should return empty result when no sources match', async () => {
       const tool = agentTools.findRelevantSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: {
+      const execute = tool.execute as unknown as (args: {
         notebookId: string;
         query: string;
         maxSources: number;
@@ -395,8 +388,7 @@ describe('agent-tools', () => {
 
     it('should filter all sources when minScore is too high', async () => {
       const tool = agentTools.findRelevantSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: {
+      const execute = tool.execute as unknown as (args: {
         notebookId: string;
         query: string;
         maxSources: number;
@@ -425,8 +417,7 @@ describe('agent-tools', () => {
       // But we can test caching behavior by calling findRelevantSources twice
 
       const tool = agentTools.findRelevantSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: {
+      const execute = tool.execute as unknown as (args: {
         notebookId: string;
         query: string;
         maxSources: number;
@@ -451,8 +442,7 @@ describe('agent-tools', () => {
 
     it('should generate different cache keys for different parameters', async () => {
       const tool = agentTools.findRelevantSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: {
+      const execute = tool.execute as unknown as (args: {
         notebookId: string;
         query: string;
         maxSources: number;
@@ -486,8 +476,7 @@ describe('agent-tools', () => {
   describe('cache behavior', () => {
     it('should return cached result on subsequent calls', async () => {
       const tool = agentTools.findRelevantSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: {
+      const execute = tool.execute as unknown as (args: {
         notebookId: string;
         query: string;
         maxSources: number;
@@ -519,8 +508,7 @@ describe('agent-tools', () => {
 
     it('should cache and retrieve listSources results', async () => {
       const tool = agentTools.listSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: { notebookId: string }) => Promise<{
+      const execute = tool.execute as unknown as (args: { notebookId: string }) => Promise<{
         totalCount: number;
       }>;
 
@@ -535,8 +523,7 @@ describe('agent-tools', () => {
 
     it('should cache and retrieve readSource results', async () => {
       const tool = agentTools.readSource;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: { sourceId: string }) => Promise<{
+      const execute = tool.execute as unknown as (args: { sourceId: string }) => Promise<{
         id: string;
       }>;
 
@@ -553,8 +540,7 @@ describe('agent-tools', () => {
   describe('error handling', () => {
     it('should handle missing notebook gracefully', async () => {
       const tool = agentTools.listSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: { notebookId: string }) => Promise<{
+      const execute = tool.execute as unknown as (args: { notebookId: string }) => Promise<{
         totalCount: number;
         sources: unknown[];
       }>;
@@ -575,8 +561,7 @@ describe('agent-tools', () => {
 
     it('should handle empty notebook in findRelevantSources', async () => {
       const tool = agentTools.findRelevantSources;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const execute = tool.execute as any as (args: {
+      const execute = tool.execute as unknown as (args: {
         notebookId: string;
         query: string;
         maxSources: number;
