@@ -124,7 +124,7 @@ let currentModelDropdown: HTMLElement | null = null;
 
 // Global click handler to close dropdown when clicking outside
 document.addEventListener('click', (e) => {
-  if (dropdownOpen && currentModelDropdown && !currentModelDropdown.contains(e.target as Node)) {
+  if (dropdownOpen && currentModelDropdown && e.target instanceof Node && !currentModelDropdown.contains(e.target)) {
     toggleModelDropdown(false);
   }
 });
@@ -148,16 +148,23 @@ export async function initProviderConfigUI(): Promise<void> {
   const notebookSettingsGroupEl = document.getElementById('notebook-settings-group');
   const notebookModelSelectEl = document.getElementById('notebook-model-select');
 
-  if (!profilesListEl || !addProfileBtnEl || !notebookSettingsGroupEl || !notebookModelSelectEl) {
+  if (
+    !profilesListEl ||
+    !addProfileBtnEl ||
+    !notebookSettingsGroupEl ||
+    !notebookModelSelectEl ||
+    !(addProfileBtnEl instanceof HTMLButtonElement) ||
+    !(notebookModelSelectEl instanceof HTMLSelectElement)
+  ) {
     console.error('[ConfigUI] Required elements not found');
     return;
   }
 
   elements = {
     profilesList: profilesListEl,
-    addProfileBtn: addProfileBtnEl as HTMLButtonElement,
+    addProfileBtn: addProfileBtnEl,
     notebookSettingsGroup: notebookSettingsGroupEl,
-    notebookModelSelect: notebookModelSelectEl as HTMLSelectElement,
+    notebookModelSelect: notebookModelSelectEl,
   };
 
   elements.addProfileBtn.addEventListener('click', handleAddProfile);
@@ -309,7 +316,10 @@ function createProfileCard(profile: AIProfile): HTMLElement {
     card.querySelectorAll('.profile-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const action = (e.target as HTMLButtonElement).dataset.action ?? (e.target as SVGElement).closest('button')?.dataset.action;
+        // Handle clicks on SVG elements inside buttons
+        const target = e.target instanceof HTMLElement ? e.target.closest('button') ?? e.target : e.target;
+        if (!(target instanceof HTMLButtonElement)) return;
+        const action = target.dataset.action;
         if (action === 'edit') handleEditProfile(modelConfig.id);
         else if (action === 'set-default') handleSetDefaultProfile(modelConfig.id);
         else if (action === 'stats') handleShowUsageStats(modelConfig.id, modelConfig.name);
@@ -562,9 +572,13 @@ function populateModelDropdown(
   const models = providerConfig.commonModels || [];
 
   // Get API key from the form to check cache
-  const card = dropdownMenu.closest('.profile-card') as HTMLElement;
-  const apiKeyInput = card?.querySelector('.profile-api-key-input') as HTMLInputElement;
-  const apiKey = apiKeyInput?.value.trim();
+  const card = dropdownMenu.closest('.profile-card');
+  if (!(card instanceof HTMLElement)) {
+    renderEmptyDropdownMessage(dropdownMenu, 'Card not found');
+    return;
+  }
+  const apiKeyInput = card.querySelector('.profile-api-key-input');
+  const apiKey = apiKeyInput instanceof HTMLInputElement ? apiKeyInput.value.trim() : '';
 
   // Get cached models for this provider/API key combination
   const cachedModels = getCachedModels(providerId, apiKey);
@@ -671,9 +685,11 @@ function populateModelDropdown(
       if (currentModelInput) {
         currentModelInput.value = option.id;
         // Auto-populate profile name if empty
-        const nameInput = currentModelDropdown?.querySelector('.profile-name-input') as HTMLInputElement;
-        if (nameInput && !nameInput.value) {
-          nameInput.value = option.name;
+        if (currentModelDropdown) {
+          const nameInput = currentModelDropdown.querySelector('.profile-name-input');
+          if (nameInput instanceof HTMLInputElement && !nameInput.value) {
+            nameInput.value = option.name;
+          }
         }
       }
       toggleModelDropdown(false);
@@ -729,9 +745,13 @@ function toggleModelDropdown(show?: boolean, providerId?: string): void {
     // Populate dropdown when opening
     // If providerId not provided, try to get it from the form
     if (!providerId && currentModelDropdown) {
-      const card = currentModelDropdown.closest('.profile-card') as HTMLElement;
-      const providerValueInput = card?.querySelector('.profile-provider-value') as HTMLInputElement;
-      providerId = providerValueInput?.value || '';
+      const card = currentModelDropdown.closest('.profile-card');
+      if (card instanceof HTMLElement) {
+        const providerValueInput = card.querySelector('.profile-provider-value');
+        if (providerValueInput instanceof HTMLInputElement) {
+          providerId = providerValueInput.value || '';
+        }
+      }
     }
     populateModelDropdown(currentDropdownMenu, currentModelInput.value, providerId || '', currentModelInput.value);
   } else if (!dropdownOpen) {
@@ -782,10 +802,12 @@ function handleModelDropdownKeydown(e: KeyboardEvent): void {
         if (modelValue && currentModelInput) {
           currentModelInput.value = modelValue;
           // Auto-populate profile name if empty
-          const nameInput = currentModelDropdown?.querySelector('.profile-name-input') as HTMLInputElement;
-          if (nameInput && !nameInput.value) {
-            const label = selectedItem.querySelector('.model-label')?.textContent || modelValue;
-            nameInput.value = label;
+          if (currentModelDropdown) {
+            const nameInput = currentModelDropdown.querySelector('.profile-name-input');
+            if (nameInput instanceof HTMLInputElement && !nameInput.value) {
+              const label = selectedItem.querySelector('.model-label')?.textContent || modelValue;
+              nameInput.value = label;
+            }
           }
         }
         toggleModelDropdown(false);
@@ -803,10 +825,12 @@ function handleModelDropdownKeydown(e: KeyboardEvent): void {
           if (modelValue && currentModelInput) {
             currentModelInput.value = modelValue;
             // Auto-populate profile name if empty
-            const nameInput = currentModelDropdown?.querySelector('.profile-name-input') as HTMLInputElement;
-            if (nameInput && !nameInput.value) {
-              const label = firstItem.querySelector('.model-label')?.textContent || modelValue;
-              nameInput.value = label;
+            if (currentModelDropdown) {
+              const nameInput = currentModelDropdown.querySelector('.profile-name-input');
+              if (nameInput instanceof HTMLInputElement && !nameInput.value) {
+                const label = firstItem.querySelector('.model-label')?.textContent || modelValue;
+                nameInput.value = label;
+              }
             }
           }
         }
@@ -826,13 +850,19 @@ function handleModelDropdownKeydown(e: KeyboardEvent): void {
  * Handle test connection button click
  */
 async function handleTestConnection(card: HTMLElement): Promise<void> {
-  const testBtn = card.querySelector('.profile-test-btn') as HTMLButtonElement;
-  const testStatus = card.querySelector('.test-status') as HTMLDivElement;
-  const providerValueInput = card.querySelector('.profile-provider-value') as HTMLInputElement;
-  const apiKeyInput = card.querySelector('.profile-api-key-input') as HTMLInputElement;
-  const modelInput = card.querySelector('.profile-model-input') as HTMLInputElement;
+  const testBtn = card.querySelector('.profile-test-btn');
+  const testStatus = card.querySelector('.test-status');
+  const providerValueInput = card.querySelector('.profile-provider-value');
+  const apiKeyInput = card.querySelector('.profile-api-key-input');
+  const modelInput = card.querySelector('.profile-model-input');
 
-  if (!testBtn || !providerValueInput || !apiKeyInput || !modelInput) {
+  if (
+    !(testBtn instanceof HTMLButtonElement) ||
+    !(testStatus instanceof HTMLDivElement) ||
+    !(providerValueInput instanceof HTMLInputElement) ||
+    !(apiKeyInput instanceof HTMLInputElement) ||
+    !(modelInput instanceof HTMLInputElement)
+  ) {
     return;
   }
 
@@ -887,40 +917,40 @@ async function handleTestConnection(card: HTMLElement): Promise<void> {
  * Set the test button visual state
  */
 function setTestButtonState(button: HTMLButtonElement, state: 'idle' | 'testing' | 'success' | 'error'): void {
-  const testIcon = button.querySelector('.test-icon') as SVGElement;
-  const testingIcon = button.querySelector('.testing-icon') as SVGElement;
-  const successIcon = button.querySelector('.success-icon') as SVGElement;
-  const errorIcon = button.querySelector('.error-icon') as SVGElement;
-  const testText = button.querySelector('.test-text') as HTMLElement;
+  const testIcon = button.querySelector('.test-icon');
+  const testingIcon = button.querySelector('.testing-icon');
+  const successIcon = button.querySelector('.success-icon');
+  const errorIcon = button.querySelector('.error-icon');
+  const testText = button.querySelector('.test-text');
 
   // Hide all icons first
-  testIcon.style.display = 'none';
-  testingIcon?.style.setProperty('display', 'none');
-  successIcon?.style.setProperty('display', 'none');
-  errorIcon?.style.setProperty('display', 'none');
+  if (testIcon instanceof SVGElement) testIcon.style.display = 'none';
+  if (testingIcon instanceof SVGElement) testingIcon.style.setProperty('display', 'none');
+  if (successIcon instanceof SVGElement) successIcon.style.setProperty('display', 'none');
+  if (errorIcon instanceof SVGElement) errorIcon.style.setProperty('display', 'none');
 
   switch (state) {
     case 'idle':
-      testIcon.style.display = 'block';
-      testText.textContent = 'Test';
+      if (testIcon instanceof SVGElement) testIcon.style.display = 'block';
+      if (testText instanceof HTMLElement) testText.textContent = 'Test';
       button.classList.remove('btn-success', 'btn-error');
       break;
     case 'testing':
-      testingIcon?.style.setProperty('display', 'block');
-      testText.textContent = 'Testing...';
+      if (testingIcon instanceof SVGElement) testingIcon.style.setProperty('display', 'block');
+      if (testText instanceof HTMLElement) testText.textContent = 'Testing...';
       button.classList.remove('btn-success', 'btn-error');
       break;
     case 'success':
-      successIcon?.style.setProperty('display', 'block');
-      testText.textContent = 'Success';
+      if (successIcon instanceof SVGElement) successIcon.style.setProperty('display', 'block');
+      if (testText instanceof HTMLElement) testText.textContent = 'Success';
       button.classList.add('btn-success');
       button.classList.remove('btn-error');
       // Reset to idle after 3 seconds
       setTimeout(() => setTestButtonState(button, 'idle'), 3000);
       break;
     case 'error':
-      errorIcon?.style.setProperty('display', 'block');
-      testText.textContent = 'Failed';
+      if (errorIcon instanceof SVGElement) errorIcon.style.setProperty('display', 'block');
+      if (testText instanceof HTMLElement) testText.textContent = 'Failed';
       button.classList.add('btn-error');
       button.classList.remove('btn-success');
       // Reset to idle after 5 seconds
@@ -948,18 +978,35 @@ function showTestResult(
  * Setup event listeners for profile form
  */
 function setupProfileFormListeners(card: HTMLElement, profileId: string | null, isNew: boolean): void {
-  const providerDropdownContainer = card.querySelector('.profile-provider-dropdown') as HTMLElement;
-  const providerValueInput = card.querySelector('.profile-provider-value') as HTMLInputElement;
-  const modelInput = card.querySelector('.profile-model-input') as HTMLInputElement;
-  const dropdownToggle = card.querySelector('.dropdown-toggle') as HTMLButtonElement;
-  const dropdownMenu = card.querySelector('.model-dropdown-menu') as HTMLElement;
-  const apiKeyInput = card.querySelector('.profile-api-key-input') as HTMLInputElement;
-  const passwordToggle = card.querySelector('.password-toggle') as HTMLButtonElement;
-  const testBtn = card.querySelector('.profile-test-btn') as HTMLButtonElement;
-  const temperatureInput = card.querySelector('.profile-temperature-input') as HTMLInputElement;
-  const temperatureValue = card.querySelector('.profile-temperature-value') as HTMLSpanElement;
-  const cancelBtn = card.querySelector('.profile-cancel-btn') as HTMLButtonElement;
-  const saveBtn = card.querySelector('.profile-save-btn') as HTMLButtonElement;
+  const providerDropdownContainer = card.querySelector('.profile-provider-dropdown');
+  const providerValueInput = card.querySelector('.profile-provider-value');
+  const modelInput = card.querySelector('.profile-model-input');
+  const dropdownToggle = card.querySelector('.dropdown-toggle');
+  const dropdownMenu = card.querySelector('.model-dropdown-menu');
+  const apiKeyInput = card.querySelector('.profile-api-key-input');
+  const passwordToggle = card.querySelector('.password-toggle');
+  const testBtn = card.querySelector('.profile-test-btn');
+  const temperatureInput = card.querySelector('.profile-temperature-input');
+  const temperatureValue = card.querySelector('.profile-temperature-value');
+  const cancelBtn = card.querySelector('.profile-cancel-btn');
+  const saveBtn = card.querySelector('.profile-save-btn');
+
+  // Validate element types
+  if (
+    !(providerValueInput instanceof HTMLInputElement) ||
+    !(modelInput instanceof HTMLInputElement) ||
+    !(dropdownToggle instanceof HTMLButtonElement) ||
+    !(apiKeyInput instanceof HTMLInputElement) ||
+    !(passwordToggle instanceof HTMLButtonElement) ||
+    !(testBtn instanceof HTMLButtonElement) ||
+    !(temperatureInput instanceof HTMLInputElement) ||
+    !(temperatureValue instanceof HTMLSpanElement) ||
+    !(cancelBtn instanceof HTMLButtonElement) ||
+    !(saveBtn instanceof HTMLButtonElement)
+  ) {
+    console.error('[ProfileForm] Required form elements not found or have incorrect types');
+    return;
+  }
 
   // Password visibility toggle
   if (passwordToggle && apiKeyInput) {
@@ -968,8 +1015,10 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
       apiKeyInput.type = isPassword ? 'text' : 'password';
       passwordToggle.setAttribute('aria-label', isPassword ? 'Hide API key' : 'Show API key');
       passwordToggle.title = isPassword ? 'Hide API key' : 'Show API key';
-      (passwordToggle.querySelector('.eye-icon') as SVGElement).style.display = isPassword ? 'none' : 'block';
-      (passwordToggle.querySelector('.eye-off-icon') as SVGElement).style.display = isPassword ? 'block' : 'none';
+      const eyeIcon = passwordToggle.querySelector('.eye-icon');
+      const eyeOffIcon = passwordToggle.querySelector('.eye-off-icon');
+      if (eyeIcon instanceof SVGElement) eyeIcon.style.display = isPassword ? 'none' : 'block';
+      if (eyeOffIcon instanceof SVGElement) eyeOffIcon.style.display = isPassword ? 'block' : 'none';
     });
   }
 
@@ -983,7 +1032,7 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
   }
 
   // Initialize provider fuzzy dropdown
-  if (providerDropdownContainer && providerValueInput) {
+  if (providerDropdownContainer instanceof HTMLElement && providerValueInput) {
     const allProviders = getAllProviders();
     const initialProviderId = providerValueInput.value;
 
@@ -997,28 +1046,28 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
         selectedProviderIdForNew = option.id;
 
         // Show/hide API key section based on provider requirements
-        const apiKeySection = card.querySelector('.api-key-section') as HTMLElement;
+        const apiKeySection = card.querySelector('.api-key-section');
         const requiresKey = providerRequiresApiKey(option.id);
-        if (apiKeySection) {
+        if (apiKeySection instanceof HTMLElement) {
           apiKeySection.style.display = requiresKey ? '' : 'none';
         }
 
         // Get the model input element
-        const modelInput = card.querySelector('.profile-model-input') as HTMLInputElement;
+        const modelInput = card.querySelector('.profile-model-input');
 
         // For Chrome Built-in, auto-populate the model since it only has one
         const provider = getProviderConfigById(option.id);
         if (provider && !requiresKey && provider.defaultModel) {
           // Auto-populate with the default model for providers that don't require API key
-          if (modelInput) {
+          if (modelInput instanceof HTMLInputElement) {
             modelInput.value = provider.defaultModel;
           }
           // Also auto-populate the profile name if empty
-          const nameInput = card.querySelector('.profile-name-input') as HTMLInputElement;
-          if (nameInput && !nameInput.value) {
+          const nameInput = card.querySelector('.profile-name-input');
+          if (nameInput instanceof HTMLInputElement && !nameInput.value) {
             nameInput.value = provider.displayName;
           }
-        } else if (modelInput) {
+        } else if (modelInput instanceof HTMLInputElement) {
           // Clear model input value when provider changes to one that requires API key
           modelInput.value = '';
         }
@@ -1035,11 +1084,12 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
         }
 
         // Refresh the model dropdown if it's open to show the new provider's models
-        const dropdownMenu = card.querySelector('.model-dropdown-menu') as HTMLElement;
-        if (dropdownMenu && !dropdownMenu.hidden) {
-          const modelInputForDropdown = card.querySelector('.profile-model-input') as HTMLInputElement;
+        const dropdownMenu = card.querySelector('.model-dropdown-menu');
+        if (dropdownMenu instanceof HTMLElement && !dropdownMenu.hidden) {
+          const modelInputForDropdown = card.querySelector('.profile-model-input');
           const apiKeyForDropdown = apiKeyInput?.value.trim();
-          populateModelDropdown(dropdownMenu, modelInputForDropdown?.value || '', option.id, apiKeyForDropdown || '');
+          const modelValue = modelInputForDropdown instanceof HTMLInputElement ? modelInputForDropdown.value : '';
+          populateModelDropdown(dropdownMenu, modelValue, option.id, apiKeyForDropdown || '');
         }
       },
       onToggle: (open) => {
@@ -1074,7 +1124,17 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
 
   // Model dropdown - fuzzy search functionality
   if (modelInput && dropdownToggle && dropdownMenu) {
-    const modelDropdown = card.querySelector('.model-dropdown') as HTMLElement;
+    // Validate dropdownMenu is HTMLElement
+    if (!(dropdownMenu instanceof HTMLElement)) {
+      console.error('[ProfileForm] Dropdown menu element not found or is not HTMLElement');
+      return;
+    }
+
+    const modelDropdown = card.querySelector('.model-dropdown');
+    if (!(modelDropdown instanceof HTMLElement)) {
+      console.error('[ProfileForm] Model dropdown element not found');
+      return;
+    }
 
     // Set up current dropdown references
     const setupDropdownRefs = () => {
@@ -1101,9 +1161,13 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
     });
 
     // Refresh button handler
-    const refreshBtn = card.querySelector('.model-refresh-btn') as HTMLButtonElement;
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', async (e) => {
+    const refreshBtn = card.querySelector('.model-refresh-btn');
+    if (!(refreshBtn instanceof HTMLButtonElement)) {
+      console.error('[ProfileForm] Refresh button not found');
+      return;
+    }
+
+    refreshBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
 
         // Get provider ID from the FuzzyDropdown instance (current selection) as primary source,
@@ -1137,8 +1201,8 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
         const showIcon = (iconClass: string) => {
           const icons = refreshBtn.querySelectorAll('svg');
           icons.forEach(icon => icon.style.display = 'none');
-          const targetIcon = refreshBtn.querySelector(iconClass) as SVGElement;
-          if (targetIcon) targetIcon.style.display = 'block';
+          const targetIcon = refreshBtn.querySelector(iconClass);
+          if (targetIcon instanceof SVGElement) targetIcon.style.display = 'block';
         };
 
         // Show loading state
@@ -1177,7 +1241,6 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
           showNotification('Failed to fetch models. Check your API key and try again.', 'error');
         }
       });
-    }
 
     // Input handler - repopulate dropdown if open
     modelInput.addEventListener('input', () => {
@@ -1235,10 +1298,13 @@ async function fetchModelsForCard(card: HTMLElement, providerId: string, apiKey?
   isFetchingModels = true;
 
   // Refresh dropdown if it's open to show loading state
-  const dropdownMenu = card.querySelector('.model-dropdown-menu') as HTMLElement;
-  const modelInput = card.querySelector('.profile-model-input') as HTMLInputElement;
-  if (dropdownMenu && !dropdownMenu.hidden) {
-    populateModelDropdown(dropdownMenu, modelInput?.value || '', providerId, modelInput?.value || '');
+  const dropdownMenu = card.querySelector('.model-dropdown-menu');
+  const modelInput = card.querySelector('.profile-model-input');
+
+  if (dropdownMenu instanceof HTMLElement && modelInput instanceof HTMLInputElement) {
+    if (!dropdownMenu.hidden) {
+      populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value);
+    }
   }
 
   try {
@@ -1252,8 +1318,10 @@ async function fetchModelsForCard(card: HTMLElement, providerId: string, apiKey?
   } finally {
     isFetchingModels = false;
     // Refresh dropdown after fetching completes
-    if (dropdownMenu && !dropdownMenu.hidden) {
-      populateModelDropdown(dropdownMenu, modelInput?.value || '', providerId, modelInput?.value || '');
+    if (dropdownMenu instanceof HTMLElement && modelInput instanceof HTMLInputElement) {
+      if (!dropdownMenu.hidden) {
+        populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value);
+      }
     }
   }
 }
@@ -1285,13 +1353,27 @@ function handleEditProfile(profileId: string): void {
  * Handle save profile - with smart credential reuse
  */
 async function handleSaveProfile(card: HTMLElement, profileId: string | null, isNew: boolean): Promise<void> {
-  const nameInput = card.querySelector('.profile-name-input') as HTMLInputElement;
-  const providerValueInput = card.querySelector('.profile-provider-value') as HTMLInputElement;
-  const modelInput = card.querySelector('.profile-model-input') as HTMLInputElement;
-  const apiKeyInput = card.querySelector('.profile-api-key-input') as HTMLInputElement;
-  const temperatureInput = card.querySelector('.profile-temperature-input') as HTMLInputElement;
-  const maxTokensInput = card.querySelector('.profile-max-tokens-input') as HTMLInputElement;
-  const compressionModeInput = card.querySelector('.profile-compression-mode-input') as HTMLSelectElement;
+  const nameInput = card.querySelector('.profile-name-input');
+  const providerValueInput = card.querySelector('.profile-provider-value');
+  const modelInput = card.querySelector('.profile-model-input');
+  const apiKeyInput = card.querySelector('.profile-api-key-input');
+  const temperatureInput = card.querySelector('.profile-temperature-input');
+  const maxTokensInput = card.querySelector('.profile-max-tokens-input');
+  const compressionModeInput = card.querySelector('.profile-compression-mode-input');
+
+  // Validate all required form elements
+  if (
+    !(nameInput instanceof HTMLInputElement) ||
+    !(providerValueInput instanceof HTMLInputElement) ||
+    !(modelInput instanceof HTMLInputElement) ||
+    !(apiKeyInput instanceof HTMLInputElement) ||
+    !(temperatureInput instanceof HTMLInputElement) ||
+    !(maxTokensInput instanceof HTMLInputElement) ||
+    !(compressionModeInput instanceof HTMLSelectElement)
+  ) {
+    showNotification('Form elements not found', 'error');
+    return;
+  }
 
   const name = nameInput.value.trim();
   const providerId = providerValueInput?.value || '';
@@ -1302,7 +1384,10 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
   const temperature = parseFloat(temperatureInput.value);
   const maxTokensStr = maxTokensInput.value.trim();
   const maxTokens = maxTokensStr ? parseInt(maxTokensStr, 10) : undefined;
-  const compressionMode = (compressionModeInput?.value || 'two-pass') as 'two-pass' | 'single-pass';
+  const compressionModeValue = compressionModeInput.value || 'two-pass';
+  const compressionMode = compressionModeValue === 'single-pass' || compressionModeValue === 'two-pass'
+    ? compressionModeValue
+    : 'two-pass';
 
   // Validation
   if (!name) {
