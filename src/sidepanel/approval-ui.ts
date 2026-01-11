@@ -4,11 +4,12 @@
  * Displays and manages tool approval requests in agentic mode.
  */
 
-import type { ToolApprovalRequest } from '../types/index.ts';
+import type { ToolApprovalRequest, ApprovalScope } from '../types/index.ts';
 import {
   getPendingApprovals,
   respondToApproval,
 } from '../lib/tool-approvals.ts';
+import { addToolApproval } from '../lib/tool-permissions.ts';
 
 // ============================================================================
 // DOM Elements
@@ -32,6 +33,14 @@ const elements: {
  * Initialize approval UI components
  */
 export function initApprovalUI(): void {
+  // Inject styles if not already present
+  if (!document.getElementById('approval-dialog-styles')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'approval-dialog-styles';
+    styleEl.textContent = approvalDialogStyles;
+    document.head.appendChild(styleEl);
+  }
+
   const dialog = document.getElementById('approval-dialog');
   const list = document.getElementById('approval-list');
   const template = document.getElementById('approval-request-template');
@@ -182,7 +191,7 @@ async function renderPendingApprovals(): Promise<void> {
     );
 
     if (approveBtn instanceof HTMLButtonElement) {
-      approveBtn.addEventListener('click', () => handleApprove(request.id));
+      approveBtn.addEventListener('click', () => handleApprove(request.id, request.toolName));
     }
     if (rejectBtn instanceof HTMLButtonElement) {
       rejectBtn.addEventListener('click', () => handleReject(request.id));
@@ -216,6 +225,24 @@ function renderApprovalRequest(request: ToolApprovalRequest): string {
       <div class="approval-args">
         <strong>Arguments:</strong>
         <div class="approval-args-content">${argsPreview}</div>
+      </div>
+
+      <div class="approval-scope-selection">
+        <label class="approval-scope-label">Approval scope:</label>
+        <div class="approval-scopes">
+          <label class="scope-option">
+            <input type="radio" name="scope-${request.id}" value="once" checked />
+            <span>Once</span>
+          </label>
+          <label class="scope-option">
+            <input type="radio" name="scope-${request.id}" value="session" />
+            <span>This session</span>
+          </label>
+          <label class="scope-option">
+            <input type="radio" name="scope-${request.id}" value="forever" />
+            <span>Forever</span>
+          </label>
+        </div>
       </div>
 
       <div class="approval-actions">
@@ -254,14 +281,37 @@ function escapeHtml(text: string): string {
 // ============================================================================
 
 /**
+ * Get selected scope for a request
+ */
+function getSelectedScope(requestId: string): ApprovalScope {
+  const selected = document.querySelector<HTMLInputElement>(
+    `input[name="scope-${requestId}"]:checked`
+  );
+  const value = selected?.value;
+
+  // Validate that the value is a valid ApprovalScope
+  if (value === 'once' || value === 'session' || value === 'forever') {
+    return value;
+  }
+
+  return 'once';
+}
+
+/**
  * Handle approve button click
  */
-async function handleApprove(requestId: string): Promise<void> {
+async function handleApprove(requestId: string, toolName: string): Promise<void> {
+  const scope = getSelectedScope(requestId);
+
   await respondToApproval({
     requestId,
     approved: true,
+    scope,
     timestamp: Date.now(),
   });
+
+  // Update tool permissions based on scope
+  await addToolApproval(toolName, scope);
 
   // Re-render to update the list
   await renderPendingApprovals();
@@ -280,6 +330,7 @@ async function handleReject(requestId: string): Promise<void> {
   await respondToApproval({
     requestId,
     approved: false,
+    scope: 'once',
     timestamp: Date.now(),
   });
 
@@ -294,7 +345,7 @@ async function handleReject(requestId: string): Promise<void> {
 }
 
 /**
- * Approve all pending approvals
+ * Approve all pending approvals (with 'once' scope)
  */
 async function approveAllPending(): Promise<void> {
   const pending = await getPendingApprovals();
@@ -303,6 +354,7 @@ async function approveAllPending(): Promise<void> {
     await respondToApproval({
       requestId: request.id,
       approved: true,
+      scope: 'once',
       timestamp: Date.now(),
     });
   }
@@ -320,6 +372,7 @@ async function rejectAllPending(): Promise<void> {
     await respondToApproval({
       requestId: request.id,
       approved: false,
+      scope: 'once',
       timestamp: Date.now(),
     });
   }
@@ -438,6 +491,49 @@ export const approvalDialogStyles = `
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.approval-scope-selection {
+  margin: 12px 0;
+  padding: 12px;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.approval-scope-label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.approval-scopes {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.scope-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.scope-option input[type="radio"] {
+  cursor: pointer;
+}
+
+.scope-option span {
+  color: #555;
+}
+
+.scope-option:has(input:checked) span {
+  color: #000;
+  font-weight: 500;
 }
 
 .approval-dialog-footer {
