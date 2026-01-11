@@ -373,6 +373,7 @@ async function init(): Promise<void> {
       }
       loadNotebooks();
       loadSources();
+      loadNotebooksList(); // Refresh library page source counts
       showNotification("Source added");
     } else if (message.type === "CREATE_NOTEBOOK_AND_ADD_PAGE") {
       // Clear pending action to prevent duplicate processing
