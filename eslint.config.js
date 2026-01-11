@@ -98,6 +98,8 @@ export default [
       // Disallow explicit any types
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': 'error',
+      // Limit file length for AI code analysis (400 lines = ~12-16k tokens)
+      'max-lines': ['warn', { max: 400, skipBlankLines: true, skipComments: true }],
     },
   },
 ];
