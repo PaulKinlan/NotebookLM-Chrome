@@ -376,7 +376,8 @@ async function handleAddPageFromContextMenu(
         "tab",
         result.url,
         result.title,
-        result.markdown
+        result.markdown,
+        result.links
       );
       await saveSource(source);
 
@@ -407,7 +408,8 @@ async function handleAddLinkFromContextMenu(
         "tab",
         result.url,
         result.title,
-        result.content
+        result.content,
+        result.links
       );
       await saveSource(source);
 
@@ -469,7 +471,8 @@ async function handleAddSelectionLinksFromContextMenu(
           "tab",
           result.url,
           result.title,
-          result.content
+          result.content,
+          result.links
         );
         await saveSource(source);
 
@@ -502,8 +505,32 @@ async function handleMessage(message: Message): Promise<unknown> {
   switch (message.type) {
     case "EXTRACT_CONTENT":
       return extractContentFromActiveTab();
-    case "EXTRACT_FROM_URL":
-      return extractContentFromUrl(message.payload as string);
+    case "EXTRACT_FROM_URL": {
+      const payload = message.payload as { url: string; notebookId: string } | string;
+      // Support both old format (just URL string) and new format (object with url and notebookId)
+      if (typeof payload === "string") {
+        return extractContentFromUrl(payload);
+      }
+      const { url, notebookId } = payload;
+      const result = await extractContentFromUrl(url);
+      if (result && notebookId) {
+        const source = createSource(
+          notebookId,
+          "tab",
+          result.url,
+          result.title,
+          result.content,
+          result.links
+        );
+        await saveSource(source);
+        await setActiveNotebookId(notebookId);
+        chrome.runtime
+          .sendMessage({ type: "SOURCE_ADDED", payload: source })
+          .catch(() => {});
+        return { success: true, source };
+      }
+      return result;
+    }
     case "ADD_SOURCE":
       return handleAddSource(message.payload as ContentExtractionResult);
     case "REBUILD_CONTEXT_MENUS":
@@ -575,6 +602,7 @@ async function extractContentFromUrl(
       title: result.title,
       content: result.markdown,
       textContent: result.markdown,
+      links: result.links,
     };
   } catch (error) {
     console.error("Failed to extract content from URL:", error);
@@ -718,7 +746,8 @@ async function handleAddSource(
     "tab",
     extraction.url,
     extraction.title,
-    extraction.content
+    extraction.content,
+    extraction.links
   );
   await saveSource(source);
 

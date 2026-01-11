@@ -8,6 +8,7 @@ import type {
   CachedResponse,
   Citation,
   NotebookSummary,
+  ExtractedLink,
 } from '../types/index.ts';
 import {
   dbGet,
@@ -240,7 +241,8 @@ export function createSource(
   type: Source['type'],
   url: string,
   title: string,
-  content: string
+  content: string,
+  links?: ExtractedLink[]
 ): Source {
   const now = Date.now();
   return {
@@ -250,6 +252,7 @@ export function createSource(
     url,
     title,
     content,
+    links,
     syncStatus: 'local',
     createdAt: now,
     updatedAt: now,

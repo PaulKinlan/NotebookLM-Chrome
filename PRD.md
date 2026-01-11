@@ -189,6 +189,36 @@ The AI is instructed to cite sources using `[Source N]` markers. After the respo
 - [x] Clicking citation opens source URL
 - [x] Text fragment highlighting works when available
 
+#### 3.4 Suggested Links
+AI-powered link discovery that analyzes links within source content and suggests relevant ones to add:
+
+- **Link Extraction:** When sources are added, links are extracted from the HTML content before markdown conversion
+  - Captures URL, anchor text, and surrounding context for each link
+  - Filters out common noise URLs (privacy policies, login pages, social media, etc.)
+  - Deduplicates links across sources
+
+- **AI Filtering:** Links are analyzed by AI to identify the most relevant ones
+  - Filters out low-value links (navigation, ads, boilerplate)
+  - Scores remaining links by relevance to the notebook's topic (0-1 scale)
+  - Returns top 10 most relevant links with title, description, and relevance score
+
+- **Collapsible UI Section:** Displayed in the Chat tab below Active Sources
+  - Shows count of suggested links
+  - Each link shows title, AI-generated description, domain, and relevance score
+  - "Open" button to view link in new tab
+  - "Add" button to add link as a new source
+  - Refresh button to re-analyze links
+  - Cached per-notebook to avoid repeated AI calls
+
+**Acceptance Criteria:**
+- [x] Links are extracted from source content during extraction
+- [x] Noise URLs are filtered out using heuristic patterns
+- [x] AI analyzes and ranks links by relevance
+- [x] Suggested Links section shows in Chat tab when sources have links
+- [x] User can open suggested links in new tab
+- [x] User can add suggested links as sources with one click
+- [x] Suggestions are cached per notebook
+
 ---
 
 ## Enhanced Features (P1-P2)
@@ -549,12 +579,28 @@ interface Notebook extends SyncableEntity {
   name: string;
 }
 
+interface ExtractedLink {
+  url: string;
+  text: string;      // Anchor text
+  context: string;   // Surrounding text for context (~50 chars)
+}
+
+interface SuggestedLink {
+  url: string;
+  title: string;           // AI-inferred or extracted title
+  description: string;     // Why this link is relevant
+  relevanceScore: number;  // 0-1 score from AI
+  sourceId: string;        // Which source this link came from
+  sourceTitle: string;     // Title of the source for attribution
+}
+
 interface Source extends SyncableEntity {
   notebookId: string;
   type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'pdf' | 'image' | 'video' | 'audio';
   url: string;
   title: string;
   content: string; // Text content (empty for media-only sources)
+  links?: ExtractedLink[];  // Links extracted from the source content
   mediaType?: 'text' | 'image' | 'video' | 'audio' | 'pdf';
   mediaUrl?: string; // URL or blob URL for media content
   metadata?: {

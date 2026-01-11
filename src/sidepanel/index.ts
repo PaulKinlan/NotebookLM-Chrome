@@ -3,6 +3,7 @@ import type {
   PermissionStatus,
   ChatMessage,
   Citation,
+  SuggestedLink,
 } from "../types/index.ts";
 import DOMPurify, { Config } from "dompurify";
 import { checkPermissions, requestPermission } from "../lib/permissions.ts";
@@ -62,6 +63,7 @@ import {
   getDefaultModelConfig,
 } from "../lib/model-configs.ts";
 import { initProviderConfigUI, AI_PROFILES_CHANGED_EVENT } from './provider-config-ui.ts';
+import { filterLinksWithAI, hasExtractableLinks } from '../lib/suggested-links.ts';
 import { SandboxRenderer } from "../lib/sandbox-renderer.ts";
 import {
   exportNotebook,
@@ -100,6 +102,10 @@ interface PickerItem {
 let pickerItems: PickerItem[] = [];
 let selectedPickerItems: Set<string> = new Set();
 let pickerType: "tab" | "tabGroup" | "bookmark" | "history" | null = null;
+
+// Suggested links state
+let suggestedLinksCache: Map<string, SuggestedLink[]> = new Map();
+let suggestedLinksLoading = false;
 
 // ============================================================================
 // DOM Elements
@@ -171,6 +177,13 @@ const elements = {
   regenerateSummaryBtn: document.getElementById(
     "regenerate-summary-btn"
   ) as HTMLButtonElement,
+
+  // Suggested links section
+  suggestedLinksSection: document.getElementById("suggested-links-section") as HTMLDetailsElement,
+  suggestedLinksCount: document.getElementById("suggested-links-count") as HTMLSpanElement,
+  suggestedLinksContent: document.getElementById("suggested-links-content") as HTMLDivElement,
+  suggestedLinksList: document.getElementById("suggested-links-list") as HTMLDivElement,
+  refreshLinksBtn: document.getElementById("refresh-links-btn") as HTMLButtonElement,
 
   // Transform tab
   transformPodcast: document.getElementById(
@@ -575,6 +588,10 @@ function setupEventListeners(): void {
     "click",
     handleRegenerateSummary
   );
+
+  // Suggested links
+  elements.refreshLinksBtn?.addEventListener("click", handleRefreshSuggestedLinks);
+  elements.suggestedLinksList?.addEventListener("click", handleSuggestedLinkClick);
 
   // Transform tab
   elements.transformPodcast?.addEventListener("click", () =>
@@ -1151,6 +1168,7 @@ async function loadSources(): Promise<void> {
     elements.sourceCount.textContent = "0";
     elements.sourcesList.innerHTML = "";
     hideSummary();
+    hideSuggestedLinksSection();
     return;
   }
 
@@ -1165,6 +1183,11 @@ async function loadSources(): Promise<void> {
 
   // Load or generate summary
   await loadOrGenerateSummary(sources);
+
+  // Load suggested links (don't await - let it load in background)
+  loadSuggestedLinks(sources).catch((err) =>
+    console.warn("[SuggestedLinks] Failed to load:", err)
+  );
 }
 
 function renderSourcesList(container: HTMLElement, sources: Source[]): void {
@@ -1320,6 +1343,260 @@ async function handleRegenerateSummary(): Promise<void> {
 
   const sourceIds = sources.map((s) => s.id);
   await generateAndSaveSummary(sources, sourceIds);
+}
+
+// ============================================================================
+// Suggested Links
+// ============================================================================
+
+/**
+ * Show the suggested links section
+ */
+function showSuggestedLinksSection(): void {
+  elements.suggestedLinksSection.style.display = "block";
+}
+
+/**
+ * Hide the suggested links section
+ */
+function hideSuggestedLinksSection(): void {
+  elements.suggestedLinksSection.style.display = "none";
+}
+
+/**
+ * Show loading state in suggested links
+ */
+function showSuggestedLinksLoading(): void {
+  const loading = elements.suggestedLinksContent.querySelector(".suggested-links-loading") as HTMLElement;
+  const empty = elements.suggestedLinksContent.querySelector(".suggested-links-empty") as HTMLElement;
+  if (loading) loading.style.display = "flex";
+  if (empty) empty.style.display = "none";
+  elements.suggestedLinksList.innerHTML = "";
+}
+
+/**
+ * Hide loading state in suggested links
+ */
+function hideSuggestedLinksLoading(): void {
+  const loading = elements.suggestedLinksContent.querySelector(".suggested-links-loading") as HTMLElement;
+  if (loading) loading.style.display = "none";
+}
+
+/**
+ * Show empty state in suggested links
+ */
+function showSuggestedLinksEmpty(): void {
+  const empty = elements.suggestedLinksContent.querySelector(".suggested-links-empty") as HTMLElement;
+  if (empty) empty.style.display = "block";
+  elements.suggestedLinksList.innerHTML = "";
+}
+
+/**
+ * Extract domain from URL for display
+ */
+function extractDomain(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Render suggested links in the UI
+ * Note: All dynamic content is sanitized with DOMPurify to prevent XSS
+ */
+function renderSuggestedLinks(links: SuggestedLink[]): void {
+  hideSuggestedLinksLoading();
+
+  if (links.length === 0) {
+    showSuggestedLinksEmpty();
+    elements.suggestedLinksCount.textContent = "0";
+    return;
+  }
+
+  const empty = elements.suggestedLinksContent.querySelector(".suggested-links-empty") as HTMLElement;
+  if (empty) empty.style.display = "none";
+
+  elements.suggestedLinksCount.textContent = String(links.length);
+
+  // Build HTML with all dynamic content sanitized via DOMPurify
+  elements.suggestedLinksList.innerHTML = links
+    .map((link) => {
+      const domain = extractDomain(link.url);
+      const scorePercent = Math.round(link.relevanceScore * 100);
+      return `
+        <div class="suggested-link-item" data-url="${DOMPurify.sanitize(link.url)}">
+          <div class="suggested-link-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+          </div>
+          <div class="suggested-link-info">
+            <div class="suggested-link-title">${DOMPurify.sanitize(link.title)}</div>
+            <div class="suggested-link-description">${DOMPurify.sanitize(link.description)}</div>
+            <div class="suggested-link-url">${DOMPurify.sanitize(domain)}</div>
+          </div>
+          <div class="suggested-link-actions">
+            <button class="icon-btn suggested-link-open" title="Open link">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                <polyline points="15 3 21 3 21 9"></polyline>
+                <line x1="10" y1="14" x2="21" y2="3"></line>
+              </svg>
+            </button>
+            <button class="icon-btn btn-primary suggested-link-add" title="Add as source">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </button>
+            <div class="suggested-link-score">${scorePercent}%</div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+/**
+ * Load and display suggested links for the current notebook
+ */
+async function loadSuggestedLinks(sources: Source[], forceRefresh = false): Promise<void> {
+  if (!currentNotebookId) return;
+
+  // Check if sources have any links
+  if (!hasExtractableLinks(sources)) {
+    hideSuggestedLinksSection();
+    return;
+  }
+
+  // Show the section
+  showSuggestedLinksSection();
+
+  // Check cache first (unless forcing refresh)
+  const cacheKey = currentNotebookId;
+
+  if (!forceRefresh && suggestedLinksCache.has(cacheKey)) {
+    const cached = suggestedLinksCache.get(cacheKey);
+    if (cached) {
+      renderSuggestedLinks(cached);
+      return;
+    }
+  }
+
+  // Don't fetch if already loading
+  if (suggestedLinksLoading) return;
+
+  suggestedLinksLoading = true;
+  showSuggestedLinksLoading();
+
+  try {
+    const links = await filterLinksWithAI(sources, 10);
+    suggestedLinksCache.set(cacheKey, links);
+    renderSuggestedLinks(links);
+  } catch (error) {
+    console.error("[SuggestedLinks] Failed to load:", error);
+    showSuggestedLinksEmpty();
+  } finally {
+    suggestedLinksLoading = false;
+  }
+}
+
+/**
+ * Handle refresh button click
+ */
+async function handleRefreshSuggestedLinks(): Promise<void> {
+  if (!currentNotebookId) return;
+
+  const sources = await getSourcesByNotebook(currentNotebookId);
+  if (sources.length === 0) {
+    hideSuggestedLinksSection();
+    return;
+  }
+
+  // Clear cache and reload
+  suggestedLinksCache.delete(currentNotebookId);
+  await loadSuggestedLinks(sources, true);
+}
+
+/**
+ * Handle clicks on suggested link items
+ */
+async function handleSuggestedLinkClick(event: Event): Promise<void> {
+  const target = event.target as HTMLElement;
+  const linkItem = target.closest(".suggested-link-item") as HTMLElement;
+  if (!linkItem) return;
+
+  const url = linkItem.dataset.url;
+  if (!url) return;
+
+  // Check if open button was clicked
+  if (target.closest(".suggested-link-open")) {
+    window.open(url, "_blank");
+    return;
+  }
+
+  // Check if add button was clicked
+  if (target.closest(".suggested-link-add")) {
+    await handleAddSuggestedLink(url, linkItem);
+    return;
+  }
+}
+
+/**
+ * Add a suggested link as a new source
+ */
+async function handleAddSuggestedLink(url: string, linkItem: HTMLElement): Promise<void> {
+  if (!currentNotebookId) return;
+
+  // Disable the add button
+  const addBtn = linkItem.querySelector(".suggested-link-add") as HTMLButtonElement;
+  if (addBtn) addBtn.disabled = true;
+
+  // Show loading state
+  linkItem.style.opacity = "0.5";
+
+  try {
+    // Request content extraction from background script
+    const response = await chrome.runtime.sendMessage({
+      type: "EXTRACT_FROM_URL",
+      payload: { url, notebookId: currentNotebookId },
+    });
+
+    if (response && response.success) {
+      // Remove the item from the list since it's now a source
+      linkItem.remove();
+
+      // Update count
+      const remaining = elements.suggestedLinksList.querySelectorAll(".suggested-link-item").length;
+      elements.suggestedLinksCount.textContent = String(remaining);
+
+      // Update cache
+      const cached = suggestedLinksCache.get(currentNotebookId);
+      if (cached) {
+        suggestedLinksCache.set(
+          currentNotebookId,
+          cached.filter((link) => link.url !== url)
+        );
+      }
+
+      // Show empty state if no more links
+      if (remaining === 0) {
+        showSuggestedLinksEmpty();
+      }
+    } else {
+      // Failed to add - restore state
+      linkItem.style.opacity = "1";
+      if (addBtn) addBtn.disabled = false;
+    }
+  } catch (error) {
+    console.error("[SuggestedLinks] Failed to add link:", error);
+    linkItem.style.opacity = "1";
+    if (addBtn) addBtn.disabled = false;
+  }
 }
 
 async function handleAddCurrentTab(): Promise<void> {

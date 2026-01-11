@@ -1131,6 +1131,191 @@ details.summary-section[open] .summary-chevron {
 }
 
 /* ============================================================================
+   Suggested Links Section
+   ============================================================================ */
+
+details.suggested-links-section {
+  margin-top: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+details.suggested-links-section > summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+details.suggested-links-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.suggested-links-section[open] > summary {
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.suggested-links-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.suggested-links-header .section-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggested-links-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggested-links-chevron {
+  transition: transform 0.2s ease;
+  color: var(--text-secondary);
+}
+
+details.suggested-links-section[open] .suggested-links-chevron {
+  transform: rotate(180deg);
+}
+
+.suggested-links-section .section-title {
+  margin-top: 0;
+  margin-bottom: 0;
+  color: var(--text-primary);
+}
+
+.suggested-links-content {
+  padding: 12px;
+  max-height: 350px;
+  overflow-y: auto;
+}
+
+.suggested-links-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 8px 4px;
+}
+
+.suggested-links-empty {
+  color: var(--text-secondary);
+  font-size: 14px;
+  padding: 8px 4px;
+}
+
+.suggested-links-empty p {
+  margin: 0;
+}
+
+.suggested-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suggested-link-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.suggested-link-item:hover {
+  border-color: var(--accent-primary);
+  background: var(--bg-hover);
+}
+
+.suggested-link-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-muted);
+  color: var(--accent-primary);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+}
+
+.suggested-link-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggested-link-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.suggested-link-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.suggested-link-url {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggested-link-source {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.suggested-link-actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.suggested-link-actions .icon-btn {
+  width: 28px;
+  height: 28px;
+}
+
+.suggested-link-actions .icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.suggested-link-score {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* ============================================================================
    Notebooks List
    ============================================================================ */
 

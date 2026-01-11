@@ -17,6 +17,15 @@ export interface SyncableEntity {
 // Core Data Models
 // ============================================================================
 
+/**
+ * A link extracted from source content
+ */
+export interface ExtractedLink {
+  url: string;
+  text: string;      // Anchor text
+  context: string;   // Surrounding text for context (~50 chars)
+}
+
 export interface Source extends SyncableEntity {
   notebookId: string;
   type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text';
@@ -24,6 +33,7 @@ export interface Source extends SyncableEntity {
   title: string;
   content: string;
   htmlContent?: string;
+  links?: ExtractedLink[];  // Links extracted from the source content
   metadata?: {
     favicon?: string;
     description?: string;
@@ -80,6 +90,34 @@ export interface NotebookSummary {
   notebookId: string;
   sourceIds: string[]; // Track which sources were used to generate
   content: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+// ============================================================================
+// Suggested Links (AI-filtered)
+// ============================================================================
+
+/**
+ * A link that has been analyzed and recommended by AI
+ */
+export interface SuggestedLink {
+  url: string;
+  title: string;           // AI-inferred or extracted title
+  description: string;     // Why this link is relevant
+  relevanceScore: number;  // 0-1 score from AI
+  sourceId: string;        // Which source this link came from
+  sourceTitle: string;     // Title of the source for attribution
+}
+
+/**
+ * Cached suggested links for a notebook
+ */
+export interface SuggestedLinksCache {
+  id: string;
+  notebookId: string;
+  sourceIds: string[];     // Track which sources were analyzed
+  links: SuggestedLink[];
   createdAt: number;
   updatedAt: number;
 }
@@ -337,6 +375,7 @@ export interface ContentExtractionResult {
   title: string;
   content: string;
   textContent: string;
+  links?: ExtractedLink[];
 }
 
 // ============================================================================
