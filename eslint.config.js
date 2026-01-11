@@ -89,13 +89,8 @@ export default [
       'no-implicit-coercion': 'error',
       'no-eq-null': 'error',
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
-      // Disallow ALL type assertions (as keyword)
-      '@typescript-eslint/consistent-type-assertions': [
-        'error',
-        {
-          assertionStyle: 'never',
-        },
-      ],
+      // Disallow unsafe type assertions (allows safe runtime-checked assertions)
+      '@typescript-eslint/no-unsafe-type-assertion': 'error',
       // Disallow non-null assertions (!)
       '@typescript-eslint/no-non-null-assertion': 'error',
       // Disallow unnecessary type assertions
