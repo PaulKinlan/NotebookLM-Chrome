@@ -9,6 +9,7 @@ import type {
   Citation,
   NotebookSummary,
   ExtractedLink,
+  JSONValue,
 } from '../types/index.ts';
 import {
   dbGet,
@@ -316,7 +317,7 @@ export function createToolResultEvent(
   notebookId: string,
   toolCallId: string,
   toolName: string,
-  result: unknown,
+  result: JSONValue,
   error?: string,
   duration?: number
 ): ChatEvent {
