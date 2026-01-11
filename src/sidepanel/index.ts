@@ -619,7 +619,7 @@ function renderToolPermissions(config: ToolPermissionsConfig): void {
             ${!permission.requiresApproval ? "checked" : ""}
             ${!permission.visible ? "disabled" : ""}
           />
-          <label for="tool-no-approval-${toolName}">Do not require approval</label>
+          <label for="tool-no-approval-${toolName}">Auto approve</label>
         </div>
       </div>
     `;
@@ -860,7 +860,7 @@ function setupEventListeners(): void {
       if (action === "visible") {
         await handleToggleToolVisible(toolName, target.checked);
       } else if (action === "noApproval") {
-        // Checkbox is "Do not require approval", so checked = no approval needed
+        // Checkbox is "Auto approve", so checked = no approval needed
         await handleToggleToolRequiresApproval(toolName, !target.checked);
       }
     }
