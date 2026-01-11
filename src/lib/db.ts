@@ -1,5 +1,5 @@
 const DB_NAME = 'notebooklm-chrome';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 export interface DBSchema {
   notebooks: {
@@ -17,11 +17,12 @@ export interface DBSchema {
       type: string;
     };
   };
-  chatMessages: {
+  chatEvents: {
     key: string;
     indexes: {
       notebookId: string;
       timestamp: number;
+      type: string;
     };
   };
   transformations: {
@@ -66,6 +67,52 @@ export interface DBSchema {
       status: string;
     };
   };
+  // @deprecated Kept for migration from v5
+  chatMessages: {
+    key: string;
+    indexes: {
+      notebookId: string;
+      timestamp: number;
+    };
+  };
+}
+
+/**
+ * Migration helper: Convert ChatMessage (v5) to ChatEvent (v6)
+ * ChatMessage { id, notebookId, role: 'user' | 'assistant', content, citations?, timestamp }
+ *   → UserEvent { id, notebookId, type: 'user', content, timestamp }
+ *   → AssistantEvent { id, notebookId, type: 'assistant', content, citations?, timestamp }
+ */
+function migrateChatMessagesToChatEvents(db: IDBDatabase): void {
+  const transaction = db.transaction(['chatMessages', 'chatEvents'], 'readwrite');
+  const oldStore = transaction.objectStore('chatMessages');
+  const newStore = transaction.objectStore('chatEvents');
+
+  const request = oldStore.openCursor();
+  request.onsuccess = () => {
+    const cursor = request.result;
+    if (cursor) {
+      const msg = cursor.value;
+      // Convert ChatMessage to ChatEvent
+      const chatEvent = {
+        id: msg.id,
+        notebookId: msg.notebookId,
+        timestamp: msg.timestamp,
+        type: msg.role, // 'user' or 'assistant'
+        content: msg.content,
+        ...(msg.citations && { citations: msg.citations }),
+      };
+      newStore.put(chatEvent);
+      cursor.continue();
+    }
+  };
+
+  // After migration completes, delete old store
+  transaction.oncomplete = () => {
+    const deleteTransaction = db.transaction(['chatMessages'], 'readwrite');
+    deleteTransaction.objectStore('chatMessages').clear();
+    console.log('[DB Migration] Migrated chatMessages to chatEvents');
+  };
 }
 
 let dbInstance: IDBDatabase | null = null;
@@ -109,11 +156,24 @@ export function getDB(): Promise<IDBDatabase> {
         sourcesStore.createIndex('type', 'type', { unique: false });
       }
 
-      // Chat messages store
+      // Chat messages store (deprecated - replaced by chatEvents)
       if (!db.objectStoreNames.contains('chatMessages')) {
         const chatStore = db.createObjectStore('chatMessages', { keyPath: 'id' });
         chatStore.createIndex('notebookId', 'notebookId', { unique: false });
         chatStore.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+
+      // Chat events store (new - replaces chatMessages)
+      if (!db.objectStoreNames.contains('chatEvents')) {
+        const chatEventsStore = db.createObjectStore('chatEvents', { keyPath: 'id' });
+        chatEventsStore.createIndex('notebookId', 'notebookId', { unique: false });
+        chatEventsStore.createIndex('timestamp', 'timestamp', { unique: false });
+        chatEventsStore.createIndex('type', 'type', { unique: false });
+      }
+
+      // Migration: v5 → v6 (chatMessages → chatEvents)
+      if (event.oldVersion < 6 && db.objectStoreNames.contains('chatMessages')) {
+        migrateChatMessagesToChatEvents(db);
       }
 
       // Transformations store
@@ -272,7 +332,7 @@ export async function dbClear(storeName: string): Promise<void> {
  */
 export async function dbClearAll(): Promise<void> {
   const db = await getDB();
-  const storeNames = ['notebooks', 'sources', 'chatMessages', 'transformations', 'responseCache', 'settings', 'providerConfigs', 'toolResults', 'approvalRequests'];
+  const storeNames = ['notebooks', 'sources', 'chatEvents', 'transformations', 'responseCache', 'settings', 'providerConfigs', 'toolResults', 'approvalRequests'];
 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(storeNames, 'readwrite');
