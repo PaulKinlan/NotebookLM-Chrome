@@ -2971,38 +2971,46 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 /**
- * Append a tool call as a separate timeline entry
+ * Append a tool call to the assistant's message (inline, not separate)
  */
-function appendToolCallMessage(
+function appendToolCallToAssistant(
+  messageDiv: HTMLDivElement,
+  toolCallId: string,
   toolName: string,
   args: Record<string, unknown>
 ): HTMLDivElement {
-  // Remove empty state if present
-  const emptyState = elements.chatMessages.querySelector(".empty-state");
-  if (emptyState) {
-    emptyState.remove();
+  // Check if we already have a tool-calls container
+  let toolCallsContainer = messageDiv.querySelector(".assistant-tool-calls");
+  if (!toolCallsContainer) {
+    toolCallsContainer = document.createElement("div");
+    toolCallsContainer.className = "assistant-tool-calls";
+    // Insert before the timestamp
+    const timeEl = messageDiv.querySelector(".chat-message-time");
+    if (timeEl) {
+      messageDiv.insertBefore(toolCallsContainer, timeEl);
+    } else {
+      messageDiv.appendChild(toolCallsContainer);
+    }
   }
 
-  const id = `tool-${crypto.randomUUID()}`;
-  const div = document.createElement("div");
-  div.id = id;
-  div.className = "chat-message tool-call";
+  const toolCallEl = document.createElement("div");
+  toolCallEl.className = "assistant-tool-call";
+  toolCallEl.dataset.toolCallId = toolCallId;
+  toolCallEl.dataset.toolName = toolName;
 
   const argsStr = JSON.stringify(args, null, 2);
 
-  div.innerHTML = `
-    <div class="chat-message-role">🔧 ${escapeHtml(toolName)}</div>
-    <div class="chat-message-content">
-      <div class="tool-call-status calling">Calling...</div>
-      <div class="tool-call-args"><pre>${escapeHtml(argsStr)}</pre></div>
+  toolCallEl.innerHTML = `
+    <div class="tool-call-header">
+      <span class="tool-call-icon">🔧</span>
+      <span class="tool-call-name">${escapeHtml(toolName)}</span>
+      <span class="tool-call-status calling">Calling...</span>
     </div>
-    <div class="chat-message-time">${formatRelativeTime(Date.now())}</div>
+    <div class="tool-call-args"><pre>${escapeHtml(argsStr)}</pre></div>
   `;
 
-  elements.chatMessages.appendChild(div);
-  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
-
-  return div;
+  toolCallsContainer.appendChild(toolCallEl);
+  return toolCallEl;
 }
 
 /**
@@ -3041,13 +3049,13 @@ function appendToolResultMessage(
 }
 
 /**
- * Update a tool call message to show it completed
+ * Update a tool call's status to show it completed
  */
 function updateToolCallStatus(
-  toolCallDiv: HTMLDivElement,
+  toolCallEl: HTMLDivElement,
   status: "calling" | "done" | "error"
 ): void {
-  const statusEl = toolCallDiv.querySelector(".tool-call-status");
+  const statusEl = toolCallEl.querySelector(".tool-call-status");
   if (statusEl) {
     statusEl.className = `tool-call-status ${status}`;
     statusEl.textContent = status === "calling" ? "Calling..." :
@@ -3158,14 +3166,19 @@ async function handleQuery(): Promise<void> {
           contentEl.innerHTML = formatMarkdown(fullContent);
         }
       } else if (event.type === 'tool-call') {
-        // Create separate timeline entry for tool call
-        const toolCallDiv = appendToolCallMessage(event.toolName, event.args);
-        pendingToolCalls.set(event.toolCallId, toolCallDiv);
+        // Append tool call to assistant's message (not separate entry)
+        const toolCallEl = appendToolCallToAssistant(
+          messageDiv,
+          event.toolCallId,
+          event.toolName,
+          event.args
+        );
+        pendingToolCalls.set(event.toolCallId, toolCallEl);
       } else if (event.type === 'tool-result') {
-        // Update tool call status and create result entry
-        const toolCallDiv = pendingToolCalls.get(event.toolCallId);
-        if (toolCallDiv) {
-          updateToolCallStatus(toolCallDiv, 'done');
+        // Update tool call status and create separate result entry
+        const toolCallEl = pendingToolCalls.get(event.toolCallId);
+        if (toolCallEl) {
+          updateToolCallStatus(toolCallEl, 'done');
         }
         // Create separate timeline entry for result
         appendToolResultMessage(event.toolName, event.result);

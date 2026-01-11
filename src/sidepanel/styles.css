@@ -2239,36 +2239,45 @@ details.suggested-links-section[open] .suggested-links-chevron {
   margin-top: 8px;
 }
 
-/* Tool Calls (separate timeline entries) */
-.chat-message.tool-call {
-  background: rgba(210, 153, 34, 0.1);
-  border: 1px solid rgba(210, 153, 34, 0.3);
-  margin-left: 12px;
-  margin-right: 12px;
+/* Tool Calls (inline in assistant message) */
+.assistant-tool-calls {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.chat-message.tool-call .chat-message-role {
+.assistant-tool-call {
+  background: rgba(210, 153, 34, 0.08);
+  border: 1px solid rgba(210, 153, 34, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.tool-call-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tool-call-icon {
+  font-size: 14px;
+}
+
+.tool-call-name {
+  font-weight: 600;
   color: var(--warning);
-}
-
-.chat-message.tool-result {
-  background: rgba(63, 185, 80, 0.1);
-  border: 1px solid rgba(63, 185, 80, 0.3);
-  margin-left: 12px;
-  margin-right: 12px;
-}
-
-.chat-message.tool-result .chat-message-role {
-  color: var(--success);
+  flex: 1;
 }
 
 .tool-call-status {
   font-size: 11px;
   font-weight: 600;
-  padding: 4px 8px;
+  padding: 2px 8px;
   border-radius: var(--radius-sm);
   display: inline-block;
-  margin-bottom: 8px;
 }
 
 .tool-call-status.calling {
@@ -2286,7 +2295,30 @@ details.suggested-links-section[open] .suggested-links-chevron {
   color: var(--error);
 }
 
-.tool-call-args pre,
+.tool-call-args pre {
+  margin: 0;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  overflow-x: auto;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Tool Results (separate timeline entries) */
+.chat-message.tool-result {
+  background: rgba(63, 185, 80, 0.1);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  margin-left: 12px;
+  margin-right: 12px;
+}
+
+.chat-message.tool-result .chat-message-role {
+  color: var(--success);
+}
+
 .tool-result-data pre {
   margin: 0;
   padding: 12px;
