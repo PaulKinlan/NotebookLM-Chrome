@@ -365,6 +365,7 @@ function wrapToolWithCache(
 const sourceToolsRegistry: Record<string, ToolConfig> = {
   listSources: { tool: listSources, cache: false },
   readSource: { tool: readSource, cache: false },
+  findRelevantSources: { tool: findRelevantSources, cache: true },
 };
 
 /**
