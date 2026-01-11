@@ -8,3 +8,4 @@ extension.pem
 *.zip
 *.crx
 .worktrees/
+tests/.chrome-profile/
