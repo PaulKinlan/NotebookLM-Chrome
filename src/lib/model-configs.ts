@@ -10,6 +10,48 @@ import { dbGet, dbPut, dbDelete } from './db.ts';
 import { getCredential, createCredential, findCredentialByApiKey } from './credentials.ts';
 import { getProviderConfigById, getAllProviders } from './provider-registry.ts';
 
+// Type guard for legacy AISettings
+function isLegacyAISettings(data: unknown): data is {
+  provider: string;
+  model: string;
+  apiKeys: Record<string, string>;
+  temperature?: number;
+  maxTokens?: number;
+} {
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+
+  const obj = data;
+
+  // Check provider
+  if (!('provider' in obj) || typeof obj.provider !== 'string') {
+    return false;
+  }
+
+  // Check model
+  if (!('model' in obj) || typeof obj.model !== 'string') {
+    return false;
+  }
+
+  // Check apiKeys
+  if (!('apiKeys' in obj) || typeof obj.apiKeys !== 'object' || obj.apiKeys === null || Array.isArray(obj.apiKeys)) {
+    return false;
+  }
+
+  // Check temperature (optional)
+  if ('temperature' in obj && typeof obj.temperature !== 'number') {
+    return false;
+  }
+
+  // Check maxTokens (optional)
+  if ('maxTokens' in obj && typeof obj.maxTokens !== 'number') {
+    return false;
+  }
+
+  return true;
+}
+
 // Special placeholder for providers that don't require API keys
 export const NO_API_KEY_PLACEHOLDER = '__NO_API_KEY__';
 
@@ -262,33 +304,18 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
       return false;
     }
 
-    const data = result.value;
-
-    // Check if it looks like AISettings
-    if (
-      typeof data !== 'object' ||
-      data === null ||
-      !('provider' in data) ||
-      !('model' in data) ||
-      !('apiKeys' in data) ||
-      typeof (data as { apiKeys: unknown }).apiKeys !== 'object'
-    ) {
+    // Use type guard to check if data is legacy AISettings
+    if (!isLegacyAISettings(result.value)) {
       return false;
     }
 
-    const aiSettings = data as {
-      provider: string;
-      model: string;
-      apiKeys: Record<string, string>;
-      temperature?: number;
-      maxTokens?: number;
-    };
+    const aiSettings = result.value;
 
     console.log('[ModelConfigs] Migrating AISettings to Credential + ModelConfig...');
 
     // Get the provider registry to verify the provider exists
     const providers = getAllProviders();
-    const providerConfig = providers.find((p: { id: string }) => p.id === aiSettings.provider);
+    const providerConfig = providers.find((p) => p.id === aiSettings.provider);
 
     if (!providerConfig) {
       console.warn('[ModelConfigs] Provider', aiSettings.provider, 'not found in registry, skipping migration');

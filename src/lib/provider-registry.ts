@@ -308,7 +308,7 @@ export const PROVIDER_REGISTRY = {
     },
     modelIdTransform: (id: string) => id.replace('models/', ''),
     group: 'Google',
-    createModel: (apiKey: string, modelId: string, _baseURL?: string) =>
+    createModel: (apiKey: string, modelId: string) =>
       createGoogleGenerativeAI({ apiKey })(modelId),
     pricing: {
       // Gemini 3 series
@@ -585,7 +585,7 @@ export const PROVIDER_REGISTRY = {
       nameField: 'name',
     },
     group: 'Built-in',
-    createModel: (_apiKey: string, _modelId: string, _baseURL?: string) => builtInAI(),
+    createModel: () => builtInAI(),
   },
 } as const;
 
@@ -774,6 +774,13 @@ interface CachedModels<T> {
 }
 
 /**
+ * Type guard to check if value is a record with string keys
+ */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/**
  * Unified model interface for dropdown
  */
 export interface SelectableModel {
@@ -881,8 +888,8 @@ export async function fetchProviderSelectableModels(
 
   return models
     .map((m: unknown) => {
-      if (typeof m !== 'object' || m === null) return null;
-      const model = m as Record<string, unknown>;
+      if (!isRecord(m)) return null;
+      const model = m; // Type is now Record<string, unknown> via type guard
       let id = model[fmt.idField];
       const name = model[fmt.nameField] || id;
 
