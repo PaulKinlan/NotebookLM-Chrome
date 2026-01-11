@@ -89,9 +89,19 @@ export default [
       'no-implicit-coercion': 'error',
       'no-eq-null': 'error',
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
-      // Disallow unsafe type assertions
+      // Disallow ALL type assertions (as keyword)
+      '@typescript-eslint/consistent-type-assertions': [
+        'error',
+        {
+          assertionStyle: 'never',
+        },
+      ],
+      // Disallow non-null assertions (!)
       '@typescript-eslint/no-non-null-assertion': 'error',
+      // Disallow unnecessary type assertions
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+      // Disallow explicit any types
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
