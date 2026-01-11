@@ -6,6 +6,7 @@
     "code-review@claude-plugins-official": true
   },
   "permissions": {
+    "deny": ["Bash(git checkout:*)"],
     "allow": [
       "Bash(cat:*)",
       "Bash(npm install)",
