@@ -543,6 +543,21 @@ function buildAgenticSystemPrompt(
   notebookName: string,
   sourceCount: number
 ): string {
+  // When there are no sources, provide a general chat prompt
+  if (sourceCount === 0) {
+    return `You are a helpful AI assistant.
+
+The user has not added any sources to this notebook yet.
+
+Answer their questions helpfully and accurately using your general knowledge. You can:
+- Answer general knowledge questions
+- Help with writing, brainstorming, and problem-solving
+- Explain concepts and provide information
+- Suggest what kinds of sources would be helpful for their topic
+
+Keep your responses conversational and helpful.`;
+  }
+
   return `You are a helpful AI assistant analyzing sources from the notebook "${notebookName}".
 
 AVAILABLE TOOLS:
@@ -579,6 +594,21 @@ async function buildChatSystemPrompt(
   compressionMode: 'two-pass' | 'single-pass' = 'two-pass'
 ): Promise<string> {
   const sourceContext = await buildSourceContext(sources, query, compressionMode);
+
+  // When there are no sources, provide a general chat prompt
+  if (sources.length === 0) {
+    return `You are a helpful AI assistant.
+
+The user has not added any sources yet. Answer their questions helpfully and accurately using your general knowledge.
+
+You can:
+- Answer general knowledge questions
+- Help with writing, brainstorming, and problem-solving
+- Explain concepts and provide information
+- Suggest what kinds of sources would be helpful for their topic
+
+Keep your responses conversational and helpful.`;
+  }
 
   return `You are a helpful AI assistant that answers questions based on the provided sources.
 

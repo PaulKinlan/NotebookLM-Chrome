@@ -3333,10 +3333,6 @@ async function handleQuery(): Promise<void> {
   }
 
   const sources = await getSourcesByNotebook(currentNotebookId);
-  if (sources.length === 0) {
-    showNotification("Add some sources first");
-    return;
-  }
 
   elements.queryInput.value = "";
   elements.queryBtn.disabled = true;

@@ -5,11 +5,21 @@
  * and accessing extension pages for testing.
  */
 
-import puppeteer, { Browser } from 'puppeteer';
-import path from 'path';
-import fs from 'fs';
+import puppeteer, { Browser, Page } from 'puppeteer';
+import * as path from 'path';
+import * as fs from 'fs';
 
 const EXTENSION_PATH = path.join(process.cwd(), 'dist');
+const PROFILE_DIR = path.join(process.cwd(), 'tests', '.chrome-profile');
+
+/**
+ * Clean up the Chrome profile directory to ensure fresh state
+ */
+export async function cleanupProfile(): Promise<void> {
+  if (fs.existsSync(PROFILE_DIR)) {
+    fs.rmSync(PROFILE_DIR, { recursive: true, force: true });
+  }
+}
 
 /**
  * Launch Chrome with the FolioLM extension loaded
@@ -17,12 +27,12 @@ const EXTENSION_PATH = path.join(process.cwd(), 'dist');
 export async function launchWithExtension(): Promise<Browser> {
   const isCI = process.env.CI === 'true';
 
-  // Use a persistent user data directory for extension loading
-  const userDataDir = path.join(process.cwd(), 'tests', '.chrome-profile');
+  // Clean up profile before launching to ensure fresh state
+  await cleanupProfile();
 
   const browser = await puppeteer.launch({
     headless: false, // Extensions don't work in headless mode
-    userDataDir,
+    userDataDir: PROFILE_DIR,
     args: [
       `--disable-extensions-except=${EXTENSION_PATH}`,
       `--load-extension=${EXTENSION_PATH}`,
@@ -87,7 +97,7 @@ export async function getExtensionIdFromBrowser(browser: Browser): Promise<strin
 /**
  * Get the extension's background page/service worker page
  */
-export async function getExtensionPage(browser: Browser): ReturnType<Browser['newPage']> {
+export async function getExtensionPage(browser: Browser): Promise<Page> {
   const targets = await browser.targets();
   const extensionTarget = targets.find(
     (target) =>
@@ -134,9 +144,43 @@ async function dismissOnboarding(
 }
 
 /**
+ * Ensure a notebook exists for testing
+ * Creates a default notebook if none exists
+ */
+async function ensureNotebookExists(
+  page: Awaited<ReturnType<Browser['newPage']>>
+): Promise<void> {
+  const hasNotebook = await page.evaluate(() => {
+    const select = document.getElementById('notebook-select') as HTMLSelectElement;
+    return select && select.options.length > 1; // More than just the placeholder
+  });
+
+  if (!hasNotebook) {
+    // Create a notebook by clicking the new notebook button
+    await page.click('#new-notebook-btn');
+
+    // Wait for the dialog to appear
+    await page.waitForSelector('#notebook-name-input', { timeout: 3000 });
+
+    // Enter a notebook name
+    await page.type('#notebook-name-input', 'Test Notebook');
+
+    // Click confirm
+    await page.click('#notebook-dialog-confirm');
+
+    // Wait for notebook to be created and selected
+    // We check this by waiting for the select element to have a value
+    await page.waitForFunction(() => {
+      const select = document.getElementById('notebook-select') as HTMLSelectElement;
+      return select && select.value !== '';
+    }, { timeout: 5000 });
+  }
+}
+
+/**
  * Get the extension's sidepanel page
  */
-export async function getSidepanelPage(browser: Browser): ReturnType<Browser['newPage']> {
+export async function getSidepanelPage(browser: Browser): Promise<Page> {
   const extensionId = await getExtensionIdFromBrowser(browser);
   const page = await browser.newPage();
 
@@ -153,6 +197,9 @@ export async function getSidepanelPage(browser: Browser): ReturnType<Browser['ne
   // Wait for initialization to complete by checking for an element
   // that's rendered after init() finishes (e.g., the add tab content)
   await page.waitForSelector('#tab-add', { timeout: 5000 });
+
+  // Ensure a notebook exists for testing
+  await ensureNotebookExists(page);
 
   return page;
 }
@@ -177,6 +224,9 @@ export async function cleanupBrowser(browser: Browser): Promise<void> {
   const pages = await browser.pages();
   await Promise.all(pages.map((page) => page.close()));
   await browser.close();
+
+  // Clean up Chrome profile for fresh state on next run
+  await cleanupProfile();
 }
 
 /**
