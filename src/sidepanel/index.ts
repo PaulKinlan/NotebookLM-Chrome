@@ -67,6 +67,7 @@ import { getSourceTools } from "../lib/agent-tools.ts";
 import {
   getContextMode,
   setContextMode,
+  getAISettings,
 } from "../lib/settings.ts";
 import {
   getModelConfigs,
@@ -212,6 +213,7 @@ const elements = {
   permBookmarks: getRequiredElementById("perm-bookmarks", HTMLInputElement),
   permHistory: getRequiredElementById("perm-history", HTMLInputElement),
   toolBasedContext: getRequiredElementById("tool-based-context", HTMLInputElement),
+  chromeToolsWarning: getRequiredElementById("chrome-tools-warning", HTMLParagraphElement),
   clearAllDataBtn: getRequiredElementById("clear-all-data-btn", HTMLButtonElement),
 
   // FAB
@@ -257,6 +259,22 @@ const elements = {
 // Initialization
 // ============================================================================
 
+/**
+ * Update Chrome tools warning visibility
+ * Shows warning when using Chrome built-in AI with tool-based context
+ */
+async function updateChromeToolsWarning(): Promise<void> {
+  const settings = await getAISettings();
+  const isChrome = settings.provider === 'chrome';
+  const isToolBased = elements.toolBasedContext.checked;
+
+  if (isChrome && isToolBased) {
+    elements.chromeToolsWarning.classList.remove('hidden');
+  } else {
+    elements.chromeToolsWarning.classList.add('hidden');
+  }
+}
+
 async function init(): Promise<void> {
   permissions = await checkPermissions();
   currentNotebookId = await getActiveNotebookId();
@@ -271,6 +289,7 @@ async function init(): Promise<void> {
   // Load context mode setting
   const contextMode = await getContextMode();
   elements.toolBasedContext.checked = contextMode === "agentic";
+  await updateChromeToolsWarning();
 
   // Initialize approval UI
   initApprovalUI();
@@ -290,6 +309,7 @@ async function init(): Promise<void> {
   // Listen for AI profile changes to update the AI config select
   window.addEventListener(AI_PROFILES_CHANGED_EVENT, () => {
     loadAIConfigs();
+    updateChromeToolsWarning();
   });
 
   // Listen for tab highlight changes to update button text
@@ -659,6 +679,7 @@ function setupEventListeners(): void {
   elements.toolBasedContext.addEventListener("change", async () => {
     const mode = elements.toolBasedContext.checked ? "agentic" : "classic";
     await setContextMode(mode);
+    await updateChromeToolsWarning();
   });
   elements.clearAllDataBtn.addEventListener("click", handleClearAllData);
 

@@ -1583,6 +1583,16 @@ details.suggested-links-section[open] .suggested-links-chevron {
   color: var(--text-muted);
 }
 
+.setting-warning {
+  margin-top: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  background: rgba(210, 153, 34, 0.15);
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius-sm);
+  color: #f0b72e;
+}
+
 /* ============================================================================
    Bottom Navigation
    ============================================================================ */
