@@ -145,6 +145,27 @@ When updating `PRIVACY.md`:
 
 When making significant changes to the project, ensure documentation stays up to date:
 
+### CHROMEWEBSTORE.md
+
+**IMPORTANT:** Update `CHROMEWEBSTORE.md` whenever preparing a build for the Chrome Web Store. This file contains all store listing information and permission justifications.
+
+Update `CHROMEWEBSTORE.md` when:
+
+- Adding, removing, or modifying **permissions** in `manifest.json`
+- Adding **new features** that should be mentioned in the store description
+- Changing the **product description** or marketing copy
+- Adding new **AI providers** or **transformation types**
+- Making changes that affect **data usage** or **privacy disclosures**
+- Releasing a **new version** (update the Version History section)
+
+When updating `CHROMEWEBSTORE.md`:
+
+1. Update the "Last Updated" date at the top of the file
+2. Update the **Permissions Justification** section to match `manifest.json`
+3. Update the **Detailed Description** if features have changed
+4. Add a new entry to **Version History** for the release
+5. Ensure **Data Usage Disclosure** accurately reflects current behavior
+
 ### README.md
 
 The README contains comprehensive architecture documentation. Update it when:
