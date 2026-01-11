@@ -1,23 +1,16 @@
 // ============================================================================
-// Entry Point
+// TSX Entry Point
 // ============================================================================
-// This file will render the App component once it's migrated to JSX.
-// For now, the main application logic remains in index.ts
+import { App } from './App';
+import * as Index from './index';
 
-// TODO: Import App component once created
-// import { App } from './App';
-
-// TODO: Define state and handlers
-// function renderApp(): void {
-//   const appContainer = document.getElementById('app');
-//   if (!appContainer) return;
+// The TSX components are ready but not yet integrated.
+// For now, delegate to the existing index.ts which has all the business logic.
 //
-//   const appElement = App({
-//     // State and handlers will be passed here
-//   });
-//
-//   appContainer.appendChild(appElement);
-// }
+// TODO: Complete migration by:
+// 1. Moving state management here
+// 2. Creating event handlers that call into Index functions
+// 3. Rendering <App /> with state and handlers
+// 4. Simplifying index.html to just <div id="app"></div>
 
-// For now, delegate to the existing index.ts logic
 export * from './index';
