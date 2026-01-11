@@ -88,7 +88,11 @@ export function getDB(): Promise<IDBDatabase> {
     };
 
     request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
+      const request = event.target;
+      if (!request || !(request instanceof IDBOpenDBRequest)) {
+        throw new Error('Invalid upgrade request');
+      }
+      const db = request.result;
 
       // Notebooks store
       if (!db.objectStoreNames.contains('notebooks')) {

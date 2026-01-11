@@ -4,6 +4,20 @@
  */
 
 /**
+ * Type guard to check if a node is an Element
+ */
+function isElement(node: Node): node is Element {
+  return node.nodeType === Node.ELEMENT_NODE;
+}
+
+/**
+ * Type guard to check if an element is an HTMLAnchorElement
+ */
+function isHTMLAnchorElement(element: Element): element is HTMLAnchorElement {
+  return element.tagName === 'A';
+}
+
+/**
  * Extract all HTTP/HTTPS links from the current text selection.
  * This function is designed to be injected into a page and executed in that context.
  *
@@ -32,24 +46,29 @@ export function getLinksInSelection(): string[] {
   const anchorElements = fragment.querySelectorAll("a[href]");
 
   anchorElements.forEach((anchor) => {
-    const href = (anchor as HTMLAnchorElement).href;
-    if (href && href.startsWith("http")) {
-      linksSet.add(href);
+    if (isHTMLAnchorElement(anchor)) {
+      const href = anchor.href;
+      if (href && href.startsWith("http")) {
+        linksSet.add(href);
+      }
     }
   });
 
   // Also check if the selection itself starts or ends within an anchor element
   const container = range.commonAncestorContainer;
-  const parentElement =
-    container.nodeType === Node.TEXT_NODE
-      ? container.parentElement
-      : (container as Element);
+  let parentElement: Element | null = null;
+
+  if (container.nodeType === Node.TEXT_NODE) {
+    parentElement = container.parentElement;
+  } else if (isElement(container)) {
+    parentElement = container;
+  }
 
   if (parentElement) {
     // Check if the selection is within an anchor or contains anchors
     const closestAnchor = parentElement.closest("a[href]");
-    if (closestAnchor) {
-      const href = (closestAnchor as HTMLAnchorElement).href;
+    if (closestAnchor && isHTMLAnchorElement(closestAnchor)) {
+      const href = closestAnchor.href;
       if (href && href.startsWith("http")) {
         linksSet.add(href);
       }
@@ -58,8 +77,8 @@ export function getLinksInSelection(): string[] {
     // Find all anchors within the common ancestor to limit scope
     const ancestorAnchors = parentElement.querySelectorAll("a[href]");
     ancestorAnchors.forEach((anchor) => {
-      if (selection.containsNode(anchor, true)) {
-        const href = (anchor as HTMLAnchorElement).href;
+      if (selection.containsNode(anchor, true) && isHTMLAnchorElement(anchor)) {
+        const href = anchor.href;
         if (href && href.startsWith("http")) {
           linksSet.add(href);
         }

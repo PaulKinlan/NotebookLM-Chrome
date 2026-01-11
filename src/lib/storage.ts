@@ -4,7 +4,6 @@ import type {
   ChatMessage,
   Transformation,
   StorageAdapter,
-  SyncStatus,
   CachedResponse,
   Citation,
   NotebookSummary,
@@ -46,7 +45,7 @@ class IndexedDBStorage implements StorageAdapter {
       ...notebook,
       updatedAt: now,
       createdAt: existing?.createdAt ?? now,
-      syncStatus: 'local' as SyncStatus,
+      syncStatus: 'local',
     };
 
     await dbPut('notebooks', toSave);
@@ -90,7 +89,7 @@ class IndexedDBStorage implements StorageAdapter {
       ...source,
       updatedAt: now,
       createdAt: existing?.createdAt ?? now,
-      syncStatus: 'local' as SyncStatus,
+      syncStatus: 'local',
     };
 
     await dbPut('sources', toSave);
@@ -134,7 +133,7 @@ class IndexedDBStorage implements StorageAdapter {
       ...transformation,
       updatedAt: now,
       createdAt: existing?.createdAt ?? now,
-      syncStatus: 'local' as SyncStatus,
+      syncStatus: 'local',
     };
 
     await dbPut('transformations', toSave);
