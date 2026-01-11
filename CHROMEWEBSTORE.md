@@ -28,6 +28,12 @@ FolioLM helps you collect sources from tabs, bookmarks, and history, then query 
 
 • Flexible Configuration - Named credentials, per-notebook model overrides, and custom endpoints
 
+• Keyboard Shortcuts - Quick actions without leaving your workflow:
+  - Ctrl+Shift+F (Cmd+Shift+F): Open side panel
+  - Ctrl+Shift+S (Cmd+Shift+S): Add current page
+  - Ctrl+Shift+N (Cmd+Shift+N): Create new notebook
+  - Ctrl+Shift+E (Cmd+Shift+E): Add selected text
+
 • Transformations - Convert your sources into 19 different formats:
   - Educational: Quiz, Flashcards, Study Guide
   - Creative: Podcast Script, Email, Slide Deck
@@ -114,6 +120,14 @@ Recommended screenshots for store listing:
 ---
 
 ## Version History
+
+### v0.2.0
+- Keyboard shortcuts for quick actions:
+  - Ctrl+Shift+F (Cmd+Shift+F): Open side panel
+  - Ctrl+Shift+S (Cmd+Shift+S): Add current page to notebook
+  - Ctrl+Shift+N (Cmd+Shift+N): Create new notebook
+  - Ctrl+Shift+E (Cmd+Shift+E): Add selected text as source
+- Shortcuts customizable via chrome://extensions/shortcuts
 
 ### v0.1.0
 - Initial release
