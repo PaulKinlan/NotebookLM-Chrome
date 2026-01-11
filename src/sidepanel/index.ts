@@ -172,6 +172,7 @@ const elements = {
   chatMessages: getRequiredElementById("chat-messages", HTMLDivElement),
   clearChatBtn: getRequiredElementById("clear-chat-btn", HTMLButtonElement),
   chatStatus: getRequiredElementById("chat-status", HTMLParagraphElement),
+  autocompleteDropdown: getRequiredElementById("autocomplete-dropdown", HTMLDivElement),
 
   // Summary section
   summarySection: getRequiredElementById("summary-section", HTMLDetailsElement),
@@ -539,10 +540,29 @@ function setupEventListeners(): void {
         closeAIModelDropdown();
       }
     }
+
+    // Close autocomplete dropdown when clicking outside
+    if (!elements.autocompleteDropdown.classList.contains("hidden")) {
+      const target = e.target;
+      if (target instanceof Node &&
+          !elements.queryInput.contains(target) &&
+          !elements.autocompleteDropdown.contains(target)) {
+        hideAutocomplete();
+      }
+    }
   });
   elements.queryBtn.addEventListener("click", handleQuery);
-  elements.queryInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") handleQuery();
+  elements.queryInput.addEventListener("input", handleAutocompleteInput);
+  elements.queryInput.addEventListener("keydown", (e) => {
+    // Handle autocomplete keyboard navigation first
+    handleAutocompleteKeydown(e);
+
+    // Handle Enter key for query submission
+    if (e.key === "Enter" && !e.defaultPrevented) {
+      // Hide autocomplete before submitting
+      hideAutocomplete();
+      handleQuery();
+    }
   });
   elements.addPageBtn.addEventListener("click", handleAddCurrentTab);
   elements.clearChatBtn?.addEventListener("click", handleClearChat);
@@ -2204,6 +2224,23 @@ function getDomain(url: string): string {
 // ============================================================================
 
 /**
+ * Available slash commands with descriptions
+ */
+interface SlashCommand {
+  command: string;
+  description: string;
+  usage: string;
+}
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  {
+    command: "compact",
+    description: "Summarize chat history",
+    usage: "/compact [optional custom instructions]",
+  },
+];
+
+/**
  * Parse a slash command from user input
  * Returns null if input is not a slash command
  */
@@ -2310,6 +2347,160 @@ async function handleCompactCommand(customInstructions: string): Promise<boolean
   }
 
   return true;
+}
+
+// ============================================================================
+// Autocomplete
+// ============================================================================
+
+let autocompleteSelectedIndex = -1;
+let autocompleteFilteredCommands: SlashCommand[] = [];
+
+/**
+ * Show autocomplete dropdown with filtered commands
+ */
+function showAutocomplete(commands: SlashCommand[]): void {
+  autocompleteFilteredCommands = commands;
+  autocompleteSelectedIndex = -1;
+
+  if (commands.length === 0) {
+    hideAutocomplete();
+    return;
+  }
+
+  // Render autocomplete items
+  elements.autocompleteDropdown.innerHTML = "";
+  for (const cmd of commands) {
+    const item = document.createElement("div");
+    item.className = "autocomplete-item";
+
+    const commandSpan = document.createElement("span");
+    commandSpan.className = "autocomplete-item-command";
+    commandSpan.textContent = `/${cmd.command}`;
+
+    const descriptionSpan = document.createElement("span");
+    descriptionSpan.className = "autocomplete-item-description";
+    descriptionSpan.textContent = cmd.description;
+
+    item.appendChild(commandSpan);
+    item.appendChild(descriptionSpan);
+
+    item.addEventListener("click", () => {
+      selectAutocompleteItem(cmd);
+    });
+
+    elements.autocompleteDropdown.appendChild(item);
+  }
+
+  elements.autocompleteDropdown.classList.remove("hidden");
+}
+
+/**
+ * Hide autocomplete dropdown
+ */
+function hideAutocomplete(): void {
+  elements.autocompleteDropdown.classList.add("hidden");
+  autocompleteSelectedIndex = -1;
+  autocompleteFilteredCommands = [];
+}
+
+/**
+ * Select an autocomplete item and insert it into the input
+ */
+function selectAutocompleteItem(cmd: SlashCommand): void {
+  elements.queryInput.value = `/${cmd.command} `;
+  hideAutocomplete();
+  elements.queryInput.focus();
+}
+
+/**
+ * Handle input event for autocomplete
+ */
+function handleAutocompleteInput(): void {
+  const value = elements.queryInput.value;
+
+  // Only show autocomplete for slash commands
+  if (!value.startsWith("/")) {
+    hideAutocomplete();
+    return;
+  }
+
+  // Extract the partial command (after / but before any space)
+  const match = value.match(/^\/(\w*)/);
+  if (!match) {
+    hideAutocomplete();
+    return;
+  }
+
+  const partialCommand = match[1];
+
+  // Filter commands that match the partial input
+  const filtered = SLASH_COMMANDS.filter((cmd) =>
+    cmd.command.startsWith(partialCommand)
+  );
+
+  // Show all commands if no input after slash
+  if (partialCommand === "") {
+    showAutocomplete(SLASH_COMMANDS);
+  } else {
+    showAutocomplete(filtered);
+  }
+}
+
+/**
+ * Handle keyboard navigation for autocomplete
+ */
+function handleAutocompleteKeydown(e: KeyboardEvent): void {
+  if (elements.autocompleteDropdown.classList.contains("hidden")) {
+    return;
+  }
+
+  switch (e.key) {
+    case "ArrowDown":
+      e.preventDefault();
+      autocompleteSelectedIndex = Math.min(
+        autocompleteSelectedIndex + 1,
+        autocompleteFilteredCommands.length - 1
+      );
+      updateAutocompleteSelection();
+      break;
+
+    case "ArrowUp":
+      e.preventDefault();
+      autocompleteSelectedIndex = Math.max(autocompleteSelectedIndex - 1, -1);
+      updateAutocompleteSelection();
+      break;
+
+    case "Enter":
+      if (autocompleteSelectedIndex >= 0) {
+        e.preventDefault();
+        selectAutocompleteItem(autocompleteFilteredCommands[autocompleteSelectedIndex]);
+      }
+      break;
+
+    case "Escape":
+      e.preventDefault();
+      hideAutocomplete();
+      break;
+  }
+}
+
+/**
+ * Update visual selection in autocomplete dropdown
+ */
+function updateAutocompleteSelection(): void {
+  const items = elements.autocompleteDropdown.querySelectorAll(".autocomplete-item");
+  items.forEach((item, index) => {
+    item.classList.toggle("selected", index === autocompleteSelectedIndex);
+  });
+
+  // Scroll selected item into view
+  if (autocompleteSelectedIndex >= 0) {
+    const selectedItem = items[autocompleteSelectedIndex];
+    if (selectedItem instanceof HTMLElement) {
+      selectedItem.scrollIntoView({ block: "nearest" });
+    }
+  }
 }
 
 // ============================================================================

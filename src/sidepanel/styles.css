@@ -462,6 +462,7 @@ h3 {
 }
 
 .query-box {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -487,6 +488,55 @@ h3 {
 
 .query-box input::placeholder {
   color: var(--text-muted);
+}
+
+/* Autocomplete dropdown */
+.autocomplete-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.autocomplete-dropdown.hidden {
+  display: none;
+}
+
+.autocomplete-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover,
+.autocomplete-item.selected {
+  background: var(--bg-tertiary);
+}
+
+.autocomplete-item-command {
+  font-weight: 600;
+  color: var(--accent-color);
+}
+
+.autocomplete-item-description {
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 select {
