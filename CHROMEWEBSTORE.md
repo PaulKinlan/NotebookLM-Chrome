@@ -28,6 +28,8 @@ FolioLM helps you collect sources from tabs, bookmarks, and history, then query 
 
 • Flexible Configuration - Named credentials, per-notebook model overrides, and custom endpoints
 
+• Usage Analytics - Track token usage and costs per AI profile with visual charts (day/week/month/quarter/year views)
+
 • Keyboard Shortcuts - Quick actions without leaving your workflow:
   - Ctrl+Shift+F (Cmd+Shift+F): Open side panel
   - Ctrl+Shift+S (Cmd+Shift+S): Add current page

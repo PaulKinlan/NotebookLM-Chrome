@@ -25,6 +25,20 @@ import type { LanguageModel } from 'ai';
 export type AuthStyle = 'bearer' | 'x-api-key' | 'query' | 'none';
 
 /**
+ * Model pricing per million tokens (in USD)
+ */
+export interface ModelPricing {
+  inputPerMillion: number;   // Cost per million input tokens
+  outputPerMillion: number;  // Cost per million output tokens
+}
+
+/**
+ * Pricing map for models within a provider
+ * Key is the model ID (or prefix for wildcard matching)
+ */
+export type ProviderPricingMap = Record<string, ModelPricing>;
+
+/**
  * Provider feature flags
  */
 export interface ProviderFeatures {
@@ -95,6 +109,8 @@ export interface ProviderConfig<Id extends string = string> {
   commonModels?: readonly ModelOption[];
   /** Whether custom model IDs (not in the fetched list) are allowed. Default: true */
   allowCustomModels?: boolean;
+  /** Model pricing information for cost calculation */
+  pricing?: ProviderPricingMap;
 }
 
 // ============================================================================
@@ -106,9 +122,9 @@ export interface ProviderConfig<Id extends string = string> {
  * Used by: anthropic, zai-anthropic
  */
 function anthropicProvider(
-  config: { id: string; displayName: string; defaultModel: string; baseURL: string }
+  config: { id: string; displayName: string; defaultModel: string; baseURL: string; pricing?: ProviderPricingMap }
 ): ProviderConfig {
-  const { id, displayName, defaultModel, baseURL } = config;
+  const { id, displayName, defaultModel, baseURL, pricing } = config;
   return {
     id,
     displayName,
@@ -126,6 +142,7 @@ function anthropicProvider(
     group: 'Anthropic',
     createModel: (apiKey, modelId, baseURL) =>
       createAnthropic({ apiKey, baseURL })(modelId),
+    pricing,
   };
 }
 
@@ -143,9 +160,10 @@ function openAICompatibleProvider(
     authStyle?: 'bearer' | 'none';
     requiresApiKeyForFetching?: boolean;
     modelIdTransform?: ModelIdTransform;
+    pricing?: ProviderPricingMap;
   }
 ): ProviderConfig {
-  const { id, displayName, defaultModel, baseURL, modelsAPIEndpoint, authStyle, requiresApiKeyForFetching, modelIdTransform } = config;
+  const { id, displayName, defaultModel, baseURL, modelsAPIEndpoint, authStyle, requiresApiKeyForFetching, modelIdTransform, pricing } = config;
   return {
     id,
     displayName,
@@ -163,6 +181,7 @@ function openAICompatibleProvider(
     group: 'OpenAI-Compatible',
     createModel: (apiKey, modelId, baseURL) =>
       createOpenAICompatible({ name: id, apiKey, baseURL: baseURL ?? '' })(modelId),
+    pricing,
   };
 }
 
@@ -182,6 +201,21 @@ export const PROVIDER_REGISTRY = {
     displayName: 'Anthropic',
     defaultModel: 'claude-sonnet-4-5-20250514',
     baseURL: 'https://api.anthropic.com/v1',
+    pricing: {
+      // Claude 4.5 models
+      'claude-opus-4-5': { inputPerMillion: 15.00, outputPerMillion: 75.00 },
+      'claude-sonnet-4-5': { inputPerMillion: 3.00, outputPerMillion: 15.00 },
+      // Claude 4 models
+      'claude-4-opus': { inputPerMillion: 15.00, outputPerMillion: 75.00 },
+      'claude-4-sonnet': { inputPerMillion: 3.00, outputPerMillion: 15.00 },
+      // Claude 3.5 models
+      'claude-3-5-sonnet': { inputPerMillion: 3.00, outputPerMillion: 15.00 },
+      'claude-3-5-haiku': { inputPerMillion: 0.80, outputPerMillion: 4.00 },
+      // Claude 3 models
+      'claude-3-opus': { inputPerMillion: 15.00, outputPerMillion: 75.00 },
+      'claude-3-sonnet': { inputPerMillion: 3.00, outputPerMillion: 15.00 },
+      'claude-3-haiku': { inputPerMillion: 0.25, outputPerMillion: 1.25 },
+    },
   }),
 
   // ==========================================================================
@@ -207,6 +241,25 @@ export const PROVIDER_REGISTRY = {
     group: 'OpenAI',
     createModel: (apiKey: string, modelId: string, baseURL?: string) =>
       createOpenAI({ apiKey, baseURL })(modelId),
+    pricing: {
+      // GPT-5 models
+      'gpt-5': { inputPerMillion: 5.00, outputPerMillion: 15.00 },
+      'gpt-5-mini': { inputPerMillion: 0.30, outputPerMillion: 1.20 },
+      // GPT-4.1 models
+      'gpt-4.1': { inputPerMillion: 2.00, outputPerMillion: 8.00 },
+      'gpt-4.1-mini': { inputPerMillion: 0.40, outputPerMillion: 1.60 },
+      'gpt-4.1-nano': { inputPerMillion: 0.10, outputPerMillion: 0.40 },
+      // GPT-4o models
+      'gpt-4o': { inputPerMillion: 2.50, outputPerMillion: 10.00 },
+      'gpt-4o-mini': { inputPerMillion: 0.15, outputPerMillion: 0.60 },
+      // GPT-4 Turbo
+      'gpt-4-turbo': { inputPerMillion: 10.00, outputPerMillion: 30.00 },
+      // o1/o3 reasoning models
+      'o1': { inputPerMillion: 15.00, outputPerMillion: 60.00 },
+      'o1-mini': { inputPerMillion: 3.00, outputPerMillion: 12.00 },
+      'o3': { inputPerMillion: 10.00, outputPerMillion: 40.00 },
+      'o3-mini': { inputPerMillion: 1.10, outputPerMillion: 4.40 },
+    },
   },
 
   // ==========================================================================
@@ -257,6 +310,21 @@ export const PROVIDER_REGISTRY = {
     group: 'Google',
     createModel: (apiKey: string, modelId: string, _baseURL?: string) =>
       createGoogleGenerativeAI({ apiKey })(modelId),
+    pricing: {
+      // Gemini 3 series
+      'gemini-3-pro': { inputPerMillion: 1.25, outputPerMillion: 5.00 },
+      'gemini-3-flash': { inputPerMillion: 0.075, outputPerMillion: 0.30 },
+      // Gemini 2.5 series
+      'gemini-2.5-pro': { inputPerMillion: 1.25, outputPerMillion: 5.00 },
+      'gemini-2.5-flash': { inputPerMillion: 0.075, outputPerMillion: 0.30 },
+      'gemini-2.5-flash-lite': { inputPerMillion: 0.02, outputPerMillion: 0.08 },
+      // Gemini 2.0 series
+      'gemini-2.0-flash': { inputPerMillion: 0.10, outputPerMillion: 0.40 },
+      'gemini-2.0-flash-lite': { inputPerMillion: 0.025, outputPerMillion: 0.10 },
+      // Gemini 1.5 series
+      'gemini-1.5-pro': { inputPerMillion: 1.25, outputPerMillion: 5.00 },
+      'gemini-1.5-flash': { inputPerMillion: 0.075, outputPerMillion: 0.30 },
+    },
   },
 
   // ==========================================================================
@@ -299,6 +367,18 @@ export const PROVIDER_REGISTRY = {
       { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
       { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
     ] as const,
+    // Same pricing as Google AI Studio
+    pricing: {
+      'gemini-3-pro': { inputPerMillion: 1.25, outputPerMillion: 5.00 },
+      'gemini-3-flash': { inputPerMillion: 0.075, outputPerMillion: 0.30 },
+      'gemini-2.5-pro': { inputPerMillion: 1.25, outputPerMillion: 5.00 },
+      'gemini-2.5-flash': { inputPerMillion: 0.075, outputPerMillion: 0.30 },
+      'gemini-2.5-flash-lite': { inputPerMillion: 0.02, outputPerMillion: 0.08 },
+      'gemini-2.0-flash': { inputPerMillion: 0.10, outputPerMillion: 0.40 },
+      'gemini-2.0-flash-lite': { inputPerMillion: 0.025, outputPerMillion: 0.10 },
+      'gemini-1.5-pro': { inputPerMillion: 1.25, outputPerMillion: 5.00 },
+      'gemini-1.5-flash': { inputPerMillion: 0.075, outputPerMillion: 0.30 },
+    },
   },
 
   // ==========================================================================
@@ -324,6 +404,21 @@ export const PROVIDER_REGISTRY = {
     group: 'Groq',
     createModel: (apiKey: string, modelId: string, baseURL?: string) =>
       createGroq({ apiKey, baseURL })(modelId),
+    pricing: {
+      // Llama 3.3 models
+      'llama-3.3-70b-versatile': { inputPerMillion: 0.59, outputPerMillion: 0.79 },
+      'llama-3.3-70b-specdec': { inputPerMillion: 0.59, outputPerMillion: 0.99 },
+      // Llama 3.1 models
+      'llama-3.1-70b-versatile': { inputPerMillion: 0.59, outputPerMillion: 0.79 },
+      'llama-3.1-8b-instant': { inputPerMillion: 0.05, outputPerMillion: 0.08 },
+      // Llama 3 models
+      'llama3-70b-8192': { inputPerMillion: 0.59, outputPerMillion: 0.79 },
+      'llama3-8b-8192': { inputPerMillion: 0.05, outputPerMillion: 0.08 },
+      // Mixtral
+      'mixtral-8x7b-32768': { inputPerMillion: 0.24, outputPerMillion: 0.24 },
+      // Gemma
+      'gemma2-9b-it': { inputPerMillion: 0.20, outputPerMillion: 0.20 },
+    },
   },
 
   // ==========================================================================
@@ -362,6 +457,15 @@ export const PROVIDER_REGISTRY = {
     displayName: 'Mistral',
     defaultModel: 'mistral-large-latest',
     baseURL: 'https://api.mistral.ai/v1',
+    pricing: {
+      'mistral-large': { inputPerMillion: 2.00, outputPerMillion: 6.00 },
+      'mistral-medium': { inputPerMillion: 2.70, outputPerMillion: 8.10 },
+      'mistral-small': { inputPerMillion: 0.20, outputPerMillion: 0.60 },
+      'codestral': { inputPerMillion: 0.20, outputPerMillion: 0.60 },
+      'open-mixtral-8x22b': { inputPerMillion: 2.00, outputPerMillion: 6.00 },
+      'open-mixtral-8x7b': { inputPerMillion: 0.70, outputPerMillion: 0.70 },
+      'open-mistral-7b': { inputPerMillion: 0.25, outputPerMillion: 0.25 },
+    },
   }),
 
   // ==========================================================================
@@ -372,6 +476,14 @@ export const PROVIDER_REGISTRY = {
     displayName: 'Together AI',
     defaultModel: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
     baseURL: 'https://api.together.xyz/v1',
+    pricing: {
+      'Meta-Llama-3.1-405B': { inputPerMillion: 3.50, outputPerMillion: 3.50 },
+      'Meta-Llama-3.1-70B': { inputPerMillion: 0.88, outputPerMillion: 0.88 },
+      'Meta-Llama-3.1-8B': { inputPerMillion: 0.18, outputPerMillion: 0.18 },
+      'Mixtral-8x22B': { inputPerMillion: 1.20, outputPerMillion: 1.20 },
+      'Mixtral-8x7B': { inputPerMillion: 0.60, outputPerMillion: 0.60 },
+      'Qwen2.5-72B': { inputPerMillion: 1.20, outputPerMillion: 1.20 },
+    },
   }),
 
   // ==========================================================================
@@ -383,6 +495,13 @@ export const PROVIDER_REGISTRY = {
     defaultModel: 'meta-llama/Meta-Llama-3.1-70B-Instruct',
     baseURL: 'https://api.deepinfra.com/v1/openai',
     requiresApiKeyForFetching: false,
+    pricing: {
+      'Meta-Llama-3.1-405B': { inputPerMillion: 1.79, outputPerMillion: 1.79 },
+      'Meta-Llama-3.1-70B': { inputPerMillion: 0.35, outputPerMillion: 0.40 },
+      'Meta-Llama-3.1-8B': { inputPerMillion: 0.06, outputPerMillion: 0.06 },
+      'Mixtral-8x22B': { inputPerMillion: 0.65, outputPerMillion: 0.65 },
+      'Qwen2.5-72B': { inputPerMillion: 0.35, outputPerMillion: 0.40 },
+    },
   }),
 
   // ==========================================================================
@@ -395,6 +514,11 @@ export const PROVIDER_REGISTRY = {
     baseURL: 'https://api.perplexity.ai',
     modelsAPIEndpoint: 'https://openrouter.ai/api/v1/models',
     modelIdTransform: (id: string) => id.replace('perplexity/', ''),
+    pricing: {
+      'sonar': { inputPerMillion: 1.00, outputPerMillion: 1.00 },
+      'sonar-pro': { inputPerMillion: 3.00, outputPerMillion: 15.00 },
+      'sonar-reasoning': { inputPerMillion: 1.00, outputPerMillion: 5.00 },
+    },
   }),
 
   // ==========================================================================
@@ -405,6 +529,13 @@ export const PROVIDER_REGISTRY = {
     displayName: 'Fireworks AI',
     defaultModel: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
     baseURL: 'https://api.fireworks.ai/inference/v1',
+    pricing: {
+      'llama-v3p1-405b': { inputPerMillion: 3.00, outputPerMillion: 3.00 },
+      'llama-v3p1-70b': { inputPerMillion: 0.90, outputPerMillion: 0.90 },
+      'llama-v3p1-8b': { inputPerMillion: 0.20, outputPerMillion: 0.20 },
+      'mixtral-8x22b': { inputPerMillion: 0.90, outputPerMillion: 0.90 },
+      'qwen2p5-72b': { inputPerMillion: 0.90, outputPerMillion: 0.90 },
+    },
   }),
 
   // ==========================================================================
@@ -567,6 +698,68 @@ export function getAllProviders(): ProviderConfig[] {
   return Object.keys(PROVIDER_REGISTRY).filter(isValidProviderKey).map(
     (p) => PROVIDER_REGISTRY[p]
   );
+}
+
+// ============================================================================
+// Model Pricing
+// ============================================================================
+
+/**
+ * Get pricing for a specific model from a provider
+ * Uses prefix matching to find the best pricing entry for a model
+ *
+ * @param providerId - The provider ID
+ * @param modelId - The model ID to look up
+ * @returns ModelPricing if found, null if no pricing data available
+ */
+export function getModelPricing(providerId: string, modelId: string): ModelPricing | null {
+  const provider = getProviderConfigById(providerId);
+  if (!provider?.pricing) {
+    return null;
+  }
+
+  // Try exact match first
+  if (provider.pricing[modelId]) {
+    return provider.pricing[modelId];
+  }
+
+  // Try prefix matching (e.g., "claude-sonnet-4-5-20250514" matches "claude-sonnet-4-5")
+  // Sort keys by length (longest first) to get most specific match
+  const sortedKeys = Object.keys(provider.pricing).sort((a, b) => b.length - a.length);
+
+  for (const key of sortedKeys) {
+    if (modelId.startsWith(key) || modelId.includes(key)) {
+      return provider.pricing[key];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Calculate cost for a given number of tokens
+ *
+ * @param providerId - The provider ID
+ * @param modelId - The model ID
+ * @param inputTokens - Number of input/prompt tokens
+ * @param outputTokens - Number of output/completion tokens
+ * @returns Cost in USD, or null if pricing not available
+ */
+export function calculateTokenCost(
+  providerId: string,
+  modelId: string,
+  inputTokens: number,
+  outputTokens: number
+): number | null {
+  const pricing = getModelPricing(providerId, modelId);
+  if (!pricing) {
+    return null;
+  }
+
+  const inputCost = (inputTokens / 1_000_000) * pricing.inputPerMillion;
+  const outputCost = (outputTokens / 1_000_000) * pricing.outputPerMillion;
+
+  return inputCost + outputCost;
 }
 
 // ============================================================================

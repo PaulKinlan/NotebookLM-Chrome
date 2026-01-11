@@ -10,6 +10,7 @@ A browser extension that helps you collect sources from tabs, bookmarks, and his
 - **AI-Powered Chat**: Query your collected sources with natural language, with citations back to original content
 - **Multi-Provider Support**: 16+ AI providers including Anthropic, OpenAI, Google, Groq, Mistral, and Chrome Built-in AI
 - **Flexible Configuration**: Named credentials, per-notebook model overrides, and custom endpoints
+- **Usage Analytics**: Track token usage and estimated costs per AI profile with visual charts
 - **Transformations**: Convert your sources into 19 different formats:
   - **Educational**: Quiz, Flashcards, Study Guide
   - **Creative**: Podcast Script, Email, Slide Deck
@@ -120,10 +121,11 @@ src/
 │   ├── markdown-renderer.ts  # Markdown to HTML conversion
 │   ├── model-configs.ts # Model configuration management
 │   ├── permissions.ts   # Chrome permissions management
-│   ├── provider-registry.ts  # Centralized provider configuration
+│   ├── provider-registry.ts  # Centralized provider configuration with pricing
 │   ├── sandbox-renderer.ts   # Secure iframe rendering
 │   ├── settings.ts      # AI settings persistence
-│   └── storage.ts       # Storage adapter implementation
+│   ├── storage.ts       # Storage adapter implementation
+│   └── usage.ts         # Usage tracking and cost calculation
 ├── sandbox/             # Sandboxed iframe for AI content
 │   ├── sandbox.html
 │   └── sandbox.ts
@@ -192,6 +194,18 @@ Flexible model configuration system:
 - **Per-Notebook Override**: Each notebook can use a specific model config
 - **Default Chrome Built-in Profile**: Automatically created on first install
 - **Legacy Migration**: Seamlessly migrates from older AISettings format
+
+#### Usage Tracking (`src/lib/usage.ts`)
+
+Per-profile API usage tracking and cost monitoring:
+- **Automatic Tracking**: Records tokens (input/output) for all AI operations
+- **Cost Calculation**: Estimates costs based on embedded model pricing data
+- **Visual Analytics**: Bar chart showing tokens per day with cost overlay
+- **Time Range Selection**: View stats for day, week, month, quarter, or year
+- **Summary Statistics**: Total tokens, input/output breakdown, cost, request count
+- **Storage**: Usage records persisted in `chrome.storage.local`
+
+Access usage stats via the chart icon next to each AI profile in Settings.
 
 #### Sandbox Renderer (`src/lib/sandbox-renderer.ts`)
 

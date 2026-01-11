@@ -18,6 +18,16 @@ All data you create within FolioLM (notebooks, sources, and extracted content) i
 - Is not accessible to the extension author
 - Can be cleared at any time by removing the extension or clearing extension data
 
+### Usage Analytics Data
+
+FolioLM stores usage analytics data locally to help you understand your AI usage:
+
+- **What is stored**: Token counts (input/output), estimated costs, timestamps, and operation types for each AI request
+- **Storage key**: `usageRecords` in `chrome.storage.local`
+- **Retention**: Up to 10,000 records (oldest records are automatically removed when the limit is reached)
+- **Purpose**: Displayed in the usage statistics modal accessible from each AI profile's settings
+- **Privacy**: This data is stored entirely on your device and is never transmitted to any external server
+
 ## Third-Party AI Services
 
 FolioLM allows you to connect to third-party AI services to query and transform your content. These services include:
