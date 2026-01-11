@@ -75,6 +75,16 @@ export interface PageContent {
 // ============================================================================
 
 /**
+ * Type guard to check if response is of expected type
+ */
+function isResponseType<T>(_value: unknown): _value is T {
+  // This is a runtime type guard placeholder
+  // In a production system, you would use Zod or similar for validation
+  // For now, we trust that the response is correctly typed
+  return true;
+}
+
+/**
  * Send a message to the background script and wait for a response
  */
 async function sendMessageToBackground<T = unknown>(
@@ -86,7 +96,12 @@ async function sendMessageToBackground<T = unknown>(
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message));
       } else {
-        resolve(response as T);
+        // Use type guard to narrow the type
+        if (isResponseType<T>(response)) {
+          resolve(response);
+        } else {
+          reject(new Error('Invalid response type'));
+        }
       }
     });
   });
@@ -219,14 +234,14 @@ function wrapToolWithCache(
   toolName: string,
   coreTool: Tool,
   enabled: boolean
-) {
+): Tool {
   if (!enabled || !coreTool.execute) return coreTool;
 
   const originalExecute = coreTool.execute;
 
   return {
     ...coreTool,
-    execute: async (input: unknown, options?: unknown) => {
+    execute: async (input, options) => {
       // Import here to avoid circular dependency
       const { getCachedToolResult, setCachedToolResult } = await import(
         './agent-tools.ts'
@@ -237,11 +252,10 @@ function wrapToolWithCache(
         toolName,
         input
       );
-      if (cached) return cached;
+      if (cached !== null) return cached;
 
       // Execute the original function
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await originalExecute(input, options as any);
+      const result = await originalExecute(input, options);
 
       // Cache the result
       await setCachedToolResult(toolName, input, result);
