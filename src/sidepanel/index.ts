@@ -253,9 +253,6 @@ const elements = {
   permHistory: document.getElementById("perm-history") as HTMLInputElement,
   clearAllDataBtn: document.getElementById("clear-all-data-btn") as HTMLButtonElement,
 
-  // FAB
-  fab: document.getElementById("fab") as HTMLButtonElement,
-
   // Picker Modal
   pickerModal: document.getElementById("picker-modal") as HTMLDivElement,
   pickerTitle: document.getElementById("picker-title") as HTMLHeadingElement,
@@ -710,9 +707,6 @@ function setupEventListeners(): void {
   elements.aiBaseUrl.addEventListener("change", handleBaseUrlChange);
   */
 
-  // FAB
-  elements.fab.addEventListener("click", () => switchTab("add"));
-
   // Picker Modal
   elements.pickerClose?.addEventListener("click", closePicker);
   elements.pickerCancel?.addEventListener("click", closePicker);
@@ -735,12 +729,6 @@ function switchTab(tabName: string): void {
   elements.tabContents.forEach((content) => {
     content.classList.toggle("active", content.id === `tab-${tabName}`);
   });
-
-  // Show/hide FAB based on tab
-  elements.fab.classList.toggle(
-    "hidden",
-    tabName === "add" || tabName === "settings"
-  );
 
   // Refresh data when switching tabs
   if (tabName === "library") {

@@ -1701,33 +1701,6 @@ details.suggested-links-section[open] .suggested-links-chevron {
 }
 
 /* ============================================================================
-   FAB
-   ============================================================================ */
-
-.fab {
-  position: fixed;
-  bottom: 80px;
-  right: 16px;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent-primary);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-  transition: all 0.15s ease;
-}
-
-.fab:hover {
-  background: var(--accent-hover);
-  transform: scale(1.05);
-}
-
-/* ============================================================================
    Modal
    ============================================================================ */
 
