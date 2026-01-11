@@ -2520,11 +2520,17 @@ function handleAutocompleteInput(): void {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
     if (context) {
-      context.font = window.getComputedStyle(elements.queryInput).font;
+      const inputStyle = window.getComputedStyle(elements.queryInput);
+      context.font = inputStyle.font;
       const typedWidth = context.measureText(value).width;
 
-      // Set ghost text position and content
-      elements.autocompleteGhost.style.left = `${typedWidth}px`;
+      // Calculate position from input's computed styles
+      const paddingLeft = parseFloat(inputStyle.paddingLeft);
+      const paddingTop = parseFloat(inputStyle.paddingTop);
+
+      // Set ghost text position using computed padding values
+      elements.autocompleteGhost.style.left = `${paddingLeft + typedWidth}px`;
+      elements.autocompleteGhost.style.top = `${paddingTop}px`;
       elements.autocompleteGhost.textContent = fullCommand.slice(value.length);
     }
   } else {
