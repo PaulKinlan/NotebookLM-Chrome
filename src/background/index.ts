@@ -536,6 +536,15 @@ async function handleMessage(message: Message): Promise<unknown> {
     case "REBUILD_CONTEXT_MENUS":
       await buildContextMenus();
       return true;
+    // Browser tools
+    case "LIST_WINDOWS":
+      return handleListWindows();
+    case "LIST_TABS":
+      return handleListTabs(message.payload as { windowId?: number } | undefined);
+    case "LIST_TAB_GROUPS":
+      return handleListTabGroups();
+    case "READ_PAGE_CONTENT":
+      return handleReadPageContent(message.payload as { tabId: number });
     default:
       return null;
   }
@@ -779,4 +788,123 @@ async function handleAddSource(
   await saveSource(source);
 
   return true;
+}
+
+// ============================================================================
+// Browser Tools Handlers
+// ============================================================================
+
+async function handleListWindows(): Promise<{ windows: Array<{
+  id: number;
+  focused: boolean;
+  type: 'normal' | 'popup' | 'panel' | 'app' | 'devtools';
+  state: 'normal' | 'minimized' | 'maximized' | 'fullscreen';
+}> }> {
+  const windows = await chrome.windows.getAll({
+    populate: false,
+    windowTypes: ['normal', 'popup', 'panel', 'devtools'],
+  });
+
+  return {
+    windows: windows
+      .filter((w): w is chrome.windows.Window & { id: number } => w.id !== undefined)
+      .map((w) => ({
+        id: w.id,
+        focused: w.focused ?? false,
+        type: (w.type || 'normal') as 'normal' | 'popup' | 'panel' | 'app' | 'devtools',
+        state: (w.state || 'normal') as 'normal' | 'minimized' | 'maximized' | 'fullscreen',
+      })),
+  };
+}
+
+async function handleListTabs(payload: { windowId?: number } | undefined): Promise<{
+  tabs: Array<{
+    id: number;
+    windowId: number;
+    index: number;
+    title: string;
+    url: string;
+    active: boolean;
+    pinned: boolean;
+    groupId: number;
+  }>;
+}> {
+  const tabs = await chrome.tabs.query(
+    payload?.windowId ? { windowId: payload.windowId } : {}
+  );
+
+  return {
+    tabs: tabs
+      .filter((t): t is chrome.tabs.Tab & { id: number } => t.id !== undefined)
+      .map((t) => ({
+        id: t.id,
+        windowId: t.windowId,
+        index: t.index,
+        title: t.title || '',
+        url: t.url || 'about:blank',
+        active: t.active,
+        pinned: t.pinned,
+        groupId: t.windowId,
+      })),
+  };
+}
+
+async function handleListTabGroups(): Promise<{
+  tabGroups: Array<{
+    id: number;
+    windowId: number;
+    title: string;
+    color: chrome.tabGroups.ColorEnum;
+    collapsed: boolean;
+  }>;
+}> {
+  const tabGroups = await chrome.tabGroups.query({});
+
+  return {
+    tabGroups: tabGroups.map((tg) => ({
+      id: tg.id,
+      windowId: tg.windowId,
+      title: tg.title || '',
+      color: tg.color,
+      collapsed: tg.collapsed,
+    })),
+  };
+}
+
+async function handleReadPageContent(payload: { tabId: number }): Promise<{
+  tabId: number;
+  title: string;
+  url: string;
+  content: string;
+} | null> {
+  const { tabId } = payload;
+
+  // Get tab info
+  const tab = await chrome.tabs.get(tabId);
+  if (!tab?.id || !tab.url) {
+    return null;
+  }
+
+  try {
+    // Wait for the tab to finish loading
+    await waitForTabLoad(tab.id);
+
+    // Ensure content script is injected
+    await ensureContentScript(tab.id);
+
+    // Request extraction from content script
+    const result = await chrome.tabs.sendMessage(tab.id, {
+      action: "extractContent",
+    });
+
+    return {
+      tabId: tab.id,
+      title: result.title || tab.title,
+      url: result.url || tab.url,
+      content: result.textContent || result.content,
+    };
+  } catch (error) {
+    console.error(`Failed to read content from tab ${tabId}:`, error);
+    return null;
+  }
 }
