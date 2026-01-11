@@ -26,14 +26,28 @@ turndownService.addRule('remove-images', {
 });
 
 /**
+ * Type guard to check if a Node is a Document
+ */
+function isDocument(node: Node): node is Document {
+  return node.nodeType === Node.DOCUMENT_NODE;
+}
+
+/**
  * Try to extract content using Readability.js for better article parsing.
  * Returns null if Readability fails or produces poor results.
  */
 function tryReadability(): { content: string; title: string } | null {
   try {
     // Clone the document to avoid modifying the original
-    const documentClone = document.cloneNode(true) as Document;
-    const reader = new Readability(documentClone, {
+    const clonedNode = document.cloneNode(true);
+
+    // Verify the clone is a Document node
+    if (!isDocument(clonedNode)) {
+      console.warn('Clone did not produce a Document node');
+      return null;
+    }
+
+    const reader = new Readability(clonedNode, {
       charThreshold: 100,
     });
     const article = reader.parse();

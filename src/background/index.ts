@@ -272,7 +272,8 @@ async function buildContextMenus(): Promise<void> {
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  const menuId = info.menuItemId as string;
+  // Type guard for menuItemId
+  const menuId = typeof info.menuItemId === 'string' ? info.menuItemId : String(info.menuItemId);
 
   // Open side panel immediately (must be in direct response to user gesture)
   if (tab?.id) {
@@ -443,7 +444,9 @@ async function extractLinksFromSelection(tabId: number): Promise<string[]> {
       return [];
     }
 
-    return (result[0].result as string[]) || [];
+    // Type guard for script result
+    const scriptResult = result[0].result;
+    return Array.isArray(scriptResult) ? scriptResult : [];
   } catch (error) {
     console.error("Error extracting links from selection:", error);
     return [];
@@ -501,50 +504,96 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
+// User-defined type guard for ContentExtractionResult
+function isContentExtractionResult(obj: unknown): obj is ContentExtractionResult {
+  if (typeof obj !== 'object' || obj === null) {
+    return false;
+  }
+
+  // Use 'in' operator with type narrowing
+  return (
+    'url' in obj &&
+    'content' in obj &&
+    'title' in obj &&
+    'textContent' in obj &&
+    typeof obj.url === 'string' &&
+    typeof obj.content === 'string' &&
+    typeof obj.title === 'string' &&
+    typeof obj.textContent === 'string'
+  );
+}
+
 async function handleMessage(message: Message): Promise<unknown> {
   switch (message.type) {
     case "EXTRACT_CONTENT":
       return extractContentFromActiveTab();
     case "EXTRACT_FROM_URL": {
-      const payload = message.payload as { url: string; notebookId: string } | string;
-      // Support both old format (just URL string) and new format (object with url and notebookId)
-      if (typeof payload === "string") {
+      // Type-safe payload extraction - support both string URL and object with { url, notebookId }
+      const payload = message.payload;
+
+      if (typeof payload === 'string') {
+        // Old format: just URL string
         return extractContentFromUrl(payload);
       }
-      const { url, notebookId } = payload;
-      const result = await extractContentFromUrl(url);
-      if (result && notebookId) {
-        const source = createSource(
-          notebookId,
-          "tab",
-          result.url,
-          result.title,
-          result.content,
-          result.links
-        );
-        await saveSource(source);
-        await setActiveNotebookId(notebookId);
-        chrome.runtime
-          .sendMessage({ type: "SOURCE_ADDED", payload: source })
-          .catch(() => {});
-        return { success: true, source };
+
+      if (payload && typeof payload === 'object' && 'url' in payload && typeof payload.url === 'string') {
+        const { url, notebookId } = payload as { url: string; notebookId?: string };
+        const result = await extractContentFromUrl(url);
+
+        // If notebookId is provided, create and save the source
+        if (result && notebookId) {
+          const source = createSource(
+            notebookId,
+            "tab",
+            result.url,
+            result.title,
+            result.content,
+            result.links
+          );
+          await saveSource(source);
+          await setActiveNotebookId(notebookId);
+          chrome.runtime
+            .sendMessage({ type: "SOURCE_ADDED", payload: source })
+            .catch(() => {});
+          return { success: true, source };
+        }
+        return result;
       }
-      return result;
+
+      return null;
     }
-    case "ADD_SOURCE":
-      return handleAddSource(message.payload as ContentExtractionResult);
+    case "ADD_SOURCE": {
+      // Type guard for ContentExtractionResult
+      const payload = message.payload;
+      if (isContentExtractionResult(payload)) {
+        return handleAddSource(payload);
+      }
+      return null;
+    }
     case "REBUILD_CONTEXT_MENUS":
       await buildContextMenus();
       return true;
     // Browser tools
     case "LIST_WINDOWS":
       return handleListWindows();
-    case "LIST_TABS":
-      return handleListTabs(message.payload as { windowId?: number } | undefined);
+    case "LIST_TABS": {
+      // Type guard for windowId payload
+      const payload = message.payload;
+      const windowId = (payload && typeof payload === 'object' && 'windowId' in payload)
+        ? (typeof payload.windowId === 'number' ? payload.windowId : undefined)
+        : undefined;
+      return handleListTabs(windowId !== undefined ? { windowId } : undefined);
+    }
     case "LIST_TAB_GROUPS":
       return handleListTabGroups();
-    case "READ_PAGE_CONTENT":
-      return handleReadPageContent(message.payload as { tabId: number });
+    case "READ_PAGE_CONTENT": {
+      // Type guard for tabId payload
+      const payload = message.payload;
+      if (payload && typeof payload === 'object' && 'tabId' in payload && typeof payload.tabId === 'number') {
+        return handleReadPageContent({ tabId: payload.tabId });
+      }
+      return null;
+    }
     default:
       return null;
   }
@@ -635,14 +684,24 @@ async function ensureContentScript(tabId: number): Promise<void> {
 
 // Inline content script injection for pages loaded before extension install
 function injectContentScript(): void {
+  // Use a document attribute to track extraction state (type-safe)
+  const EXTRACTION_ATTR = 'data-notebook-extracted';
+
+  const isExtracted = (): boolean => {
+    return document.documentElement.hasAttribute(EXTRACTION_ATTR);
+  };
+
+  const markExtracted = (): void => {
+    document.documentElement.setAttribute(EXTRACTION_ATTR, 'true');
+  };
+
   // Simple extraction if Turndown isn't available
-  if (
-    (window as unknown as { __notebookExtracted?: boolean }).__notebookExtracted
-  ) {
+  if (isExtracted()) {
     return;
   }
-  (window as unknown as { __notebookExtracted: boolean }).__notebookExtracted =
-    true;
+
+  // Mark as extracted
+  markExtracted();
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.action === "ping") {
@@ -656,7 +715,24 @@ function injectContentScript(): void {
       const url = window.location.href;
 
       // Remove script, style, nav, footer, etc.
-      const clone = document.body.cloneNode(true) as HTMLElement;
+      const clonedBody = document.body.cloneNode(true);
+
+      // Type guard for HTMLElement
+      if (!clonedBody || clonedBody.nodeType !== Node.ELEMENT_NODE) {
+        sendResponse({ url, title, markdown: '' });
+        return true;
+      }
+
+      // User-defined type guard for HTMLElement
+      function isHTMLElement(node: Node): node is HTMLElement {
+        return node.nodeType === Node.ELEMENT_NODE;
+      }
+
+      if (!isHTMLElement(clonedBody)) {
+        sendResponse({ url, title, markdown: '' });
+        return true;
+      }
+
       const removeSelectors = [
         "script",
         "style",
@@ -668,12 +744,14 @@ function injectContentScript(): void {
         "aside",
         "form",
       ];
+
       removeSelectors.forEach((sel) => {
-        clone.querySelectorAll(sel).forEach((el) => el.remove());
+        const elements = clonedBody.querySelectorAll(sel);
+        elements.forEach((el) => el.remove());
       });
 
       // Extract links before converting to text
-      const anchors = clone.querySelectorAll("a[href]");
+      const anchors = clonedBody.querySelectorAll("a[href]");
       const seen = new Set<string>();
       const links: Array<{ url: string; text: string; context: string }> = [];
       const noisePatterns = [
@@ -698,7 +776,8 @@ function injectContentScript(): void {
         links.push({ url: href, text, context });
       }
 
-      const textContent = clone.innerText || clone.textContent || "";
+      // Type-safe property access
+      const textContent = clonedBody.innerText || clonedBody.textContent || '';
       // Clean up whitespace
       const markdown = textContent
         .split("\n")
@@ -808,12 +887,25 @@ async function handleListWindows(): Promise<{ windows: Array<{
   return {
     windows: windows
       .filter((w): w is chrome.windows.Window & { id: number } => w.id !== undefined)
-      .map((w) => ({
-        id: w.id,
-        focused: w.focused ?? false,
-        type: (w.type || 'normal') as 'normal' | 'popup' | 'panel' | 'app' | 'devtools',
-        state: (w.state || 'normal') as 'normal' | 'minimized' | 'maximized' | 'fullscreen',
-      })),
+      .map((w) => {
+        // Type-safe narrowing with fallbacks
+        const windowType = w.type === 'normal' || w.type === 'popup' || w.type === 'panel' ||
+                          w.type === 'app' || w.type === 'devtools'
+                          ? w.type
+                          : 'normal';
+
+        const windowState = w.state === 'normal' || w.state === 'minimized' ||
+                           w.state === 'maximized' || w.state === 'fullscreen'
+                          ? w.state
+                          : 'normal';
+
+        return {
+          id: w.id,
+          focused: w.focused ?? false,
+          type: windowType,
+          state: windowState,
+        };
+      }),
   };
 }
 
