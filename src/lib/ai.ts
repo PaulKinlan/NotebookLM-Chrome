@@ -1,4 +1,4 @@
-import { streamText, generateText, type LanguageModel, type ToolSet } from 'ai';
+import { streamText, generateText, type LanguageModel, type ToolSet, type ModelMessage } from 'ai';
 import type { Source, Citation, Notebook, ChatEvent, ContextMode, StreamEvent } from '../types/index.ts';
 import { getActiveNotebookId, getNotebook } from './storage.ts';
 import { resolveModelConfig, type ResolvedModelConfig } from './model-configs.ts';
@@ -634,20 +634,136 @@ ${sourceContext}`;
 }
 
 /**
- * Build chat history for AI API from ChatEvents.
- * Filters out tool-result events and converts user/assistant events.
+ * Type guard to check if a value is JSON-serializable
  */
-function buildChatHistory(
-  history?: ChatEvent[]
-): Array<{ role: 'user' | 'assistant'; content: string }> {
+function isJSONValue(value: unknown): boolean {
+  // Primitives and null
+  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return true;
+  }
+  // Arrays
+  if (Array.isArray(value)) {
+    return true;
+  }
+  // Objects
+  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Build chat history for AI API from ChatEvents.
+ * Includes user messages, assistant messages with tool calls, and tool results.
+ */
+function buildChatHistory(history?: ChatEvent[]): ModelMessage[] {
   if (!history) return [];
-  return history
-    .filter((e) => e.type === 'user' || e.type === 'assistant')
-    .slice(-10)
-    .map((e) => ({
-      role: e.type,
-      content: e.content,
-    }));
+
+  // Use all history events - context compression handles token limits efficiently
+
+  const messages: ModelMessage[] = [];
+
+  for (const event of history) {
+    if (event.type === 'user') {
+      messages.push({
+        role: 'user',
+        content: event.content,
+      });
+    } else if (event.type === 'assistant') {
+      // If assistant has tool calls, format as content array
+      if (event.toolCalls && event.toolCalls.length > 0) {
+        type AssistantContent = Array<{ type: 'text'; text: string } | { type: 'tool-call'; toolName: string; toolCallId: string; input: Record<string, unknown> }>;
+
+        const content: AssistantContent = [];
+
+        // Add text content first (if any)
+        if (event.content) {
+          content.push({
+            type: 'text',
+            text: event.content,
+          });
+        }
+
+        // Add tool calls using Vercel AI SDK format (input instead of args)
+        for (const toolCall of event.toolCalls) {
+          content.push({
+            type: 'tool-call',
+            toolName: toolCall.toolName,
+            toolCallId: toolCall.toolCallId,
+            input: toolCall.args,
+          });
+        }
+
+        messages.push({
+          role: 'assistant',
+          content,
+        });
+      } else {
+        // No tool calls, just regular text message
+        messages.push({
+          role: 'assistant',
+          content: event.content,
+        });
+      }
+    } else if (event.type === 'tool-result') {
+      // Add tool result for the model to see
+      // ToolResultOutput format: { type: 'text' | 'json' | 'error-text' | 'error-json', value: string | JSONValue }
+
+      if (event.error) {
+        messages.push({
+          role: 'tool',
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              output: { type: 'error-text', value: event.error },
+            },
+          ],
+        });
+      } else if (typeof event.result === 'string') {
+        messages.push({
+          role: 'tool',
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              output: { type: 'text', value: event.result },
+            },
+          ],
+        });
+      } else if (isJSONValue(event.result)) {
+        // Runtime validation passed - use json type
+        messages.push({
+          role: 'tool',
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              output: { type: 'json', value: event.result },
+            },
+          ],
+        });
+      } else {
+        // Fallback for non-JSON-serializable results
+        messages.push({
+          role: 'tool',
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId: event.toolCallId,
+              toolName: event.toolName,
+              output: { type: 'error-text', value: 'Tool returned non-JSON-serializable result' },
+            },
+          ],
+        });
+      }
+    }
+  }
+
+  return messages;
 }
 
 function parseCitations(
