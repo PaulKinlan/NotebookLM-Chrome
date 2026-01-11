@@ -21,9 +21,13 @@
     "test:coverage:integration": "vitest run --project integration --coverage",
     "package:zip": "cd dist && zip -r ../foliolm-extension-v${npm_package_version}.zip .",
     "package": "npm run package:zip",
-    "release:patch": "npm version patch --no-git-tag-version && npm run build && npm run package && git commit -am \"chore(release): v$npm_package_version\" && git tag v$npm_package_version",
-    "release:minor": "npm version minor --no-git-tag-version && npm run build && npm run package && git commit -am \"chore(release): v$npm_package_version\" && git tag v$npm_package_version",
-    "release:major": "npm version major --no-git-tag-version && npm run build && npm run package && git commit -am \"chore(release): v$npm_package_version\" && git tag v$npm_package_version"
+    "version:patch": "node scripts/version.js patch",
+    "version:minor": "node scripts/version.js minor",
+    "version:major": "node scripts/version.js major",
+    "version:set": "node scripts/version.js",
+    "release:patch": "npm run version:patch && npm run build && npm run package",
+    "release:minor": "npm run version:minor && npm run build && npm run package",
+    "release:major": "npm run version:major && npm run build && npm run package"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.7",
