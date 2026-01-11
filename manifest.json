@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/chrome-manifest",
   "manifest_version": 3,
   "name": "FolioLM",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Collect and query content from tabs, bookmarks, and history - your AI research companion",
   "permissions": [
     "storage",
@@ -47,18 +47,28 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/index.ts"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/index.ts"
+      ],
       "run_at": "document_idle"
     }
   ],
   "sandbox": {
-    "pages": ["src/sandbox/sandbox.html"]
+    "pages": [
+      "src/sandbox/sandbox.html"
+    ]
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/sandbox/sandbox.html"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "src/sandbox/sandbox.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
