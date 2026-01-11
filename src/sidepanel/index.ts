@@ -568,8 +568,8 @@ function renderToolPermissions(config: ToolPermissionsConfig): void {
     item.className = "tool-permission-item";
 
     // Determine status
-    let statusClass = "not-visible";
-    let statusText = "Hidden";
+    let statusClass = "disabled";
+    let statusText = "Disabled";
     if (permission.visible) {
       if (permission.autoApproved) {
         statusClass = "auto-approved";
@@ -603,23 +603,23 @@ function renderToolPermissions(config: ToolPermissionsConfig): void {
         <div class="tool-permission-control">
           <input
             type="checkbox"
-            id="tool-visible-${toolName}"
+            id="tool-enabled-${toolName}"
             data-tool-name="${toolName}"
             data-action="visible"
             ${permission.visible ? "checked" : ""}
           />
-          <label for="tool-visible-${toolName}">Visible to AI</label>
+          <label for="tool-enabled-${toolName}">Enabled</label>
         </div>
         <div class="tool-permission-control">
           <input
             type="checkbox"
-            id="tool-requires-approval-${toolName}"
+            id="tool-no-approval-${toolName}"
             data-tool-name="${toolName}"
-            data-action="requiresApproval"
-            ${permission.requiresApproval ? "checked" : ""}
+            data-action="noApproval"
+            ${!permission.requiresApproval ? "checked" : ""}
             ${!permission.visible ? "disabled" : ""}
           />
-          <label for="tool-requires-approval-${toolName}">Requires Approval</label>
+          <label for="tool-no-approval-${toolName}">Do not require approval</label>
         </div>
       </div>
     `;
@@ -629,7 +629,7 @@ function renderToolPermissions(config: ToolPermissionsConfig): void {
 }
 
 /**
- * Handle toggling tool visibility
+ * Handle toggling tool enabled state
  */
 async function handleToggleToolVisible(toolName: string, visible: boolean): Promise<void> {
   const config = await getToolPermissions();
@@ -637,12 +637,12 @@ async function handleToggleToolVisible(toolName: string, visible: boolean): Prom
   // Update permission
   config.permissions[toolName].visible = visible;
 
-  // If making invisible, also clear any auto-approval
+  // If disabling, also clear any auto-approval
   if (!visible) {
     config.permissions[toolName].autoApproved = false;
   }
 
-  // If making visible but has no approval requirement, mark as auto-approved
+  // If enabling but has no approval requirement, mark as auto-approved
   if (visible && !config.permissions[toolName].requiresApproval) {
     config.permissions[toolName].autoApproved = true;
   }
@@ -859,8 +859,9 @@ function setupEventListeners(): void {
 
       if (action === "visible") {
         await handleToggleToolVisible(toolName, target.checked);
-      } else if (action === "requiresApproval") {
-        await handleToggleToolRequiresApproval(toolName, target.checked);
+      } else if (action === "noApproval") {
+        // Checkbox is "Do not require approval", so checked = no approval needed
+        await handleToggleToolRequiresApproval(toolName, !target.checked);
       }
     }
   });
