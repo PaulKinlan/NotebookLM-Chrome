@@ -48,7 +48,7 @@ function generateCacheKey(toolName: string, input: unknown): string {
 /**
  * Get cached tool result if available and not expired
  */
-async function getCachedToolResult<TINPUT, TOUTPUT>(
+export async function getCachedToolResult<TINPUT, TOUTPUT>(
   toolName: string,
   input: TINPUT
 ): Promise<TOUTPUT | null> {
@@ -79,7 +79,7 @@ async function getCachedToolResult<TINPUT, TOUTPUT>(
 /**
  * Cache tool result with TTL
  */
-async function setCachedToolResult<TINPUT, TOUTPUT>(
+export async function setCachedToolResult<TINPUT, TOUTPUT>(
   toolName: string,
   input: TINPUT,
   output: TOUTPUT
