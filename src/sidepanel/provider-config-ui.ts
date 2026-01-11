@@ -9,6 +9,7 @@
  */
 
 import type { Credential, ModelConfig, UsageTimeRange } from '../types/index.ts';
+import { maskApiKey } from './profile-ui-utils.ts';
 import {
   getCredentials,
   createCredential,
@@ -1827,14 +1828,6 @@ function renderUsageChart(dataPoints: Awaited<ReturnType<typeof getUsageDataPoin
   ctx.fillRect(padding.left + 80, rect.height - 25, 12, 12);
   ctx.fillStyle = textColor;
   ctx.fillText('Cost', padding.left + 96, rect.height - 15);
-}
-
-/**
- * Mask API key for display
- */
-function maskApiKey(apiKey: string): string {
-  if (apiKey.length <= 8) return '••••••••';
-  return apiKey.slice(0, 4) + '••••' + apiKey.slice(-4);
 }
 
 /**
