@@ -2406,11 +2406,20 @@ function hideAutocomplete(): void {
 
 /**
  * Select an autocomplete item and insert it into the input
+ * @param cmd - The command to select
+ * @param submit - Whether to submit the query after selection (default: false)
  */
-function selectAutocompleteItem(cmd: SlashCommand): void {
+function selectAutocompleteItem(cmd: SlashCommand, submit = false): void {
   elements.queryInput.value = `/${cmd.command} `;
   hideAutocomplete();
   elements.queryInput.focus();
+
+  if (submit) {
+    // Trigger query submission after a brief delay to allow input to update
+    setTimeout(() => {
+      handleQuery();
+    }, 0);
+  }
 }
 
 /**
@@ -2451,36 +2460,61 @@ function handleAutocompleteInput(): void {
  * Handle keyboard navigation for autocomplete
  */
 function handleAutocompleteKeydown(e: KeyboardEvent): void {
-  if (elements.autocompleteDropdown.classList.contains("hidden")) {
-    return;
-  }
+  // Check if autocomplete is visible
+  const isAutocompleteVisible = !elements.autocompleteDropdown.classList.contains("hidden");
 
   switch (e.key) {
     case "ArrowDown":
-      e.preventDefault();
-      autocompleteSelectedIndex = Math.min(
-        autocompleteSelectedIndex + 1,
-        autocompleteFilteredCommands.length - 1
-      );
-      updateAutocompleteSelection();
+      if (isAutocompleteVisible) {
+        e.preventDefault();
+        autocompleteSelectedIndex = Math.min(
+          autocompleteSelectedIndex + 1,
+          autocompleteFilteredCommands.length - 1
+        );
+        updateAutocompleteSelection();
+      }
       break;
 
     case "ArrowUp":
-      e.preventDefault();
-      autocompleteSelectedIndex = Math.max(autocompleteSelectedIndex - 1, -1);
-      updateAutocompleteSelection();
+      if (isAutocompleteVisible) {
+        e.preventDefault();
+        autocompleteSelectedIndex = Math.max(autocompleteSelectedIndex - 1, -1);
+        updateAutocompleteSelection();
+      }
       break;
 
     case "Enter":
-      if (autocompleteSelectedIndex >= 0) {
+      if (isAutocompleteVisible) {
+        // High certainty: only one match, select and submit
+        if (autocompleteFilteredCommands.length === 1) {
+          e.preventDefault();
+          selectAutocompleteItem(autocompleteFilteredCommands[0], true);
+        }
+        // User explicitly selected an item with arrows
+        else if (autocompleteSelectedIndex >= 0) {
+          e.preventDefault();
+          selectAutocompleteItem(autocompleteFilteredCommands[autocompleteSelectedIndex], true);
+        }
+        // Otherwise let the event bubble through to normal submission
+      }
+      break;
+
+    case "Tab":
+      if (isAutocompleteVisible) {
         e.preventDefault();
-        selectAutocompleteItem(autocompleteFilteredCommands[autocompleteSelectedIndex]);
+        // Select first item if nothing selected, or current selection
+        const indexToSelect = autocompleteSelectedIndex >= 0 ? autocompleteSelectedIndex : 0;
+        if (autocompleteFilteredCommands[indexToSelect]) {
+          selectAutocompleteItem(autocompleteFilteredCommands[indexToSelect], false);
+        }
       }
       break;
 
     case "Escape":
-      e.preventDefault();
-      hideAutocomplete();
+      if (isAutocompleteVisible) {
+        e.preventDefault();
+        hideAutocomplete();
+      }
       break;
   }
 }
