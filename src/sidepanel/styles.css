@@ -490,6 +490,8 @@ h3 {
 .query-input-wrapper {
   position: relative;
   flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 .query-input-wrapper input {
@@ -497,19 +499,28 @@ h3 {
   z-index: 2;
   background: transparent;
   caret-color: var(--text-primary);
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: normal;
 }
 
 .autocomplete-ghost {
   position: absolute;
-  top: 0;
   left: 0;
   z-index: 1;
   pointer-events: none;
   color: var(--text-muted);
-  opacity: 0.5;
+  opacity: 0.4;
+  font-family: inherit;
   font-size: 14px;
   white-space: pre;
   overflow: hidden;
+  padding: 0;
+  margin: 0;
 }
 
 .autocomplete-ghost:empty {

@@ -2514,9 +2514,19 @@ function handleAutocompleteInput(): void {
   // Show ghost text for high-certainty matches (exact prefix or exact match)
   if (filteredCommands.length === 1 && filteredScores[0] >= 50) {
     const bestMatch = filteredCommands[0];
-    const remainingText = bestMatch.command.slice(partialCommand.length);
-    // Show ghost text with the remaining characters
-    elements.autocompleteGhost.textContent = remainingText;
+    const fullCommand = `/${bestMatch.command}`;
+
+    // Create a canvas to measure text width
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.font = window.getComputedStyle(elements.queryInput).font;
+      const typedWidth = context.measureText(value).width;
+
+      // Set ghost text position and content
+      elements.autocompleteGhost.style.left = `${typedWidth}px`;
+      elements.autocompleteGhost.textContent = fullCommand.slice(value.length);
+    }
   } else {
     elements.autocompleteGhost.textContent = "";
   }
