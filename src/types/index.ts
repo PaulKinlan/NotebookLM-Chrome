@@ -244,6 +244,30 @@ export interface ToolResult {
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired';
 
 /**
+ * Scope of tool approval - how long the approval lasts
+ */
+export type ApprovalScope = 'once' | 'session' | 'forever';
+
+/**
+ * Permission configuration for a specific tool
+ */
+export interface ToolPermission {
+  toolName: string;
+  visible: boolean;        // Whether tool is visible to LLM
+  requiresApproval: boolean; // Whether tool requires approval before execution
+  autoApproved: boolean;   // If true, tool is auto-approved (set when user approves 'forever')
+}
+
+/**
+ * Global tool permissions configuration
+ */
+export interface ToolPermissionsConfig {
+  permissions: Record<string, ToolPermission>;
+  sessionApprovals: string[]; // Tools approved for current session
+  lastModified: number;
+}
+
+/**
  * A request for user approval before executing a tool
  */
 export interface ToolApprovalRequest {
@@ -262,6 +286,7 @@ export interface ToolApprovalRequest {
 export interface ToolApprovalResponse {
   requestId: string;
   approved: boolean;
+  scope: ApprovalScope; // How long this approval lasts
   timestamp: number;
 }
 
