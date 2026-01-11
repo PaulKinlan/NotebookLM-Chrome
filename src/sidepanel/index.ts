@@ -2514,7 +2514,8 @@ function handleAutocompleteInput(): void {
   // Show ghost text for high-certainty matches (exact prefix or exact match)
   if (filteredCommands.length === 1 && filteredScores[0] >= 50) {
     const bestMatch = filteredCommands[0];
-    const fullCommand = `/${bestMatch.command}`;
+    // Show full usage (including parameters) in ghost text
+    const fullUsage = bestMatch.usage;
 
     // Create a canvas to measure text width
     const canvas = document.createElement("canvas");
@@ -2531,7 +2532,7 @@ function handleAutocompleteInput(): void {
       // Set ghost text position using computed padding values
       elements.autocompleteGhost.style.left = `${paddingLeft + typedWidth}px`;
       elements.autocompleteGhost.style.top = `${paddingTop}px`;
-      elements.autocompleteGhost.textContent = fullCommand.slice(value.length);
+      elements.autocompleteGhost.textContent = fullUsage.slice(value.length);
     }
   } else {
     elements.autocompleteGhost.textContent = "";
@@ -2591,10 +2592,17 @@ function handleAutocompleteKeydown(e: KeyboardEvent): void {
       // Check for ghost text first (high-certainty autocomplete)
       if (elements.autocompleteGhost.textContent) {
         e.preventDefault();
-        // Accept the ghost text completion
+        // Complete only the command part (not the usage parameters)
+        // Ghost text shows usage suffix, extract just the command name
         const value = elements.queryInput.value;
         const ghostText = elements.autocompleteGhost.textContent;
-        elements.queryInput.value = value + ghostText;
+        const fullSuggestion = value + ghostText;
+
+        // Extract just the command name (up to first space or end)
+        const commandMatch = fullSuggestion.match(/^\/\S+/);
+        if (commandMatch) {
+          elements.queryInput.value = commandMatch[0] + " ";
+        }
         elements.autocompleteGhost.textContent = "";
         hideAutocomplete();
         elements.queryInput.focus();
@@ -2615,9 +2623,16 @@ function handleAutocompleteKeydown(e: KeyboardEvent): void {
       if (elements.autocompleteGhost.textContent &&
           elements.queryInput.selectionStart === elements.queryInput.value.length) {
         e.preventDefault();
+        // Complete only the command part (not the usage parameters)
         const value = elements.queryInput.value;
         const ghostText = elements.autocompleteGhost.textContent;
-        elements.queryInput.value = value + ghostText;
+        const fullSuggestion = value + ghostText;
+
+        // Extract just the command name (up to first space or end)
+        const commandMatch = fullSuggestion.match(/^\/\S+/);
+        if (commandMatch) {
+          elements.queryInput.value = commandMatch[0] + " ";
+        }
         elements.autocompleteGhost.textContent = "";
         // Keep cursor at end
         elements.queryInput.setSelectionRange(elements.queryInput.value.length, elements.queryInput.value.length);
