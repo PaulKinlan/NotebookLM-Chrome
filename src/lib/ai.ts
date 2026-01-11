@@ -108,7 +108,7 @@ async function getCompressionMode(): Promise<'two-pass' | 'single-pass'> {
 // Source Context Builder with LLM-Based Compression
 // ============================================================================
 
-interface SourceWithRelevance extends Source {
+export interface SourceWithRelevance extends Source {
   relevanceScore?: number;
   relevanceReason?: string;
 }
@@ -130,7 +130,7 @@ Preview: ${preview}${source.content.length > 150 ? '...' : ''}`;
 /**
  * Pass 1: Use LLM to rank sources by relevance to the query
  */
-async function rankSourceRelevance(
+export async function rankSourceRelevance(
   sources: Source[],
   query: string
 ): Promise<SourceWithRelevance[]> {
@@ -475,14 +475,22 @@ function buildAgenticSystemPrompt(
 
 AVAILABLE TOOLS:
 - listSources: Get metadata for all ${sourceCount} sources (id, title, url, type, word count)
+- findRelevantSources: Use LLM to rank sources by relevance to your query (returns scores 0.0-1.0 with explanations)
 - readSource: Read full content of a specific source by ID
 
 STRATEGY:
 1. Start by listing sources to understand what's available
-2. Identify which sources might be relevant to the user's query
-3. Read full content of relevant sources
+2. Use findRelevantSources when you need to narrow down sources for a specific query
+3. Read full content of the most relevant sources
 4. Always cite sources using [Source ID] format where ID is the source identifier
 5. Be efficient - don't read sources unless needed
+
+TIPS FOR USING findRelevantSources:
+- Call this tool when you have a specific query or topic
+- It returns sources ranked by relevance with explanations
+- Use a minScore of 0.7 to get only highly relevant sources
+- Use a minScore of 0.4 to get broadly relevant sources
+- Then call readSource on the top results
 
 CITATION FORMAT:
 When referencing information from a source, use:
