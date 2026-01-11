@@ -1,5 +1,5 @@
 import { streamText, generateText, type LanguageModel, type ToolSet } from 'ai';
-import type { Source, Citation, Notebook, ChatMessage, ContextMode, StreamEvent } from '../types/index.ts';
+import type { Source, Citation, Notebook, ChatEvent, ContextMode, StreamEvent } from '../types/index.ts';
 import { getActiveNotebookId, getNotebook } from './storage.ts';
 import { resolveModelConfig, type ResolvedModelConfig } from './model-configs.ts';
 import {
@@ -603,14 +603,21 @@ Source contents:
 ${sourceContext}`;
 }
 
+/**
+ * Build chat history for AI API from ChatEvents.
+ * Filters out tool-result events and converts user/assistant events.
+ */
 function buildChatHistory(
-  history?: ChatMessage[]
+  history?: ChatEvent[]
 ): Array<{ role: 'user' | 'assistant'; content: string }> {
   if (!history) return [];
-  return history.slice(-10).map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
+  return history
+    .filter((e) => e.type === 'user' || e.type === 'assistant')
+    .slice(-10)
+    .map((e) => ({
+      role: e.type,
+      content: e.content,
+    }));
 }
 
 function parseCitations(
@@ -723,7 +730,7 @@ function parseCitations(
 export async function* streamChat(
   sources: Source[],
   question: string,
-  history?: ChatMessage[],
+  history?: ChatEvent[],
   options?: {
     tools?: ToolSet;
     contextMode?: ContextMode;
@@ -868,7 +875,7 @@ export async function* streamChat(
 export async function chat(
   sources: Source[],
   question: string,
-  history?: ChatMessage[],
+  history?: ChatEvent[],
   onStatus?: (status: string) => void
 ): Promise<ChatResult> {
   const modelWithConfig = await getModelWithConfig();
