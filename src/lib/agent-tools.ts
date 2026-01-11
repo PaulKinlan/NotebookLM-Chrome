@@ -360,9 +360,30 @@ const sourceToolsRegistry: Record<string, ToolConfig> = {
 
 /**
  * Get tools with caching applied based on registry configuration
+ * Only includes tools that are visible according to permissions
  * Call this to get the tools object to pass to streamText()
  */
-export function getSourceTools() {
+export async function getSourceTools() {
+  const { getVisibleToolNames } = await import('./tool-permissions.ts');
+  const visibleTools = await getVisibleToolNames();
+
+  const result: Record<string, Tool> = {};
+
+  for (const [name, config] of Object.entries(sourceToolsRegistry)) {
+    // Only include visible tools
+    if (!visibleTools.includes(name)) {
+      continue;
+    }
+    result[name] = wrapToolWithCache(name, config.tool, config.cache ?? false);
+  }
+
+  return result;
+}
+
+/**
+ * Synchronous version - returns all tools (use async version for permission filtering)
+ */
+export function getSourceToolsSync() {
   const result: Record<string, Tool> = {};
 
   for (const [name, config] of Object.entries(sourceToolsRegistry)) {
@@ -375,8 +396,9 @@ export function getSourceTools() {
 /**
  * Direct access to tools (no caching applied by default)
  * Enable caching by setting `cache: true` in sourceToolsRegistry above
+ * @deprecated Use getSourceTools() async function instead
  */
-export const sourceTools = getSourceTools();
+export const sourceTools = getSourceToolsSync();
 
 // ============================================================================
 // Tool Approval Wrapper
@@ -384,6 +406,8 @@ export const sourceTools = getSourceTools();
 
 /**
  * Wraps a tool execute function to require user approval before execution.
+ *
+ * Checks if tool is auto-approved (permanently or for session) before prompting.
  *
  * Usage:
  *   export const deleteSource = tool({
@@ -405,6 +429,16 @@ export function withApproval<TArgs extends Record<string, unknown>, TResult>(
   executeFn: (args: TArgs) => Promise<TResult>
 ): (args: TArgs) => Promise<TResult> {
   return async (args: TArgs): Promise<TResult> => {
+    // Check if tool is auto-approved (permanently or for session)
+    const { isToolAutoApproved } = await import('./tool-permissions.ts');
+    const autoApproved = await isToolAutoApproved(toolName);
+
+    if (autoApproved) {
+      // Tool is auto-approved, execute directly
+      return await executeFn(args);
+    }
+
+    // Tool requires approval, prompt user
     const toolCallId = crypto.randomUUID();
 
     // Create approval request (persisted to IndexedDB)
