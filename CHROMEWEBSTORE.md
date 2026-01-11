@@ -128,6 +128,11 @@ Recommended screenshots for store listing:
   - Ctrl+Shift+N (Cmd+Shift+N): Create new notebook
   - Ctrl+Shift+E (Cmd+Shift+E): Add selected text as source
 - Shortcuts customizable via chrome://extensions/shortcuts
+- Context menu: Extract links from selected text on any webpage
+- Smart source ranking: LLM-powered relevance scoring for better query results
+- Model selection UI: Robot icon button for easier model switching
+- Comprehensive test coverage: Added extensive unit tests for core modules
+- Developer tooling: Semantic versioning script for consistent releases
 
 ### v0.1.0
 - Initial release

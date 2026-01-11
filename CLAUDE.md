@@ -2,6 +2,61 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## MANDATORY: Documentation Updates Required for Every Change
+
+**CRITICAL REQUIREMENT:** Every code change MUST include updates to the relevant documentation files. This is NOT optional. Before completing ANY task, you MUST review and update the following documentation:
+
+### Required Documentation Files
+
+| File | When to Update |
+|------|----------------|
+| `PRD.md` | ANY feature change, new functionality, UI changes, acceptance criteria updates, roadmap changes, architecture changes, data model changes |
+| `PRIVACY.md` | ANY change affecting user data, permissions, third-party APIs, data storage, or data transmission |
+| `CHROMEWEBSTORE.md` | ANY user-facing feature change, permission changes, version releases, description updates |
+| `README.md` | ANY architecture changes, file structure changes, new dependencies, API changes |
+
+### Documentation Update Checklist
+
+Before marking ANY task as complete, you MUST verify:
+
+1. **PRD.md**
+   - [ ] Updated implementation status checkboxes
+   - [ ] Updated feature descriptions if behavior changed
+   - [ ] Added new features to the appropriate phase/section
+   - [ ] Updated acceptance criteria
+   - [ ] Updated roadmap status if applicable
+   - [ ] Updated data models if types changed
+   - [ ] Updated architecture diagrams if structure changed
+
+2. **PRIVACY.md**
+   - [ ] Updated "Last Updated" date if any privacy-related changes
+   - [ ] Updated permissions list if manifest.json changed
+   - [ ] Added new third-party services if integrated
+   - [ ] Updated data collection/storage sections if applicable
+
+3. **CHROMEWEBSTORE.md**
+   - [ ] Updated "Last Updated" date if any user-facing changes
+   - [ ] Updated feature list in descriptions
+   - [ ] Updated permissions justification if manifest.json changed
+   - [ ] Added to Version History for releases
+
+4. **README.md**
+   - [ ] Updated architecture sections if structure changed
+   - [ ] Updated file structure if files added/removed/moved
+   - [ ] Updated dependencies if package.json changed
+
+### Enforcement
+
+- **DO NOT** complete a task without reviewing these documentation files
+- **DO NOT** assume documentation is already up to date
+- **ALWAYS** read the relevant documentation files before making changes
+- **ALWAYS** update documentation in the SAME commit as the code changes
+- If you are unsure whether documentation needs updating, UPDATE IT
+
+This requirement exists because documentation drift causes significant maintenance burden. Every change, no matter how small, must keep documentation in sync.
+
+---
+
 ## Project Overview
 
 FolioLM (https://foliolm.com) is a browser extension that helps users collect sources from tabs, bookmarks, and history, then query and transform that content (e.g., create quizzes, podcasts, summaries).
@@ -141,13 +196,13 @@ When updating `PRIVACY.md`:
 3. Ensure the permissions list matches `manifest.json`
 4. Document any new third-party services and link to their privacy policies
 
-## Documentation Maintenance
+## Documentation Maintenance Details
 
-When making significant changes to the project, ensure documentation stays up to date:
+See the **MANDATORY: Documentation Updates Required for Every Change** section at the top of this file. The sections below provide additional detail on what to update in each file.
 
 ### CHROMEWEBSTORE.md
 
-**IMPORTANT:** Update `CHROMEWEBSTORE.md` whenever preparing a build for the Chrome Web Store. This file contains all store listing information and permission justifications.
+This file contains all store listing information and permission justifications.
 
 Update `CHROMEWEBSTORE.md` when:
 
@@ -165,6 +220,26 @@ When updating `CHROMEWEBSTORE.md`:
 3. Update the **Detailed Description** if features have changed
 4. Add a new entry to **Version History** for the release
 5. Ensure **Data Usage Disclosure** accurately reflects current behavior
+
+### PRD.md
+
+The PRD (Product Requirements Document) is the source of truth for product features and implementation status. Update it when:
+
+- Adding **new features** (add to appropriate phase section)
+- Completing features (check off acceptance criteria checkboxes)
+- Changing **existing functionality** (update feature descriptions)
+- Modifying **data models** (update Data Models section)
+- Adding new **source types** or **transformation types**
+- Changing the **roadmap** or priorities
+- Updating **architecture** decisions
+
+When updating `PRD.md`:
+
+1. Update **Implementation Status** checkboxes to reflect current state
+2. Add new features to the correct phase (P0, P1, P2, P3, Future)
+3. Write clear **Acceptance Criteria** for new features
+4. Keep the **Architecture** section aligned with actual implementation
+5. Update **Data Models** TypeScript interfaces when types change
 
 ### README.md
 
