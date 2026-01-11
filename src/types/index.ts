@@ -359,7 +359,12 @@ export type MessageType =
   | 'CREATE_NOTEBOOK_AND_ADD_PAGE'
   | 'CREATE_NOTEBOOK_AND_ADD_LINK'
   | 'CREATE_NOTEBOOK_AND_ADD_SELECTION'
-  | 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS';
+  | 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS'
+  // Browser tools messages
+  | 'LIST_WINDOWS'
+  | 'LIST_TABS'
+  | 'LIST_TAB_GROUPS'
+  | 'READ_PAGE_CONTENT';
 
 export interface Message<T = unknown> {
   type: MessageType;
