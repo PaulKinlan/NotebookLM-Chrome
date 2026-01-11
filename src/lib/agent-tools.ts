@@ -5,7 +5,7 @@
  * Uses AI SDK's tool() function for type-safe tool definitions with automatic validation.
  */
 
-import { tool } from 'ai';
+import { tool, type Tool } from 'ai';
 import { z } from 'zod';
 import { getSourcesByNotebook, getSource } from './storage.ts';
 import { dbGet, dbPut, dbDelete, dbGetAll } from './db.ts';
@@ -24,7 +24,7 @@ const TOOL_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 interface CachedToolResult {
   id: string;
   toolName: string;
-  input: Record<string, unknown>;
+  input: unknown;
   output: unknown;
   createdAt: number;
   expiresAt: number;
@@ -33,7 +33,7 @@ interface CachedToolResult {
 /**
  * Generate a cache key for a tool call
  */
-function generateCacheKey(toolName: string, input: Record<string, unknown>): string {
+function generateCacheKey(toolName: string, input: unknown): string {
   const inputStr = JSON.stringify(input);
   // Simple hash function for cache key
   let hash = 0;
@@ -48,10 +48,10 @@ function generateCacheKey(toolName: string, input: Record<string, unknown>): str
 /**
  * Get cached tool result if available and not expired
  */
-async function getCachedToolResult(
+async function getCachedToolResult<TINPUT, TOUTPUT>(
   toolName: string,
-  input: Record<string, unknown>
-): Promise<unknown | null> {
+  input: TINPUT
+): Promise<TOUTPUT | null> {
   const key = generateCacheKey(toolName, input);
 
   try {
@@ -69,7 +69,7 @@ async function getCachedToolResult(
       return null;
     }
 
-    return cached.output;
+    return cached.output as TOUTPUT;
   } catch {
     // If tool results store doesn't exist yet, just return null
     return null;
@@ -79,10 +79,10 @@ async function getCachedToolResult(
 /**
  * Cache tool result with TTL
  */
-async function setCachedToolResult(
+async function setCachedToolResult<TINPUT, TOUTPUT>(
   toolName: string,
-  input: Record<string, unknown>,
-  output: unknown
+  input: TINPUT,
+  output: TOUTPUT
 ): Promise<void> {
   const key = generateCacheKey(toolName, input);
   const now = Date.now();
@@ -134,6 +134,9 @@ export async function cleanupExpiredToolResults(): Promise<void> {
  *
  * Returns lightweight metadata (id, title, url, type, wordCount) for all sources.
  * Useful for understanding what sources are available before reading specific ones.
+ *
+ * Note: Caching is disabled by default. To enable caching, wrap with withCache():
+ *   execute: withCache('listSources', async ({ notebookId }) => { ... })
  */
 export const listSources = tool({
   description: 'Get metadata for all sources in a notebook, including id, title, url, type, and word count',
@@ -141,10 +144,6 @@ export const listSources = tool({
     notebookId: z.string().describe('The ID of the notebook to list sources from'),
   }),
   execute: async ({ notebookId }: { notebookId: string }) => {
-    // Check cache first
-    const cached = await getCachedToolResult('listSources', { notebookId });
-    if (cached) return cached as { sources: SourceMetadata[]; totalCount: number };
-
     const sources = await getSourcesByNotebook(notebookId);
 
     // Transform to lightweight metadata format
@@ -156,15 +155,10 @@ export const listSources = tool({
       wordCount: s.metadata?.wordCount || 0,
     }));
 
-    const result = {
+    return {
       sources: sourceMetadata,
       totalCount: sources.length,
     };
-
-    // Cache the result
-    await setCachedToolResult('listSources', { notebookId }, result);
-
-    return result;
   },
 });
 
@@ -173,6 +167,9 @@ export const listSources = tool({
  *
  * Returns complete source content including text and metadata.
  * Use this after listing sources to get detailed information about specific sources of interest.
+ *
+ * Note: Caching is disabled by default. To enable caching, wrap with withCache():
+ *   execute: withCache('readSource', async ({ sourceId }) => { ... })
  */
 export const readSource = tool({
   description: 'Get the full content of a specific source by its ID',
@@ -180,17 +177,13 @@ export const readSource = tool({
     sourceId: z.string().describe('The ID of the source to read'),
   }),
   execute: async ({ sourceId }: { sourceId: string }) => {
-    // Check cache first
-    const cached = await getCachedToolResult('readSource', { sourceId });
-    if (cached) return cached as SourceContent;
-
     const source = await getSource(sourceId);
 
     if (!source) {
       throw new Error(`Source ${sourceId} not found`);
     }
 
-    const result: SourceContent = {
+    return {
       id: source.id,
       title: source.title,
       url: source.url,
@@ -198,11 +191,6 @@ export const readSource = tool({
       content: source.content,
       metadata: source.metadata,
     };
-
-    // Cache the result
-    await setCachedToolResult('readSource', { sourceId }, result);
-
-    return result;
   },
 });
 
@@ -306,6 +294,81 @@ export interface SourceContent {
 }
 
 // ============================================================================
+// Tool Registry Configuration
+// ============================================================================
+
+/**
+ * Configuration for a tool in the registry
+ * Allows enabling caching per-tool at registration time
+ */
+interface ToolConfig {
+  /** The AI SDK tool definition */
+  tool: Tool;
+  /** Enable caching for this tool (default: false) */
+  cache?: boolean;
+}
+
+/**
+ * Wraps a tool execute function with caching if enabled in config
+ */
+function wrapToolWithCache(
+  toolName: string,
+  coreTool: Tool,
+  enabled: boolean
+) {
+  if (!enabled || !coreTool.execute) return coreTool;
+
+  const originalExecute = coreTool.execute;
+
+  return {
+    ...coreTool,
+    execute: async (input: unknown, options?: unknown) => {
+      // Check cache first
+      const cached = await getCachedToolResult<unknown, unknown>(toolName, input);
+      if (cached) return cached;
+
+      // Execute the original function
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = await originalExecute(input, options as any);
+
+      // Cache the result
+      await setCachedToolResult(toolName, input, result);
+
+      return result;
+    },
+  };
+}
+
+/**
+ * Tool registry with per-tool caching configuration
+ * Set `cache: true` to enable caching for a specific tool
+ */
+const sourceToolsRegistry: Record<string, ToolConfig> = {
+  listSources: { tool: listSources, cache: false },
+  readSource: { tool: readSource, cache: false },
+};
+
+/**
+ * Get tools with caching applied based on registry configuration
+ * Call this to get the tools object to pass to streamText()
+ */
+export function getSourceTools() {
+  const result: Record<string, Tool> = {};
+
+  for (const [name, config] of Object.entries(sourceToolsRegistry)) {
+    result[name] = wrapToolWithCache(name, config.tool, config.cache ?? false);
+  }
+
+  return result;
+}
+
+/**
+ * Direct access to tools (no caching applied by default)
+ * Enable caching by setting `cache: true` in sourceToolsRegistry above
+ */
+export const sourceTools = getSourceTools();
+
+// ============================================================================
 // Tool Approval Wrapper
 // ============================================================================
 
@@ -357,25 +420,6 @@ export function withApproval<TArgs extends Record<string, unknown>, TResult>(
     return await executeFn(args);
   };
 }
-
-// ============================================================================
-// Tool Registry
-// ============================================================================
-
-/**
- * All source-related tools
- * Pass these to streamText() when using agentic mode
- */
-export const sourceTools = {
-  listSources,
-  readSource,
-  findRelevantSources,
-};
-
-/**
- * Type for the source tools object
- */
-export type SourceTools = typeof sourceTools;
 
 // ============================================================================
 // Tool Approval Documentation
