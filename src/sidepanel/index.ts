@@ -6,6 +6,7 @@ import type {
   SuggestedLink,
   StreamEvent,
 } from "../types/index.ts";
+import DOMPurify from "dompurify";
 import { checkPermissions, requestPermission } from "../lib/permissions.ts";
 import { renderMarkdown, isHtmlContent } from "../lib/markdown-renderer.ts";
 import {
