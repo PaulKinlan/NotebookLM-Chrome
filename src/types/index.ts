@@ -52,6 +52,54 @@ export interface Notebook extends SyncableEntity {
   credentialOverrideId?: string;  // Optional: override credential for this notebook only
 }
 
+/**
+ * Base event interface - all chat events have these fields
+ */
+export interface BaseChatEvent {
+  id: string;
+  notebookId: string;
+  timestamp: number;
+}
+
+/**
+ * User message event
+ */
+export interface UserEvent extends BaseChatEvent {
+  type: 'user';
+  content: string;
+}
+
+/**
+ * Assistant message event - can contain inline tool calls
+ */
+export interface AssistantEvent extends BaseChatEvent {
+  type: 'assistant';
+  content: string;
+  citations?: Citation[];
+  toolCalls?: ToolCall[]; // Tool calls made during this response
+}
+
+/**
+ * Tool result event - separate timeline entry showing tool execution result
+ */
+export interface ToolResultEvent extends BaseChatEvent {
+  type: 'tool-result';
+  toolCallId: string;
+  toolName: string;
+  result: unknown;
+  error?: string;
+  duration?: number; // milliseconds
+}
+
+/**
+ * ChatEvent - union type for all events in chat history
+ * Replaces ChatMessage to support tool call and result persistence
+ */
+export type ChatEvent = UserEvent | AssistantEvent | ToolResultEvent;
+
+/**
+ * @deprecated Use ChatEvent instead. Kept for backward compatibility during migration.
+ */
 export interface ChatMessage {
   id: string;
   notebookId: string;
@@ -446,9 +494,9 @@ export interface StorageAdapter {
   saveSource(source: Source): Promise<void>;
   deleteSource(id: string): Promise<void>;
 
-  // Chat
-  getChatHistory(notebookId: string): Promise<ChatMessage[]>;
-  saveChatMessage(message: ChatMessage): Promise<void>;
+  // Chat Events
+  getChatHistory(notebookId: string): Promise<ChatEvent[]>;
+  saveChatEvent(event: ChatEvent): Promise<void>;
   clearChatHistory(notebookId: string): Promise<void>;
 
   // Transformations
