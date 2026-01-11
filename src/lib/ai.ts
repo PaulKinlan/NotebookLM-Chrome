@@ -219,11 +219,23 @@ Return the JSON ranking.`,
   try {
     // Handle potential markdown code fences around JSON
     const jsonText = rankingsResult.text.trim().replace(/^```json\s*|\s*```$/g, '');
-    const rankings = JSON.parse(jsonText) as Array<{
+    const parsedRankings = JSON.parse(jsonText);
+
+    // Type guard to ensure the parsed data has the correct structure
+    if (!Array.isArray(parsedRankings)) {
+      throw new Error('Rankings result is not an array');
+    }
+
+    const rankings: Array<{
       index: number;
       score: number;
       reason: string;
-    }>;
+    }> = parsedRankings.map((r) => {
+      if (typeof r.index !== 'number' || typeof r.score !== 'number' || typeof r.reason !== 'string') {
+        throw new Error('Invalid ranking item structure');
+      }
+      return r;
+    });
 
     // Map rankings back to sources
     const sourceMap = sources.map((s, i) => ({ ...s, originalIndex: i }));
@@ -322,10 +334,22 @@ Be accurate and concise. Focus on substantive content.`,
   try {
     // Handle potential markdown code fences around JSON
     const jsonText = summaryResult.text.trim().replace(/^```json\s*|\s*```$/g, '');
-    const parsed = JSON.parse(jsonText) as Array<{
+    const parsedSummaries = JSON.parse(jsonText);
+
+    // Type guard to ensure the parsed data has the correct structure
+    if (!Array.isArray(parsedSummaries)) {
+      throw new Error('Summaries result is not an array');
+    }
+
+    const parsed: Array<{
       index: number;
       summary: string;
-    }>;
+    }> = parsedSummaries.map((s) => {
+      if (typeof s.index !== 'number' || typeof s.summary !== 'string') {
+        throw new Error('Invalid summary item structure');
+      }
+      return s;
+    });
 
     for (const item of parsed) {
       const source = batch[item.index - 1];
@@ -367,8 +391,7 @@ Be accurate and concise. Focus on substantive content.`,
  * Faster but less intelligent than two-pass
  */
 function buildSourceContextSinglePass(
-  sources: Source[],
-  _query: string // Unused in single-pass mode, but kept for signature consistency
+  sources: Source[]
 ): string {
   if (sources.length === 0) return '';
 
@@ -442,7 +465,7 @@ async function buildSourceContext(
 
   // Single-pass mode: Use fixed strategy without LLM calls
   if (compressionMode === 'single-pass') {
-    return buildSourceContextSinglePass(sources, query);
+    return buildSourceContextSinglePass(sources);
   }
 
   // Two-pass mode: Use LLM-based ranking and summarization

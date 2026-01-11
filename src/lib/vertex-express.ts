@@ -15,6 +15,7 @@ import type {
   LanguageModelV3StreamResult,
   LanguageModelV3TextPart,
   LanguageModelV3Message,
+  LanguageModelV3StreamPart,
 } from '@ai-sdk/provider';
 import type { LanguageModel } from 'ai';
 
@@ -173,7 +174,7 @@ export class VertexExpressLanguageModel implements LanguageModelV3 {
   readonly provider = 'vertex-express' as const;
 
   // For URL support - Vertex doesn't support direct URL fetching
-  readonly supportedUrls = {} as Record<string, RegExp[]>;
+  readonly supportedUrls: Record<string, RegExp[]> = Object.freeze({});
 
   constructor(
     public readonly modelId: string,
@@ -312,17 +313,11 @@ export class VertexExpressLanguageModel implements LanguageModelV3 {
     // Track text ID for streaming
     const textId = crypto.randomUUID();
 
-    // Stream part types
-    type StreamPart =
-      | { type: 'text-start'; id: string }
-      | { type: 'text-delta'; id: string; delta: string }
-      | { type: 'text-end'; id: string };
-
     // Transform Vertex SSE stream to AI SDK format
     const stream = response.body;
-    const transformStream = new TransformStream<Uint8Array, StreamPart>({
+    const transformStream = new TransformStream<Uint8Array, LanguageModelV3StreamPart>({
       start(controller) {
-        controller.enqueue({ type: 'text-start', id: textId });
+        controller.enqueue({ type: 'text-delta', delta: '', id: textId });
       },
       async transform(chunk, controller) {
         const text = new TextDecoder().decode(chunk, { stream: true });
@@ -335,8 +330,8 @@ export class VertexExpressLanguageModel implements LanguageModelV3 {
               const textContent = data.candidates[0].content.parts[0].text;
               controller.enqueue({
                 type: 'text-delta',
-                id: textId,
                 delta: textContent,
+                id: textId,
               });
             }
           } catch {
@@ -344,13 +339,10 @@ export class VertexExpressLanguageModel implements LanguageModelV3 {
           }
         }
       },
-      flush(controller) {
-        controller.enqueue({ type: 'text-end', id: textId });
-      },
     });
 
     return {
-      stream: stream.pipeThrough(transformStream) as LanguageModelV3StreamResult['stream'],
+      stream: stream.pipeThrough(transformStream),
       request: {
         body: requestBody,
       },
@@ -360,10 +352,13 @@ export class VertexExpressLanguageModel implements LanguageModelV3 {
 
 /**
  * Create a Vertex Express model instance
+ *
+ * Returns a LanguageModelV3 implementation which is assignable to LanguageModel
+ * (LanguageModel = LanguageModelV3 | LanguageModelV2 | GlobalProviderModelId)
  */
 export function createVertexExpress(
   modelId: string,
   settings: VertexExpressSettings
 ): LanguageModel {
-  return new VertexExpressLanguageModel(modelId, settings) as LanguageModel;
+  return new VertexExpressLanguageModel(modelId, settings);
 }
