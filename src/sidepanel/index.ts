@@ -67,6 +67,8 @@ import {
   formatErrorForUser,
 } from "../lib/ai.ts";
 import { getSourceTools } from "../lib/agent-tools.ts";
+import { getToolPermissions } from "../lib/tool-permissions.ts";
+import type { ToolPermissionsConfig } from "../types/index.ts";
 import {
   getContextMode,
   setContextMode,
@@ -218,6 +220,8 @@ const elements = {
   toolBasedContext: getRequiredElementById("tool-based-context", HTMLInputElement),
   chromeToolsWarning: getRequiredElementById("chrome-tools-warning", HTMLParagraphElement),
   clearAllDataBtn: getRequiredElementById("clear-all-data-btn", HTMLButtonElement),
+  toolPermissionsList: getRequiredElementById("tool-permissions-list", HTMLDivElement),
+  resetToolPermissionsBtn: getRequiredElementById("reset-tool-permissions-btn", HTMLButtonElement),
 
   // FAB
   fab: getRequiredElementById("fab", HTMLButtonElement),
@@ -296,6 +300,9 @@ async function init(): Promise<void> {
 
   // Initialize approval UI
   initApprovalUI();
+
+  // Initialize tool permissions UI
+  await initToolPermissionsUI();
 
   // updateSettingsUI() is now handled by provider-config-ui.ts
   setupEventListeners();
@@ -532,6 +539,164 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
   showNotification(`Notebook created with ${addedCount} source${addedCount === 1 ? '' : 's'}`);
 }
 
+// ============================================================================
+// Tool Permissions UI
+// ============================================================================
+
+/**
+ * Initialize tool permissions UI
+ */
+async function initToolPermissionsUI(): Promise<void> {
+  const config = await getToolPermissions();
+  renderToolPermissions(config);
+}
+
+/**
+ * Render the tool permissions list
+ */
+function renderToolPermissions(config: ToolPermissionsConfig): void {
+  const container = elements.toolPermissionsList;
+  container.innerHTML = "";
+
+  const toolNames = Object.keys(config.permissions).sort();
+
+  for (const toolName of toolNames) {
+    const permission = config.permissions[toolName];
+    const isSessionApproved = config.sessionApprovals.includes(toolName);
+
+    const item = document.createElement("div");
+    item.className = "tool-permission-item";
+
+    // Determine status
+    let statusClass = "not-visible";
+    let statusText = "Hidden";
+    if (permission.visible) {
+      if (permission.autoApproved) {
+        statusClass = "auto-approved";
+        statusText = "Auto-Approved";
+      } else if (isSessionApproved) {
+        statusClass = "session-approved";
+        statusText = "Session-Approved";
+      } else if (permission.requiresApproval) {
+        statusClass = "requires-approval";
+        statusText = "Requires Approval";
+      } else {
+        statusClass = "auto-approved";
+        statusText = "Auto-Approved";
+      }
+    }
+
+    // Format tool name for display
+    const displayName = toolName
+      .replace(/([A-Z])/g, " $1")
+      .trim()
+      .replace(/^./, (s) => s.toUpperCase());
+
+    item.innerHTML = `
+      <div class="tool-permission-header">
+        <div class="tool-permission-name">
+          <strong>${escapeHtml(displayName)}</strong>
+          <span class="tool-permission-status ${statusClass}">${statusText}</span>
+        </div>
+      </div>
+      <div class="tool-permission-controls">
+        <div class="tool-permission-control">
+          <input
+            type="checkbox"
+            id="tool-visible-${toolName}"
+            data-tool-name="${toolName}"
+            data-action="visible"
+            ${permission.visible ? "checked" : ""}
+          />
+          <label for="tool-visible-${toolName}">Visible to AI</label>
+        </div>
+        <div class="tool-permission-control">
+          <input
+            type="checkbox"
+            id="tool-requires-approval-${toolName}"
+            data-tool-name="${toolName}"
+            data-action="requiresApproval"
+            ${permission.requiresApproval ? "checked" : ""}
+            ${!permission.visible ? "disabled" : ""}
+          />
+          <label for="tool-requires-approval-${toolName}">Requires Approval</label>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(item);
+  }
+}
+
+/**
+ * Handle toggling tool visibility
+ */
+async function handleToggleToolVisible(toolName: string, visible: boolean): Promise<void> {
+  const config = await getToolPermissions();
+
+  // Update permission
+  config.permissions[toolName].visible = visible;
+
+  // If making invisible, also clear any auto-approval
+  if (!visible) {
+    config.permissions[toolName].autoApproved = false;
+  }
+
+  // If making visible but has no approval requirement, mark as auto-approved
+  if (visible && !config.permissions[toolName].requiresApproval) {
+    config.permissions[toolName].autoApproved = true;
+  }
+
+  config.lastModified = Date.now();
+  await saveToolPermissions(config);
+  renderToolPermissions(config);
+}
+
+/**
+ * Handle toggling whether tool requires approval
+ */
+async function handleToggleToolRequiresApproval(toolName: string, requiresApproval: boolean): Promise<void> {
+  const config = await getToolPermissions();
+
+  // Update permission
+  config.permissions[toolName].requiresApproval = requiresApproval;
+
+  // If removing approval requirement, mark as auto-approved
+  if (!requiresApproval) {
+    config.permissions[toolName].autoApproved = true;
+  }
+
+  config.lastModified = Date.now();
+  await saveToolPermissions(config);
+  renderToolPermissions(config);
+}
+
+/**
+ * Handle resetting tool permissions to defaults
+ */
+async function handleResetToolPermissions(): Promise<void> {
+  // Reset to defaults by clearing and reloading
+  const { storage } = await import("../lib/storage.ts");
+  await storage.setSetting("toolPermissions", null);
+
+  const config = await getToolPermissions();
+  renderToolPermissions(config);
+
+  showNotification("Tool permissions reset to defaults");
+}
+
+/**
+ * Save tool permissions configuration
+ */
+async function saveToolPermissions(config: ToolPermissionsConfig): Promise<void> {
+  const { storage } = await import("../lib/storage.ts");
+  await storage.setSetting("toolPermissions", config);
+}
+
+// ============================================================================
+// Event Listeners
+// ============================================================================
+
 function setupEventListeners(): void {
   // Navigation
   elements.navItems.forEach((item) => {
@@ -679,6 +844,27 @@ function setupEventListeners(): void {
   elements.permHistory.addEventListener("change", () =>
     handlePermissionToggle("history")
   );
+  elements.resetToolPermissionsBtn.addEventListener("click", handleResetToolPermissions);
+
+  // Tool Permissions
+  elements.toolPermissionsList.addEventListener("change", async (e) => {
+    const target = e.target;
+    if (
+      target instanceof HTMLInputElement &&
+      target.dataset.toolName &&
+      target.dataset.action
+    ) {
+      const toolName = target.dataset.toolName;
+      const action = target.dataset.action;
+
+      if (action === "visible") {
+        await handleToggleToolVisible(toolName, target.checked);
+      } else if (action === "requiresApproval") {
+        await handleToggleToolRequiresApproval(toolName, target.checked);
+      }
+    }
+  });
+
   elements.toolBasedContext.addEventListener("change", async () => {
     const mode = elements.toolBasedContext.checked ? "agentic" : "classic";
     await setContextMode(mode);
@@ -2772,7 +2958,10 @@ function appendChatEvent(
         citationsEl.innerHTML = renderCitations(event.citations, sources);
       }
     }
-    return existingElement as HTMLDivElement;
+    if (existingElement instanceof HTMLDivElement) {
+      return existingElement;
+    }
+    throw new Error('existingElement is not an HTMLDivElement');
   }
 
   // Create new element based on event type
@@ -3261,19 +3450,23 @@ async function handleQuery(): Promise<void> {
         await saveChatEvent(toolResultEvent);
 
         // Create separate timeline entry for result
-        appendToolResultEventToChat(toolResultEvent as ChatEvent & { type: 'tool-result' });
+        if (toolResultEvent.type === 'tool-result') {
+          appendToolResultEventToChat(toolResultEvent);
+        }
       }
 
       elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
     }
 
     // Update the assistant event with final content, citations, and tool calls
-    (assistantEvent as ChatEvent & { type: 'assistant' }).content = fullContent;
-    if (citations.length > 0) {
-      (assistantEvent as ChatEvent & { type: 'assistant' }).citations = citations;
-    }
-    if (toolCalls.length > 0) {
-      (assistantEvent as ChatEvent & { type: 'assistant' }).toolCalls = toolCalls;
+    if (assistantEvent.type === 'assistant') {
+      assistantEvent.content = fullContent;
+      if (citations.length > 0) {
+        assistantEvent.citations = citations;
+      }
+      if (toolCalls.length > 0) {
+        assistantEvent.toolCalls = toolCalls;
+      }
     }
     await saveChatEvent(assistantEvent);
 
@@ -3312,8 +3505,10 @@ async function handleQuery(): Promise<void> {
 
     // Check if we have a cached response to fall back to
     if (cached) {
-      (assistantEvent as ChatEvent & { type: 'assistant' }).content = cached.response;
-      (assistantEvent as ChatEvent & { type: 'assistant' }).citations = cached.citations;
+      if (assistantEvent.type === 'assistant') {
+        assistantEvent.content = cached.response;
+        assistantEvent.citations = cached.citations;
+      }
       await saveChatEvent(assistantEvent);
 
       const contentEl = messageDiv.querySelector(".chat-message-content");
@@ -3336,7 +3531,9 @@ async function handleQuery(): Promise<void> {
     } else {
       // Show error in the message with user-friendly formatting
       const errorContent = `Failed to generate response: ${userFriendlyError}`;
-      (assistantEvent as ChatEvent & { type: 'assistant' }).content = errorContent;
+      if (assistantEvent.type === 'assistant') {
+        assistantEvent.content = errorContent;
+      }
       await saveChatEvent(assistantEvent);
 
       const contentEl = messageDiv.querySelector(".chat-message-content");

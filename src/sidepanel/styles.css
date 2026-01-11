@@ -1593,6 +1593,105 @@ details.suggested-links-section[open] .suggested-links-chevron {
   color: #f0b72e;
 }
 
+/* Tool Permissions */
+.tool-permissions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tool-permission-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease;
+}
+
+.tool-permission-item:hover {
+  border-color: var(--border-color);
+}
+
+.tool-permission-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tool-permission-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.tool-permission-name strong {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.tool-permission-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.tool-permission-status.auto-approved {
+  background: rgba(63, 185, 80, 0.15);
+  color: #3fb95c;
+}
+
+.tool-permission-status.session-approved {
+  background: rgba(105, 161, 255, 0.15);
+  color: #699fff;
+}
+
+.tool-permission-status.requires-approval {
+  background: rgba(210, 153, 34, 0.15);
+  color: #d29922;
+}
+
+.tool-permission-status.not-visible {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+
+.tool-permission-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tool-permission-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-permission-control label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.tool-permission-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-muted);
+}
+
 /* ============================================================================
    Bottom Navigation
    ============================================================================ */

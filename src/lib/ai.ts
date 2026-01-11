@@ -780,15 +780,18 @@ export async function* streamChat(
           }
           yield { type: 'text', content: chunk.text };
           break;
-        case 'tool-call':
+        case 'tool-call': {
           console.log('[Agentic Mode] Tool called:', chunk.toolName, chunk.input);
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+          const args = chunk.input !== null ? (chunk.input as Record<string, unknown>) : {};
           yield {
             type: 'tool-call',
             toolName: chunk.toolName,
-            args: chunk.input as Record<string, unknown>,
+            args,
             toolCallId: chunk.toolCallId,
           };
           break;
+        }
         case 'tool-result':
           console.log('[Agentic Mode] Tool result:', chunk.toolName, chunk.output);
           yield {
