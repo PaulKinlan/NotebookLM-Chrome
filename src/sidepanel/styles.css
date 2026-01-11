@@ -1301,26 +1301,6 @@ details.suggested-links-section[open] .suggested-links-chevron {
   min-width: 0;
 }
 
-.suggested-link-external {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  opacity: 0.7;
-  transition: opacity 0.15s ease, color 0.15s ease;
-  margin-top: 2px;
-}
-
-.suggested-link-external:hover {
-  opacity: 1;
-  color: var(--accent-color);
-}
-
-.suggested-link-external svg {
-  display: block;
-}
-
 .suggested-link-description {
   font-size: 13px;
   color: var(--text-secondary);
