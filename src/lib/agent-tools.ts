@@ -153,8 +153,8 @@ export async function cleanupExpiredToolResults(): Promise<void> {
  * Returns lightweight metadata (id, title, url, type, wordCount) for all sources.
  * Useful for understanding what sources are available before reading specific ones.
  *
- * Note: Caching is disabled by default. To enable caching, wrap with withCache():
- *   execute: withCache('listSources', async ({ notebookId }) => { ... })
+ * Note: Caching is disabled by default. To enable caching, set cache: true in
+ * sourceToolsRegistry.
  */
 export const listSources = tool({
   description: 'Get metadata for all sources in a notebook, including id, title, url, type, and word count',
@@ -186,8 +186,8 @@ export const listSources = tool({
  * Returns complete source content including text and metadata.
  * Use this after listing sources to get detailed information about specific sources of interest.
  *
- * Note: Caching is disabled by default. To enable caching, wrap with withCache():
- *   execute: withCache('readSource', async ({ sourceId }) => { ... })
+ * Note: Caching is disabled by default. To enable caching, set cache: true in
+ * sourceToolsRegistry.
  */
 export const readSource = tool({
   description: 'Get the full content of a specific source by its ID',
@@ -218,6 +218,9 @@ export const readSource = tool({
  * Returns sources ranked by relevance score (0.0-1.0) with explanations.
  * Use this when you need to find which sources are most relevant to a specific query
  * before reading them in detail.
+ *
+ * Note: Caching is disabled by default. To enable caching, set cache: true in
+ * sourceToolsRegistry.
  */
 export const findRelevantSources = tool({
   description: `Find sources relevant to a specific query using LLM-based relevance ranking.
@@ -243,11 +246,6 @@ Use this tool to narrow down which sources to read in detail.`,
       .describe('Minimum relevance score (0.0-1.0) to include'),
   }),
   execute: async ({ notebookId, query, maxSources, minScore }) => {
-    // Check cache first
-    const cacheKey = `${notebookId}:${query}:${maxSources}:${minScore}`;
-    const cached = await getCachedToolResult('findRelevantSources', { cacheKey });
-    if (cached) return cached;
-
     // Import the router function
     const { rankSourceRelevance } = await import('./ai.ts');
     const sources = await getSourcesByNotebook(notebookId);
@@ -260,7 +258,7 @@ Use this tool to narrow down which sources to read in detail.`,
       .filter(s => (s.relevanceScore ?? 0) >= minScore)
       .slice(0, maxSources);
 
-    const result = {
+    return {
       query,
       totalMatches: filtered.length,
       sources: filtered.map(s => ({
@@ -272,11 +270,6 @@ Use this tool to narrow down which sources to read in detail.`,
         relevanceReason: s.relevanceReason,
       }))
     };
-
-    // Cache the result
-    await setCachedToolResult('findRelevantSources', { cacheKey }, result);
-
-    return result;
   },
 });
 
