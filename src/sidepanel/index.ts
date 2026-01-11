@@ -173,6 +173,7 @@ const elements = {
   clearChatBtn: getRequiredElementById("clear-chat-btn", HTMLButtonElement),
   chatStatus: getRequiredElementById("chat-status", HTMLParagraphElement),
   autocompleteDropdown: getRequiredElementById("autocomplete-dropdown", HTMLDivElement),
+  autocompleteGhost: getRequiredElementById("autocomplete-ghost", HTMLSpanElement),
 
   // Summary section
   summarySection: getRequiredElementById("summary-section", HTMLDetailsElement),
@@ -2443,6 +2444,7 @@ function hideAutocomplete(): void {
   autocompleteSelectedIndex = -1;
   autocompleteFilteredCommands = [];
   autocompleteScores = [];
+  elements.autocompleteGhost.textContent = "";
 }
 
 /**
@@ -2452,6 +2454,7 @@ function hideAutocomplete(): void {
  */
 function selectAutocompleteItem(cmd: SlashCommand, submit = false): void {
   elements.queryInput.value = `/${cmd.command} `;
+  elements.autocompleteGhost.textContent = "";
   hideAutocomplete();
   elements.queryInput.focus();
 
@@ -2479,6 +2482,7 @@ function handleAutocompleteInput(): void {
   const match = value.match(/^\/(\w*)/);
   if (!match) {
     hideAutocomplete();
+    elements.autocompleteGhost.textContent = "";
     return;
   }
 
@@ -2487,6 +2491,7 @@ function handleAutocompleteInput(): void {
   // Show all commands if no input after slash
   if (partialCommand === "") {
     showAutocomplete(SLASH_COMMANDS, SLASH_COMMANDS.map(() => 0));
+    elements.autocompleteGhost.textContent = "";
     return;
   }
 
@@ -2505,6 +2510,16 @@ function handleAutocompleteInput(): void {
   // Extract commands and scores separately
   const filteredCommands = matched.map(({ cmd }) => cmd);
   const filteredScores = matched.map(({ score }) => score);
+
+  // Show ghost text for high-certainty matches (exact prefix or exact match)
+  if (filteredCommands.length === 1 && filteredScores[0] >= 50) {
+    const bestMatch = filteredCommands[0];
+    const remainingText = bestMatch.command.slice(partialCommand.length);
+    // Show ghost text with the remaining characters
+    elements.autocompleteGhost.textContent = remainingText;
+  } else {
+    elements.autocompleteGhost.textContent = "";
+  }
 
   showAutocomplete(filteredCommands, filteredScores);
 }
@@ -2557,13 +2572,39 @@ function handleAutocompleteKeydown(e: KeyboardEvent): void {
       break;
 
     case "Tab":
-      if (isAutocompleteVisible) {
+      // Check for ghost text first (high-certainty autocomplete)
+      if (elements.autocompleteGhost.textContent) {
+        e.preventDefault();
+        // Accept the ghost text completion
+        const value = elements.queryInput.value;
+        const ghostText = elements.autocompleteGhost.textContent;
+        elements.queryInput.value = value + ghostText;
+        elements.autocompleteGhost.textContent = "";
+        hideAutocomplete();
+        elements.queryInput.focus();
+      }
+      // Fall through to dropdown selection if no ghost text
+      else if (isAutocompleteVisible) {
         e.preventDefault();
         // Select first item if nothing selected, or current selection
         const indexToSelect = autocompleteSelectedIndex >= 0 ? autocompleteSelectedIndex : 0;
         if (autocompleteFilteredCommands[indexToSelect]) {
           selectAutocompleteItem(autocompleteFilteredCommands[indexToSelect], false);
         }
+      }
+      break;
+
+    case "ArrowRight":
+      // Accept ghost text if caret is at end of input
+      if (elements.autocompleteGhost.textContent &&
+          elements.queryInput.selectionStart === elements.queryInput.value.length) {
+        e.preventDefault();
+        const value = elements.queryInput.value;
+        const ghostText = elements.autocompleteGhost.textContent;
+        elements.queryInput.value = value + ghostText;
+        elements.autocompleteGhost.textContent = "";
+        // Keep cursor at end
+        elements.queryInput.setSelectionRange(elements.queryInput.value.length, elements.queryInput.value.length);
       }
       break;
 

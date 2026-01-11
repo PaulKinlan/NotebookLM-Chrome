@@ -266,7 +266,10 @@
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" id="query-input" placeholder="Ask a question about your sources..." autocomplete="off" />
+            <div class="query-input-wrapper">
+              <input type="text" id="query-input" placeholder="Ask a question about your sources..." autocomplete="off" />
+              <span id="autocomplete-ghost" class="autocomplete-ghost"></span>
+            </div>
             <button id="query-btn" class="icon-btn btn-primary">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="19" x2="12" y2="5"></line>

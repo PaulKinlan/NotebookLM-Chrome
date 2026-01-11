@@ -486,6 +486,36 @@ h3 {
   outline: none;
 }
 
+/* Autocomplete ghost text */
+.query-input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.query-input-wrapper input {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+  caret-color: var(--text-primary);
+}
+
+.autocomplete-ghost {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: none;
+  color: var(--text-muted);
+  opacity: 0.5;
+  font-size: 14px;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.autocomplete-ghost:empty {
+  display: none;
+}
+
 .query-box input::placeholder {
   color: var(--text-muted);
 }
