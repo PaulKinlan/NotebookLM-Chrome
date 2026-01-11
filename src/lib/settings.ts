@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS: AISettings = {
   provider: 'anthropic',
   model: 'claude-sonnet-4-5-20250514',
   apiKeys: {},
+  contextMode: 'classic',
 };
 
 export async function getAISettings(): Promise<AISettings> {
@@ -56,5 +57,16 @@ export async function setMaxTokens(maxTokens: number | undefined): Promise<void>
 export async function setBaseURL(baseURL: string | undefined): Promise<void> {
   const settings = await getAISettings();
   settings.baseURL = baseURL;
+  await saveAISettings(settings);
+}
+
+export async function getContextMode(): Promise<'classic' | 'agentic'> {
+  const settings = await getAISettings();
+  return settings.contextMode ?? 'classic';
+}
+
+export async function setContextMode(mode: 'classic' | 'agentic'): Promise<void> {
+  const settings = await getAISettings();
+  settings.contextMode = mode;
   await saveAISettings(settings);
 }
