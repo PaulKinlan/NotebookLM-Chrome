@@ -34,5 +34,6 @@
       "WebFetch(domain:web.dev)",
       "WebFetch(domain:developers.google.com)"
     ]
-  }
+  },
+  "model": "opus"
 }
