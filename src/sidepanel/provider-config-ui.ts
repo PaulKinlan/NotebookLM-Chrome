@@ -8,7 +8,7 @@
  * credential, that credential is reused instead of creating a duplicate.
  */
 
-import type { Credential, ModelConfig } from '../types/index.ts';
+import type { Credential, ModelConfig, UsageTimeRange } from '../types/index.ts';
 import {
   getCredentials,
   createCredential,
@@ -31,6 +31,13 @@ import {
 } from '../lib/provider-registry.ts';
 import { FuzzyDropdown, providersToDropdownOptions } from './dropdown.ts';
 import { testConnectionWithConfig } from '../lib/ai.ts';
+import {
+  getUsageStats,
+  getUsageDataPoints,
+  formatTokenCount,
+  formatCost,
+  getTimeRangeLabel,
+} from '../lib/usage.ts';
 
 /**
  * AI Profile - combined view model (not persisted)
@@ -288,6 +295,13 @@ function createProfileCard(profile: AIProfile): HTMLElement {
         <button class="profile-btn" ${modelConfig.isDefault ? 'disabled' : ''} data-action="set-default">
           ${modelConfig.isDefault ? 'Default' : 'Set Default'}
         </button>
+        <button class="profile-btn stats" data-action="stats" title="View usage stats">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="12" width="4" height="9"></rect>
+            <rect x="10" y="8" width="4" height="13"></rect>
+            <rect x="17" y="4" width="4" height="17"></rect>
+          </svg>
+        </button>
         <button class="profile-btn delete" data-action="delete">Delete</button>
       </div>
     `;
@@ -295,9 +309,10 @@ function createProfileCard(profile: AIProfile): HTMLElement {
     card.querySelectorAll('.profile-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const action = (e.target as HTMLButtonElement).dataset.action;
+        const action = (e.target as HTMLButtonElement).dataset.action ?? (e.target as SVGElement).closest('button')?.dataset.action;
         if (action === 'edit') handleEditProfile(modelConfig.id);
         else if (action === 'set-default') handleSetDefaultProfile(modelConfig.id);
+        else if (action === 'stats') handleShowUsageStats(modelConfig.id, modelConfig.name);
         else if (action === 'delete') handleDeleteProfile(modelConfig.id);
       });
     });
@@ -1437,6 +1452,296 @@ async function handleDeleteProfile(profileId: string): Promise<void> {
     console.error('Failed to delete profile:', error);
     showNotification(error instanceof Error ? error.message : 'Failed to delete profile', 'error');
   }
+}
+
+// ============================================================================
+// Usage Stats Modal
+// ============================================================================
+
+let currentUsageStatsProfileId: string | null = null;
+let currentTimeRange: UsageTimeRange = 'week';
+
+/**
+ * Show usage stats modal for a profile
+ */
+async function handleShowUsageStats(profileId: string, profileName: string): Promise<void> {
+  // Avoid reopening the same modal
+  if (currentUsageStatsProfileId === profileId) {
+    const modal = document.getElementById('usage-stats-modal');
+    if (modal && modal.style.display === 'flex') return;
+  }
+  currentUsageStatsProfileId = profileId;
+  currentTimeRange = 'week';
+
+  // Create modal if it doesn't exist
+  let modal = document.getElementById('usage-stats-modal');
+  if (!modal) {
+    modal = createUsageStatsModal();
+    document.body.appendChild(modal);
+  }
+
+  // Update modal title
+  const titleEl = modal.querySelector('.usage-stats-title');
+  if (titleEl) {
+    titleEl.textContent = `Usage Stats: ${profileName}`;
+  }
+
+  // Show modal
+  modal.style.display = 'flex';
+
+  // Load and render stats
+  await renderUsageStats(profileId, currentTimeRange);
+
+  // Setup time range selector
+  setupTimeRangeSelector(modal, profileId);
+}
+
+/**
+ * Create the usage stats modal element
+ */
+function createUsageStatsModal(): HTMLElement {
+  const modal = document.createElement('div');
+  modal.id = 'usage-stats-modal';
+  modal.className = 'usage-stats-modal';
+  modal.innerHTML = `
+    <div class="usage-stats-content">
+      <div class="usage-stats-header">
+        <h3 class="usage-stats-title">Usage Stats</h3>
+        <button class="usage-stats-close" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="usage-stats-time-range">
+        <button class="time-range-btn" data-range="day">Day</button>
+        <button class="time-range-btn active" data-range="week">Week</button>
+        <button class="time-range-btn" data-range="month">Month</button>
+        <button class="time-range-btn" data-range="quarter">Quarter</button>
+        <button class="time-range-btn" data-range="year">Year</button>
+      </div>
+
+      <div class="usage-stats-summary">
+        <div class="usage-stat-card">
+          <span class="usage-stat-label">Total Tokens</span>
+          <span class="usage-stat-value" id="usage-total-tokens">-</span>
+        </div>
+        <div class="usage-stat-card">
+          <span class="usage-stat-label">Input Tokens</span>
+          <span class="usage-stat-value" id="usage-input-tokens">-</span>
+        </div>
+        <div class="usage-stat-card">
+          <span class="usage-stat-label">Output Tokens</span>
+          <span class="usage-stat-value" id="usage-output-tokens">-</span>
+        </div>
+        <div class="usage-stat-card">
+          <span class="usage-stat-label">Estimated Cost</span>
+          <span class="usage-stat-value" id="usage-total-cost">-</span>
+        </div>
+        <div class="usage-stat-card">
+          <span class="usage-stat-label">API Requests</span>
+          <span class="usage-stat-value" id="usage-request-count">-</span>
+        </div>
+      </div>
+
+      <div class="usage-chart-container">
+        <canvas id="usage-chart" width="500" height="200"></canvas>
+      </div>
+
+      <div class="usage-stats-footer">
+        <span class="usage-stats-period" id="usage-period-label">-</span>
+      </div>
+    </div>
+  `;
+
+  // Close button handler
+  modal.querySelector('.usage-stats-close')?.addEventListener('click', () => {
+    modal.style.display = 'none';
+    currentUsageStatsProfileId = null;
+  });
+
+  // Click outside to close
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.style.display = 'none';
+      currentUsageStatsProfileId = null;
+    }
+  });
+
+  return modal;
+}
+
+/**
+ * Setup time range selector buttons
+ */
+function setupTimeRangeSelector(modal: HTMLElement, profileId: string): void {
+  const buttons = modal.querySelectorAll('.time-range-btn');
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      const range = (e.target as HTMLButtonElement).dataset.range as UsageTimeRange;
+      if (!range) return;
+
+      // Update active state
+      buttons.forEach((b) => b.classList.remove('active'));
+      (e.target as HTMLButtonElement).classList.add('active');
+
+      currentTimeRange = range;
+      await renderUsageStats(profileId, range);
+    });
+  });
+}
+
+/**
+ * Render usage stats for a profile
+ */
+async function renderUsageStats(profileId: string, timeRange: UsageTimeRange): Promise<void> {
+  const stats = await getUsageStats(profileId, timeRange);
+  const dataPoints = await getUsageDataPoints(profileId, timeRange);
+
+  // Update summary cards
+  const totalTokensEl = document.getElementById('usage-total-tokens');
+  const inputTokensEl = document.getElementById('usage-input-tokens');
+  const outputTokensEl = document.getElementById('usage-output-tokens');
+  const totalCostEl = document.getElementById('usage-total-cost');
+  const requestCountEl = document.getElementById('usage-request-count');
+  const periodLabelEl = document.getElementById('usage-period-label');
+
+  if (totalTokensEl) totalTokensEl.textContent = formatTokenCount(stats.totalTokens);
+  if (inputTokensEl) inputTokensEl.textContent = formatTokenCount(stats.totalInputTokens);
+  if (outputTokensEl) outputTokensEl.textContent = formatTokenCount(stats.totalOutputTokens);
+  if (totalCostEl) totalCostEl.textContent = formatCost(stats.totalCost);
+  if (requestCountEl) requestCountEl.textContent = stats.requestCount.toString();
+  if (periodLabelEl) periodLabelEl.textContent = getTimeRangeLabel(timeRange);
+
+  // Render chart
+  renderUsageChart(dataPoints);
+}
+
+/**
+ * Render usage chart using Canvas API
+ */
+function renderUsageChart(dataPoints: Awaited<ReturnType<typeof getUsageDataPoints>>): void {
+  const canvas = document.getElementById('usage-chart') as HTMLCanvasElement;
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  // Clear canvas
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  if (dataPoints.length === 0) {
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
+    ctx.font = '14px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('No usage data available', rect.width / 2, rect.height / 2);
+    return;
+  }
+
+  const padding = { top: 20, right: 20, bottom: 40, left: 60 };
+  const chartWidth = rect.width - padding.left - padding.right;
+  const chartHeight = rect.height - padding.top - padding.bottom;
+
+  // Find max values for scaling
+  const maxTokens = Math.max(...dataPoints.map((d) => d.totalTokens), 1);
+  const maxCost = Math.max(...dataPoints.map((d) => d.cost), 0.01);
+
+  // Colors
+  const tokenColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3b82f6';
+  const costColor = '#10b981'; // Green for cost
+  const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#333';
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
+
+  // Draw grid lines
+  ctx.strokeStyle = gridColor;
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 5; i++) {
+    const y = padding.top + (chartHeight / 5) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(padding.left + chartWidth, y);
+    ctx.stroke();
+  }
+
+  // Draw bars for tokens
+  const barWidth = Math.max(chartWidth / dataPoints.length - 4, 4);
+  const barGap = chartWidth / dataPoints.length;
+
+  dataPoints.forEach((point, i) => {
+    const x = padding.left + i * barGap + (barGap - barWidth) / 2;
+    const barHeight = (point.totalTokens / maxTokens) * chartHeight;
+    const y = padding.top + chartHeight - barHeight;
+
+    // Token bar
+    ctx.fillStyle = tokenColor;
+    ctx.fillRect(x, y, barWidth, barHeight);
+
+    // Cost line point (draw small circle)
+    if (point.cost > 0) {
+      const costY = padding.top + chartHeight - (point.cost / maxCost) * chartHeight;
+      ctx.fillStyle = costColor;
+      ctx.beginPath();
+      ctx.arc(x + barWidth / 2, costY, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  // Draw cost line
+  ctx.strokeStyle = costColor;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  let started = false;
+  dataPoints.forEach((point, i) => {
+    const x = padding.left + i * barGap + barWidth / 2;
+    const y = padding.top + chartHeight - (point.cost / maxCost) * chartHeight;
+
+    if (!started) {
+      ctx.moveTo(x, y);
+      started = true;
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+  ctx.stroke();
+
+  // Y-axis labels (tokens)
+  ctx.fillStyle = textColor;
+  ctx.font = '10px system-ui';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 5; i++) {
+    const value = maxTokens - (maxTokens / 5) * i;
+    const y = padding.top + (chartHeight / 5) * i + 4;
+    ctx.fillText(formatTokenCount(value), padding.left - 5, y);
+  }
+
+  // X-axis labels (dates) - show only some labels to avoid overlap
+  ctx.textAlign = 'center';
+  const labelStep = Math.ceil(dataPoints.length / 7);
+  dataPoints.forEach((point, i) => {
+    if (i % labelStep === 0 || i === dataPoints.length - 1) {
+      const x = padding.left + i * barGap + barWidth / 2;
+      const dateStr = point.date.slice(5); // MM-DD
+      ctx.fillText(dateStr, x, rect.height - 5);
+    }
+  });
+
+  // Legend
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'left';
+
+  // Tokens legend
+  ctx.fillStyle = tokenColor;
+  ctx.fillRect(padding.left, rect.height - 25, 12, 12);
+  ctx.fillStyle = textColor;
+  ctx.fillText('Tokens', padding.left + 16, rect.height - 15);
+
+  // Cost legend
+  ctx.fillStyle = costColor;
+  ctx.fillRect(padding.left + 80, rect.height - 25, 12, 12);
+  ctx.fillStyle = textColor;
+  ctx.fillText('Cost', padding.left + 96, rect.height - 15);
 }
 
 /**

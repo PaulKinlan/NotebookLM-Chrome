@@ -1,7 +1,7 @@
 import { streamText, generateText, type LanguageModel, type ToolSet } from 'ai';
 import type { Source, Citation, Notebook, ChatMessage, ContextMode } from '../types/index.ts';
 import { getActiveNotebookId, getNotebook } from './storage.ts';
-import { resolveModelConfig } from './model-configs.ts';
+import { resolveModelConfig, type ResolvedModelConfig } from './model-configs.ts';
 import {
   getProviderConfig,
   getProviderDefaultModel,
@@ -9,6 +9,7 @@ import {
   type AIProvider,
 } from './provider-registry.ts';
 import { withRetry } from './errors.ts';
+import { trackUsage } from './usage.ts';
 
 // Re-export error utilities for convenience
 export { classifyError, formatErrorForUser, withRetry } from './errors.ts';
@@ -38,7 +39,23 @@ function createProviderInstance(
   return config.createModel(apiKey, modelId, baseURL);
 }
 
+/**
+ * Model instance with associated config for usage tracking
+ */
+interface ModelWithConfig {
+  model: LanguageModel;
+  config: ResolvedModelConfig;
+}
+
 async function getModel(): Promise<LanguageModel | null> {
+  const result = await getModelWithConfig();
+  return result?.model ?? null;
+}
+
+/**
+ * Get model instance along with its configuration (for usage tracking)
+ */
+async function getModelWithConfig(): Promise<ModelWithConfig | null> {
   // Get active notebook to resolve model config with potential credential override
   const activeNotebookId = await getActiveNotebookId();
 
@@ -72,12 +89,18 @@ async function getModel(): Promise<LanguageModel | null> {
 
   // Create provider instance using SDK factory
   // apiKey is guaranteed to be defined here due to the requiresApiKey check above
-  return createProviderInstance(
+  const model = createProviderInstance(
     providerType,
     apiKey,
     modelId || defaultModel,
     baseURL
   );
+
+  if (!model) {
+    return null;
+  }
+
+  return { model, config: resolved };
 }
 
 async function getCompressionMode(): Promise<'two-pass' | 'single-pass'> {
@@ -134,12 +157,13 @@ export async function rankSourceRelevance(
   sources: Source[],
   query: string
 ): Promise<SourceWithRelevance[]> {
-  const model = await getModel();
-  if (!model) {
+  const modelWithConfig = await getModelWithConfig();
+  if (!modelWithConfig) {
     // Fallback: return all sources without ranking if no model
     return sources.map(s => ({ ...s, relevanceScore: 1.0 }));
   }
 
+  const { model, config } = modelWithConfig;
   const metadata = buildSourceMetadata(sources);
 
   let rankingsResult;
@@ -174,6 +198,18 @@ ${metadata}
 
 Return the JSON ranking.`,
     });
+
+    // Track usage
+    if (rankingsResult.usage) {
+      trackUsage({
+        modelConfigId: config.modelConfig.id,
+        providerId: config.providerId,
+        model: config.modelConfig.model,
+        inputTokens: rankingsResult.usage.inputTokens ?? 0,
+        outputTokens: rankingsResult.usage.outputTokens ?? 0,
+        operation: 'ranking',
+      }).catch((err) => console.warn('[AI] Failed to track ranking usage:', err));
+    }
   } catch (error) {
     console.error('Failed to generate relevance ranking:', error);
     // Fallback: return all sources with neutral score when ranking generation fails
@@ -221,9 +257,10 @@ async function summarizeSources(
 ): Promise<Map<string, string>> {
   if (sources.length === 0) return new Map();
 
-  const model = await getModel();
-  if (!model) return new Map();
+  const modelWithConfig = await getModelWithConfig();
+  if (!modelWithConfig) return new Map();
 
+  const { model, config } = modelWithConfig;
   const summaries = new Map<string, string>();
 
   // Batch summarize sources to reduce API calls
@@ -247,6 +284,18 @@ Return ONLY a JSON array of objects:
 Be accurate and concise. Focus on substantive content.`,
       prompt: `Summarize these sources:\n\n${sourcesText}\n\nReturn the JSON summaries.`,
     });
+
+    // Track usage
+    if (summaryResult.usage) {
+      trackUsage({
+        modelConfigId: config.modelConfig.id,
+        providerId: config.providerId,
+        model: config.modelConfig.model,
+        inputTokens: summaryResult.usage.inputTokens ?? 0,
+        outputTokens: summaryResult.usage.outputTokens ?? 0,
+        operation: 'summarization',
+      }).catch((err) => console.warn('[AI] Failed to track summarization usage:', err));
+    }
   } catch (error) {
     console.error('Failed to generate summaries:', error);
     // Fallback: generate extractive summaries for all sources
@@ -656,13 +705,14 @@ export async function* streamChat(
     onStatus?: (status: string) => void;
   }
 ): AsyncGenerator<string, ChatResult, unknown> {
-  const model = await getModel();
-  if (!model) {
+  const modelWithConfig = await getModelWithConfig();
+  if (!modelWithConfig) {
     throw new Error(
       "AI provider not configured. Please add your API key in settings."
     );
   }
 
+  const { model, config } = modelWithConfig;
   const { tools, contextMode, onStatus } = options || {};
 
   // Agentic mode: Pass tools to LLM, minimal initial context
@@ -687,6 +737,19 @@ export async function* streamChat(
       fullContent += chunk;
       // Don't yield the citations section while streaming
       yield chunk.replace(/---CITATIONS---[\s\S]*$/, "");
+    }
+
+    // Track usage after stream completes
+    const usage = await result.usage;
+    if (usage) {
+      trackUsage({
+        modelConfigId: config.modelConfig.id,
+        providerId: config.providerId,
+        model: config.modelConfig.model,
+        inputTokens: usage.inputTokens ?? 0,
+        outputTokens: usage.outputTokens ?? 0,
+        operation: 'chat',
+      }).catch((err) => console.warn('[AI] Failed to track usage:', err));
     }
 
     // In agentic mode, we still parse citations from the response
@@ -723,6 +786,19 @@ export async function* streamChat(
     yield chunk.replace(/---CITATIONS---[\s\S]*$/, "");
   }
 
+  // Track usage after stream completes
+  const usage = await result.usage;
+  if (usage) {
+    trackUsage({
+      modelConfigId: config.modelConfig.id,
+      providerId: config.providerId,
+      model: config.modelConfig.model,
+      inputTokens: usage.inputTokens ?? 0,
+      outputTokens: usage.outputTokens ?? 0,
+      operation: 'chat',
+    }).catch((err) => console.warn('[AI] Failed to track usage:', err));
+  }
+
   const { cleanContent, citations } = parseCitations(fullContent, sources);
 
   return {
@@ -737,12 +813,14 @@ export async function chat(
   history?: ChatMessage[],
   onStatus?: (status: string) => void
 ): Promise<ChatResult> {
-  const model = await getModel();
-  if (!model) {
+  const modelWithConfig = await getModelWithConfig();
+  if (!modelWithConfig) {
     throw new Error(
       "AI provider not configured. Please add your API key in settings."
     );
   }
+
+  const { model, config } = modelWithConfig;
 
   const compressionMode = await getCompressionMode();
   onStatus?.("Analyzing sources...");
@@ -766,6 +844,18 @@ export async function chat(
       initialDelayMs: 1000,
     }
   );
+
+  // Track usage
+  if (result.usage) {
+    trackUsage({
+      modelConfigId: config.modelConfig.id,
+      providerId: config.providerId,
+      model: config.modelConfig.model,
+      inputTokens: result.usage.inputTokens ?? 0,
+      outputTokens: result.usage.outputTokens ?? 0,
+      operation: 'chat',
+    }).catch((err) => console.warn('[AI] Failed to track usage:', err));
+  }
 
   const { cleanContent, citations } = parseCitations(result.text, sources);
 

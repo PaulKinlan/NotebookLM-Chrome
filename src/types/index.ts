@@ -85,6 +85,55 @@ export interface NotebookSummary {
 }
 
 // ============================================================================
+// Usage Tracking
+// ============================================================================
+
+/**
+ * Record of a single API usage event
+ */
+export interface UsageRecord {
+  id: string;
+  modelConfigId: string;          // References ModelConfig.id
+  providerId: string;             // Provider ID for pricing lookup
+  model: string;                  // Model ID used
+  inputTokens: number;            // Prompt tokens
+  outputTokens: number;           // Completion tokens
+  totalTokens: number;            // Total tokens
+  cost?: number;                  // Calculated cost in USD (if pricing available)
+  timestamp: number;              // When the API call was made
+  operation: 'chat' | 'transform' | 'ranking' | 'summarization' | 'test'; // Type of operation
+}
+
+/**
+ * Aggregated usage statistics for a time period
+ */
+export interface UsageStats {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  totalCost: number;
+  requestCount: number;
+  records: UsageRecord[];
+}
+
+/**
+ * Usage stats grouped by day/period for charting
+ */
+export interface UsageDataPoint {
+  date: string;                   // ISO date string (YYYY-MM-DD)
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cost: number;
+  requestCount: number;
+}
+
+/**
+ * Time range options for usage statistics
+ */
+export type UsageTimeRange = 'day' | 'week' | 'month' | 'quarter' | 'year';
+
+// ============================================================================
 // AI Configuration
 // ============================================================================
 

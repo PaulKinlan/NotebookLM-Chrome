@@ -120,7 +120,26 @@ Uses the Vercel AI SDK (`npm:ai`) with provider packages:
 - Test connection button
 - Chrome Built-in AI works without API key
 
-#### 2.3 Context Management
+#### 2.3 Usage Statistics
+Per-profile usage tracking with visual analytics:
+
+**Features:**
+- Track token usage (input/output) for every API call
+- Calculate estimated cost based on model pricing
+- View usage stats per AI profile via bar chart icon in settings
+- Time range selector (day, week, month, quarter, year)
+- Visual chart showing tokens per day and cost overlay
+- Summary cards showing total tokens, cost, and request count
+
+**Acceptance Criteria:**
+- [x] Usage is tracked for all AI operations (chat, transforms, ranking, summarization)
+- [x] Model pricing data is embedded in provider registry
+- [x] Usage stats modal shows token usage chart
+- [x] User can switch between time ranges
+- [x] Estimated costs are calculated when pricing is available
+- [x] Usage data persists in chrome.storage.local
+
+#### 2.4 Context Management
 - Combine source content into context for queries
 - Source attribution in prompts
 - Streaming responses for real-time feedback
@@ -590,6 +609,31 @@ interface AISettings {
   model: string;
   apiKeys: Record<string, string>;  // Per-provider API keys
 }
+
+// Usage tracking for API cost monitoring
+interface UsageRecord {
+  id: string;
+  modelConfigId: string;          // References ModelConfig.id
+  providerId: string;             // Provider ID for pricing lookup
+  model: string;                  // Model ID used
+  inputTokens: number;            // Prompt tokens
+  outputTokens: number;           // Completion tokens
+  totalTokens: number;            // Total tokens
+  cost?: number;                  // Calculated cost in USD
+  timestamp: number;              // When the API call was made
+  operation: 'chat' | 'transform' | 'ranking' | 'summarization' | 'test';
+}
+
+interface UsageStats {
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  totalCost: number;
+  requestCount: number;
+  records: UsageRecord[];
+}
+
+type UsageTimeRange = 'day' | 'week' | 'month' | 'quarter' | 'year';
 ```
 
 ### AI Provider Integration
