@@ -71,7 +71,7 @@ Users frequently encounter valuable information across multiple web pages but la
 - [x] User can import all tabs from a tab group
 - [x] User can browse and select bookmarks
 - [x] User can search and select from history
-- [x] Sources display title, URL, and favicon
+- [x] Sources display title (with external link icon), URL, and initial icon
 
 #### 1.3 Content Extraction
 Uses **Turndown** library in a content script to convert HTML to clean markdown:
@@ -204,20 +204,21 @@ AI-powered link discovery that analyzes links within source content and suggests
 
 - **Collapsible UI Section:** Displayed in the Chat tab below Active Sources
   - Shows count of suggested links
-  - Each link shows title, AI-generated description, domain, and relevance score
-  - "Open" button to view link in new tab
+  - Each link shows title (with external link icon), AI-generated description, domain, and relevance score
+  - External link icon next to title for quick access to open in new tab
   - "Add" button to add link as a new source
   - Refresh button to re-analyze links
-  - Cached per-notebook to avoid repeated AI calls
+  - Cache automatically invalidated when new sources are added
 
 **Acceptance Criteria:**
 - [x] Links are extracted from source content during extraction
+- [x] Links are extracted even when using fallback extraction (pages loaded before extension install)
 - [x] Noise URLs are filtered out using heuristic patterns
 - [x] AI analyzes and ranks links by relevance
 - [x] Suggested Links section shows in Chat tab when sources have links
-- [x] User can open suggested links in new tab
+- [x] User can open suggested links in new tab via external link icon
 - [x] User can add suggested links as sources with one click
-- [x] Suggestions are cached per notebook
+- [x] Suggestions are cached per notebook and invalidated when sources change
 
 ---
 
@@ -469,7 +470,7 @@ Bottom tab bar with five sections:
 | Notebook Selector | Dropdown to select/create notebooks |
 | Query Input | Search field: "Ask a question about your sources..." with submit button |
 | Helper Text | "Ask questions to synthesize information from your active sources below" |
-| Active Sources | List of sources with initial icon, title, domain, remove button |
+| Active Sources | List of sources with initial icon, title (with external link icon), domain, remove button |
 | Add Current Page | Button to quickly add the current tab |
 | Clear Chat | Button to clear chat history for the current notebook |
 | Chat Messages | Scrollable message history with user questions and assistant responses |
