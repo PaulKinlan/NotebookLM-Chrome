@@ -119,6 +119,22 @@ async function handleAddSelectionCommand(tab?: chrome.tabs.Tab): Promise<void> {
   }
 }
 
+/**
+ * Type guard to validate selection extraction result
+ */
+function isSelectionResult(value: unknown): value is { text: string; url: string; title: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'text' in value &&
+    'url' in value &&
+    'title' in value &&
+    typeof (value as { text: unknown }).text === 'string' &&
+    typeof (value as { url: unknown }).url === 'string' &&
+    typeof (value as { title: unknown }).title === 'string'
+  );
+}
+
 async function extractSelectionText(tabId: number): Promise<{ text: string; url: string; title: string } | null> {
   try {
     const result = await chrome.scripting.executeScript({
@@ -137,7 +153,11 @@ async function extractSelectionText(tabId: number): Promise<{ text: string; url:
       return null;
     }
 
-    return result[0].result as { text: string; url: string; title: string };
+    const value = result[0].result;
+    if (isSelectionResult(value)) {
+      return value;
+    }
+    return null;
   } catch (error) {
     console.error("Error extracting selection text:", error);
     return null;
