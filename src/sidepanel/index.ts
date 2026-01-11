@@ -2241,6 +2241,44 @@ const SLASH_COMMANDS: SlashCommand[] = [
 ];
 
 /**
+ * Simple fuzzy match scoring function
+ * Returns higher score for better matches
+ */
+function fuzzyMatchScore(text: string, query: string): number {
+  if (!query) return 0;
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+
+  // Exact match at start - highest priority
+  if (lowerText.startsWith(lowerQuery)) {
+    return 100;
+  }
+
+  // Exact match anywhere
+  if (lowerText.includes(lowerQuery)) {
+    return 50;
+  }
+
+  // Character sequence match
+  let queryIndex = 0;
+  let score = 0;
+  for (let i = 0; i < lowerText.length && queryIndex < lowerQuery.length; i++) {
+    if (lowerText[i] === lowerQuery[queryIndex]) {
+      score += 1;
+      queryIndex++;
+    }
+  }
+
+  // If we matched all characters in order
+  if (queryIndex === lowerQuery.length) {
+    return Math.min(score, 49);
+  }
+
+  return -1; // No match
+}
+
+/**
  * Parse a slash command from user input
  * Returns null if input is not a slash command
  */
@@ -2355,12 +2393,14 @@ async function handleCompactCommand(customInstructions: string): Promise<boolean
 
 let autocompleteSelectedIndex = -1;
 let autocompleteFilteredCommands: SlashCommand[] = [];
+let autocompleteScores: number[] = [];
 
 /**
  * Show autocomplete dropdown with filtered commands
  */
-function showAutocomplete(commands: SlashCommand[]): void {
+function showAutocomplete(commands: SlashCommand[], scores: number[]): void {
   autocompleteFilteredCommands = commands;
+  autocompleteScores = scores;
   autocompleteSelectedIndex = -1;
 
   if (commands.length === 0) {
@@ -2402,6 +2442,7 @@ function hideAutocomplete(): void {
   elements.autocompleteDropdown.classList.add("hidden");
   autocompleteSelectedIndex = -1;
   autocompleteFilteredCommands = [];
+  autocompleteScores = [];
 }
 
 /**
@@ -2443,17 +2484,29 @@ function handleAutocompleteInput(): void {
 
   const partialCommand = match[1];
 
-  // Filter commands that match the partial input
-  const filtered = SLASH_COMMANDS.filter((cmd) =>
-    cmd.command.startsWith(partialCommand)
-  );
-
   // Show all commands if no input after slash
   if (partialCommand === "") {
-    showAutocomplete(SLASH_COMMANDS);
-  } else {
-    showAutocomplete(filtered);
+    showAutocomplete(SLASH_COMMANDS, SLASH_COMMANDS.map(() => 0));
+    return;
   }
+
+  // Score all commands based on fuzzy match
+  const scoredCommands = SLASH_COMMANDS.map((cmd) => ({
+    cmd,
+    score: fuzzyMatchScore(cmd.command, partialCommand),
+  }));
+
+  // Filter to commands that match (score >= 0)
+  const matched = scoredCommands.filter(({ score }) => score >= 0);
+
+  // Sort by score (highest first)
+  matched.sort((a, b) => b.score - a.score);
+
+  // Extract commands and scores separately
+  const filteredCommands = matched.map(({ cmd }) => cmd);
+  const filteredScores = matched.map(({ score }) => score);
+
+  showAutocomplete(filteredCommands, filteredScores);
 }
 
 /**
@@ -2485,8 +2538,12 @@ function handleAutocompleteKeydown(e: KeyboardEvent): void {
 
     case "Enter":
       if (isAutocompleteVisible) {
-        // High certainty: only one match, select and submit
-        if (autocompleteFilteredCommands.length === 1) {
+        // High certainty: single match with high score (exact or prefix match)
+        const isHighCertainty =
+          autocompleteFilteredCommands.length === 1 &&
+          autocompleteScores[0] >= 50;
+
+        if (isHighCertainty) {
           e.preventDefault();
           selectAutocompleteItem(autocompleteFilteredCommands[0], true);
         }
