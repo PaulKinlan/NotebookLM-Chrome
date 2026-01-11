@@ -14,7 +14,13 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "allowImportingTsExtensions": true,
-    "types": ["chrome"]
+    "types": ["chrome"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "jsx-runtime",
+    "baseUrl": ".",
+    "paths": {
+      "jsx-runtime/jsx-runtime": ["./src/jsx-runtime/jsx-runtime.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
