@@ -4,6 +4,12 @@
 
 export type SyncStatus = 'local' | 'synced' | 'pending' | 'conflict';
 
+// Import JSONValue from Vercel AI SDK for type-safe tool results
+import type { JSONValue } from '@ai-sdk/provider';
+
+// Re-export for convenience
+export type { JSONValue };
+
 export interface SyncableEntity {
   id: string;
   remoteId?: string;
@@ -86,7 +92,7 @@ export interface ToolResultEvent extends BaseChatEvent {
   type: 'tool-result';
   toolCallId: string;
   toolName: string;
-  result: unknown;
+  result: JSONValue;
   error?: string;
   duration?: number; // milliseconds
 }
@@ -293,7 +299,7 @@ export interface ToolResult {
 export type StreamEvent =
   | { type: 'text'; content: string }
   | { type: 'tool-call'; toolName: string; args: Record<string, unknown>; toolCallId: string }
-  | { type: 'tool-result'; toolName: string; result: unknown; toolCallId: string };
+  | { type: 'tool-result'; toolName: string; result: JSONValue; toolCallId: string };
 
 /**
  * Status of a tool approval request
