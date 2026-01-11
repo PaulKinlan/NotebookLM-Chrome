@@ -1,6 +1,7 @@
 import type {
   Notebook,
   Source,
+  ChatEvent,
   ChatMessage,
   Transformation,
   StorageAdapter,
@@ -54,7 +55,7 @@ class IndexedDBStorage implements StorageAdapter {
   async deleteNotebook(id: string): Promise<void> {
     // Delete associated data first
     await dbDeleteByIndex('sources', 'notebookId', id);
-    await dbDeleteByIndex('chatMessages', 'notebookId', id);
+    await dbDeleteByIndex('chatEvents', 'notebookId', id);
     await dbDeleteByIndex('transformations', 'notebookId', id);
     await dbDeleteByIndex('summaries', 'notebookId', id);
 
@@ -100,20 +101,20 @@ class IndexedDBStorage implements StorageAdapter {
   }
 
   // --------------------------------------------------------------------------
-  // Chat Messages
+  // Chat Events
   // --------------------------------------------------------------------------
 
-  async getChatHistory(notebookId: string): Promise<ChatMessage[]> {
-    const messages = await dbGetByIndex<ChatMessage>('chatMessages', 'notebookId', notebookId);
-    return messages.sort((a, b) => a.timestamp - b.timestamp);
+  async getChatHistory(notebookId: string): Promise<ChatEvent[]> {
+    const events = await dbGetByIndex<ChatEvent>('chatEvents', 'notebookId', notebookId);
+    return events.sort((a, b) => a.timestamp - b.timestamp);
   }
 
-  async saveChatMessage(message: ChatMessage): Promise<void> {
-    await dbPut('chatMessages', message);
+  async saveChatEvent(event: ChatEvent): Promise<void> {
+    await dbPut('chatEvents', event);
   }
 
   async clearChatHistory(notebookId: string): Promise<void> {
-    await dbDeleteByIndex('chatMessages', 'notebookId', notebookId);
+    await dbDeleteByIndex('chatEvents', 'notebookId', notebookId);
   }
 
   // --------------------------------------------------------------------------
@@ -261,6 +262,9 @@ export function createSource(
   };
 }
 
+/**
+ * @deprecated Use createUserEvent, createAssistantEvent, or createToolResultEvent instead.
+ */
 export function createChatMessage(
   notebookId: string,
   role: ChatMessage['role'],
@@ -274,6 +278,58 @@ export function createChatMessage(
     content,
     citations,
     timestamp: Date.now(),
+  };
+}
+
+// ChatEvent creation helpers
+
+export function createUserEvent(notebookId: string, content: string): ChatEvent {
+  return {
+    id: crypto.randomUUID(),
+    notebookId,
+    timestamp: Date.now(),
+    type: 'user',
+    content,
+  };
+}
+
+export function createAssistantEvent(
+  notebookId: string,
+  content: string,
+  options?: {
+    citations?: Citation[];
+    toolCalls?: import('../types/index.js').ToolCall[];
+  }
+): ChatEvent {
+  return {
+    id: crypto.randomUUID(),
+    notebookId,
+    timestamp: Date.now(),
+    type: 'assistant',
+    content,
+    ...(options?.citations && { citations: options.citations }),
+    ...(options?.toolCalls && { toolCalls: options.toolCalls }),
+  };
+}
+
+export function createToolResultEvent(
+  notebookId: string,
+  toolCallId: string,
+  toolName: string,
+  result: unknown,
+  error?: string,
+  duration?: number
+): ChatEvent {
+  return {
+    id: crypto.randomUUID(),
+    notebookId,
+    timestamp: Date.now(),
+    type: 'tool-result',
+    toolCallId,
+    toolName,
+    result,
+    error,
+    duration,
   };
 }
 
@@ -346,7 +402,23 @@ export const saveSource = (source: Source) => storage.saveSource(source);
 export const deleteSource = (id: string) => storage.deleteSource(id);
 
 export const getChatHistory = (notebookId: string) => storage.getChatHistory(notebookId);
-export const saveChatMessage = (message: ChatMessage) => storage.saveChatMessage(message);
+export const saveChatEvent = (event: ChatEvent) => storage.saveChatEvent(event);
+
+/**
+ * @deprecated Use saveChatEvent with ChatEvent instead.
+ */
+export const saveChatMessage = (message: ChatMessage) => {
+  // Convert ChatMessage to ChatEvent for backward compatibility
+  const event: ChatEvent = {
+    id: message.id,
+    notebookId: message.notebookId,
+    timestamp: message.timestamp,
+    type: message.role,
+    content: message.content,
+    ...(message.citations && { citations: message.citations }),
+  };
+  return storage.saveChatEvent(event);
+};
 
 export const getTransformations = (notebookId: string) => storage.getTransformations(notebookId);
 export const saveTransformation = (transformation: Transformation) => storage.saveTransformation(transformation);
