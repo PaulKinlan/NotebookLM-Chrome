@@ -82,13 +82,23 @@ export interface DBSchema {
  * ChatMessage { id, notebookId, role: 'user' | 'assistant', content, citations?, timestamp }
  *   → UserEvent { id, notebookId, type: 'user', content, timestamp }
  *   → AssistantEvent { id, notebookId, type: 'assistant', content, citations?, timestamp }
+ *
+ * NOTE: This function must be called from within onupgradeneeded and uses
+ * the implicit version change transaction passed as a parameter.
  */
-function migrateChatMessagesToChatEvents(db: IDBDatabase): void {
-  const transaction = db.transaction(['chatMessages', 'chatEvents'], 'readwrite');
+function migrateChatMessagesToChatEvents(transaction: IDBTransaction): void {
+  const db = transaction.db;
+  if (!db.objectStoreNames.contains('chatMessages') || !db.objectStoreNames.contains('chatEvents')) {
+    console.log('[DB Migration] chatMessages or chatEvents store missing, skipping migration');
+    return;
+  }
+
   const oldStore = transaction.objectStore('chatMessages');
   const newStore = transaction.objectStore('chatEvents');
 
   const request = oldStore.openCursor();
+  let migratedCount = 0;
+
   request.onsuccess = () => {
     const cursor = request.result;
     if (cursor) {
@@ -103,15 +113,15 @@ function migrateChatMessagesToChatEvents(db: IDBDatabase): void {
         ...(msg.citations && { citations: msg.citations }),
       };
       newStore.put(chatEvent);
+      migratedCount++;
       cursor.continue();
+    } else {
+      console.log(`[DB Migration] Migrated ${migratedCount} chatMessages to chatEvents`);
     }
   };
 
-  // After migration completes, delete old store
-  transaction.oncomplete = () => {
-    const deleteTransaction = db.transaction(['chatMessages'], 'readwrite');
-    deleteTransaction.objectStore('chatMessages').clear();
-    console.log('[DB Migration] Migrated chatMessages to chatEvents');
+  request.onerror = () => {
+    console.error('[DB Migration] Error migrating chatMessages:', request.error);
   };
 }
 
@@ -173,7 +183,11 @@ export function getDB(): Promise<IDBDatabase> {
 
       // Migration: v5 → v6 (chatMessages → chatEvents)
       if (event.oldVersion < 6 && db.objectStoreNames.contains('chatMessages')) {
-        migrateChatMessagesToChatEvents(db);
+        // Get the transaction from the event (implicit version change transaction)
+        const request = event.target;
+        if (request && request instanceof IDBOpenDBRequest && request.transaction) {
+          migrateChatMessagesToChatEvents(request.transaction);
+        }
       }
 
       // Transformations store
