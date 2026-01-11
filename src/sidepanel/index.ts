@@ -1,7 +1,7 @@
 import type {
   Source,
   PermissionStatus,
-  ChatMessage,
+  ChatEvent,
   Citation,
   SuggestedLink,
   StreamEvent,
@@ -27,8 +27,10 @@ import {
   deleteSource,
   createSource,
   getChatHistory,
-  saveChatMessage,
-  createChatMessage,
+  saveChatEvent,
+  createUserEvent,
+  createAssistantEvent,
+  createToolResultEvent,
   clearChatHistory,
   getCachedResponse,
   saveCachedResponse,
@@ -2367,9 +2369,10 @@ async function handleCompactCommand(customInstructions: string): Promise<boolean
   elements.queryBtn.disabled = true;
 
   try {
-    // Build a summary from all messages
+    // Build a summary from all messages (filter out tool-result events)
     const conversationText = history
-      .map((msg) => `${msg.role}: ${msg.content}`)
+      .filter((e) => e.type === 'user' || e.type === 'assistant')
+      .map((e) => `${e.type}: ${e.content}`)
       .join("\n\n");
 
     // Prepend instructions to the content for summarization
@@ -2395,13 +2398,12 @@ async function handleCompactCommand(customInstructions: string): Promise<boolean
     // Use the existing generateSummary function
     const summary = await generateSummary([chatHistorySource]);
 
-    // Create a system message with the summary
-    const summaryMessage = createChatMessage(
+    // Create a system event with the summary
+    const summaryEvent = createAssistantEvent(
       currentNotebookId,
-      "assistant",
       `**Chat Summary**\n\n${summary}`
     );
-    await saveChatMessage(summaryMessage);
+    await saveChatEvent(summaryEvent);
 
     // Reload chat history to show the summary
     await loadChatHistory();
@@ -2713,9 +2715,9 @@ async function loadChatHistory(): Promise<void> {
     return;
   }
 
-  const messages = await getChatHistory(currentNotebookId);
+  const events = await getChatHistory(currentNotebookId);
 
-  if (messages.length === 0) {
+  if (events.length === 0) {
     elements.chatMessages.innerHTML = `
       <div class="empty-state">
         <p>Ask a question to get started.</p>
@@ -2729,16 +2731,19 @@ async function loadChatHistory(): Promise<void> {
 
   elements.chatMessages.innerHTML = "";
 
-  for (const message of messages) {
-    appendChatMessage(message, sources);
+  for (const event of events) {
+    appendChatEvent(event, sources);
   }
 
   // Scroll to bottom
   elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
 }
 
-function appendChatMessage(
-  message: ChatMessage,
+/**
+ * Append a chat event to the UI. Handles user, assistant, and tool-result events.
+ */
+function appendChatEvent(
+  event: ChatEvent,
   sources: Source[] = [],
   isStreaming: boolean = false
 ): HTMLDivElement {
@@ -2748,54 +2753,150 @@ function appendChatMessage(
     emptyState.remove();
   }
 
-  const existingMessage = document.getElementById(`msg-${message.id}`);
-  if (existingMessage) {
-    // Update existing message
-    const contentEl = existingMessage.querySelector(".chat-message-content");
-    if (contentEl) {
-      contentEl.innerHTML = formatMarkdown(message.content);
-    }
-    // Update citations if present
-    if (message.citations && message.citations.length > 0 && !isStreaming) {
-      let citationsEl = existingMessage.querySelector(".chat-citations");
-      if (!citationsEl) {
-        citationsEl = document.createElement("div");
-        citationsEl.className = "chat-citations";
-        existingMessage.appendChild(citationsEl);
+  const existingElement = document.getElementById(`msg-${event.id}`);
+  if (existingElement) {
+    // Update existing element based on event type
+    if (event.type === 'assistant' || event.type === 'user') {
+      const contentEl = existingElement.querySelector(".chat-message-content");
+      if (contentEl) {
+        contentEl.innerHTML = formatMarkdown(event.content);
       }
-      citationsEl.innerHTML = renderCitations(message.citations, sources);
+      // Update citations if present
+      if (event.type === 'assistant' && event.citations && event.citations.length > 0 && !isStreaming) {
+        let citationsEl = existingElement.querySelector(".chat-citations");
+        if (!citationsEl) {
+          citationsEl = document.createElement("div");
+          citationsEl.className = "chat-citations";
+          existingElement.appendChild(citationsEl);
+        }
+        citationsEl.innerHTML = renderCitations(event.citations, sources);
+      }
     }
-    if (existingMessage instanceof HTMLDivElement) {
-      return existingMessage;
-    }
-    // If it exists but isn't an HTMLDivElement, create a new one
-    // This shouldn't happen in practice but handles edge cases
-    const div = document.createElement("div");
-    div.id = `msg-${message.id}`;
-    div.className = `chat-message ${message.role}`;
-    elements.chatMessages.appendChild(div);
-    return div;
+    return existingElement as HTMLDivElement;
   }
 
-  const div = document.createElement("div");
-  div.id = `msg-${message.id}`;
-  div.className = `chat-message ${message.role}`;
+  // Create new element based on event type
+  if (event.type === 'user') {
+    return appendUserEvent(event);
+  } else if (event.type === 'assistant') {
+    return appendAssistantEvent(event, sources, isStreaming);
+  } else if (event.type === 'tool-result') {
+    return appendToolResultEventToChat(event);
+  }
 
-  const roleLabel = message.role === "user" ? "You" : "Assistant";
-  const timeStr = formatRelativeTime(message.timestamp);
+  // Fallback (shouldn't happen - all ChatEvent types are handled above)
+  // This satisfies TypeScript's exhaustiveness check
+  const _exhaustiveCheck: never = event;
+  throw new Error(`Unknown event type: ${_exhaustiveCheck}`);
+}
+
+/**
+ * Append a user event to the chat.
+ */
+function appendUserEvent(event: ChatEvent & { type: 'user' }): HTMLDivElement {
+  const div = document.createElement("div");
+  div.id = `msg-${event.id}`;
+  div.className = "chat-message user";
+
+  const timeStr = formatRelativeTime(event.timestamp);
 
   div.innerHTML = `
-    <div class="chat-message-role">${roleLabel}</div>
-    <div class="chat-message-content">${formatMarkdown(message.content)}</div>
+    <div class="chat-message-role">You</div>
+    <div class="chat-message-content">${formatMarkdown(event.content)}</div>
+    <div class="chat-message-time">${timeStr}</div>
+  `;
+
+  elements.chatMessages.appendChild(div);
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+
+  return div;
+}
+
+/**
+ * Append an assistant event to the chat.
+ */
+function appendAssistantEvent(
+  event: ChatEvent & { type: 'assistant' },
+  sources: Source[] = [],
+  isStreaming: boolean = false
+): HTMLDivElement {
+  const div = document.createElement("div");
+  div.id = `msg-${event.id}`;
+  div.className = "chat-message assistant";
+
+  const timeStr = formatRelativeTime(event.timestamp);
+
+  div.innerHTML = `
+    <div class="chat-message-role">Assistant</div>
+    <div class="chat-message-content">${formatMarkdown(event.content)}</div>
     ${
-      message.citations && message.citations.length > 0 && !isStreaming
+      event.citations && event.citations.length > 0 && !isStreaming
         ? `
       <div class="chat-citations">
-        ${renderCitations(message.citations, sources)}
+        ${renderCitations(event.citations, sources)}
       </div>
     `
         : ""
     }
+    <div class="chat-message-time">${timeStr}</div>
+  `;
+
+  // If there are tool calls, append them
+  if (event.toolCalls && event.toolCalls.length > 0) {
+    let toolCallsContainer = div.querySelector(".assistant-tool-calls");
+    if (!toolCallsContainer) {
+      toolCallsContainer = document.createElement("div");
+      toolCallsContainer.className = "assistant-tool-calls";
+      const timeEl = div.querySelector(".chat-message-time");
+      if (timeEl) {
+        div.insertBefore(toolCallsContainer, timeEl);
+      }
+    }
+
+    for (const toolCall of event.toolCalls) {
+      const toolCallEl = document.createElement("div");
+      toolCallEl.className = "assistant-tool-call";
+      toolCallEl.dataset.toolCallId = toolCall.toolCallId;
+
+      const argsStr = JSON.stringify(toolCall.args, null, 2);
+      toolCallEl.innerHTML = `
+        <div class="tool-call-header">
+          <span class="tool-call-name">${escapeHtml(toolCall.toolName)}</span>
+          <span class="tool-call-status done">Called</span>
+        </div>
+        ${argsStr.length > 0 ? `<pre class="tool-call-args">${escapeHtml(argsStr)}</pre>` : ""}
+      `;
+      toolCallsContainer.appendChild(toolCallEl);
+    }
+  }
+
+  elements.chatMessages.appendChild(div);
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+
+  return div;
+}
+
+/**
+ * Append a tool result event to the chat.
+ */
+function appendToolResultEventToChat(event: ChatEvent & { type: 'tool-result' }): HTMLDivElement {
+  const div = document.createElement("div");
+  div.id = `msg-${event.id}`;
+  div.className = "chat-message tool-result";
+
+  const timeStr = formatRelativeTime(event.timestamp);
+  const resultStr = typeof event.result === 'string'
+    ? event.result
+    : JSON.stringify(event.result, null, 2);
+
+  div.innerHTML = `
+    <div class="chat-message-role">📊 Result</div>
+    <div class="chat-message-content">
+      <div class="tool-result-source">from ${escapeHtml(event.toolName)}</div>
+      <div class="tool-result-data"><pre>${escapeHtml(resultStr)}</pre></div>
+      ${event.error ? `<div class="tool-result-error">${escapeHtml(event.error)}</div>` : ""}
+      ${event.duration ? `<div class="tool-result-duration">${event.duration}ms</div>` : ""}
+    </div>
     <div class="chat-message-time">${timeStr}</div>
   `;
 
@@ -3014,41 +3115,6 @@ function appendToolCallToAssistant(
 }
 
 /**
- * Append a tool result as a separate timeline entry
- */
-function appendToolResultMessage(
-  toolName: string,
-  result: unknown
-): HTMLDivElement {
-  // Remove empty state if present
-  const emptyState = elements.chatMessages.querySelector(".empty-state");
-  if (emptyState) {
-    emptyState.remove();
-  }
-
-  const id = `tool-result-${crypto.randomUUID()}`;
-  const div = document.createElement("div");
-  div.id = id;
-  div.className = "chat-message tool-result";
-
-  const resultStr = JSON.stringify(result, null, 2);
-
-  div.innerHTML = `
-    <div class="chat-message-role">📊 Result</div>
-    <div class="chat-message-content">
-      <div class="tool-result-source">from ${escapeHtml(toolName)}</div>
-      <div class="tool-result-data"><pre>${escapeHtml(resultStr)}</pre></div>
-    </div>
-    <div class="chat-message-time">${formatRelativeTime(Date.now())}</div>
-  `;
-
-  elements.chatMessages.appendChild(div);
-  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
-
-  return div;
-}
-
-/**
  * Update a tool call's status to show it completed
  */
 function updateToolCallStatus(
@@ -3087,9 +3153,9 @@ async function handleQuery(): Promise<void> {
   elements.chatStatus.textContent = "Preparing...";
 
   // Save user message
-  const userMessage = createChatMessage(currentNotebookId, "user", query);
-  await saveChatMessage(userMessage);
-  appendChatMessage(userMessage, sources);
+  const userEvent = createUserEvent(currentNotebookId, query);
+  await saveChatEvent(userEvent);
+  appendChatEvent(userEvent, sources);
 
   // Get conversation history (includes the message we just saved)
   const history = await getChatHistory(currentNotebookId);
@@ -3101,14 +3167,13 @@ async function handleQuery(): Promise<void> {
 
   if (cached && !navigator.onLine) {
     // Use cached response when offline
-    const assistantMessage = createChatMessage(
+    const assistantEvent = createAssistantEvent(
       currentNotebookId,
-      "assistant",
       cached.response,
-      cached.citations
+      { citations: cached.citations }
     );
-    await saveChatMessage(assistantMessage);
-    appendChatMessage(assistantMessage, sources);
+    await saveChatEvent(assistantEvent);
+    appendChatEvent(assistantEvent, sources);
     elements.queryBtn.disabled = false;
     elements.chatStatus.innerHTML =
       'Response loaded from cache <span class="offline-indicator">Offline</span>';
@@ -3116,12 +3181,8 @@ async function handleQuery(): Promise<void> {
   }
 
   // Create placeholder for assistant message
-  const assistantMessage = createChatMessage(
-    currentNotebookId,
-    "assistant",
-    ""
-  );
-  const messageDiv = appendChatMessage(assistantMessage, sources, true);
+  const assistantEvent = createAssistantEvent(currentNotebookId, "");
+  const messageDiv = appendChatEvent(assistantEvent, sources, true);
 
   try {
     // Get context mode and source tools
@@ -3142,7 +3203,8 @@ async function handleQuery(): Promise<void> {
       { content: string; citations: Citation[] }
     >;
 
-    // Track pending tool calls to update their status
+    // Track tool calls and their timestamps for persistence
+    const toolCalls: import('../types/index.js').ToolCall[] = [];
     const pendingToolCalls = new Map<string, HTMLDivElement>();
 
     // Consume the stream
@@ -3166,6 +3228,14 @@ async function handleQuery(): Promise<void> {
           contentEl.innerHTML = formatMarkdown(fullContent);
         }
       } else if (event.type === 'tool-call') {
+        // Track tool call for persistence
+        toolCalls.push({
+          toolCallId: event.toolCallId,
+          toolName: event.toolName,
+          args: event.args,
+          timestamp: Date.now(),
+        });
+
         // Append tool call to assistant's message (not separate entry)
         const toolCallEl = appendToolCallToAssistant(
           messageDiv,
@@ -3175,22 +3245,37 @@ async function handleQuery(): Promise<void> {
         );
         pendingToolCalls.set(event.toolCallId, toolCallEl);
       } else if (event.type === 'tool-result') {
-        // Update tool call status and create separate result entry
+        // Update tool call status
         const toolCallEl = pendingToolCalls.get(event.toolCallId);
         if (toolCallEl) {
           updateToolCallStatus(toolCallEl, 'done');
         }
+
+        // Persist tool result as separate event
+        const toolResultEvent = createToolResultEvent(
+          currentNotebookId,
+          event.toolCallId,
+          event.toolName,
+          event.result
+        );
+        await saveChatEvent(toolResultEvent);
+
         // Create separate timeline entry for result
-        appendToolResultMessage(event.toolName, event.result);
+        appendToolResultEventToChat(toolResultEvent as ChatEvent & { type: 'tool-result' });
       }
 
       elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
     }
 
-    // Update the message with final content and citations
-    assistantMessage.content = fullContent;
-    assistantMessage.citations = citations;
-    await saveChatMessage(assistantMessage);
+    // Update the assistant event with final content, citations, and tool calls
+    (assistantEvent as ChatEvent & { type: 'assistant' }).content = fullContent;
+    if (citations.length > 0) {
+      (assistantEvent as ChatEvent & { type: 'assistant' }).citations = citations;
+    }
+    if (toolCalls.length > 0) {
+      (assistantEvent as ChatEvent & { type: 'assistant' }).toolCalls = toolCalls;
+    }
+    await saveChatEvent(assistantEvent);
 
     // Re-render with citations
     const contentEl = messageDiv.querySelector(".chat-message-content");
@@ -3227,9 +3312,9 @@ async function handleQuery(): Promise<void> {
 
     // Check if we have a cached response to fall back to
     if (cached) {
-      assistantMessage.content = cached.response;
-      assistantMessage.citations = cached.citations;
-      await saveChatMessage(assistantMessage);
+      (assistantEvent as ChatEvent & { type: 'assistant' }).content = cached.response;
+      (assistantEvent as ChatEvent & { type: 'assistant' }).citations = cached.citations;
+      await saveChatEvent(assistantEvent);
 
       const contentEl = messageDiv.querySelector(".chat-message-content");
       if (contentEl) {
@@ -3250,14 +3335,13 @@ async function handleQuery(): Promise<void> {
       showNotification("Using cached response due to API error");
     } else {
       // Show error in the message with user-friendly formatting
-      assistantMessage.content = `Failed to generate response: ${userFriendlyError}`;
-      await saveChatMessage(assistantMessage);
+      const errorContent = `Failed to generate response: ${userFriendlyError}`;
+      (assistantEvent as ChatEvent & { type: 'assistant' }).content = errorContent;
+      await saveChatEvent(assistantEvent);
 
       const contentEl = messageDiv.querySelector(".chat-message-content");
       if (contentEl) {
-        contentEl.innerHTML = `<p class="error">${escapeHtml(
-          assistantMessage.content
-        )}</p>`;
+        contentEl.innerHTML = `<p class="error">${escapeHtml(errorContent)}</p>`;
       }
       elements.chatStatus.textContent = userFriendlyError;
     }
