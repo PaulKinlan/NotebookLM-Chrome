@@ -4,6 +4,7 @@ import type {
   ChatMessage,
   Citation,
   SuggestedLink,
+  StreamEvent,
 } from "../types/index.ts";
 import { checkPermissions, requestPermission } from "../lib/permissions.ts";
 import { renderMarkdown, isHtmlContent } from "../lib/markdown-renderer.ts";
@@ -2969,6 +2970,75 @@ function formatRelativeTime(timestamp: number): string {
   return `${days}d ago`;
 }
 
+/**
+ * Append a tool call indicator to the chat message
+ */
+function appendToolCall(
+  messageDiv: HTMLDivElement,
+  toolName: string,
+  args: Record<string, unknown>
+): void {
+  // Check if we already have a tool-call container
+  let toolCallsContainer = messageDiv.querySelector(".chat-tool-calls");
+  if (!toolCallsContainer) {
+    toolCallsContainer = document.createElement("div");
+    toolCallsContainer.className = "chat-tool-calls";
+    messageDiv.appendChild(toolCallsContainer);
+  }
+
+  const toolCallEl = document.createElement("div");
+  toolCallEl.className = "chat-tool-call";
+  toolCallEl.dataset.toolName = toolName;
+
+  const argsStr = JSON.stringify(args, null, 2);
+  toolCallEl.innerHTML = `
+    <div class="tool-call-header">
+      <span class="tool-call-icon">🔧</span>
+      <span class="tool-call-name">${escapeHtml(toolName)}</span>
+      <span class="tool-call-status">Calling...</span>
+    </div>
+    <div class="tool-call-args"><pre>${escapeHtml(argsStr)}</pre></div>
+  `;
+
+  toolCallsContainer.appendChild(toolCallEl);
+}
+
+/**
+ * Append a tool result to the chat message
+ */
+function appendToolResult(
+  messageDiv: HTMLDivElement,
+  toolName: string,
+  result: unknown
+): void {
+  const toolCallsContainer = messageDiv.querySelector(".chat-tool-calls");
+  if (!toolCallsContainer) return;
+
+  // Find the tool call element with matching name
+  const toolCallEl = toolCallsContainer.querySelector(
+    `.chat-tool-call[data-tool-name="${toolName}"]`
+  );
+  if (!toolCallEl) return;
+
+  // Update status
+  const statusEl = toolCallEl.querySelector(".tool-call-status");
+  if (statusEl) {
+    statusEl.textContent = "Done";
+    statusEl.classList.add("tool-call-status-done");
+  }
+
+  // Add result element
+  const resultStr = JSON.stringify(result, null, 2);
+  const resultEl = document.createElement("div");
+  resultEl.className = "tool-call-result";
+  resultEl.innerHTML = `
+    <div class="tool-result-header">Result:</div>
+    <pre>${escapeHtml(resultStr)}</pre>
+  `;
+
+  toolCallEl.appendChild(resultEl);
+}
+
 async function handleQuery(): Promise<void> {
   const query = elements.queryInput.value.trim();
   if (!query || !currentNotebookId) return;
@@ -3043,7 +3113,7 @@ async function handleQuery(): Promise<void> {
     let fullContent = "";
     let citations: Citation[] = [];
     let streamResult: IteratorResult<
-      string,
+      StreamEvent,
       { content: string; citations: Citation[] }
     >;
 
@@ -3057,14 +3127,24 @@ async function handleQuery(): Promise<void> {
         break;
       }
 
-      fullContent += streamResult.value;
-      // Update message content as it streams
-      const contentEl = messageDiv.querySelector(".chat-message-content");
-      if (contentEl) {
-        // Remove citations section from displayed content during streaming
-        const cleanContent = fullContent.replace(/---CITATIONS---[\s\S]*$/, "");
-        contentEl.innerHTML = formatMarkdown(cleanContent);
+      const event = streamResult.value;
+
+      // Handle different stream event types
+      if (event.type === 'text') {
+        fullContent += event.content;
+        // Update message content as it streams
+        const contentEl = messageDiv.querySelector(".chat-message-content");
+        if (contentEl) {
+          contentEl.innerHTML = formatMarkdown(fullContent);
+        }
+      } else if (event.type === 'tool-call') {
+        // Append tool call indicator to chat
+        appendToolCall(messageDiv, event.toolName, event.args);
+      } else if (event.type === 'tool-result') {
+        // Append tool result to chat
+        appendToolResult(messageDiv, event.toolName, event.result);
       }
+
       elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
     }
 

@@ -2239,6 +2239,83 @@ details.suggested-links-section[open] .suggested-links-chevron {
   margin-top: 8px;
 }
 
+/* Tool Calls */
+.chat-tool-calls {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-tool-call {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-size: 12px;
+}
+
+.tool-call-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tool-call-icon {
+  font-size: 14px;
+}
+
+.tool-call-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.tool-call-status {
+  color: var(--warning);
+  font-size: 11px;
+}
+
+.tool-call-status-done {
+  color: var(--success);
+}
+
+.tool-call-args {
+  margin-bottom: 8px;
+}
+
+.tool-call-args pre {
+  margin: 0;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  overflow-x: auto;
+  color: var(--text-secondary);
+}
+
+.tool-call-result {
+  margin-top: 8px;
+}
+
+.tool-result-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.tool-call-result pre {
+  margin: 0;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  overflow-x: auto;
+  color: var(--text-secondary);
+}
+
 /* Citations */
 .chat-citations {
   margin-top: 12px;

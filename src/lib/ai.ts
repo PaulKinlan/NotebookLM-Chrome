@@ -1,5 +1,5 @@
 import { streamText, generateText, type LanguageModel, type ToolSet } from 'ai';
-import type { Source, Citation, Notebook, ChatMessage, ContextMode } from '../types/index.ts';
+import type { Source, Citation, Notebook, ChatMessage, ContextMode, StreamEvent } from '../types/index.ts';
 import { getActiveNotebookId, getNotebook } from './storage.ts';
 import { resolveModelConfig, type ResolvedModelConfig } from './model-configs.ts';
 import {
@@ -729,7 +729,7 @@ export async function* streamChat(
     contextMode?: ContextMode;
     onStatus?: (status: string) => void;
   }
-): AsyncGenerator<string, ChatResult, unknown> {
+): AsyncGenerator<StreamEvent, ChatResult, unknown> {
   const modelWithConfig = await getModelWithConfig();
   if (!modelWithConfig) {
     throw new Error(
@@ -759,18 +759,39 @@ export async function* streamChat(
       tools,
     });
 
-    // The AI SDK automatically executes tools when provided.
-    // We just stream the final text response - tool calls happen in the background.
+    // Use fullStream to capture tool calls and results
     let fullContent = "";
     let chunkCount = 0;
 
-    for await (const chunk of result.textStream) {
-      fullContent += chunk;
-      chunkCount++;
-      if (chunkCount === 1) {
-        console.log('[Agentic Mode] First chunk received:', chunk);
+    for await (const chunk of result.fullStream) {
+      switch (chunk.type) {
+        case 'text-delta':
+          fullContent += chunk.text;
+          chunkCount++;
+          if (chunkCount === 1) {
+            console.log('[Agentic Mode] First chunk received:', chunk.text);
+          }
+          yield { type: 'text', content: chunk.text };
+          break;
+        case 'tool-call':
+          console.log('[Agentic Mode] Tool called:', chunk.toolName, chunk.input);
+          yield {
+            type: 'tool-call',
+            toolName: chunk.toolName,
+            args: chunk.input as Record<string, unknown>,
+            toolCallId: chunk.toolCallId,
+          };
+          break;
+        case 'tool-result':
+          console.log('[Agentic Mode] Tool result:', chunk.toolName, chunk.output);
+          yield {
+            type: 'tool-result',
+            toolName: chunk.toolName,
+            result: chunk.output,
+            toolCallId: chunk.toolCallId,
+          };
+          break;
       }
-      yield chunk;
     }
 
     console.log('[Agentic Mode] Stream complete. Total chunks:', chunkCount, 'Content length:', fullContent.length);
@@ -819,7 +840,8 @@ export async function* streamChat(
   for await (const chunk of result.textStream) {
     fullContent += chunk;
     // Don't yield the citations section while streaming
-    yield chunk.replace(/---CITATIONS---[\s\S]*$/, "");
+    const cleanChunk = chunk.replace(/---CITATIONS---[\s\S]*$/, "");
+    yield { type: 'text', content: cleanChunk };
   }
 
   // Track usage after stream completes

@@ -239,6 +239,15 @@ export interface ToolResult {
 }
 
 /**
+ * Stream event type - yielded by streamChat
+ * Can be text delta, tool call, or tool result
+ */
+export type StreamEvent =
+  | { type: 'text'; content: string }
+  | { type: 'tool-call'; toolName: string; args: Record<string, unknown>; toolCallId: string }
+  | { type: 'tool-result'; toolName: string; result: unknown; toolCallId: string };
+
+/**
  * Status of a tool approval request
  */
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'expired';
