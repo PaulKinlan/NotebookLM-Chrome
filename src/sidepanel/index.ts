@@ -430,6 +430,7 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
   currentNotebookId = notebook.id;
   await setActiveNotebookId(notebook.id);
   await loadNotebooks();
+  await loadNotebooksList();
   elements.notebookSelect.value = notebook.id;
   notifyNotebooksChanged();
 
@@ -468,6 +469,7 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
   currentNotebookId = notebook.id;
   await setActiveNotebookId(notebook.id);
   await loadNotebooks();
+  await loadNotebooksList();
   elements.notebookSelect.value = notebook.id;
   notifyNotebooksChanged();
 
@@ -510,6 +512,7 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
   currentNotebookId = notebook.id;
   await setActiveNotebookId(notebook.id);
   await loadNotebooks();
+  await loadNotebooksList();
   elements.notebookSelect.value = notebook.id;
   notifyNotebooksChanged();
 
@@ -1130,6 +1133,7 @@ async function handleNewNotebook(): Promise<void> {
   currentNotebookId = notebook.id;
   await setActiveNotebookId(notebook.id);
   await loadNotebooks();
+  await loadNotebooksList();
   elements.notebookSelect.value = notebook.id;
   notifyNotebooksChanged();
   showNotification("Notebook created");
