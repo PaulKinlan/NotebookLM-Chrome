@@ -191,12 +191,14 @@ export async function getUsageDataPoints(
       });
     }
 
-    const dataPoint = groupedByDate.get(date)!;
-    dataPoint.inputTokens += record.inputTokens;
-    dataPoint.outputTokens += record.outputTokens;
-    dataPoint.totalTokens += record.totalTokens;
-    dataPoint.cost += record.cost ?? 0;
-    dataPoint.requestCount += 1;
+    const dataPoint = groupedByDate.get(date);
+    if (dataPoint) {
+      dataPoint.inputTokens += record.inputTokens;
+      dataPoint.outputTokens += record.outputTokens;
+      dataPoint.totalTokens += record.totalTokens;
+      dataPoint.cost += record.cost ?? 0;
+      dataPoint.requestCount += 1;
+    }
   }
 
   // Fill in missing dates with zero values

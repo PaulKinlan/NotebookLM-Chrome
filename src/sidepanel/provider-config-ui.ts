@@ -1633,7 +1633,7 @@ function renderUsageChart(dataPoints: Awaited<ReturnType<typeof getUsageDataPoin
   ctx.clearRect(0, 0, rect.width, rect.height);
 
   if (dataPoints.length === 0) {
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
+    ctx.fillStyle = window.getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
     ctx.font = '14px system-ui';
     ctx.textAlign = 'center';
     ctx.fillText('No usage data available', rect.width / 2, rect.height / 2);
@@ -1649,10 +1649,10 @@ function renderUsageChart(dataPoints: Awaited<ReturnType<typeof getUsageDataPoin
   const maxCost = Math.max(...dataPoints.map((d) => d.cost), 0.01);
 
   // Colors
-  const tokenColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3b82f6';
+  const tokenColor = window.getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3b82f6';
   const costColor = '#10b981'; // Green for cost
-  const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#333';
-  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
+  const gridColor = window.getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#333';
+  const textColor = window.getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
 
   // Draw grid lines
   ctx.strokeStyle = gridColor;
