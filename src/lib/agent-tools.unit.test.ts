@@ -601,9 +601,16 @@ describe('agent-tools', () => {
 
     it('should export sourceTools registry', () => {
       expect(agentTools.sourceTools).toBeDefined();
+      expect(agentTools.sourceTools.listSources).toBeDefined();
+      expect(agentTools.sourceTools.readSource).toBeDefined();
+      expect(agentTools.sourceTools.findRelevantSources).toBeDefined();
+
+      // Verify tools are properly registered (without caching = same reference)
       expect(agentTools.sourceTools.listSources).toBe(agentTools.listSources);
       expect(agentTools.sourceTools.readSource).toBe(agentTools.readSource);
-      expect(agentTools.sourceTools.findRelevantSources).toBe(agentTools.findRelevantSources);
+
+      // With caching, tool is wrapped but should still have same core properties
+      expect(agentTools.sourceTools.findRelevantSources.description).toBe(agentTools.findRelevantSources.description);
     });
 
     // Note: TypeScript interfaces (SourceMetadata, SourceContent) are not
