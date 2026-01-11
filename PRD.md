@@ -318,7 +318,30 @@ Four transformation types accessible from the Transform tab:
 
 ## Advanced Features (P3+)
 
-### 6. Context Menu Integration
+### 6. Keyboard Commands
+
+Chrome keyboard shortcuts for quick actions:
+
+| Shortcut | Mac Shortcut | Action |
+|----------|--------------|--------|
+| `Ctrl+Shift+F` | `Cmd+Shift+F` | Open FolioLM side panel |
+| `Ctrl+Shift+S` | `Cmd+Shift+S` | Add current page to active notebook |
+| `Ctrl+Shift+N` | `Cmd+Shift+N` | Create a new notebook |
+| `Ctrl+Shift+E` | `Cmd+Shift+E` | Add selected text as a source |
+
+**Behavior:**
+- All commands open the side panel
+- If no active notebook exists, prompts to create one first
+- Shortcuts can be customized in `chrome://extensions/shortcuts`
+
+**Acceptance Criteria:**
+- [x] Open side panel shortcut works
+- [x] Add page shortcut extracts and adds current tab
+- [x] Create notebook shortcut triggers new notebook flow
+- [x] Add selection shortcut captures highlighted text as source
+- [x] Graceful handling when no notebook exists
+
+### 7. Context Menu Integration
 
 Right-click context menu for quick source addition:
 
@@ -342,7 +365,7 @@ Right-click context menu for quick source addition:
 - [ ] "Add audio" appears on right-click over audio
 - [x] Side panel opens after adding source
 
-### 7. Multi-Tab Selection
+### 8. Multi-Tab Selection
 
 When multiple tabs are highlighted in the browser:
 - Button automatically changes from "Add Current Tab" to "Add X Selected Tabs"
@@ -627,6 +650,7 @@ async function getModel(): Promise<LanguageModel | null> {
 - [x] Clear chat history functionality
 - [x] Offline caching of AI responses (fall back to cached responses when offline or API errors)
 - [x] Basic markdown rendering in chat responses
+- [x] Keyboard shortcuts for quick actions (Ctrl+Shift+F/S/N/E)
 
 ### Phase 2 - PDF Support (P1)
 - [ ] PDF.js integration for text extraction
