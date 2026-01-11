@@ -565,6 +565,7 @@ async function extractContentFromActiveTab(): Promise<ContentExtractionResult | 
       title: result.title,
       content: result.markdown,
       textContent: result.markdown,
+      links: result.links,
     };
   } catch (error) {
     console.error("Failed to extract content:", error);
