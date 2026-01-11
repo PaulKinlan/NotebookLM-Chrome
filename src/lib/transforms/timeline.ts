@@ -1,15 +1,16 @@
-import { getModel, generateText, buildSourceContextSimple, type Source } from './shared.ts';
+import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts';
+import { trackUsage } from '../usage.ts';
 
 export async function generateTimeline(sources: Source[]): Promise<string> {
-  const model = await getModel();
-  if (!model) {
+  const config = await getModelWithConfig();
+  if (!config) {
     throw new Error(
       "AI provider not configured. Please add your API key in settings."
     );
   }
 
   const result = await generateText({
-    model,
+    model: config.model,
     system: `You are a helpful AI assistant that creates interactive visual timelines as self-contained HTML/CSS/JS.
 Extract events, dates, and milestones from the sources.
 Present them in a visually appealing, interactive timeline format.
@@ -43,6 +44,18 @@ Structure your response as:
   // Interactive JavaScript for expand/collapse - reference elements from HTML above
 </script>`,
   });
+
+  // Track usage
+  if (result.usage) {
+    trackUsage({
+      modelConfigId: config.modelConfigId,
+      providerId: config.providerId,
+      model: config.modelId,
+      inputTokens: result.usage.inputTokens ?? 0,
+      outputTokens: result.usage.outputTokens ?? 0,
+      operation: 'transform',
+    }).catch((err) => console.warn('[Transform] Failed to track timeline usage:', err));
+  }
 
   return result.text;
 }

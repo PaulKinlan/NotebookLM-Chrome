@@ -19,6 +19,16 @@ export { generateText };
 export type { Source };
 
 /**
+ * Model with config info for usage tracking
+ */
+export interface ModelWithConfig {
+  model: LanguageModel;
+  modelConfigId: string;
+  providerId: string;
+  modelId: string;
+}
+
+/**
  * Create a LanguageModel instance for the given provider
  */
 function createProviderInstance(
@@ -73,6 +83,56 @@ export async function getModel(): Promise<LanguageModel | null> {
     modelId || defaultModel,
     baseURL
   );
+}
+
+/**
+ * Get the configured AI model with config info for usage tracking
+ */
+export async function getModelWithConfig(): Promise<ModelWithConfig | null> {
+  const activeNotebookId = await getActiveNotebookId();
+
+  let notebook: Notebook | undefined;
+  if (activeNotebookId) {
+    const notebookResult = await getNotebook(activeNotebookId);
+    if (notebookResult) {
+      notebook = notebookResult;
+    }
+  }
+
+  const resolved = await resolveModelConfig(notebook);
+
+  if (!resolved) {
+    throw new Error('No AI model configured. Please add a model configuration in settings.');
+  }
+
+  const { modelConfig, credential, providerType, providerId, baseURL } = resolved;
+  const apiKey = credential.apiKey;
+  const modelId = modelConfig.model;
+
+  const defaultModel = getProviderDefaultModel(providerType);
+  const requiresApiKey = providerRequiresApiKey(providerType);
+
+  if (requiresApiKey && !apiKey) {
+    return null;
+  }
+
+  const model = createProviderInstance(
+    providerType,
+    apiKey,
+    modelId || defaultModel,
+    baseURL
+  );
+
+  if (!model) {
+    return null;
+  }
+
+  return {
+    model,
+    modelConfigId: modelConfig.id,
+    providerId,
+    modelId: modelId || defaultModel,
+  };
 }
 
 /**

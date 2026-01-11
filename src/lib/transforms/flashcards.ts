@@ -1,18 +1,19 @@
-import { getModel, generateText, buildSourceContextSimple, type Source } from './shared.ts';
+import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts';
+import { trackUsage } from '../usage.ts';
 
 export async function generateFlashcards(
   sources: Source[],
   cardCount: number = 10
 ): Promise<string> {
-  const model = await getModel();
-  if (!model) {
+  const config = await getModelWithConfig();
+  if (!config) {
     throw new Error(
       "AI provider not configured. Please add your API key in settings."
     );
   }
 
   const result = await generateText({
-    model,
+    model: config.model,
     system: `You are a helpful AI assistant that creates interactive study flashcards as self-contained HTML/CSS/JS.
 Create clickable flashcards that flip to reveal answers when clicked.
 Questions should be specific and answers should be concise but complete.
@@ -43,6 +44,18 @@ Structure your response as:
   // Interactive JavaScript for flipping and navigation - reference elements from HTML above
 </script>`,
   });
+
+  // Track usage
+  if (result.usage) {
+    trackUsage({
+      modelConfigId: config.modelConfigId,
+      providerId: config.providerId,
+      model: config.modelId,
+      inputTokens: result.usage.inputTokens ?? 0,
+      outputTokens: result.usage.outputTokens ?? 0,
+      operation: 'transform',
+    }).catch((err) => console.warn('[Transform] Failed to track flashcards usage:', err));
+  }
 
   return result.text;
 }
