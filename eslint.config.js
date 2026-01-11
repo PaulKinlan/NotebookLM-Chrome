@@ -102,7 +102,7 @@ export default [
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       // Disallow explicit any types
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': 'error',
     },
   },
 ];
