@@ -447,7 +447,8 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
         "tab",
         result.url,
         result.title,
-        result.markdown
+        result.markdown,
+        result.links
       );
       await saveSource(source);
       // Clear suggested links cache so new sources trigger a refresh
@@ -488,7 +489,8 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
         "tab",
         response.url || linkUrl,
         response.title || "Untitled",
-        response.content || ""
+        response.content || "",
+        response.links
       );
       await saveSource(source);
       // Clear suggested links cache so new sources trigger a refresh
@@ -532,7 +534,8 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
           "tab",
           response.url || linkUrl,
           response.title || "Untitled",
-          response.content || ""
+          response.content || "",
+          response.links
         );
         await saveSource(source);
         addedCount++;
@@ -1667,7 +1670,8 @@ async function handleAddCurrentTab(): Promise<void> {
               "tab",
               result.url || tab.url,
               result.title || tab.title || "Untitled",
-              result.markdown || ""
+              result.markdown || "",
+              result.links
             );
             await saveSource(source);
             addedCount++;
@@ -1706,7 +1710,8 @@ async function handleAddCurrentTab(): Promise<void> {
           "tab",
           response.url,
           response.title,
-          response.content
+          response.content,
+          response.links
         );
         await saveSource(source);
         // Clear suggested links cache so new sources trigger a refresh
@@ -2166,7 +2171,8 @@ async function handlePickerAdd(): Promise<void> {
                 "tab",
                 result.url || tab.url,
                 result.title || tab.title || "Untitled",
-                result.markdown || ""
+                result.markdown || "",
+                result.links
               );
               await saveSource(source);
               addedCount++;
@@ -2205,7 +2211,8 @@ async function handlePickerAdd(): Promise<void> {
             pickerType || "tab",
             response.url || item.url,
             response.title || item.title,
-            response.content || ""
+            response.content || "",
+            response.links
           );
           await saveSource(source);
           addedCount++;
