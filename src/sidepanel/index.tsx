@@ -2,7 +2,7 @@
 // TSX Entry Point
 // ============================================================================
 import { App } from './App';
-import './index'; // Load all the business logic and event handlers
+import './index.js'; // Load all the business logic and event handlers
 
 // Initial state
 let activeTab = 'add';
@@ -119,7 +119,7 @@ function updateTabVisibility(): void {
   const navItems = document.querySelectorAll('.nav-item');
   const tabContents = document.querySelectorAll('.tab-content');
 
-  navItems.forEach((item, index) => {
+  navItems.forEach((item, _index) => {
     const tabName = item.getAttribute('data-tab');
     if (tabName === activeTab) {
       item.classList.add('active');
