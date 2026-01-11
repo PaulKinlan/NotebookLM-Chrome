@@ -57,7 +57,7 @@ class StorageArea {
   });
 
   getBytesInUse = vi.fn(
-    (_keys: string | string[] | null): Promise<number> => {
+    (): Promise<number> => {
       return Promise.resolve(0);
     }
   );
@@ -183,8 +183,13 @@ declare global {
 
 // Mock Chrome and browser APIs globally
 const chromeMock = createChromeMock();
-(globalThis as unknown as { chrome: ChromeMock; browser: ChromeMock }).chrome = chromeMock;
-(globalThis as unknown as { chrome: ChromeMock; browser: ChromeMock }).browser = chromeMock;
+
+// Extend global scope with test-specific chrome mock
+// Cast to unknown to allow setting properties that aren't in the official Chrome types
+// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Necessary for test mock setup
+(globalThis as unknown as { chrome: typeof chromeMock; browser: typeof chromeMock }).chrome = chromeMock;
+// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Necessary for test mock setup
+(globalThis as unknown as { chrome: typeof chromeMock; browser: typeof chromeMock }).browser = chromeMock;
 
 // Store names in the database (matching db.ts schema)
 const DB_STORES = ['notebooks', 'sources', 'chatMessages', 'transformations', 'settings', 'responseCache', 'summaries', 'providerConfigs', 'toolResults', 'approvalRequests'] as const;
@@ -200,8 +205,8 @@ beforeAll(async () => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     // Manually create the database schema (matching db.ts)
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
+    request.onupgradeneeded = () => {
+      const db = request.result;
 
       // Notebooks store
       if (!db.objectStoreNames.contains('notebooks')) {
@@ -291,9 +296,15 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   // Reset chrome.storage mock data
-  const chrome = (globalThis as unknown as { chrome: { storage: { local: { _setData: (data: Record<string, unknown>) => void }; sync: { _setData: (data: Record<string, unknown>) => void } } } }).chrome;
-  chrome.storage.local._setData({});
-  chrome.storage.sync._setData({});
+  const chrome = globalThis.chrome;
+  if (chrome?.storage?.local && '_setData' in chrome.storage.local) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Test helper method access
+    (chrome.storage.local as unknown as { _setData: (data: unknown) => void })._setData({});
+  }
+  if (chrome?.storage?.sync && '_setData' in chrome.storage.sync) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Test helper method access
+    (chrome.storage.sync as unknown as { _setData: (data: unknown) => void })._setData({});
+  }
 });
 
 // Clear IndexedDB stores after each test
