@@ -284,6 +284,7 @@ export interface AISettings {
   temperature?: number;
   maxTokens?: number;
   baseURL?: string;  // Deprecated: base URLs now hardcoded in registry
+  contextMode?: 'classic' | 'agentic';  // How to provide sources to AI
 }
 
 export type TTSProvider = 'openai' | 'elevenlabs' | 'google' | 'browser';
