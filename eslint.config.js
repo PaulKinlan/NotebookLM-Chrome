@@ -5,7 +5,7 @@ import tsparser from '@typescript-eslint/parser';
 export default [
   eslint.configs.recommended,
   {
-    files: ['src/**/*.ts'],
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -13,6 +13,9 @@ export default [
         sourceType: 'module',
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
+        ecmaFeatures: {
+          jsx: true,
+        },
       },
       globals: {
         // Chrome extension APIs
@@ -97,7 +100,7 @@ export default [
       '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       // Disallow explicit any types
       '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       // Limit file length for AI code analysis (400 lines = ~12-16k tokens)
       'max-lines': ['warn', { max: 400, skipBlankLines: true, skipComments: true }],
     },
