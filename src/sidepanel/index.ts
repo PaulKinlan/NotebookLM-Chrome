@@ -1223,15 +1223,24 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
     const initial = source.title.charAt(0).toUpperCase();
 
     div.innerHTML = `
-      <div class="source-icon">${initial}</div>
+      <div class="source-icon">${DOMPurify.sanitize(initial)}</div>
       <div class="source-info">
-        <div class="source-title">${escapeHtml(source.title)}</div>
-        <div class="source-url">${escapeHtml(domain)}</div>
+        <div class="source-title">
+          <span class="source-title-text">${DOMPurify.sanitize(source.title)}</span>
+          <a href="${DOMPurify.sanitize(source.url)}" target="_blank" rel="noopener noreferrer" class="source-external" title="Open in new tab">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </a>
+        </div>
+        <div class="source-url">${DOMPurify.sanitize(domain)}</div>
       </div>
       <div class="source-actions">
-        <button class="icon-btn btn-remove" data-id="${
+        <button class="icon-btn btn-remove" data-id="${DOMPurify.sanitize(
           source.id
-        }" title="Remove">
+        )}" title="Remove">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>

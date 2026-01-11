@@ -959,9 +959,36 @@ input[type="text"]:focus {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.source-title-text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.source-external {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.7;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.source-external:hover {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
+.source-external svg {
+  display: block;
 }
 
 .source-url {
