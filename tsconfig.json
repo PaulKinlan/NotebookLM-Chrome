@@ -22,6 +22,6 @@
       "jsx-runtime/jsx-runtime": ["./src/jsx-runtime/jsx-runtime.ts"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }
