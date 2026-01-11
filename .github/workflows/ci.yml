@@ -178,7 +178,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: [build, lint, test-e2e]
+    needs: [build, lint, test, test-e2e]
 
     steps:
       - name: Checkout code
