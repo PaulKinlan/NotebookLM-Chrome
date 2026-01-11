@@ -1260,10 +1260,38 @@ details.suggested-links-section[open] .suggested-links-chevron {
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.suggested-link-title-text {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.suggested-link-external {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.7;
+  transition: opacity 0.15s ease, color 0.15s ease;
+  margin-top: 2px;
+}
+
+.suggested-link-external:hover {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
+.suggested-link-external svg {
+  display: block;
 }
 
 .suggested-link-description {
