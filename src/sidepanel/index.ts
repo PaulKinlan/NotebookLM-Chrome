@@ -370,6 +370,10 @@ async function init(): Promise<void> {
   // Listen for messages from background script
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === "SOURCE_ADDED") {
+      // Clear suggested links cache so new sources trigger a refresh
+      if (currentNotebookId) {
+        suggestedLinksCache.delete(currentNotebookId);
+      }
       loadNotebooks();
       loadSources();
       showNotification("Source added");
@@ -443,9 +447,12 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
         "tab",
         result.url,
         result.title,
-        result.markdown
+        result.markdown,
+        result.links
       );
       await saveSource(source);
+      // Clear suggested links cache so new sources trigger a refresh
+      suggestedLinksCache.delete(notebook.id);
       await loadSources();
       showNotification("Notebook created and source added");
     }
@@ -482,9 +489,12 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
         "tab",
         response.url || linkUrl,
         response.title || "Untitled",
-        response.content || ""
+        response.content || "",
+        response.links
       );
       await saveSource(source);
+      // Clear suggested links cache so new sources trigger a refresh
+      suggestedLinksCache.delete(notebook.id);
       await loadSources();
       showNotification("Notebook created and source added");
     }
@@ -524,7 +534,8 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
           "tab",
           response.url || linkUrl,
           response.title || "Untitled",
-          response.content || ""
+          response.content || "",
+          response.links
         );
         await saveSource(source);
         addedCount++;
@@ -535,6 +546,8 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
     }
   }
 
+  // Clear suggested links cache so new sources trigger a refresh
+  suggestedLinksCache.delete(notebook.id);
   await loadSources();
   showNotification(`Notebook created with ${addedCount} source${addedCount === 1 ? '' : 's'}`);
 }
@@ -1435,7 +1448,16 @@ function renderSuggestedLinks(links: SuggestedLink[]): void {
             </svg>
           </div>
           <div class="suggested-link-info">
-            <div class="suggested-link-title">${DOMPurify.sanitize(link.title)}</div>
+            <div class="suggested-link-title">
+              <span class="suggested-link-title-text">${DOMPurify.sanitize(link.title)}</span>
+              <a href="${DOMPurify.sanitize(link.url)}" target="_blank" rel="noopener noreferrer" class="suggested-link-external" title="Open in new tab">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+              </a>
+            </div>
             <div class="suggested-link-description">${DOMPurify.sanitize(link.description)}</div>
             <div class="suggested-link-url">${DOMPurify.sanitize(domain)}</div>
           </div>
@@ -1648,7 +1670,8 @@ async function handleAddCurrentTab(): Promise<void> {
               "tab",
               result.url || tab.url,
               result.title || tab.title || "Untitled",
-              result.markdown || ""
+              result.markdown || "",
+              result.links
             );
             await saveSource(source);
             addedCount++;
@@ -1668,6 +1691,8 @@ async function handleAddCurrentTab(): Promise<void> {
         }
       }
 
+      // Clear suggested links cache so new sources trigger a refresh
+      suggestedLinksCache.delete(notebookId);
       await loadSources();
       showNotification(
         `Added ${addedCount} source${addedCount > 1 ? "s" : ""}`
@@ -1685,9 +1710,12 @@ async function handleAddCurrentTab(): Promise<void> {
           "tab",
           response.url,
           response.title,
-          response.content
+          response.content,
+          response.links
         );
         await saveSource(source);
+        // Clear suggested links cache so new sources trigger a refresh
+        suggestedLinksCache.delete(notebookId);
         await loadSources();
       }
     }
@@ -2143,7 +2171,8 @@ async function handlePickerAdd(): Promise<void> {
                 "tab",
                 result.url || tab.url,
                 result.title || tab.title || "Untitled",
-                result.markdown || ""
+                result.markdown || "",
+                result.links
               );
               await saveSource(source);
               addedCount++;
@@ -2182,7 +2211,8 @@ async function handlePickerAdd(): Promise<void> {
             pickerType || "tab",
             response.url || item.url,
             response.title || item.title,
-            response.content || ""
+            response.content || "",
+            response.links
           );
           await saveSource(source);
           addedCount++;
@@ -2204,6 +2234,8 @@ async function handlePickerAdd(): Promise<void> {
   }
 
   closePicker();
+  // Clear suggested links cache so new sources trigger a refresh
+  suggestedLinksCache.delete(notebookId);
   await loadSources();
 
   if (addedCount > 0) {
