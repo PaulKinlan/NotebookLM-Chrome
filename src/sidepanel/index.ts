@@ -5,9 +5,14 @@ import type {
   Citation,
   SuggestedLink,
 } from "../types/index.ts";
-import DOMPurify, { Config } from "dompurify";
 import { checkPermissions, requestPermission } from "../lib/permissions.ts";
 import { renderMarkdown, isHtmlContent } from "../lib/markdown-renderer.ts";
+import {
+  getRequiredQuerySelector,
+  getRequiredElementById,
+  escapeHtml,
+  formatMarkdown,
+} from "./dom-utils.ts";
 import {
   getNotebooks,
   saveNotebook,
@@ -80,6 +85,10 @@ import {
   markOnboardingComplete,
   ONBOARDING_STEPS,
 } from "../lib/onboarding.ts";
+import {
+  initApprovalUI,
+  checkAndShowPendingApprovals,
+} from "./approval-ui.ts";
 
 // ============================================================================
 // State
@@ -116,29 +125,9 @@ let suggestedLinksLoading = false;
 // DOM Elements
 // ============================================================================
 
-/**
- * Get element by query selector, throwing if not found (for required elements)
- */
-function getRequiredQuerySelector<T extends HTMLElement>(selector: string, expectedType: { new (): T; prototype: HTMLElement }, parent: ParentNode = document): T {
-  const element = parent.querySelector(selector);
-  if (element instanceof expectedType) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Safe because verified by instanceof check above
-    return element as T;
-  }
-  throw new Error(`Required element "${selector}" not found or is not ${expectedType.name}`);
-}
-
-/**
- * Get element by ID, throwing if not found (for required elements)
- */
-function getRequiredElementById<T extends HTMLElement>(id: string, expectedType: { new (): T; prototype: HTMLElement }): T {
-  const element = document.getElementById(id);
-  if (element instanceof expectedType) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Safe because verified by instanceof check above
-    return element as T;
-  }
-  throw new Error(`Required element #${id} not found or is not ${expectedType.name}`);
-}
+// ============================================================================
+// Elements
+// ============================================================================
 
 const elements = {
   // Navigation
@@ -282,6 +271,10 @@ async function init(): Promise<void> {
   // Load context mode setting
   const contextMode = await getContextMode();
   elements.toolBasedContext.checked = contextMode === "agentic";
+
+  // Initialize approval UI
+  initApprovalUI();
+
   // updateSettingsUI() is now handled by provider-config-ui.ts
   setupEventListeners();
   await loadNotebooks();
@@ -321,6 +314,11 @@ async function init(): Promise<void> {
       refreshPickerIfShowingTabs();
     }
   });
+
+  // Check for pending tool approvals periodically (every 1 second)
+  setInterval(async () => {
+    await checkAndShowPendingApprovals();
+  }, 1000);
 
   // Listen for messages from background script
   chrome.runtime.onMessage.addListener((message) => {
@@ -3012,9 +3010,10 @@ async function handleQuery(): Promise<void> {
   try {
     // Get context mode and source tools
     const contextMode = await getContextMode();
+    const tools = contextMode === "agentic" ? await getSourceTools() : undefined;
 
     const stream = streamChat(sources, query, history, {
-      tools: contextMode === "agentic" ? getSourceTools() : undefined,
+      tools,
       contextMode,
       onStatus: (status) => {
         elements.chatStatus.textContent = status;
@@ -3923,94 +3922,6 @@ async function handleBaseUrlChange(): Promise<void> {
 // ============================================================================
 // Utilities
 // ============================================================================
-
-// Configure DOMPurify with strict settings for AI-generated content
-const DOMPURIFY_CONFIG: Config = {
-  ALLOWED_TAGS: [
-    "p",
-    "br",
-    "strong",
-    "em",
-    "b",
-    "i",
-    "code",
-    "pre",
-    "ul",
-    "ol",
-    "li",
-    "a",
-    "blockquote",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "span",
-    "div",
-  ],
-  ALLOWED_ATTR: ["href", "target", "rel", "class"],
-  ALLOW_DATA_ATTR: false,
-  ADD_ATTR: ["target"], // Allow target for links
-  FORBID_TAGS: [
-    "script",
-    "style",
-    "iframe",
-    "form",
-    "input",
-    "object",
-    "embed",
-    "svg",
-    "math",
-  ],
-  FORBID_ATTR: [
-    "onerror",
-    "onclick",
-    "onload",
-    "onmouseover",
-    "onfocus",
-    "onblur",
-  ],
-};
-
-// Hook to force safe link attributes
-DOMPurify.addHook("afterSanitizeAttributes", (node) => {
-  if (node.tagName === "A") {
-    node.setAttribute("target", "_blank");
-    node.setAttribute("rel", "noopener noreferrer");
-  }
-});
-
-function escapeHtml(text: string): string {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, DOMPURIFY_CONFIG);
-}
-
-function formatMarkdown(text: string): string {
-  // First escape HTML entities in the raw text to prevent injection
-  const escaped = escapeHtml(text);
-
-  // Then apply markdown formatting
-  const formatted = escaped
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/```([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
-    .replace(/`(.*?)`/g, "<code>$1</code>")
-    .replace(/^### (.*$)/gm, "<h3>$1</h3>")
-    .replace(/^## (.*$)/gm, "<h2>$1</h2>")
-    .replace(/^# (.*$)/gm, "<h1>$1</h1>")
-    .replace(/^- (.*$)/gm, "<li>$1</li>")
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/\n/g, "<br>");
-
-  // Finally sanitize the result with DOMPurify
-  return sanitizeHtml(formatted);
-}
 
 function copyToClipboard(text: string): void {
   navigator.clipboard
