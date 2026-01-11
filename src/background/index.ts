@@ -663,6 +663,32 @@ function injectContentScript(): void {
         clone.querySelectorAll(sel).forEach((el) => el.remove());
       });
 
+      // Extract links before converting to text
+      const anchors = clone.querySelectorAll("a[href]");
+      const seen = new Set<string>();
+      const links: Array<{ url: string; text: string; context: string }> = [];
+      const noisePatterns = [
+        /privacy/i, /terms/i, /cookie/i, /policy/i, /login/i, /signin/i,
+        /signup/i, /register/i, /account/i, /subscribe/i, /newsletter/i,
+        /contact/i, /about\/?$/i, /legal/i, /sitemap/i, /rss/i, /feed/i,
+      ];
+
+      for (const anchor of anchors) {
+        const href = (anchor as HTMLAnchorElement).href;
+        const text = (anchor.textContent || "").trim();
+
+        if (!href || !text || text.length < 3) continue;
+        if (!href.startsWith("http://") && !href.startsWith("https://")) continue;
+        if (href === url || href === url + "/") continue;
+        if (seen.has(href)) continue;
+        if (noisePatterns.some((p) => p.test(href))) continue;
+
+        seen.add(href);
+        const parent = anchor.parentElement;
+        const context = parent ? (parent.textContent || "").slice(0, 60).trim() : "";
+        links.push({ url: href, text, context });
+      }
+
       const textContent = clone.innerText || clone.textContent || "";
       // Clean up whitespace
       const markdown = textContent
@@ -671,7 +697,7 @@ function injectContentScript(): void {
         .filter((line) => line.length > 0)
         .join("\n\n");
 
-      sendResponse({ url, title, markdown });
+      sendResponse({ url, title, markdown, links });
       return true;
     }
 
