@@ -58,6 +58,11 @@ import {
   generateSummary,
   formatErrorForUser,
 } from "../lib/ai.ts";
+import { getSourceTools } from "../lib/agent-tools.ts";
+import {
+  getContextMode,
+  setContextMode,
+} from "../lib/settings.ts";
 import {
   getModelConfigs,
   getDefaultModelConfig,
@@ -217,6 +222,7 @@ const elements = {
   permTabGroups: getRequiredElementById("perm-tab-groups", HTMLInputElement),
   permBookmarks: getRequiredElementById("perm-bookmarks", HTMLInputElement),
   permHistory: getRequiredElementById("perm-history", HTMLInputElement),
+  toolBasedContext: getRequiredElementById("tool-based-context", HTMLInputElement),
   clearAllDataBtn: getRequiredElementById("clear-all-data-btn", HTMLButtonElement),
 
   // FAB
@@ -273,6 +279,9 @@ async function init(): Promise<void> {
   }
 
   updatePermissionUI();
+  // Load context mode setting
+  const contextMode = await getContextMode();
+  elements.toolBasedContext.checked = contextMode === "agentic";
   // updateSettingsUI() is now handled by provider-config-ui.ts
   setupEventListeners();
   await loadNotebooks();
@@ -649,6 +658,10 @@ function setupEventListeners(): void {
   elements.permHistory.addEventListener("change", () =>
     handlePermissionToggle("history")
   );
+  elements.toolBasedContext.addEventListener("change", async () => {
+    const mode = elements.toolBasedContext.checked ? "agentic" : "classic";
+    await setContextMode(mode);
+  });
   elements.clearAllDataBtn.addEventListener("click", handleClearAllData);
 
   // Old AI settings event listeners - replaced by provider-config-ui.ts
@@ -2997,7 +3010,12 @@ async function handleQuery(): Promise<void> {
   const messageDiv = appendChatMessage(assistantMessage, sources, true);
 
   try {
+    // Get context mode and source tools
+    const contextMode = await getContextMode();
+
     const stream = streamChat(sources, query, history, {
+      tools: contextMode === "agentic" ? getSourceTools() : undefined,
+      contextMode,
       onStatus: (status) => {
         elements.chatStatus.textContent = status;
       }
