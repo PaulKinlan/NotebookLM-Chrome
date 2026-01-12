@@ -8,16 +8,7 @@
 import type { VNode, MountedNode } from './vnode.ts'
 import type { ComponentInstance } from './component.ts'
 import { setRenderCallback } from './scheduler.ts'
-
-// Lazy imports to avoid circular dependency
-let componentModule: typeof import('./component.ts') | null = null
-
-async function getComponentModule() {
-  if (!componentModule) {
-    componentModule = await import('./component.ts')
-  }
-  return componentModule
-}
+import * as componentModule from './component.ts'
 
 /**
  * Map to track mounted DOM nodes back to their VNodes
@@ -147,11 +138,10 @@ async function mountComponent(
   vnode: Extract<VNode, { type: 'component' }>,
   parentComponent?: ComponentInstance,
 ): Promise<Node> {
-  const mod = await getComponentModule()
   const { fn, props } = vnode
 
   // Create component instance
-  const instance = mod.createComponentInstance(fn, props, parentComponent)
+  const instance = componentModule.createComponentInstance(fn, props, parentComponent)
 
   // Check if this is an ErrorBoundary component
   // We identify it by checking if it has the special __isErrorBoundary property
@@ -225,8 +215,6 @@ async function updateComponent(
   oldVNode: Extract<VNode, { type: 'component' }>,
   newVNode: Extract<VNode, { type: 'component' }>,
 ): Promise<Node> {
-  const mod = await getComponentModule()
-
   // Check if it's the same component function
   if (oldVNode.fn !== newVNode.fn) {
     // Different component - replace entirely
@@ -236,7 +224,7 @@ async function updateComponent(
       // Cleanup old component
       const mounted = mountedNodes.get(oldNode)
       if (mounted?.component) {
-        mod.unmountComponent(mounted.component)
+        componentModule.unmountComponent(mounted.component)
       }
       parent.replaceChild(newNode, oldNode)
     }
@@ -262,8 +250,6 @@ async function updateComponent(
  * This is called by the scheduler when state changes
  */
 export async function renderComponent(instance: ComponentInstance): Promise<void> {
-  const mod = await getComponentModule()
-
   if (instance.isUnmounted) {
     return
   }
@@ -311,10 +297,10 @@ export async function renderComponent(instance: ComponentInstance): Promise<void
   }
 
   // Set current component for hooks
-  mod.setCurrentComponent(instance)
+  componentModule.setCurrentComponent(instance)
 
   // Reset hook index for new render
-  mod.resetHookIndex(instance)
+  componentModule.resetHookIndex(instance)
 
   // Get the previous mounted node and vnode
   const oldNode = instance.mountedNode
@@ -328,18 +314,18 @@ export async function renderComponent(instance: ComponentInstance): Promise<void
     newVNode = normalizeVNode(result)
 
     // Reset error state on successful render
-    mod.resetErrorState(instance)
+    componentModule.resetErrorState(instance)
   }
   catch (error) {
     const errorObj = error instanceof Error ? error : new Error(String(error))
 
     // Try to find an error boundary to handle this error
-    const captured = mod.captureError(instance, errorObj)
+    const captured = componentModule.captureError(instance, errorObj)
 
     if (captured) {
       // Error was captured by an error boundary
       // The error boundary will re-render with its fallback
-      mod.setCurrentComponent(null)
+      componentModule.setCurrentComponent(null)
       return
     }
 
@@ -352,7 +338,7 @@ export async function renderComponent(instance: ComponentInstance): Promise<void
   instance.currentVNode = newVNode
 
   // Clear current component
-  mod.setCurrentComponent(null)
+  componentModule.setCurrentComponent(null)
 
   // Reconcile the new tree
   if (!oldNode || !oldNode.parentNode) {
@@ -522,8 +508,6 @@ async function diffChildren(
   newChildren: VNode[],
   component?: ComponentInstance,
 ): Promise<void> {
-  const mod = await getComponentModule()
-
   // Edge case: no old children - mount all new children
   if (oldChildren.length === 0) {
     for (const newChild of newChildren) {
@@ -538,7 +522,7 @@ async function diffChildren(
       const childNode = parent.childNodes[i]
       const mounted = mountedNodes.get(childNode)
       if (mounted?.component) {
-        mod.unmountComponent(mounted.component)
+        componentModule.unmountComponent(mounted.component)
       }
       if (childNode.parentNode === parent) {
         try {
@@ -680,7 +664,7 @@ async function diffChildren(
       if (domNode && domNode.parentNode === parent) {
         const mounted = mountedNodes.get(domNode)
         if (mounted?.component) {
-          mod.unmountComponent(mounted.component)
+          componentModule.unmountComponent(mounted.component)
         }
         try {
           parent.removeChild(domNode)

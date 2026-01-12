@@ -7,14 +7,14 @@
 
 import { beforeEach, afterEach } from 'vitest'
 import type { VNode } from '../vnode.ts'
+import { JSDOM } from 'jsdom'
 
-let jsdom: import('jsdom').JSDOM
+let jsdom: JSDOM
 
 // Store original console.error to suppress expected DOM errors
 const originalConsoleError = console.error
 
-beforeEach(async () => {
-  const { JSDOM } = await import('jsdom')
+beforeEach(() => {
   jsdom = new JSDOM('<!DOCTYPE html><html><body><div id="app"></div></body></html>', {
     url: 'http://localhost',
     runScripts: 'dangerously',
