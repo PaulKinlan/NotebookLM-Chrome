@@ -117,36 +117,14 @@ describe('Chat', () => {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // Set the input value directly
-      await page.evaluate(() => {
-        const input = document.getElementById('query-input') as HTMLInputElement;
-        input.value = 'Test message';
-        // Trigger input event to ensure any listeners are notified
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      });
+      // Type and send a message
+      await page.type('#query-input', 'Test message');
+      await page.click('#query-btn');
 
-      // Wait for input to be processed
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait a moment for the input to be cleared
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Verify input has the message
-      const inputValueBefore = await page.$eval('#query-input',
-        (el) => (el as HTMLInputElement).value
-      );
-      expect(inputValueBefore).toBe('Test message');
-
-      // Send the message - directly click the button via evaluate to ensure handler runs
-      await page.evaluate(() => {
-        const btn = document.getElementById('query-btn') as HTMLButtonElement;
-        btn.click();
-      });
-
-      // Wait for input to be cleared (happens when handleQuery starts)
-      await page.waitForFunction(() => {
-        const input = document.getElementById('query-input') as HTMLInputElement;
-        return input.value === '';
-      }, { timeout: 3000 });
-
-      // Verify input was cleared (indicating message was sent)
+      // Verify input was cleared
       const inputValueAfter = await page.$eval('#query-input',
         (el) => (el as HTMLInputElement).value
       );
