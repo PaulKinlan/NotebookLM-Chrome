@@ -8,13 +8,13 @@
  * credential, that credential is reused instead of creating a duplicate.
  */
 
-import type { Credential, ModelConfig, UsageTimeRange } from '../types/index.ts';
-import { maskApiKey } from './profile-ui-utils.ts';
+import type { Credential, ModelConfig, UsageTimeRange } from '../types/index.ts'
+import { maskApiKey } from './profile-ui-utils.ts'
 import {
   getCredentials,
   createCredential,
   findCredentialByApiKey,
-} from '../lib/credentials.ts';
+} from '../lib/credentials.ts'
 import {
   getModelConfigs,
   createModelConfig,
@@ -23,69 +23,69 @@ import {
   setDefaultModelConfig,
   initializeDefaultProfile,
   NO_API_KEY_PLACEHOLDER,
-} from '../lib/model-configs.ts';
-import type { ProviderConfig, ModelOption, SelectableModel } from '../lib/provider-registry.ts';
+} from '../lib/model-configs.ts'
+import type { ProviderConfig, ModelOption, SelectableModel } from '../lib/provider-registry.ts'
 import {
   getAllProviders,
   getProviderConfigById,
   fetchProviderSelectableModels,
-} from '../lib/provider-registry.ts';
-import { FuzzyDropdown, providersToDropdownOptions } from './dropdown.ts';
-import { testConnectionWithConfig } from '../lib/ai.ts';
+} from '../lib/provider-registry.ts'
+import { FuzzyDropdown, providersToDropdownOptions } from './dropdown.ts'
+import { testConnectionWithConfig } from '../lib/ai.ts'
 import {
   getUsageStats,
   getUsageDataPoints,
   formatTokenCount,
   formatCost,
   getTimeRangeLabel,
-} from '../lib/usage.ts';
+} from '../lib/usage.ts'
 
 /**
  * AI Profile - combined view model (not persisted)
  * Merges ModelConfig + Credential + Provider for UI presentation
  */
 interface AIProfile {
-  modelConfig: ModelConfig;
-  credential: Credential;
-  provider: ProviderConfig;
+  modelConfig: ModelConfig
+  credential: Credential
+  provider: ProviderConfig
 }
 
 // Custom event for notifying when AI profiles change
-export const AI_PROFILES_CHANGED_EVENT = 'ai-profiles-changed';
+export const AI_PROFILES_CHANGED_EVENT = 'ai-profiles-changed'
 
 /**
  * Dispatch event to notify that AI profiles have changed
  */
 function notifyProfilesChanged(): void {
-  window.dispatchEvent(new CustomEvent(AI_PROFILES_CHANGED_EVENT));
+  window.dispatchEvent(new CustomEvent(AI_PROFILES_CHANGED_EVENT))
 }
 
 // State
-let profiles: AIProfile[] = [];
-let editingProfileId: string | null = null;
-let isNewProfile = false;
+let profiles: AIProfile[] = []
+let editingProfileId: string | null = null
+let isNewProfile = false
 
 // Model cache keyed by provider ID and API key hash
 // Format: "providerId:apiKeyHash" or "providerId:no-auth" for providers that don't require API key
-const modelsCache = new Map<string, SelectableModel[]>();
-let currentCacheKey: string | null = null;
-let selectedProviderIdForNew: string | null = null;
-let isFetchingModels: boolean = false;
+const modelsCache = new Map<string, SelectableModel[]>()
+let currentCacheKey: string | null = null
+let selectedProviderIdForNew: string | null = null
+let isFetchingModels: boolean = false
 
 // Provider dropdown instances
-let providerDropdowns = new Map<HTMLElement, FuzzyDropdown>();
+let providerDropdowns = new Map<HTMLElement, FuzzyDropdown>()
 
 /**
  * Generate a simple hash for an API key (not for security, just for cache key uniqueness)
  */
 function hashApiKey(apiKey: string): string {
-  let hash = 0;
+  let hash = 0
   for (let i = 0; i < apiKey.length; i++) {
-    const char = apiKey.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    const char = apiKey.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
   }
-  return hash.toString(36);
+  return hash.toString(36)
 }
 
 /**
@@ -94,71 +94,71 @@ function hashApiKey(apiKey: string): string {
 function generateCacheKey(providerId: string, apiKey?: string): string {
   // For providers that don't require API key or when no API key is provided
   if (!apiKey) {
-    return `${providerId}:no-auth`;
+    return `${providerId}:no-auth`
   }
-  return `${providerId}:${hashApiKey(apiKey)}`;
+  return `${providerId}:${hashApiKey(apiKey)}`
 }
 
 /**
  * Get cached models for a provider/API key combination
  */
 function getCachedModels(providerId: string, apiKey?: string): SelectableModel[] {
-  const key = generateCacheKey(providerId, apiKey);
-  return modelsCache.get(key) || [];
+  const key = generateCacheKey(providerId, apiKey)
+  return modelsCache.get(key) || []
 }
 
 /**
  * Cache models for a provider/API key combination
  */
 function setCachedModels(providerId: string, models: SelectableModel[], apiKey?: string): void {
-  const key = generateCacheKey(providerId, apiKey);
-  modelsCache.set(key, models);
-  currentCacheKey = key;
+  const key = generateCacheKey(providerId, apiKey)
+  modelsCache.set(key, models)
+  currentCacheKey = key
 }
 
 // Model dropdown state
-let dropdownOpen = false;
-let highlightedIndex = -1;
-let currentDropdownMenu: HTMLElement | null = null;
-let currentModelInput: HTMLInputElement | null = null;
-let currentModelDropdown: HTMLElement | null = null;
+let dropdownOpen = false
+let highlightedIndex = -1
+let currentDropdownMenu: HTMLElement | null = null
+let currentModelInput: HTMLInputElement | null = null
+let currentModelDropdown: HTMLElement | null = null
 
 // Global click handler to close dropdown when clicking outside
 document.addEventListener('click', (e) => {
   if (dropdownOpen && currentModelDropdown && e.target instanceof Node && !currentModelDropdown.contains(e.target)) {
-    toggleModelDropdown(false);
+    toggleModelDropdown(false)
   }
-});
+})
 
 // Elements
 let elements: {
-  profilesList: HTMLElement;
-  addProfileBtn: HTMLButtonElement;
-  notebookSettingsGroup: HTMLElement;
-  notebookModelSelect: HTMLSelectElement;
-};
+  profilesList: HTMLElement
+  addProfileBtn: HTMLButtonElement
+  notebookSettingsGroup: HTMLElement
+  notebookModelSelect: HTMLSelectElement
+}
 
 /**
  * Initialize configuration UI
  */
 export async function initProviderConfigUI(): Promise<void> {
-  console.log('[ConfigUI] Initializing AI Profiles UI');
+  console.log('[ConfigUI] Initializing AI Profiles UI')
 
-  const profilesListEl = document.getElementById('profiles-list');
-  const addProfileBtnEl = document.getElementById('add-profile-btn');
-  const notebookSettingsGroupEl = document.getElementById('notebook-settings-group');
-  const notebookModelSelectEl = document.getElementById('notebook-model-select');
+  const profilesListEl = document.getElementById('profiles-list')
+  const addProfileBtnEl = document.getElementById('add-profile-btn')
+  const notebookSettingsGroupEl = document.getElementById('notebook-settings-group')
+  const notebookModelSelectEl = document.getElementById('notebook-model-select')
 
   if (
-    !profilesListEl ||
-    !addProfileBtnEl ||
-    !notebookSettingsGroupEl ||
-    !notebookModelSelectEl ||
-    !(addProfileBtnEl instanceof HTMLButtonElement) ||
-    !(notebookModelSelectEl instanceof HTMLSelectElement)
+    !profilesListEl
+    || !addProfileBtnEl
+    || !notebookSettingsGroupEl
+    || !notebookModelSelectEl
+    || !(addProfileBtnEl instanceof HTMLButtonElement)
+    || !(notebookModelSelectEl instanceof HTMLSelectElement)
   ) {
-    console.error('[ConfigUI] Required elements not found');
-    return;
+    console.error('[ConfigUI] Required elements not found')
+    return
   }
 
   elements = {
@@ -166,16 +166,16 @@ export async function initProviderConfigUI(): Promise<void> {
     addProfileBtn: addProfileBtnEl,
     notebookSettingsGroup: notebookSettingsGroupEl,
     notebookModelSelect: notebookModelSelectEl,
-  };
+  }
 
-  elements.addProfileBtn.addEventListener('click', handleAddProfile);
+  elements.addProfileBtn.addEventListener('click', handleAddProfile)
 
   // Initialize default Chrome Built-in profile if no profiles exist
-  await initializeDefaultProfile();
+  await initializeDefaultProfile()
 
-  await loadData();
+  await loadData()
 
-  console.log('[ConfigUI] Initialization complete');
+  console.log('[ConfigUI] Initialization complete')
 }
 
 /**
@@ -183,41 +183,43 @@ export async function initProviderConfigUI(): Promise<void> {
  */
 async function loadData(): Promise<void> {
   try {
-    const credentials = await getCredentials();
-    const modelConfigs = await getModelConfigs();
+    const credentials = await getCredentials()
+    const modelConfigs = await getModelConfigs()
 
     // Merge into profiles array
     profiles = modelConfigs
       .map((config) => {
-        const credential = credentials.find((c) => c.id === config.credentialId);
-        const provider = getProviderConfigById(config.providerId);
+        const credential = credentials.find(c => c.id === config.credentialId)
+        const provider = getProviderConfigById(config.providerId)
         if (!credential || !provider) {
-          console.warn(`[ConfigUI] Skipping profile ${config.id}: missing credential or provider`);
-          return null;
+          console.warn(`[ConfigUI] Skipping profile ${config.id}: missing credential or provider`)
+          return null
         }
-        return { modelConfig: config, credential, provider };
+        return { modelConfig: config, credential, provider }
       })
-      .filter((p): p is AIProfile => p !== null);
+      .filter((p): p is AIProfile => p !== null)
 
     // Sort: default first, then by date
     profiles.sort((a, b) => {
-      if (a.modelConfig.isDefault && !b.modelConfig.isDefault) return -1;
-      if (!a.modelConfig.isDefault && b.modelConfig.isDefault) return 1;
-      return b.modelConfig.updatedAt - a.modelConfig.updatedAt;
-    });
+      if (a.modelConfig.isDefault && !b.modelConfig.isDefault) return -1
+      if (!a.modelConfig.isDefault && b.modelConfig.isDefault) return 1
+      return b.modelConfig.updatedAt - a.modelConfig.updatedAt
+    })
 
-    renderProfilesList();
-    updateNotebookModelDropdown();
+    renderProfilesList()
+    updateNotebookModelDropdown()
 
     // Hide add button when showing new profile form (no profiles exist)
     if (profiles.length === 0) {
-      elements.addProfileBtn.style.display = 'none';
-    } else {
-      elements.addProfileBtn.style.display = '';
+      elements.addProfileBtn.style.display = 'none'
     }
-  } catch (error) {
-    console.error('Failed to load data:', error);
-    showNotification('Failed to load configurations', 'error');
+    else {
+      elements.addProfileBtn.style.display = ''
+    }
+  }
+  catch (error) {
+    console.error('Failed to load data:', error)
+    showNotification('Failed to load configurations', 'error')
   }
 }
 
@@ -225,61 +227,62 @@ async function loadData(): Promise<void> {
  * Render the list of profile cards
  */
 function renderProfilesList(): void {
-  const container = elements.profilesList;
+  const container = elements.profilesList
 
-  container.innerHTML = '';
+  container.innerHTML = ''
 
   // If adding new profile, render form first
   if (isNewProfile && editingProfileId === null) {
-    const formCard = createProfileFormCard();
-    container.appendChild(formCard);
-    return;
+    const formCard = createProfileFormCard()
+    container.appendChild(formCard)
+    return
   }
 
   // Empty state - show message with option to create a new profile
   if (profiles.length === 0) {
-    const emptyState = document.createElement('div');
-    emptyState.className = 'ai-profiles-empty-state';
+    const emptyState = document.createElement('div')
+    emptyState.className = 'ai-profiles-empty-state'
 
-    const message = document.createElement('p');
-    message.textContent = 'No AI profiles have been created yet.';
-    emptyState.appendChild(message);
+    const message = document.createElement('p')
+    message.textContent = 'No AI profiles have been created yet.'
+    emptyState.appendChild(message)
 
-    const addButton = document.createElement('button');
-    addButton.type = 'button';
-    addButton.textContent = 'Add profile';
+    const addButton = document.createElement('button')
+    addButton.type = 'button'
+    addButton.textContent = 'Add profile'
     addButton.addEventListener('click', () => {
-      isNewProfile = true;
-      selectedProviderIdForNew = 'chrome'; // Default to Chrome built-in provider for new users
-      renderProfilesList();
-    });
-    emptyState.appendChild(addButton);
+      isNewProfile = true
+      selectedProviderIdForNew = 'chrome' // Default to Chrome built-in provider for new users
+      renderProfilesList()
+    })
+    emptyState.appendChild(addButton)
 
-    container.appendChild(emptyState);
-    return;
+    container.appendChild(emptyState)
+    return
   }
 
   // Render profiles
   profiles.forEach((profile) => {
-    const card = createProfileCard(profile);
-    container.appendChild(card);
-  });
+    const card = createProfileCard(profile)
+    container.appendChild(card)
+  })
 }
 
 /**
  * Create a profile card (view or edit mode)
  */
 function createProfileCard(profile: AIProfile): HTMLElement {
-  const isEditing = editingProfileId === profile.modelConfig.id;
-  const card = document.createElement('div');
-  card.className = `profile-card${profile.modelConfig.isDefault ? ' default-profile' : ''}${isEditing ? ' editing' : ''}`;
+  const isEditing = editingProfileId === profile.modelConfig.id
+  const card = document.createElement('div')
+  card.className = `profile-card${profile.modelConfig.isDefault ? ' default-profile' : ''}${isEditing ? ' editing' : ''}`
 
   if (isEditing) {
-    card.innerHTML = renderProfileEditForm(profile);
-    setupProfileFormListeners(card, profile.modelConfig.id, false);
-  } else {
-    const { modelConfig, credential, provider } = profile;
-    const showApiKey = provider.features.requiresApiKey !== false && credential.apiKey !== NO_API_KEY_PLACEHOLDER;
+    card.innerHTML = renderProfileEditForm(profile)
+    setupProfileFormListeners(card, profile.modelConfig.id, false)
+  }
+  else {
+    const { modelConfig, credential, provider } = profile
+    const showApiKey = provider.features.requiresApiKey !== false && credential.apiKey !== NO_API_KEY_PLACEHOLDER
 
     card.innerHTML = `
       <div class="profile-header" data-profile-id="${modelConfig.id}">
@@ -312,58 +315,58 @@ function createProfileCard(profile: AIProfile): HTMLElement {
         </button>
         <button class="profile-btn delete" data-action="delete">Delete</button>
       </div>
-    `;
+    `
 
     card.querySelectorAll('.profile-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        e.stopPropagation();
+        e.stopPropagation()
         // Handle clicks on SVG elements inside buttons
-        const target = (e.target instanceof Element ? e.target.closest('button') : btn) as HTMLButtonElement;
-        const action = target.dataset.action;
-        if (action === 'edit') handleEditProfile(modelConfig.id);
-        else if (action === 'set-default') handleSetDefaultProfile(modelConfig.id);
-        else if (action === 'stats') handleShowUsageStats(modelConfig.id, modelConfig.name);
-        else if (action === 'delete') handleDeleteProfile(modelConfig.id);
-      });
-    });
+        const target = (e.target instanceof Element ? e.target.closest('button') : btn) as HTMLButtonElement
+        const action = target.dataset.action
+        if (action === 'edit') handleEditProfile(modelConfig.id)
+        else if (action === 'set-default') void handleSetDefaultProfile(modelConfig.id)
+        else if (action === 'stats') void handleShowUsageStats(modelConfig.id, modelConfig.name)
+        else if (action === 'delete') void handleDeleteProfile(modelConfig.id)
+      })
+    })
   }
 
-  return card;
+  return card
 }
 
 /**
  * Create a new profile form card
  */
 function createProfileFormCard(): HTMLElement {
-  const card = document.createElement('div');
-  card.className = 'profile-card editing new-profile';
-  card.innerHTML = renderProfileEditForm(null);
-  setupProfileFormListeners(card, null, true);
-  return card;
+  const card = document.createElement('div')
+  card.className = 'profile-card editing new-profile'
+  card.innerHTML = renderProfileEditForm(null)
+  setupProfileFormListeners(card, null, true)
+  return card
 }
 
 /**
  * Check if provider supports model fetching
  */
 function providerSupportsFetching(providerId: string): boolean {
-  const provider = getProviderConfigById(providerId);
-  return provider?.features.supportsModelFetching ?? false;
+  const provider = getProviderConfigById(providerId)
+  return provider?.features.supportsModelFetching ?? false
 }
 
 /**
  * Check if provider requires API key for model fetching
  */
 function providerRequiresApiKeyForFetching(providerId: string): boolean {
-  const provider = getProviderConfigById(providerId);
-  return provider?.features.requiresApiKeyForFetching ?? false;
+  const provider = getProviderConfigById(providerId)
+  return provider?.features.requiresApiKeyForFetching ?? false
 }
 
 /**
  * Check if provider requires API key at all
  */
 function providerRequiresApiKey(providerId: string): boolean {
-  const provider = getProviderConfigById(providerId);
-  return provider?.features.requiresApiKey ?? true;
+  const provider = getProviderConfigById(providerId)
+  return provider?.features.requiresApiKey ?? true
 }
 
 /**
@@ -371,48 +374,48 @@ function providerRequiresApiKey(providerId: string): boolean {
  * Returns higher score for better matches
  */
 function fuzzyMatchScore(text: string, query: string): number {
-  if (!query) return 0;
+  if (!query) return 0
 
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
+  const lowerText = text.toLowerCase()
+  const lowerQuery = query.toLowerCase()
 
   // Exact match at start - highest priority
   if (lowerText.startsWith(lowerQuery)) {
-    return 100;
+    return 100
   }
 
   // Exact match anywhere
   if (lowerText.includes(lowerQuery)) {
-    return 50;
+    return 50
   }
 
   // Character sequence match
-  let queryIndex = 0;
-  let score = 0;
+  let queryIndex = 0
+  let score = 0
   for (let i = 0; i < lowerText.length && queryIndex < lowerQuery.length; i++) {
     if (lowerText[i] === lowerQuery[queryIndex]) {
-      score += 1;
-      queryIndex++;
+      score += 1
+      queryIndex++
     }
   }
 
   // If we matched all characters in order
   if (queryIndex === lowerQuery.length) {
-    return Math.min(score, 49);
+    return Math.min(score, 49)
   }
 
-  return -1; // No match
+  return -1 // No match
 }
 
 /**
  * Render profile edit form
  */
 function renderProfileEditForm(profile: AIProfile | null): string {
-  const isNew = !profile;
+  const isNew = !profile
 
-  const currentProviderId = profile ? profile.provider.id : (selectedProviderIdForNew || '');
-  const requiresApiKey = providerRequiresApiKey(currentProviderId);
-  const apiKeyValue = profile?.credential.apiKey === NO_API_KEY_PLACEHOLDER ? '' : (profile?.credential.apiKey || '');
+  const currentProviderId = profile ? profile.provider.id : (selectedProviderIdForNew || '')
+  const requiresApiKey = providerRequiresApiKey(currentProviderId)
+  const apiKeyValue = profile?.credential.apiKey === NO_API_KEY_PLACEHOLDER ? '' : (profile?.credential.apiKey || '')
 
   return `
     <div class="profile-form">
@@ -531,27 +534,28 @@ function renderProfileEditForm(profile: AIProfile | null): string {
       </div>
       <div class="test-status" style="display: none;"></div>
     </div>
-  `;
+  `
 }
 
 /**
  * Render an empty state message in the model dropdown
  */
 function renderEmptyDropdownMessage(dropdownMenu: HTMLElement, message: string, isLoading = false): void {
-  dropdownMenu.innerHTML = '';
-  const empty = document.createElement('div');
-  empty.className = 'dropdown-empty';
+  dropdownMenu.innerHTML = ''
+  const empty = document.createElement('div')
+  empty.className = 'dropdown-empty'
   if (isLoading) {
-    empty.classList.add('dropdown-empty-loading');
+    empty.classList.add('dropdown-empty-loading')
     // Add a simple loading indicator
     empty.innerHTML = `
       <span class="loading-spinner"></span>
       <span>${escapeHtml(message)}</span>
-    `;
-  } else {
-    empty.textContent = message;
+    `
   }
-  dropdownMenu.appendChild(empty);
+  else {
+    empty.textContent = message
+  }
+  dropdownMenu.appendChild(empty)
 }
 
 /**
@@ -561,141 +565,142 @@ function populateModelDropdown(
   dropdownMenu: HTMLElement,
   query: string,
   providerId: string,
-  currentValue: string
+  currentValue: string,
 ): void {
-  const providerConfig = getProviderConfigById(providerId);
+  const providerConfig = getProviderConfigById(providerId)
   if (!providerConfig) {
-    renderEmptyDropdownMessage(dropdownMenu, 'Provider not found');
-    return;
+    renderEmptyDropdownMessage(dropdownMenu, 'Provider not found')
+    return
   }
 
-  const models = providerConfig.commonModels || [];
+  const models = providerConfig.commonModels || []
 
   // Get API key from the form to check cache
-  const card = dropdownMenu.closest('.profile-card');
+  const card = dropdownMenu.closest('.profile-card')
   if (!(card instanceof HTMLElement)) {
-    renderEmptyDropdownMessage(dropdownMenu, 'Card not found');
-    return;
+    renderEmptyDropdownMessage(dropdownMenu, 'Card not found')
+    return
   }
-  const apiKeyInput = card.querySelector('.profile-api-key-input');
-  const apiKey = apiKeyInput instanceof HTMLInputElement ? apiKeyInput.value.trim() : '';
+  const apiKeyInput = card.querySelector('.profile-api-key-input')
+  const apiKey = apiKeyInput instanceof HTMLInputElement ? apiKeyInput.value.trim() : ''
 
   // Get cached models for this provider/API key combination
-  const cachedModels = getCachedModels(providerId, apiKey);
-  const cacheKey = generateCacheKey(providerId, apiKey);
+  const cachedModels = getCachedModels(providerId, apiKey)
+  const cacheKey = generateCacheKey(providerId, apiKey)
 
   // Show loading state if currently fetching for this exact provider/API key combo
   if (isFetchingModels && currentCacheKey === cacheKey) {
-    renderEmptyDropdownMessage(dropdownMenu, 'Loading models...', true);
-    return;
+    renderEmptyDropdownMessage(dropdownMenu, 'Loading models...', true)
+    return
   }
 
   // Check if provider supports fetching
-  const supportsFetching = providerSupportsFetching(providerId);
-  const requiresApiKey = providerRequiresApiKeyForFetching(providerId);
-  const hasApiKey = apiKey?.length > 0;
+  const supportsFetching = providerSupportsFetching(providerId)
+  const requiresApiKey = providerRequiresApiKeyForFetching(providerId)
+  const hasApiKey = apiKey?.length > 0
 
   // Show message if fetching is supported but not available
   if (supportsFetching && requiresApiKey && !hasApiKey && cachedModels.length === 0) {
-    renderEmptyDropdownMessage(dropdownMenu, 'Enter API key to fetch models');
-    return;
+    renderEmptyDropdownMessage(dropdownMenu, 'Enter API key to fetch models')
+    return
   }
 
   // Combine common models and cached models
-  const allOptions: { id: string; name: string; source: string }[] = [
+  const allOptions: { id: string, name: string, source: string }[] = [
     ...models.map((m: ModelOption) => ({ id: m.value, name: m.label, source: 'common' })),
     ...cachedModels.map((m: SelectableModel) => ({ id: m.id, name: m.name, source: 'fetched' })),
-  ];
+  ]
 
   // If no models available and provider doesn't support fetching
   if (allOptions.length === 0 && !supportsFetching) {
-    renderEmptyDropdownMessage(dropdownMenu, 'Enter model ID manually');
-    return;
+    renderEmptyDropdownMessage(dropdownMenu, 'Enter model ID manually')
+    return
   }
 
-  let scoredModels: { option: { id: string; name: string }; score: number }[];
+  let scoredModels: { option: { id: string, name: string }, score: number }[]
 
   if (!query) {
     // When query is empty, show all models (sorted by name)
     scoredModels = allOptions
-      .map((option) => ({ option, score: 0 }))
-      .sort((a, b) => a.option.name.localeCompare(b.option.name));
-  } else {
+      .map(option => ({ option, score: 0 }))
+      .sort((a, b) => a.option.name.localeCompare(b.option.name))
+  }
+  else {
     // Score and sort models based on fuzzy match
     scoredModels = allOptions.map((option) => {
-      const labelScore = fuzzyMatchScore(option.name, query);
-      const valueScore = fuzzyMatchScore(option.id, query);
-      const score = Math.max(labelScore, valueScore);
-      return { option, score };
-    });
+      const labelScore = fuzzyMatchScore(option.name, query)
+      const valueScore = fuzzyMatchScore(option.id, query)
+      const score = Math.max(labelScore, valueScore)
+      return { option, score }
+    })
 
     // Sort by score (highest first), with no matches at the end
     scoredModels.sort((a, b) => {
-      if (a.score === -1 && b.score === -1) return 0;
-      if (a.score === -1) return 1;
-      if (b.score === -1) return -1;
-      return b.score - a.score;
-    });
+      if (a.score === -1 && b.score === -1) return 0
+      if (a.score === -1) return 1
+      if (b.score === -1) return -1
+      return b.score - a.score
+    })
   }
 
   // Limit to 10 results
-  const filtered = scoredModels.slice(0, 10);
+  const filtered = scoredModels.slice(0, 10)
 
-  dropdownMenu.innerHTML = '';
+  dropdownMenu.innerHTML = ''
 
   // Reset highlight when repopulating
-  highlightedIndex = -1;
+  highlightedIndex = -1
 
   for (const { option, score } of filtered) {
-    const item = document.createElement('div');
-    item.className = 'dropdown-item';
+    const item = document.createElement('div')
+    item.className = 'dropdown-item'
 
     // Store score for keyboard navigation
-    item.dataset.score = score.toString();
-    item.dataset.value = option.id;
+    item.dataset.score = score.toString()
+    item.dataset.value = option.id
 
     // Dim unmatched items slightly (only when there's a query)
     if (score === -1 && query) {
-      item.style.opacity = '0.5';
+      item.style.opacity = '0.5'
     }
 
     // Mark currently selected value
     if (option.id === currentValue) {
-      item.classList.add('selected');
+      item.classList.add('selected')
     }
 
     // Add ARIA role for accessibility
-    item.setAttribute('role', 'option');
+    item.setAttribute('role', 'option')
 
     // Create label and ID spans with textContent to prevent XSS
-    const labelSpan = document.createElement('span');
-    labelSpan.className = 'model-label';
-    labelSpan.textContent = option.name;
+    const labelSpan = document.createElement('span')
+    labelSpan.className = 'model-label'
+    labelSpan.textContent = option.name
 
-    const idSpan = document.createElement('span');
-    idSpan.className = 'model-id';
-    idSpan.textContent = option.id;
+    const idSpan = document.createElement('span')
+    idSpan.className = 'model-id'
+    idSpan.textContent = option.id
 
-    item.appendChild(labelSpan);
+    item.appendChild(labelSpan)
     if (option.id !== option.name) {
-      item.appendChild(idSpan);
+      item.appendChild(idSpan)
     }
 
     item.addEventListener('click', () => {
       if (currentModelInput) {
-        currentModelInput.value = option.id;
+        currentModelInput.value = option.id
         // Auto-populate profile name if empty
         if (currentModelDropdown) {
-          const nameInput = currentModelDropdown.querySelector('.profile-name-input');
+          const nameInput = currentModelDropdown.querySelector('.profile-name-input')
           if (nameInput instanceof HTMLInputElement && !nameInput.value) {
-            nameInput.value = option.name;
+            nameInput.value = option.name
           }
         }
       }
-      toggleModelDropdown(false);
-    });
+      toggleModelDropdown(false)
+    })
 
-    dropdownMenu.appendChild(item);
+    dropdownMenu.appendChild(item)
   }
 }
 
@@ -705,15 +710,15 @@ function populateModelDropdown(
 function setHighlightedIndex(index: number, items: HTMLElement[]): void {
   // Remove previous highlight
   if (highlightedIndex >= 0 && highlightedIndex < items.length) {
-    items[highlightedIndex].classList.remove('highlighted');
+    items[highlightedIndex].classList.remove('highlighted')
   }
 
-  highlightedIndex = index;
+  highlightedIndex = index
 
   // Add new highlight
   if (highlightedIndex >= 0 && highlightedIndex < items.length) {
-    items[highlightedIndex].classList.add('highlighted');
-    items[highlightedIndex].scrollIntoView({ block: 'nearest' });
+    items[highlightedIndex].classList.add('highlighted')
+    items[highlightedIndex].scrollIntoView({ block: 'nearest' })
   }
 }
 
@@ -721,41 +726,42 @@ function setHighlightedIndex(index: number, items: HTMLElement[]): void {
  * Get dropdown items as HTMLElement array
  */
 function getDropdownItems(): HTMLElement[] {
-  if (!currentDropdownMenu) return [];
+  if (!currentDropdownMenu) return []
   return Array.from(
-    currentDropdownMenu.querySelectorAll('.dropdown-item')
-  ).filter((item): item is HTMLElement => item instanceof HTMLElement);
+    currentDropdownMenu.querySelectorAll('.dropdown-item'),
+  ).filter((item): item is HTMLElement => item instanceof HTMLElement)
 }
 
 /**
  * Toggle model dropdown open/closed
  */
 function toggleModelDropdown(show?: boolean, providerId?: string): void {
-  dropdownOpen = show !== undefined ? show : !dropdownOpen;
+  dropdownOpen = show !== undefined ? show : !dropdownOpen
 
   if (currentDropdownMenu) {
-    currentDropdownMenu.hidden = !dropdownOpen;
+    currentDropdownMenu.hidden = !dropdownOpen
   }
 
   if (currentModelInput) {
-    currentModelInput.setAttribute('aria-expanded', dropdownOpen.toString());
+    currentModelInput.setAttribute('aria-expanded', dropdownOpen.toString())
   }
 
   if (dropdownOpen && currentDropdownMenu && currentModelInput) {
     // Populate dropdown when opening
     // If providerId not provided, try to get it from the form
     if (!providerId && currentModelDropdown) {
-      const card = currentModelDropdown.closest('.profile-card');
+      const card = currentModelDropdown.closest('.profile-card')
       if (card instanceof HTMLElement) {
-        const providerValueInput = card.querySelector('.profile-provider-value');
+        const providerValueInput = card.querySelector('.profile-provider-value')
         if (providerValueInput instanceof HTMLInputElement) {
-          providerId = providerValueInput.value || '';
+          providerId = providerValueInput.value || ''
         }
       }
     }
-    populateModelDropdown(currentDropdownMenu, currentModelInput.value, providerId || '', currentModelInput.value);
-  } else if (!dropdownOpen) {
-    highlightedIndex = -1;
+    populateModelDropdown(currentDropdownMenu, currentModelInput.value, providerId || '', currentModelInput.value)
+  }
+  else if (!dropdownOpen) {
+    highlightedIndex = -1
   }
 }
 
@@ -763,86 +769,88 @@ function toggleModelDropdown(show?: boolean, providerId?: string): void {
  * Handle model dropdown keyboard navigation
  */
 function handleModelDropdownKeydown(e: KeyboardEvent): void {
-  const items = getDropdownItems();
+  const items = getDropdownItems()
 
-  if (items.length === 0 && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  if (items.length === 0 && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
 
   switch (e.key) {
     case 'ArrowDown':
-      e.preventDefault();
+      e.preventDefault()
       if (!dropdownOpen) {
-        toggleModelDropdown(true);
-        const newItems = getDropdownItems();
-        setHighlightedIndex(0, newItems);
-      } else {
-        const newIndex = highlightedIndex < items.length - 1 ? highlightedIndex + 1 : 0;
-        setHighlightedIndex(newIndex, items);
+        toggleModelDropdown(true)
+        const newItems = getDropdownItems()
+        setHighlightedIndex(0, newItems)
       }
-      break;
+      else {
+        const newIndex = highlightedIndex < items.length - 1 ? highlightedIndex + 1 : 0
+        setHighlightedIndex(newIndex, items)
+      }
+      break
 
     case 'ArrowUp':
-      e.preventDefault();
+      e.preventDefault()
       if (!dropdownOpen) {
-        toggleModelDropdown(true);
-        const newItems = getDropdownItems();
-        setHighlightedIndex(newItems.length - 1, newItems);
-      } else {
-        const newIndex = highlightedIndex > 0 ? highlightedIndex - 1 : items.length - 1;
-        setHighlightedIndex(newIndex, items);
+        toggleModelDropdown(true)
+        const newItems = getDropdownItems()
+        setHighlightedIndex(newItems.length - 1, newItems)
       }
-      break;
+      else {
+        const newIndex = highlightedIndex > 0 ? highlightedIndex - 1 : items.length - 1
+        setHighlightedIndex(newIndex, items)
+      }
+      break
 
     case 'Enter':
-      e.preventDefault();
+      e.preventDefault()
 
       // If something is highlighted, select it
       if (highlightedIndex >= 0 && highlightedIndex < items.length) {
-        const selectedItem = items[highlightedIndex];
-        const modelValue = selectedItem.dataset.value;
+        const selectedItem = items[highlightedIndex]
+        const modelValue = selectedItem.dataset.value
         if (modelValue && currentModelInput) {
-          currentModelInput.value = modelValue;
+          currentModelInput.value = modelValue
           // Auto-populate profile name if empty
           if (currentModelDropdown) {
-            const nameInput = currentModelDropdown.querySelector('.profile-name-input');
+            const nameInput = currentModelDropdown.querySelector('.profile-name-input')
             if (nameInput instanceof HTMLInputElement && !nameInput.value) {
-              const label = selectedItem.querySelector('.model-label')?.textContent || modelValue;
-              nameInput.value = label;
+              const label = selectedItem.querySelector('.model-label')?.textContent || modelValue
+              nameInput.value = label
             }
           }
         }
-        toggleModelDropdown(false);
-        return;
+        toggleModelDropdown(false)
+        return
       }
 
       // If dropdown is open, check if first item is a match before auto-selecting
       if (dropdownOpen && items.length > 0) {
-        const firstItem = items[0];
-        const firstScore = firstItem.dataset.score ? parseInt(firstItem.dataset.score, 10) : -1;
+        const firstItem = items[0]
+        const firstScore = firstItem.dataset.score ? parseInt(firstItem.dataset.score, 10) : -1
 
         // Only auto-select if it's an actual match (score >= 0)
         if (firstScore >= 0) {
-          const modelValue = firstItem.dataset.value;
+          const modelValue = firstItem.dataset.value
           if (modelValue && currentModelInput) {
-            currentModelInput.value = modelValue;
+            currentModelInput.value = modelValue
             // Auto-populate profile name if empty
             if (currentModelDropdown) {
-              const nameInput = currentModelDropdown.querySelector('.profile-name-input');
+              const nameInput = currentModelDropdown.querySelector('.profile-name-input')
               if (nameInput instanceof HTMLInputElement && !nameInput.value) {
-                const label = firstItem.querySelector('.model-label')?.textContent || modelValue;
-                nameInput.value = label;
+                const label = firstItem.querySelector('.model-label')?.textContent || modelValue
+                nameInput.value = label
               }
             }
           }
         }
         // Always close dropdown on Enter
-        toggleModelDropdown(false);
+        toggleModelDropdown(false)
       }
-      break;
+      break
 
     case 'Escape':
-      e.preventDefault();
-      toggleModelDropdown(false);
-      break;
+      e.preventDefault()
+      toggleModelDropdown(false)
+      break
   }
 }
 
@@ -850,66 +858,69 @@ function handleModelDropdownKeydown(e: KeyboardEvent): void {
  * Handle test connection button click
  */
 async function handleTestConnection(card: HTMLElement): Promise<void> {
-  const testBtn = card.querySelector('.profile-test-btn');
-  const testStatus = card.querySelector('.test-status');
-  const providerValueInput = card.querySelector('.profile-provider-value');
-  const apiKeyInput = card.querySelector('.profile-api-key-input');
-  const modelInput = card.querySelector('.profile-model-input');
+  const testBtn = card.querySelector('.profile-test-btn')
+  const testStatus = card.querySelector('.test-status')
+  const providerValueInput = card.querySelector('.profile-provider-value')
+  const apiKeyInput = card.querySelector('.profile-api-key-input')
+  const modelInput = card.querySelector('.profile-model-input')
 
   if (
-    !(testBtn instanceof HTMLButtonElement) ||
-    !(testStatus instanceof HTMLDivElement) ||
-    !(providerValueInput instanceof HTMLInputElement) ||
-    !(apiKeyInput instanceof HTMLInputElement) ||
-    !(modelInput instanceof HTMLInputElement)
+    !(testBtn instanceof HTMLButtonElement)
+    || !(testStatus instanceof HTMLDivElement)
+    || !(providerValueInput instanceof HTMLInputElement)
+    || !(apiKeyInput instanceof HTMLInputElement)
+    || !(modelInput instanceof HTMLInputElement)
   ) {
-    return;
+    return
   }
 
-  const providerType = providerValueInput.value;
-  const requiresKey = providerRequiresApiKey(providerType);
-  const apiKey = requiresKey ? apiKeyInput.value.trim() : NO_API_KEY_PLACEHOLDER;
-  const modelId = modelInput.value.trim();
+  const providerType = providerValueInput.value
+  const requiresKey = providerRequiresApiKey(providerType)
+  const apiKey = requiresKey ? apiKeyInput.value.trim() : NO_API_KEY_PLACEHOLDER
+  const modelId = modelInput.value.trim()
 
   // Reset UI to testing state
-  testBtn.disabled = true;
-  setTestButtonState(testBtn, 'testing');
-  testStatus.style.display = 'none';
+  testBtn.disabled = true
+  setTestButtonState(testBtn, 'testing')
+  testStatus.style.display = 'none'
 
   // Check if provider is selected
   if (!providerType) {
-    showTestResult(testBtn, testStatus, 'error', 'Please select a provider');
-    testBtn.disabled = false;
-    return;
+    showTestResult(testBtn, testStatus, 'error', 'Please select a provider')
+    testBtn.disabled = false
+    return
   }
 
   // Check if API key is provided (only for providers that require it)
   if (requiresKey && !apiKey) {
-    showTestResult(testBtn, testStatus, 'error', 'Please enter an API key');
-    testBtn.disabled = false;
-    return;
+    showTestResult(testBtn, testStatus, 'error', 'Please enter an API key')
+    testBtn.disabled = false
+    return
   }
 
   // Check if model is provided
   if (!modelId) {
-    showTestResult(testBtn, testStatus, 'error', 'Please enter a model ID');
-    testBtn.disabled = false;
-    return;
+    showTestResult(testBtn, testStatus, 'error', 'Please enter a model ID')
+    testBtn.disabled = false
+    return
   }
 
   // Test connection with the form's actual values
   try {
-    const result = await testConnectionWithConfig(providerType, apiKey, modelId);
+    const result = await testConnectionWithConfig(providerType, apiKey, modelId)
 
     if (result.success) {
-      showTestResult(testBtn, testStatus, 'success', 'Connection successful!');
-    } else {
-      showTestResult(testBtn, testStatus, 'error', `Failed: ${result.error || 'Unknown error'}`);
+      showTestResult(testBtn, testStatus, 'success', 'Connection successful!')
     }
-  } catch (error) {
-    showTestResult(testBtn, testStatus, 'error', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  } finally {
-    testBtn.disabled = false;
+    else {
+      showTestResult(testBtn, testStatus, 'error', `Failed: ${result.error || 'Unknown error'}`)
+    }
+  }
+  catch (error) {
+    showTestResult(testBtn, testStatus, 'error', `Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
+  finally {
+    testBtn.disabled = false
   }
 }
 
@@ -917,45 +928,45 @@ async function handleTestConnection(card: HTMLElement): Promise<void> {
  * Set the test button visual state
  */
 function setTestButtonState(button: HTMLButtonElement, state: 'idle' | 'testing' | 'success' | 'error'): void {
-  const testIcon = button.querySelector('.test-icon');
-  const testingIcon = button.querySelector('.testing-icon');
-  const successIcon = button.querySelector('.success-icon');
-  const errorIcon = button.querySelector('.error-icon');
-  const testText = button.querySelector('.test-text');
+  const testIcon = button.querySelector('.test-icon')
+  const testingIcon = button.querySelector('.testing-icon')
+  const successIcon = button.querySelector('.success-icon')
+  const errorIcon = button.querySelector('.error-icon')
+  const testText = button.querySelector('.test-text')
 
   // Hide all icons first
-  if (testIcon instanceof SVGElement) testIcon.style.display = 'none';
-  if (testingIcon instanceof SVGElement) testingIcon.style.setProperty('display', 'none');
-  if (successIcon instanceof SVGElement) successIcon.style.setProperty('display', 'none');
-  if (errorIcon instanceof SVGElement) errorIcon.style.setProperty('display', 'none');
+  if (testIcon instanceof SVGElement) testIcon.style.display = 'none'
+  if (testingIcon instanceof SVGElement) testingIcon.style.setProperty('display', 'none')
+  if (successIcon instanceof SVGElement) successIcon.style.setProperty('display', 'none')
+  if (errorIcon instanceof SVGElement) errorIcon.style.setProperty('display', 'none')
 
   switch (state) {
     case 'idle':
-      if (testIcon instanceof SVGElement) testIcon.style.display = 'block';
-      if (testText instanceof HTMLElement) testText.textContent = 'Test';
-      button.classList.remove('btn-success', 'btn-error');
-      break;
+      if (testIcon instanceof SVGElement) testIcon.style.display = 'block'
+      if (testText instanceof HTMLElement) testText.textContent = 'Test'
+      button.classList.remove('btn-success', 'btn-error')
+      break
     case 'testing':
-      if (testingIcon instanceof SVGElement) testingIcon.style.setProperty('display', 'block');
-      if (testText instanceof HTMLElement) testText.textContent = 'Testing...';
-      button.classList.remove('btn-success', 'btn-error');
-      break;
+      if (testingIcon instanceof SVGElement) testingIcon.style.setProperty('display', 'block')
+      if (testText instanceof HTMLElement) testText.textContent = 'Testing...'
+      button.classList.remove('btn-success', 'btn-error')
+      break
     case 'success':
-      if (successIcon instanceof SVGElement) successIcon.style.setProperty('display', 'block');
-      if (testText instanceof HTMLElement) testText.textContent = 'Success';
-      button.classList.add('btn-success');
-      button.classList.remove('btn-error');
+      if (successIcon instanceof SVGElement) successIcon.style.setProperty('display', 'block')
+      if (testText instanceof HTMLElement) testText.textContent = 'Success'
+      button.classList.add('btn-success')
+      button.classList.remove('btn-error')
       // Reset to idle after 3 seconds
-      setTimeout(() => setTestButtonState(button, 'idle'), 3000);
-      break;
+      setTimeout(() => setTestButtonState(button, 'idle'), 3000)
+      break
     case 'error':
-      if (errorIcon instanceof SVGElement) errorIcon.style.setProperty('display', 'block');
-      if (testText instanceof HTMLElement) testText.textContent = 'Failed';
-      button.classList.add('btn-error');
-      button.classList.remove('btn-success');
+      if (errorIcon instanceof SVGElement) errorIcon.style.setProperty('display', 'block')
+      if (testText instanceof HTMLElement) testText.textContent = 'Failed'
+      button.classList.add('btn-error')
+      button.classList.remove('btn-success')
       // Reset to idle after 5 seconds
-      setTimeout(() => setTestButtonState(button, 'idle'), 5000);
-      break;
+      setTimeout(() => setTestButtonState(button, 'idle'), 5000)
+      break
   }
 }
 
@@ -966,75 +977,75 @@ function showTestResult(
   button: HTMLButtonElement,
   statusEl: HTMLDivElement,
   state: 'success' | 'error',
-  message: string
+  message: string,
 ): void {
-  setTestButtonState(button, state);
-  statusEl.textContent = message;
-  statusEl.style.display = 'block';
-  statusEl.className = `test-status test-${state}`;
+  setTestButtonState(button, state)
+  statusEl.textContent = message
+  statusEl.style.display = 'block'
+  statusEl.className = `test-status test-${state}`
 }
 
 /**
  * Setup event listeners for profile form
  */
 function setupProfileFormListeners(card: HTMLElement, profileId: string | null, isNew: boolean): void {
-  const providerDropdownContainer = card.querySelector('.profile-provider-dropdown');
-  const providerValueInput = card.querySelector('.profile-provider-value');
-  const modelInput = card.querySelector('.profile-model-input');
-  const dropdownToggle = card.querySelector('.dropdown-toggle');
-  const dropdownMenu = card.querySelector('.model-dropdown-menu');
-  const apiKeyInput = card.querySelector('.profile-api-key-input');
-  const passwordToggle = card.querySelector('.password-toggle');
-  const testBtn = card.querySelector('.profile-test-btn');
-  const temperatureInput = card.querySelector('.profile-temperature-input');
-  const temperatureValue = card.querySelector('.profile-temperature-value');
-  const cancelBtn = card.querySelector('.profile-cancel-btn');
-  const saveBtn = card.querySelector('.profile-save-btn');
+  const providerDropdownContainer = card.querySelector('.profile-provider-dropdown')
+  const providerValueInput = card.querySelector('.profile-provider-value')
+  const modelInput = card.querySelector('.profile-model-input')
+  const dropdownToggle = card.querySelector('.dropdown-toggle')
+  const dropdownMenu = card.querySelector('.model-dropdown-menu')
+  const apiKeyInput = card.querySelector('.profile-api-key-input')
+  const passwordToggle = card.querySelector('.password-toggle')
+  const testBtn = card.querySelector('.profile-test-btn')
+  const temperatureInput = card.querySelector('.profile-temperature-input')
+  const temperatureValue = card.querySelector('.profile-temperature-value')
+  const cancelBtn = card.querySelector('.profile-cancel-btn')
+  const saveBtn = card.querySelector('.profile-save-btn')
 
   // Validate element types
   if (
-    !(providerValueInput instanceof HTMLInputElement) ||
-    !(modelInput instanceof HTMLInputElement) ||
-    !(dropdownToggle instanceof HTMLButtonElement) ||
-    !(apiKeyInput instanceof HTMLInputElement) ||
-    !(passwordToggle instanceof HTMLButtonElement) ||
-    !(testBtn instanceof HTMLButtonElement) ||
-    !(temperatureInput instanceof HTMLInputElement) ||
-    !(temperatureValue instanceof HTMLSpanElement) ||
-    !(cancelBtn instanceof HTMLButtonElement) ||
-    !(saveBtn instanceof HTMLButtonElement)
+    !(providerValueInput instanceof HTMLInputElement)
+    || !(modelInput instanceof HTMLInputElement)
+    || !(dropdownToggle instanceof HTMLButtonElement)
+    || !(apiKeyInput instanceof HTMLInputElement)
+    || !(passwordToggle instanceof HTMLButtonElement)
+    || !(testBtn instanceof HTMLButtonElement)
+    || !(temperatureInput instanceof HTMLInputElement)
+    || !(temperatureValue instanceof HTMLSpanElement)
+    || !(cancelBtn instanceof HTMLButtonElement)
+    || !(saveBtn instanceof HTMLButtonElement)
   ) {
-    console.error('[ProfileForm] Required form elements not found or have incorrect types');
-    return;
+    console.error('[ProfileForm] Required form elements not found or have incorrect types')
+    return
   }
 
   // Password visibility toggle
   if (passwordToggle && apiKeyInput) {
     passwordToggle.addEventListener('click', () => {
-      const isPassword = apiKeyInput.type === 'password';
-      apiKeyInput.type = isPassword ? 'text' : 'password';
-      passwordToggle.setAttribute('aria-label', isPassword ? 'Hide API key' : 'Show API key');
-      passwordToggle.title = isPassword ? 'Hide API key' : 'Show API key';
-      const eyeIcon = passwordToggle.querySelector('.eye-icon');
-      const eyeOffIcon = passwordToggle.querySelector('.eye-off-icon');
-      if (eyeIcon instanceof SVGElement) eyeIcon.style.display = isPassword ? 'none' : 'block';
-      if (eyeOffIcon instanceof SVGElement) eyeOffIcon.style.display = isPassword ? 'block' : 'none';
-    });
+      const isPassword = apiKeyInput.type === 'password'
+      apiKeyInput.type = isPassword ? 'text' : 'password'
+      passwordToggle.setAttribute('aria-label', isPassword ? 'Hide API key' : 'Show API key')
+      passwordToggle.title = isPassword ? 'Hide API key' : 'Show API key'
+      const eyeIcon = passwordToggle.querySelector('.eye-icon')
+      const eyeOffIcon = passwordToggle.querySelector('.eye-off-icon')
+      if (eyeIcon instanceof SVGElement) eyeIcon.style.display = isPassword ? 'none' : 'block'
+      if (eyeOffIcon instanceof SVGElement) eyeOffIcon.style.display = isPassword ? 'block' : 'none'
+    })
   }
 
   // Test connection button
   if (testBtn) {
-    testBtn.addEventListener('click', async (e) => {
+    testBtn.addEventListener('click', (e) => {
       // Stop propagation to prevent interference with dropdown's document click handler
-      e.stopPropagation();
-      await handleTestConnection(card);
-    });
+      e.stopPropagation()
+      void handleTestConnection(card)
+    })
   }
 
   // Initialize provider fuzzy dropdown
   if (providerDropdownContainer instanceof HTMLElement && providerValueInput) {
-    const allProviders = getAllProviders();
-    const initialProviderId = providerValueInput.value;
+    const allProviders = getAllProviders()
+    const initialProviderId = providerValueInput.value
 
     const providerDropdown = new FuzzyDropdown({
       container: providerDropdownContainer,
@@ -1042,241 +1053,247 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
       placeholder: 'Search providers...',
       allowCustom: false,
       onSelect: (option) => {
-        providerValueInput.value = option.id;
-        selectedProviderIdForNew = option.id;
+        providerValueInput.value = option.id
+        selectedProviderIdForNew = option.id
 
         // Show/hide API key section based on provider requirements
-        const apiKeySection = card.querySelector('.api-key-section');
-        const requiresKey = providerRequiresApiKey(option.id);
+        const apiKeySection = card.querySelector('.api-key-section')
+        const requiresKey = providerRequiresApiKey(option.id)
         if (apiKeySection instanceof HTMLElement) {
-          apiKeySection.style.display = requiresKey ? '' : 'none';
+          apiKeySection.style.display = requiresKey ? '' : 'none'
         }
 
         // Get the model input element
-        const modelInput = card.querySelector('.profile-model-input');
+        const modelInput = card.querySelector('.profile-model-input')
 
         // For Chrome Built-in, auto-populate the model since it only has one
-        const provider = getProviderConfigById(option.id);
+        const provider = getProviderConfigById(option.id)
         if (provider && !requiresKey && provider.defaultModel) {
           // Auto-populate with the default model for providers that don't require API key
           if (modelInput instanceof HTMLInputElement) {
-            modelInput.value = provider.defaultModel;
+            modelInput.value = provider.defaultModel
           }
           // Also auto-populate the profile name if empty
-          const nameInput = card.querySelector('.profile-name-input');
+          const nameInput = card.querySelector('.profile-name-input')
           if (nameInput instanceof HTMLInputElement && !nameInput.value) {
-            nameInput.value = provider.displayName;
+            nameInput.value = provider.displayName
           }
-        } else if (modelInput instanceof HTMLInputElement) {
+        }
+        else if (modelInput instanceof HTMLInputElement) {
           // Clear model input value when provider changes to one that requires API key
-          modelInput.value = '';
+          modelInput.value = ''
         }
 
         if (isNew && requiresKey) {
-          const apiKey = apiKeyInput?.value.trim();
+          const apiKey = apiKeyInput?.value.trim()
           // Auto-fetch if provider supports it and has API key (or doesn't require one)
-          const supportsFetching = providerSupportsFetching(option.id);
-          const requiresApiKeyForFetch = providerRequiresApiKeyForFetching(option.id);
+          const supportsFetching = providerSupportsFetching(option.id)
+          const requiresApiKeyForFetch = providerRequiresApiKeyForFetching(option.id)
 
           if (supportsFetching && (!requiresApiKeyForFetch || apiKey)) {
-            fetchModelsForCard(card, option.id, apiKey || undefined);
+            void fetchModelsForCard(card, option.id, apiKey || undefined)
           }
         }
 
         // Refresh the model dropdown if it's open to show the new provider's models
-        const dropdownMenu = card.querySelector('.model-dropdown-menu');
+        const dropdownMenu = card.querySelector('.model-dropdown-menu')
         if (dropdownMenu instanceof HTMLElement && !dropdownMenu.hidden) {
-          const modelInputForDropdown = card.querySelector('.profile-model-input');
-          const apiKeyForDropdown = apiKeyInput?.value.trim();
-          const modelValue = modelInputForDropdown instanceof HTMLInputElement ? modelInputForDropdown.value : '';
-          populateModelDropdown(dropdownMenu, modelValue, option.id, apiKeyForDropdown || '');
+          const modelInputForDropdown = card.querySelector('.profile-model-input')
+          const apiKeyForDropdown = apiKeyInput?.value.trim()
+          const modelValue = modelInputForDropdown instanceof HTMLInputElement ? modelInputForDropdown.value : ''
+          populateModelDropdown(dropdownMenu, modelValue, option.id, apiKeyForDropdown || '')
         }
       },
       onToggle: (open) => {
         // Set options when dropdown opens to show all providers
         if (open) {
-          providerDropdown.setOptions(providersToDropdownOptions(allProviders));
+          providerDropdown.setOptions(providersToDropdownOptions(allProviders))
         }
       },
-    });
+    })
 
     // Set initial options
-    providerDropdown.setOptions(providersToDropdownOptions(allProviders));
-    providerDropdowns.set(card, providerDropdown);
+    providerDropdown.setOptions(providersToDropdownOptions(allProviders))
+    providerDropdowns.set(card, providerDropdown)
   }
 
   // API key input - auto-fetch models when entered (for providers that require it)
-  apiKeyInput?.addEventListener('blur', async () => {
+  apiKeyInput?.addEventListener('blur', () => {
     if (isNew && providerValueInput) {
-      const providerId = providerValueInput.value;
-      const apiKey = apiKeyInput.value.trim();
+      const providerId = providerValueInput.value
+      const apiKey = apiKeyInput.value.trim()
 
       if (providerId && apiKey && providerSupportsFetching(providerId)) {
-        const requiresApiKey = providerRequiresApiKeyForFetching(providerId);
-        const cacheKey = generateCacheKey(providerId, apiKey);
+        const requiresApiKey = providerRequiresApiKeyForFetching(providerId)
+        const cacheKey = generateCacheKey(providerId, apiKey)
         // Only fetch if we don't have cached models for this provider/API key combo
         if (requiresApiKey && !modelsCache.has(cacheKey)) {
-          await fetchModelsForCard(card, providerId, apiKey);
+          void fetchModelsForCard(card, providerId, apiKey)
         }
       }
     }
-  });
+  })
 
   // Model dropdown - fuzzy search functionality
   if (modelInput && dropdownToggle && dropdownMenu) {
     // Validate dropdownMenu is HTMLElement
     if (!(dropdownMenu instanceof HTMLElement)) {
-      console.error('[ProfileForm] Dropdown menu element not found or is not HTMLElement');
-      return;
+      console.error('[ProfileForm] Dropdown menu element not found or is not HTMLElement')
+      return
     }
 
-    const modelDropdown = card.querySelector('.model-dropdown');
+    const modelDropdown = card.querySelector('.model-dropdown')
     if (!(modelDropdown instanceof HTMLElement)) {
-      console.error('[ProfileForm] Model dropdown element not found');
-      return;
+      console.error('[ProfileForm] Model dropdown element not found')
+      return
     }
 
     // Set up current dropdown references
     const setupDropdownRefs = () => {
-      currentDropdownMenu = dropdownMenu;
-      currentModelInput = modelInput;
-      currentModelDropdown = modelDropdown;
-    };
+      currentDropdownMenu = dropdownMenu
+      currentModelInput = modelInput
+      currentModelDropdown = modelDropdown
+    }
 
     // Focus handler - open dropdown
     modelInput.addEventListener('focus', () => {
-      setupDropdownRefs();
+      setupDropdownRefs()
       if (!dropdownOpen) {
-        toggleModelDropdown(true);
+        toggleModelDropdown(true)
       }
-    });
+    })
 
     // Toggle button handler
     dropdownToggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      setupDropdownRefs();
-      toggleModelDropdown();
+      e.stopPropagation()
+      setupDropdownRefs()
+      toggleModelDropdown()
       // Focus input so arrow keys work for accessibility
-      modelInput.focus();
-    });
+      modelInput.focus()
+    })
 
     // Refresh button handler
-    const refreshBtn = card.querySelector('.model-refresh-btn');
+    const refreshBtn = card.querySelector('.model-refresh-btn')
     if (!(refreshBtn instanceof HTMLButtonElement)) {
-      console.error('[ProfileForm] Refresh button not found');
-      return;
+      console.error('[ProfileForm] Refresh button not found')
+      return
     }
 
-    refreshBtn.addEventListener('click', async (e) => {
-        e.stopPropagation();
+    refreshBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
 
-        // Get provider ID from the FuzzyDropdown instance (current selection) as primary source,
-        // falling back to the hidden input for backwards compatibility
-        let providerId = providerValueInput?.value || '';
-        const providerDropdown = providerDropdowns.get(card);
-        if (providerDropdown) {
-          const dropdownValue = providerDropdown.value;
-          if (dropdownValue) {
-            providerId = dropdownValue;
-            // Sync the hidden input with the dropdown's current value
-            if (providerValueInput) {
-              providerValueInput.value = dropdownValue;
-            }
+      // Get provider ID from the FuzzyDropdown instance (current selection) as primary source,
+      // falling back to the hidden input for backwards compatibility
+      let providerId = providerValueInput?.value || ''
+      const providerDropdown = providerDropdowns.get(card)
+      if (providerDropdown) {
+        const dropdownValue = providerDropdown.value
+        if (dropdownValue) {
+          providerId = dropdownValue
+          // Sync the hidden input with the dropdown's current value
+          if (providerValueInput) {
+            providerValueInput.value = dropdownValue
           }
         }
+      }
 
-        const apiKey = apiKeyInput?.value.trim() || '';
+      const apiKey = apiKeyInput?.value.trim() || ''
 
-        if (!providerId) {
-          showNotification('Please select a provider first', 'error');
-          return;
-        }
+      if (!providerId) {
+        showNotification('Please select a provider first', 'error')
+        return
+      }
 
-        if (!apiKey && providerRequiresApiKeyForFetching(providerId)) {
-          showNotification('Please enter an API key first', 'error');
-          return;
-        }
+      if (!apiKey && providerRequiresApiKeyForFetching(providerId)) {
+        showNotification('Please enter an API key first', 'error')
+        return
+      }
 
-        // Helper to show a specific icon state
-        const showIcon = (iconClass: string) => {
-          const icons = refreshBtn.querySelectorAll('svg');
-          icons.forEach(icon => icon.style.display = 'none');
-          const targetIcon = refreshBtn.querySelector(iconClass);
-          if (targetIcon instanceof SVGElement) targetIcon.style.display = 'block';
-        };
+      // Helper to show a specific icon state
+      const showIcon = (iconClass: string) => {
+        const icons = refreshBtn.querySelectorAll('svg')
+        icons.forEach(icon => icon.style.display = 'none')
+        const targetIcon = refreshBtn.querySelector(iconClass)
+        if (targetIcon instanceof SVGElement) targetIcon.style.display = 'block'
+      }
 
-        // Show loading state
-        refreshBtn.disabled = true;
-        refreshBtn.classList.remove('refresh-success', 'refresh-error');
-        refreshBtn.classList.add('refreshing');
-        showIcon('.refresh-spinner-icon');
+      // Show loading state
+      refreshBtn.disabled = true
+      refreshBtn.classList.remove('refresh-success', 'refresh-error')
+      refreshBtn.classList.add('refreshing')
+      showIcon('.refresh-spinner-icon')
 
-        const success = await fetchModelsForCard(card, providerId, apiKey || undefined);
+      void (async () => {
+        const success = await fetchModelsForCard(card, providerId, apiKey || undefined)
 
         // If dropdown is open, refresh it
         if (dropdownMenu && !dropdownMenu.hidden) {
-          populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value);
+          populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value)
         }
 
-        refreshBtn.disabled = false;
-        refreshBtn.classList.remove('refreshing');
+        refreshBtn.disabled = false
+        refreshBtn.classList.remove('refreshing')
 
         if (success) {
-          refreshBtn.classList.add('refresh-success');
-          showIcon('.refresh-success-icon');
+          refreshBtn.classList.add('refresh-success')
+          showIcon('.refresh-success-icon')
           // Reset to refresh icon after delay
           setTimeout(() => {
-            refreshBtn.classList.remove('refresh-success');
-            showIcon('.refresh-icon');
-          }, 2000);
-        } else {
-          refreshBtn.classList.add('refresh-error');
-          showIcon('.refresh-error-icon');
-          // Reset to refresh icon after delay
-          setTimeout(() => {
-            refreshBtn.classList.remove('refresh-error');
-            showIcon('.refresh-icon');
-          }, 2000);
-          // Show notification for error
-          showNotification('Failed to fetch models. Check your API key and try again.', 'error');
+            refreshBtn.classList.remove('refresh-success')
+            showIcon('.refresh-icon')
+          }, 2000)
         }
-      });
+        else {
+          refreshBtn.classList.add('refresh-error')
+          showIcon('.refresh-error-icon')
+          // Reset to refresh icon after delay
+          setTimeout(() => {
+            refreshBtn.classList.remove('refresh-error')
+            showIcon('.refresh-icon')
+          }, 2000)
+          // Show notification for error
+          showNotification('Failed to fetch models. Check your API key and try again.', 'error')
+        }
+      })()
+    })
 
     // Input handler - repopulate dropdown if open
     modelInput.addEventListener('input', () => {
       if (dropdownOpen && dropdownMenu && providerValueInput) {
-        const providerId = providerValueInput.value || '';
-        populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value);
+        const providerId = providerValueInput.value || ''
+        populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value)
       }
-    });
+    })
 
     // Keyboard navigation
     modelInput.addEventListener('keydown', (e) => {
-      setupDropdownRefs();
-      handleModelDropdownKeydown(e);
-    });
+      setupDropdownRefs()
+      handleModelDropdownKeydown(e)
+    })
 
     // Prevent clicks inside dropdown from closing it (handled by populateModelDropdown's item listeners)
     dropdownMenu.addEventListener('click', (e) => {
-      e.stopPropagation();
-    });
+      e.stopPropagation()
+    })
   }
 
   // Temperature slider
   temperatureInput?.addEventListener('input', () => {
-    temperatureValue.textContent = parseFloat(temperatureInput.value).toFixed(1);
-  });
+    temperatureValue.textContent = parseFloat(temperatureInput.value).toFixed(1)
+  })
 
   // Cancel button
   cancelBtn?.addEventListener('click', () => {
-    editingProfileId = null;
-    isNewProfile = false;
-    selectedProviderIdForNew = null;
-    renderProfilesList();
-  });
+    editingProfileId = null
+    isNewProfile = false
+    selectedProviderIdForNew = null
+    renderProfilesList()
+  })
 
   // Save button
-  saveBtn?.addEventListener('click', () => handleSaveProfile(card, profileId, isNew));
+  saveBtn?.addEventListener('click', () => {
+    void handleSaveProfile(card, profileId, isNew)
+  })
 }
 
 /**
@@ -1284,43 +1301,45 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
  * Returns true if successful, false if failed
  */
 async function fetchModelsForCard(card: HTMLElement, providerId: string, apiKey?: string): Promise<boolean> {
-  const providerConfig = getProviderConfigById(providerId);
-  if (!providerConfig) return false;
+  const providerConfig = getProviderConfigById(providerId)
+  if (!providerConfig) return false
 
   // Check if provider requires API key for fetching
   if (providerRequiresApiKeyForFetching(providerId) && !apiKey) {
-    return false; // Silent return - will fetch when API key is entered
+    return false // Silent return - will fetch when API key is entered
   }
 
   // Generate cache key and set loading state
-  const cacheKey = generateCacheKey(providerId, apiKey);
-  currentCacheKey = cacheKey;
-  isFetchingModels = true;
+  const cacheKey = generateCacheKey(providerId, apiKey)
+  currentCacheKey = cacheKey
+  isFetchingModels = true
 
   // Refresh dropdown if it's open to show loading state
-  const dropdownMenu = card.querySelector('.model-dropdown-menu');
-  const modelInput = card.querySelector('.profile-model-input');
+  const dropdownMenu = card.querySelector('.model-dropdown-menu')
+  const modelInput = card.querySelector('.profile-model-input')
 
   if (dropdownMenu instanceof HTMLElement && modelInput instanceof HTMLInputElement) {
     if (!dropdownMenu.hidden) {
-      populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value);
+      populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value)
     }
   }
 
   try {
-    const models = await fetchProviderSelectableModels(providerId, apiKey, true);
-    setCachedModels(providerId, models, apiKey);
-    console.log(`[ConfigUI] Fetched ${models.length} models from ${providerConfig.displayName}`);
-    return true;
-  } catch (error) {
-    console.error('[ConfigUI] Failed to fetch models:', error);
-    return false;
-  } finally {
-    isFetchingModels = false;
+    const models = await fetchProviderSelectableModels(providerId, apiKey, true)
+    setCachedModels(providerId, models, apiKey)
+    console.log(`[ConfigUI] Fetched ${models.length} models from ${providerConfig.displayName}`)
+    return true
+  }
+  catch (error) {
+    console.error('[ConfigUI] Failed to fetch models:', error)
+    return false
+  }
+  finally {
+    isFetchingModels = false
     // Refresh dropdown after fetching completes
     if (dropdownMenu instanceof HTMLElement && modelInput instanceof HTMLInputElement) {
       if (!dropdownMenu.hidden) {
-        populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value);
+        populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value)
       }
     }
   }
@@ -1331,114 +1350,118 @@ async function fetchModelsForCard(card: HTMLElement, providerId: string, apiKey?
  */
 function handleAddProfile(): void {
   if (editingProfileId !== null) {
-    showNotification('Please save or cancel the current edit first', 'error');
-    return;
+    showNotification('Please save or cancel the current edit first', 'error')
+    return
   }
 
-  isNewProfile = true;
-  selectedProviderIdForNew = getAllProviders()[0]?.id ?? null;
-  renderProfilesList();
+  isNewProfile = true
+  selectedProviderIdForNew = getAllProviders()[0]?.id ?? null
+  renderProfilesList()
 }
 
 /**
  * Handle edit profile
  */
 function handleEditProfile(profileId: string): void {
-  editingProfileId = profileId;
-  isNewProfile = false;
-  renderProfilesList();
+  editingProfileId = profileId
+  isNewProfile = false
+  renderProfilesList()
 }
 
 /**
  * Handle save profile - with smart credential reuse
  */
 async function handleSaveProfile(card: HTMLElement, profileId: string | null, isNew: boolean): Promise<void> {
-  const nameInput = card.querySelector('.profile-name-input');
-  const providerValueInput = card.querySelector('.profile-provider-value');
-  const modelInput = card.querySelector('.profile-model-input');
-  const apiKeyInput = card.querySelector('.profile-api-key-input');
-  const temperatureInput = card.querySelector('.profile-temperature-input');
-  const maxTokensInput = card.querySelector('.profile-max-tokens-input');
-  const compressionModeInput = card.querySelector('.profile-compression-mode-input');
+  const nameInput = card.querySelector('.profile-name-input')
+  const providerValueInput = card.querySelector('.profile-provider-value')
+  const modelInput = card.querySelector('.profile-model-input')
+  const apiKeyInput = card.querySelector('.profile-api-key-input')
+  const temperatureInput = card.querySelector('.profile-temperature-input')
+  const maxTokensInput = card.querySelector('.profile-max-tokens-input')
+  const compressionModeInput = card.querySelector('.profile-compression-mode-input')
 
   // Validate all required form elements
   if (
-    !(nameInput instanceof HTMLInputElement) ||
-    !(providerValueInput instanceof HTMLInputElement) ||
-    !(modelInput instanceof HTMLInputElement) ||
-    !(apiKeyInput instanceof HTMLInputElement) ||
-    !(temperatureInput instanceof HTMLInputElement) ||
-    !(maxTokensInput instanceof HTMLInputElement) ||
-    !(compressionModeInput instanceof HTMLSelectElement)
+    !(nameInput instanceof HTMLInputElement)
+    || !(providerValueInput instanceof HTMLInputElement)
+    || !(modelInput instanceof HTMLInputElement)
+    || !(apiKeyInput instanceof HTMLInputElement)
+    || !(temperatureInput instanceof HTMLInputElement)
+    || !(maxTokensInput instanceof HTMLInputElement)
+    || !(compressionModeInput instanceof HTMLSelectElement)
   ) {
-    showNotification('Form elements not found', 'error');
-    return;
+    showNotification('Form elements not found', 'error')
+    return
   }
 
-  const name = nameInput.value.trim();
-  const providerId = providerValueInput?.value || '';
-  const model = modelInput.value.trim();
-  const requiresKey = providerRequiresApiKey(providerId);
+  const name = nameInput.value.trim()
+  const providerId = providerValueInput?.value || ''
+  const model = modelInput.value.trim()
+  const requiresKey = providerRequiresApiKey(providerId)
   // Use placeholder for providers that don't require API key
-  const apiKey = requiresKey ? apiKeyInput.value.trim() : NO_API_KEY_PLACEHOLDER;
-  const temperature = parseFloat(temperatureInput.value);
-  const maxTokensStr = maxTokensInput.value.trim();
-  const maxTokens = maxTokensStr ? parseInt(maxTokensStr, 10) : undefined;
-  const compressionModeValue = compressionModeInput.value || 'two-pass';
+  const apiKey = requiresKey ? apiKeyInput.value.trim() : NO_API_KEY_PLACEHOLDER
+  const temperature = parseFloat(temperatureInput.value)
+  const maxTokensStr = maxTokensInput.value.trim()
+  const maxTokens = maxTokensStr ? parseInt(maxTokensStr, 10) : undefined
+  const compressionModeValue = compressionModeInput.value || 'two-pass'
   const compressionMode = compressionModeValue === 'single-pass' || compressionModeValue === 'two-pass'
     ? compressionModeValue
-    : 'two-pass';
+    : 'two-pass'
 
   // Validation
   if (!name) {
-    showNotification('Please enter a profile name', 'error');
-    return;
+    showNotification('Please enter a profile name', 'error')
+    return
   }
 
   if (!model) {
-    showNotification('Please enter a model ID', 'error');
-    return;
+    showNotification('Please enter a model ID', 'error')
+    return
   }
 
   // Validate API key only for providers that require it
   if (requiresKey && !apiKey) {
-    showNotification('Please enter an API key', 'error');
-    return;
+    showNotification('Please enter an API key', 'error')
+    return
   }
 
   // Find or create credential (smart reuse)
-  let credentialId: string;
+  let credentialId: string
 
   if (profileId) {
     // Editing: check if API key changed
-    const existingProfile = profiles.find((p) => p.modelConfig.id === profileId);
+    const existingProfile = profiles.find(p => p.modelConfig.id === profileId)
     if (existingProfile && existingProfile.credential.apiKey === apiKey) {
       // API key unchanged, reuse existing credential
-      credentialId = existingProfile.credential.id;
-    } else {
+      credentialId = existingProfile.credential.id
+    }
+    else {
       // API key changed, find matching credential or create new
-      const existingCredential = await findCredentialByApiKey(apiKey);
+      const existingCredential = await findCredentialByApiKey(apiKey)
       if (existingCredential) {
-        credentialId = existingCredential.id;
-      } else {
+        credentialId = existingCredential.id
+      }
+      else {
         const newCredential = await createCredential({
           name: generateCredentialName(name, providerId),
           apiKey,
-        });
-        credentialId = newCredential.id;
+        })
+        credentialId = newCredential.id
       }
     }
-  } else {
+  }
+  else {
     // New profile: find matching credential or create new
-    const existingCredential = await findCredentialByApiKey(apiKey);
+    const existingCredential = await findCredentialByApiKey(apiKey)
     if (existingCredential) {
-      credentialId = existingCredential.id;
-    } else {
+      credentialId = existingCredential.id
+    }
+    else {
       const newCredential = await createCredential({
         name: generateCredentialName(name, providerId),
         apiKey,
-      });
-      credentialId = newCredential.id;
+      })
+      credentialId = newCredential.id
     }
   }
 
@@ -1453,9 +1476,10 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
         maxTokens,
         compressionMode,
         isDefault: profiles.length === 0,
-      });
-      showNotification('Profile created', 'success');
-    } else if (profileId) {
+      })
+      showNotification('Profile created', 'success')
+    }
+    else if (profileId) {
       await updateModelConfig(profileId, {
         name,
         credentialId,
@@ -1464,18 +1488,19 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
         temperature,
         maxTokens,
         compressionMode,
-      });
-      showNotification('Profile updated', 'success');
+      })
+      showNotification('Profile updated', 'success')
     }
 
-    editingProfileId = null;
-    isNewProfile = false;
-    selectedProviderIdForNew = null;
-    await loadData();
-    notifyProfilesChanged();
-  } catch (error) {
-    console.error('Failed to save profile:', error);
-    showNotification(error instanceof Error ? error.message : 'Failed to save profile', 'error');
+    editingProfileId = null
+    isNewProfile = false
+    selectedProviderIdForNew = null
+    await loadData()
+    notifyProfilesChanged()
+  }
+  catch (error) {
+    console.error('Failed to save profile:', error)
+    showNotification(error instanceof Error ? error.message : 'Failed to save profile', 'error')
   }
 }
 
@@ -1486,17 +1511,17 @@ async function handleSaveProfile(card: HTMLElement, profileId: string | null, is
 function generateCredentialName(profileName: string, providerId: string): string {
   // Extract a meaningful name from the profile
   // e.g., "GPT-4 Turbo (Work)" -> "Work OpenAI"
-  const provider = getProviderConfigById(providerId);
-  const providerName = provider ? provider.displayName : providerId;
+  const provider = getProviderConfigById(providerId)
+  const providerName = provider ? provider.displayName : providerId
 
   // Check if profile has a parenthesized suffix like "(Work)"
-  const match = profileName.match(/\(([^)]+)\)$/);
+  const match = profileName.match(/\(([^)]+)\)$/)
   if (match) {
-    return `${match[1]} ${providerName}`;
+    return `${match[1]} ${providerName}`
   }
 
   // Otherwise use the profile name with provider
-  return `${profileName} - ${providerName}`;
+  return `${profileName} - ${providerName}`
 }
 
 /**
@@ -1504,13 +1529,14 @@ function generateCredentialName(profileName: string, providerId: string): string
  */
 async function handleSetDefaultProfile(profileId: string): Promise<void> {
   try {
-    await setDefaultModelConfig(profileId);
-    showNotification('Default profile updated', 'success');
-    await loadData();
-    notifyProfilesChanged();
-  } catch (error) {
-    console.error('Failed to set default:', error);
-    showNotification('Failed to set default profile', 'error');
+    await setDefaultModelConfig(profileId)
+    showNotification('Default profile updated', 'success')
+    await loadData()
+    notifyProfilesChanged()
+  }
+  catch (error) {
+    console.error('Failed to set default:', error)
+    showNotification('Failed to set default profile', 'error')
   }
 }
 
@@ -1518,24 +1544,25 @@ async function handleSetDefaultProfile(profileId: string): Promise<void> {
  * Handle delete profile
  */
 async function handleDeleteProfile(profileId: string): Promise<void> {
-  const profile = profiles.find((p) => p.modelConfig.id === profileId);
-  if (!profile) return;
+  const profile = profiles.find(p => p.modelConfig.id === profileId)
+  if (!profile) return
 
-  const confirmed = window.confirm(`Delete profile "${profile.modelConfig.name}"?`);
-  if (!confirmed) return;
+  const confirmed = window.confirm(`Delete profile "${profile.modelConfig.name}"?`)
+  if (!confirmed) return
 
   try {
-    await deleteModelConfig(profileId);
+    await deleteModelConfig(profileId)
 
     // Note: We don't delete the credential here as it might be used by other profiles
     // Orphaned credentials could be cleaned up in a future maintenance function
 
-    showNotification('Profile deleted', 'success');
-    await loadData();
-    notifyProfilesChanged();
-  } catch (error) {
-    console.error('Failed to delete profile:', error);
-    showNotification(error instanceof Error ? error.message : 'Failed to delete profile', 'error');
+    showNotification('Profile deleted', 'success')
+    await loadData()
+    notifyProfilesChanged()
+  }
+  catch (error) {
+    console.error('Failed to delete profile:', error)
+    showNotification(error instanceof Error ? error.message : 'Failed to delete profile', 'error')
   }
 }
 
@@ -1543,8 +1570,8 @@ async function handleDeleteProfile(profileId: string): Promise<void> {
 // Usage Stats Modal
 // ============================================================================
 
-let currentUsageStatsProfileId: string | null = null;
-let currentTimeRange: UsageTimeRange = 'week';
+let currentUsageStatsProfileId: string | null = null
+let currentTimeRange: UsageTimeRange = 'week'
 
 /**
  * Show usage stats modal for a profile
@@ -1552,42 +1579,42 @@ let currentTimeRange: UsageTimeRange = 'week';
 async function handleShowUsageStats(profileId: string, profileName: string): Promise<void> {
   // Avoid reopening the same modal
   if (currentUsageStatsProfileId === profileId) {
-    const modal = document.getElementById('usage-stats-modal');
-    if (modal && modal.style.display === 'flex') return;
+    const modal = document.getElementById('usage-stats-modal')
+    if (modal && modal.style.display === 'flex') return
   }
-  currentUsageStatsProfileId = profileId;
-  currentTimeRange = 'week';
+  currentUsageStatsProfileId = profileId
+  currentTimeRange = 'week'
 
   // Create modal if it doesn't exist
-  let modal = document.getElementById('usage-stats-modal');
+  let modal = document.getElementById('usage-stats-modal')
   if (!modal) {
-    modal = createUsageStatsModal();
-    document.body.appendChild(modal);
+    modal = createUsageStatsModal()
+    document.body.appendChild(modal)
   }
 
   // Update modal title
-  const titleEl = modal.querySelector('.usage-stats-title');
+  const titleEl = modal.querySelector('.usage-stats-title')
   if (titleEl) {
-    titleEl.textContent = `Usage Stats: ${profileName}`;
+    titleEl.textContent = `Usage Stats: ${profileName}`
   }
 
   // Show modal
-  modal.style.display = 'flex';
+  modal.style.display = 'flex'
 
   // Load and render stats
-  await renderUsageStats(profileId, currentTimeRange);
+  await renderUsageStats(profileId, currentTimeRange)
 
   // Setup time range selector
-  setupTimeRangeSelector(modal, profileId);
+  setupTimeRangeSelector(modal, profileId)
 }
 
 /**
  * Create the usage stats modal element
  */
 function createUsageStatsModal(): HTMLElement {
-  const modal = document.createElement('div');
-  modal.id = 'usage-stats-modal';
-  modal.className = 'usage-stats-modal';
+  const modal = document.createElement('div')
+  modal.id = 'usage-stats-modal'
+  modal.className = 'usage-stats-modal'
   modal.innerHTML = `
     <div class="usage-stats-content">
       <div class="usage-stats-header">
@@ -1634,262 +1661,263 @@ function createUsageStatsModal(): HTMLElement {
         <span class="usage-stats-period" id="usage-period-label">-</span>
       </div>
     </div>
-  `;
+  `
 
   // Close button handler
   modal.querySelector('.usage-stats-close')?.addEventListener('click', () => {
-    modal.style.display = 'none';
-    currentUsageStatsProfileId = null;
-  });
+    modal.style.display = 'none'
+    currentUsageStatsProfileId = null
+  })
 
   // Click outside to close
   modal.addEventListener('click', (e) => {
     if (e.target === modal) {
-      modal.style.display = 'none';
-      currentUsageStatsProfileId = null;
+      modal.style.display = 'none'
+      currentUsageStatsProfileId = null
     }
-  });
+  })
 
-  return modal;
+  return modal
 }
 
 /**
  * Type guard to check if a value is a valid UsageTimeRange
  */
 function isUsageTimeRange(value: string): value is UsageTimeRange {
-  return ['day', 'week', 'month', 'quarter', 'year'].includes(value);
+  return ['day', 'week', 'month', 'quarter', 'year'].includes(value)
 }
 
 /**
  * Setup time range selector buttons
  */
 function setupTimeRangeSelector(modal: HTMLElement, profileId: string): void {
-  const buttons = modal.querySelectorAll('.time-range-btn');
+  const buttons = modal.querySelectorAll('.time-range-btn')
   buttons.forEach((btn) => {
-    btn.addEventListener('click', async (e) => {
-      if (!(e.target instanceof HTMLElement)) return;
-      const rangeRaw = e.target.dataset.range;
-      if (!rangeRaw) return;
+    btn.addEventListener('click', (e) => {
+      if (!(e.target instanceof HTMLElement)) return
+      const rangeRaw = e.target.dataset.range
+      if (!rangeRaw) return
 
       // Validate that range is a valid UsageTimeRange
-      if (!isUsageTimeRange(rangeRaw)) return;
+      if (!isUsageTimeRange(rangeRaw)) return
 
       // Update active state
-      buttons.forEach((b) => b.classList.remove('active'));
-      e.target.classList.add('active');
+      buttons.forEach(b => b.classList.remove('active'))
+      e.target.classList.add('active')
 
-      currentTimeRange = rangeRaw;
-      await renderUsageStats(profileId, rangeRaw);
-    });
-  });
+      currentTimeRange = rangeRaw
+      void renderUsageStats(profileId, rangeRaw)
+    })
+  })
 }
 
 /**
  * Render usage stats for a profile
  */
 async function renderUsageStats(profileId: string, timeRange: UsageTimeRange): Promise<void> {
-  const stats = await getUsageStats(profileId, timeRange);
-  const dataPoints = await getUsageDataPoints(profileId, timeRange);
+  const stats = await getUsageStats(profileId, timeRange)
+  const dataPoints = await getUsageDataPoints(profileId, timeRange)
 
   // Update summary cards
-  const totalTokensEl = document.getElementById('usage-total-tokens');
-  const inputTokensEl = document.getElementById('usage-input-tokens');
-  const outputTokensEl = document.getElementById('usage-output-tokens');
-  const totalCostEl = document.getElementById('usage-total-cost');
-  const requestCountEl = document.getElementById('usage-request-count');
-  const periodLabelEl = document.getElementById('usage-period-label');
+  const totalTokensEl = document.getElementById('usage-total-tokens')
+  const inputTokensEl = document.getElementById('usage-input-tokens')
+  const outputTokensEl = document.getElementById('usage-output-tokens')
+  const totalCostEl = document.getElementById('usage-total-cost')
+  const requestCountEl = document.getElementById('usage-request-count')
+  const periodLabelEl = document.getElementById('usage-period-label')
 
-  if (totalTokensEl) totalTokensEl.textContent = formatTokenCount(stats.totalTokens);
-  if (inputTokensEl) inputTokensEl.textContent = formatTokenCount(stats.totalInputTokens);
-  if (outputTokensEl) outputTokensEl.textContent = formatTokenCount(stats.totalOutputTokens);
-  if (totalCostEl) totalCostEl.textContent = formatCost(stats.totalCost);
-  if (requestCountEl) requestCountEl.textContent = stats.requestCount.toString();
-  if (periodLabelEl) periodLabelEl.textContent = getTimeRangeLabel(timeRange);
+  if (totalTokensEl) totalTokensEl.textContent = formatTokenCount(stats.totalTokens)
+  if (inputTokensEl) inputTokensEl.textContent = formatTokenCount(stats.totalInputTokens)
+  if (outputTokensEl) outputTokensEl.textContent = formatTokenCount(stats.totalOutputTokens)
+  if (totalCostEl) totalCostEl.textContent = formatCost(stats.totalCost)
+  if (requestCountEl) requestCountEl.textContent = stats.requestCount.toString()
+  if (periodLabelEl) periodLabelEl.textContent = getTimeRangeLabel(timeRange)
 
   // Render chart
-  renderUsageChart(dataPoints);
+  renderUsageChart(dataPoints)
 }
 
 /**
  * Render usage chart using Canvas API
  */
 function renderUsageChart(dataPoints: Awaited<ReturnType<typeof getUsageDataPoints>>): void {
-  const canvas = document.getElementById('usage-chart');
-  if (!(canvas instanceof HTMLCanvasElement)) return;
+  const canvas = document.getElementById('usage-chart')
+  if (!(canvas instanceof HTMLCanvasElement)) return
 
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
 
   // Clear canvas
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
-  ctx.clearRect(0, 0, rect.width, rect.height);
+  const dpr = window.devicePixelRatio || 1
+  const rect = canvas.getBoundingClientRect()
+  canvas.width = rect.width * dpr
+  canvas.height = rect.height * dpr
+  ctx.scale(dpr, dpr)
+  ctx.clearRect(0, 0, rect.width, rect.height)
 
   if (dataPoints.length === 0) {
-    ctx.fillStyle = window.getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
-    ctx.font = '14px system-ui';
-    ctx.textAlign = 'center';
-    ctx.fillText('No usage data available', rect.width / 2, rect.height / 2);
-    return;
+    ctx.fillStyle = window.getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888'
+    ctx.font = '14px system-ui'
+    ctx.textAlign = 'center'
+    ctx.fillText('No usage data available', rect.width / 2, rect.height / 2)
+    return
   }
 
-  const padding = { top: 20, right: 20, bottom: 40, left: 60 };
-  const chartWidth = rect.width - padding.left - padding.right;
-  const chartHeight = rect.height - padding.top - padding.bottom;
+  const padding = { top: 20, right: 20, bottom: 40, left: 60 }
+  const chartWidth = rect.width - padding.left - padding.right
+  const chartHeight = rect.height - padding.top - padding.bottom
 
   // Find max values for scaling
-  const maxTokens = Math.max(...dataPoints.map((d) => d.totalTokens), 1);
-  const maxCost = Math.max(...dataPoints.map((d) => d.cost), 0.01);
+  const maxTokens = Math.max(...dataPoints.map(d => d.totalTokens), 1)
+  const maxCost = Math.max(...dataPoints.map(d => d.cost), 0.01)
 
   // Colors
-  const tokenColor = window.getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3b82f6';
-  const costColor = '#10b981'; // Green for cost
-  const gridColor = window.getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#333';
-  const textColor = window.getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
+  const tokenColor = window.getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#3b82f6'
+  const costColor = '#10b981' // Green for cost
+  const gridColor = window.getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#333'
+  const textColor = window.getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888'
 
   // Draw grid lines
-  ctx.strokeStyle = gridColor;
-  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = gridColor
+  ctx.lineWidth = 0.5
   for (let i = 0; i <= 5; i++) {
-    const y = padding.top + (chartHeight / 5) * i;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, y);
-    ctx.lineTo(padding.left + chartWidth, y);
-    ctx.stroke();
+    const y = padding.top + (chartHeight / 5) * i
+    ctx.beginPath()
+    ctx.moveTo(padding.left, y)
+    ctx.lineTo(padding.left + chartWidth, y)
+    ctx.stroke()
   }
 
   // Draw bars for tokens
-  const barWidth = Math.max(chartWidth / dataPoints.length - 4, 4);
-  const barGap = chartWidth / dataPoints.length;
+  const barWidth = Math.max(chartWidth / dataPoints.length - 4, 4)
+  const barGap = chartWidth / dataPoints.length
 
   dataPoints.forEach((point, i) => {
-    const x = padding.left + i * barGap + (barGap - barWidth) / 2;
-    const barHeight = (point.totalTokens / maxTokens) * chartHeight;
-    const y = padding.top + chartHeight - barHeight;
+    const x = padding.left + i * barGap + (barGap - barWidth) / 2
+    const barHeight = (point.totalTokens / maxTokens) * chartHeight
+    const y = padding.top + chartHeight - barHeight
 
     // Token bar
-    ctx.fillStyle = tokenColor;
-    ctx.fillRect(x, y, barWidth, barHeight);
+    ctx.fillStyle = tokenColor
+    ctx.fillRect(x, y, barWidth, barHeight)
 
     // Cost line point (draw small circle)
     if (point.cost > 0) {
-      const costY = padding.top + chartHeight - (point.cost / maxCost) * chartHeight;
-      ctx.fillStyle = costColor;
-      ctx.beginPath();
-      ctx.arc(x + barWidth / 2, costY, 3, 0, Math.PI * 2);
-      ctx.fill();
+      const costY = padding.top + chartHeight - (point.cost / maxCost) * chartHeight
+      ctx.fillStyle = costColor
+      ctx.beginPath()
+      ctx.arc(x + barWidth / 2, costY, 3, 0, Math.PI * 2)
+      ctx.fill()
     }
-  });
+  })
 
   // Draw cost line
-  ctx.strokeStyle = costColor;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  let started = false;
+  ctx.strokeStyle = costColor
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  let started = false
   dataPoints.forEach((point, i) => {
-    const x = padding.left + i * barGap + barWidth / 2;
-    const y = padding.top + chartHeight - (point.cost / maxCost) * chartHeight;
+    const x = padding.left + i * barGap + barWidth / 2
+    const y = padding.top + chartHeight - (point.cost / maxCost) * chartHeight
 
     if (!started) {
-      ctx.moveTo(x, y);
-      started = true;
-    } else {
-      ctx.lineTo(x, y);
+      ctx.moveTo(x, y)
+      started = true
     }
-  });
-  ctx.stroke();
+    else {
+      ctx.lineTo(x, y)
+    }
+  })
+  ctx.stroke()
 
   // Y-axis labels (tokens)
-  ctx.fillStyle = textColor;
-  ctx.font = '10px system-ui';
-  ctx.textAlign = 'right';
+  ctx.fillStyle = textColor
+  ctx.font = '10px system-ui'
+  ctx.textAlign = 'right'
   for (let i = 0; i <= 5; i++) {
-    const value = maxTokens - (maxTokens / 5) * i;
-    const y = padding.top + (chartHeight / 5) * i + 4;
-    ctx.fillText(formatTokenCount(value), padding.left - 5, y);
+    const value = maxTokens - (maxTokens / 5) * i
+    const y = padding.top + (chartHeight / 5) * i + 4
+    ctx.fillText(formatTokenCount(value), padding.left - 5, y)
   }
 
   // X-axis labels (dates) - show only some labels to avoid overlap
-  ctx.textAlign = 'center';
-  const labelStep = Math.ceil(dataPoints.length / 7);
+  ctx.textAlign = 'center'
+  const labelStep = Math.ceil(dataPoints.length / 7)
   dataPoints.forEach((point, i) => {
     if (i % labelStep === 0 || i === dataPoints.length - 1) {
-      const x = padding.left + i * barGap + barWidth / 2;
-      const dateStr = point.date.slice(5); // MM-DD
-      ctx.fillText(dateStr, x, rect.height - 5);
+      const x = padding.left + i * barGap + barWidth / 2
+      const dateStr = point.date.slice(5) // MM-DD
+      ctx.fillText(dateStr, x, rect.height - 5)
     }
-  });
+  })
 
   // Legend
-  ctx.font = '11px system-ui';
-  ctx.textAlign = 'left';
+  ctx.font = '11px system-ui'
+  ctx.textAlign = 'left'
 
   // Tokens legend
-  ctx.fillStyle = tokenColor;
-  ctx.fillRect(padding.left, rect.height - 25, 12, 12);
-  ctx.fillStyle = textColor;
-  ctx.fillText('Tokens', padding.left + 16, rect.height - 15);
+  ctx.fillStyle = tokenColor
+  ctx.fillRect(padding.left, rect.height - 25, 12, 12)
+  ctx.fillStyle = textColor
+  ctx.fillText('Tokens', padding.left + 16, rect.height - 15)
 
   // Cost legend
-  ctx.fillStyle = costColor;
-  ctx.fillRect(padding.left + 80, rect.height - 25, 12, 12);
-  ctx.fillStyle = textColor;
-  ctx.fillText('Cost', padding.left + 96, rect.height - 15);
+  ctx.fillStyle = costColor
+  ctx.fillRect(padding.left + 80, rect.height - 25, 12, 12)
+  ctx.fillStyle = textColor
+  ctx.fillText('Cost', padding.left + 96, rect.height - 15)
 }
 
 /**
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
 }
 
 /**
  * Show notification
  */
 function showNotification(message: string, type: 'success' | 'error' = 'success'): void {
-  const notification = document.getElementById('notification');
-  if (!notification) return;
+  const notification = document.getElementById('notification')
+  if (!notification) return
 
-  notification.textContent = message;
-  notification.className = `notification ${type}`;
-  notification.style.display = 'flex';
+  notification.textContent = message
+  notification.className = `notification ${type}`
+  notification.style.display = 'flex'
 
   setTimeout(() => {
-    notification.style.display = 'none';
-  }, 3000);
+    notification.style.display = 'none'
+  }, 3000)
 }
 
 /**
  * Update notebook model dropdown
  */
 export function updateNotebookModelDropdown(): void {
-  const select = elements.notebookModelSelect;
-  select.innerHTML = '<option value="">Use Default</option>';
+  const select = elements.notebookModelSelect
+  select.innerHTML = '<option value="">Use Default</option>'
 
   profiles.forEach((profile) => {
-    const option = document.createElement('option');
-    option.value = profile.modelConfig.id;
-    option.textContent = profile.modelConfig.name;
-    select.appendChild(option);
-  });
+    const option = document.createElement('option')
+    option.value = profile.modelConfig.id
+    option.textContent = profile.modelConfig.name
+    select.appendChild(option)
+  })
 }
 
 /**
  * Show notebook settings group
  */
 export function showNotebookSettings(): void {
-  elements.notebookSettingsGroup.style.display = 'block';
+  elements.notebookSettingsGroup.style.display = 'block'
 }
 
 /**
  * Hide notebook settings group
  */
 export function hideNotebookSettings(): void {
-  elements.notebookSettingsGroup.style.display = 'none';
+  elements.notebookSettingsGroup.style.display = 'none'
 }

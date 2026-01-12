@@ -4,23 +4,23 @@
  * Provides a first-time user experience to help new users get started.
  */
 
-import { storage } from './storage.ts';
+import { storage } from './storage.ts'
 
-const ONBOARDING_COMPLETE_KEY = 'onboardingComplete';
-const ONBOARDING_VERSION = 1; // Increment to re-show onboarding after major updates
+const ONBOARDING_COMPLETE_KEY = 'onboardingComplete'
+const ONBOARDING_VERSION = 1 // Increment to re-show onboarding after major updates
 
 export interface OnboardingState {
-  complete: boolean;
-  version: number;
-  completedAt?: number;
+  complete: boolean
+  version: number
+  completedAt?: number
 }
 
 /**
  * Check if onboarding has been completed
  */
 export async function isOnboardingComplete(): Promise<boolean> {
-  const state = await storage.getSetting<OnboardingState>(ONBOARDING_COMPLETE_KEY);
-  return state?.complete === true && state?.version === ONBOARDING_VERSION;
+  const state = await storage.getSetting<OnboardingState>(ONBOARDING_COMPLETE_KEY)
+  return state?.complete === true && state?.version === ONBOARDING_VERSION
 }
 
 /**
@@ -31,25 +31,25 @@ export async function markOnboardingComplete(): Promise<void> {
     complete: true,
     version: ONBOARDING_VERSION,
     completedAt: Date.now(),
-  };
-  await storage.setSetting(ONBOARDING_COMPLETE_KEY, state);
+  }
+  await storage.setSetting(ONBOARDING_COMPLETE_KEY, state)
 }
 
 /**
  * Reset onboarding (for testing or re-onboarding)
  */
 export async function resetOnboarding(): Promise<void> {
-  await storage.setSetting(ONBOARDING_COMPLETE_KEY, null);
+  await storage.setSetting(ONBOARDING_COMPLETE_KEY, null)
 }
 
 /**
  * Onboarding step definitions
  */
 export interface OnboardingStep {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
+  id: string
+  title: string
+  description: string
+  icon: string
 }
 
 export const ONBOARDING_STEPS: OnboardingStep[] = [
@@ -100,4 +100,4 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
     </svg>`,
   },
-];
+]

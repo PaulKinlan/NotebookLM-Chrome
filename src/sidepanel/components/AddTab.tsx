@@ -1,10 +1,10 @@
 interface AddTabProps {
-  active: boolean;
-  onAddCurrentTab: () => void;
-  onImportTabs: () => void;
-  onImportTabGroups: () => void;
-  onImportBookmarks: () => void;
-  onImportHistory: () => void;
+  active: boolean
+  onAddCurrentTab: () => void
+  onImportTabs: () => void
+  onImportTabGroups: () => void
+  onImportBookmarks: () => void
+  onImportHistory: () => void
 }
 
 export function AddTab(props: AddTabProps) {
@@ -15,7 +15,7 @@ export function AddTab(props: AddTabProps) {
     onImportTabGroups,
     onImportBookmarks,
     onImportHistory,
-  } = props;
+  } = props
   return (
     <section id="tab-add" className={`tab-content ${active ? 'active' : ''}`}>
       <div className="tab-header">
@@ -119,5 +119,5 @@ export function AddTab(props: AddTabProps) {
       </h3>
       <div id="sources-list" className="sources-list"></div>
     </section>
-  );
+  )
 }

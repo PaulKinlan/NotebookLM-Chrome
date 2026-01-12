@@ -10,7 +10,7 @@ import type {
   NotebookSummary,
   ExtractedLink,
   JSONValue,
-} from '../types/index.ts';
+} from '../types/index.ts'
 import {
   dbGet,
   dbGetAll,
@@ -19,7 +19,7 @@ import {
   dbDelete,
   dbDeleteByIndex,
   dbClearAll,
-} from './db.ts';
+} from './db.ts'
 
 // ============================================================================
 // Storage Adapter Implementation
@@ -31,42 +31,42 @@ class IndexedDBStorage implements StorageAdapter {
   // --------------------------------------------------------------------------
 
   async getNotebooks(): Promise<Notebook[]> {
-    const notebooks = await dbGetAll<Notebook>('notebooks');
-    return notebooks.sort((a, b) => b.updatedAt - a.updatedAt);
+    const notebooks = await dbGetAll<Notebook>('notebooks')
+    return notebooks.sort((a, b) => b.updatedAt - a.updatedAt)
   }
 
   async getNotebook(id: string): Promise<Notebook | null> {
-    return dbGet<Notebook>('notebooks', id);
+    return dbGet<Notebook>('notebooks', id)
   }
 
   async saveNotebook(notebook: Notebook): Promise<void> {
-    const now = Date.now();
-    const existing = await this.getNotebook(notebook.id);
+    const now = Date.now()
+    const existing = await this.getNotebook(notebook.id)
 
     const toSave: Notebook = {
       ...notebook,
       updatedAt: now,
       createdAt: existing?.createdAt ?? now,
       syncStatus: 'local',
-    };
+    }
 
-    await dbPut('notebooks', toSave);
+    await dbPut('notebooks', toSave)
   }
 
   async deleteNotebook(id: string): Promise<void> {
     // Delete associated data first
-    await dbDeleteByIndex('sources', 'notebookId', id);
-    await dbDeleteByIndex('chatEvents', 'notebookId', id);
-    await dbDeleteByIndex('transformations', 'notebookId', id);
-    await dbDeleteByIndex('summaries', 'notebookId', id);
+    await dbDeleteByIndex('sources', 'notebookId', id)
+    await dbDeleteByIndex('chatEvents', 'notebookId', id)
+    await dbDeleteByIndex('transformations', 'notebookId', id)
+    await dbDeleteByIndex('summaries', 'notebookId', id)
 
     // Then delete the notebook
-    await dbDelete('notebooks', id);
+    await dbDelete('notebooks', id)
 
     // Clear active notebook if it was this one
-    const activeId = await this.getActiveNotebookId();
+    const activeId = await this.getActiveNotebookId()
     if (activeId === id) {
-      await this.setActiveNotebookId(null);
+      await this.setActiveNotebookId(null)
     }
   }
 
@@ -75,30 +75,30 @@ class IndexedDBStorage implements StorageAdapter {
   // --------------------------------------------------------------------------
 
   async getSourcesByNotebook(notebookId: string): Promise<Source[]> {
-    const sources = await dbGetByIndex<Source>('sources', 'notebookId', notebookId);
-    return sources.sort((a, b) => b.createdAt - a.createdAt);
+    const sources = await dbGetByIndex<Source>('sources', 'notebookId', notebookId)
+    return sources.sort((a, b) => b.createdAt - a.createdAt)
   }
 
   async getSource(id: string): Promise<Source | null> {
-    return dbGet<Source>('sources', id);
+    return dbGet<Source>('sources', id)
   }
 
   async saveSource(source: Source): Promise<void> {
-    const now = Date.now();
-    const existing = await this.getSource(source.id);
+    const now = Date.now()
+    const existing = await this.getSource(source.id)
 
     const toSave: Source = {
       ...source,
       updatedAt: now,
       createdAt: existing?.createdAt ?? now,
       syncStatus: 'local',
-    };
+    }
 
-    await dbPut('sources', toSave);
+    await dbPut('sources', toSave)
   }
 
   async deleteSource(id: string): Promise<void> {
-    await dbDelete('sources', id);
+    await dbDelete('sources', id)
   }
 
   // --------------------------------------------------------------------------
@@ -106,16 +106,16 @@ class IndexedDBStorage implements StorageAdapter {
   // --------------------------------------------------------------------------
 
   async getChatHistory(notebookId: string): Promise<ChatEvent[]> {
-    const events = await dbGetByIndex<ChatEvent>('chatEvents', 'notebookId', notebookId);
-    return events.sort((a, b) => a.timestamp - b.timestamp);
+    const events = await dbGetByIndex<ChatEvent>('chatEvents', 'notebookId', notebookId)
+    return events.sort((a, b) => a.timestamp - b.timestamp)
   }
 
   async saveChatEvent(event: ChatEvent): Promise<void> {
-    await dbPut('chatEvents', event);
+    await dbPut('chatEvents', event)
   }
 
   async clearChatHistory(notebookId: string): Promise<void> {
-    await dbDeleteByIndex('chatEvents', 'notebookId', notebookId);
+    await dbDeleteByIndex('chatEvents', 'notebookId', notebookId)
   }
 
   // --------------------------------------------------------------------------
@@ -123,26 +123,26 @@ class IndexedDBStorage implements StorageAdapter {
   // --------------------------------------------------------------------------
 
   async getTransformations(notebookId: string): Promise<Transformation[]> {
-    const transformations = await dbGetByIndex<Transformation>('transformations', 'notebookId', notebookId);
-    return transformations.sort((a, b) => b.createdAt - a.createdAt);
+    const transformations = await dbGetByIndex<Transformation>('transformations', 'notebookId', notebookId)
+    return transformations.sort((a, b) => b.createdAt - a.createdAt)
   }
 
   async saveTransformation(transformation: Transformation): Promise<void> {
-    const now = Date.now();
-    const existing = await dbGet<Transformation>('transformations', transformation.id);
+    const now = Date.now()
+    const existing = await dbGet<Transformation>('transformations', transformation.id)
 
     const toSave: Transformation = {
       ...transformation,
       updatedAt: now,
       createdAt: existing?.createdAt ?? now,
       syncStatus: 'local',
-    };
+    }
 
-    await dbPut('transformations', toSave);
+    await dbPut('transformations', toSave)
   }
 
   async deleteTransformation(id: string): Promise<void> {
-    await dbDelete('transformations', id);
+    await dbDelete('transformations', id)
   }
 
   // --------------------------------------------------------------------------
@@ -150,19 +150,19 @@ class IndexedDBStorage implements StorageAdapter {
   // --------------------------------------------------------------------------
 
   async getCachedResponse(cacheKey: string): Promise<CachedResponse | null> {
-    return dbGet<CachedResponse>('responseCache', cacheKey);
+    return dbGet<CachedResponse>('responseCache', cacheKey)
   }
 
   async saveCachedResponse(cached: CachedResponse): Promise<void> {
-    await dbPut('responseCache', cached);
+    await dbPut('responseCache', cached)
   }
 
   async getCachedResponsesByNotebook(notebookId: string): Promise<CachedResponse[]> {
-    return dbGetByIndex<CachedResponse>('responseCache', 'notebookId', notebookId);
+    return dbGetByIndex<CachedResponse>('responseCache', 'notebookId', notebookId)
   }
 
   async clearResponseCache(notebookId: string): Promise<void> {
-    await dbDeleteByIndex('responseCache', 'notebookId', notebookId);
+    await dbDeleteByIndex('responseCache', 'notebookId', notebookId)
   }
 
   // --------------------------------------------------------------------------
@@ -170,16 +170,16 @@ class IndexedDBStorage implements StorageAdapter {
   // --------------------------------------------------------------------------
 
   async getSummary(notebookId: string): Promise<NotebookSummary | null> {
-    const summaries = await dbGetByIndex<NotebookSummary>('summaries', 'notebookId', notebookId);
-    return summaries[0] ?? null;
+    const summaries = await dbGetByIndex<NotebookSummary>('summaries', 'notebookId', notebookId)
+    return summaries[0] ?? null
   }
 
   async saveSummary(summary: NotebookSummary): Promise<void> {
-    await dbPut('summaries', summary);
+    await dbPut('summaries', summary)
   }
 
   async deleteSummary(notebookId: string): Promise<void> {
-    await dbDeleteByIndex('summaries', 'notebookId', notebookId);
+    await dbDeleteByIndex('summaries', 'notebookId', notebookId)
   }
 
   // --------------------------------------------------------------------------
@@ -187,12 +187,12 @@ class IndexedDBStorage implements StorageAdapter {
   // --------------------------------------------------------------------------
 
   async getSetting<T>(key: string): Promise<T | null> {
-    const result = await dbGet<{ key: string; value: T }>('settings', key);
-    return result?.value ?? null;
+    const result = await dbGet<{ key: string, value: T }>('settings', key)
+    return result?.value ?? null
   }
 
   async setSetting<T>(key: string, value: T): Promise<void> {
-    await dbPut('settings', { key, value });
+    await dbPut('settings', { key, value })
   }
 
   // --------------------------------------------------------------------------
@@ -200,19 +200,20 @@ class IndexedDBStorage implements StorageAdapter {
   // --------------------------------------------------------------------------
 
   async getActiveNotebookId(): Promise<string | null> {
-    return this.getSetting<string>('activeNotebookId');
+    return this.getSetting<string>('activeNotebookId')
   }
 
   async setActiveNotebookId(id: string | null): Promise<void> {
     if (id === null) {
-      await dbDelete('settings', 'activeNotebookId');
-    } else {
-      await this.setSetting('activeNotebookId', id);
+      await dbDelete('settings', 'activeNotebookId')
+    }
+    else {
+      await this.setSetting('activeNotebookId', id)
     }
   }
 
   async clearAll(): Promise<void> {
-    await dbClearAll();
+    await dbClearAll()
   }
 }
 
@@ -220,21 +221,21 @@ class IndexedDBStorage implements StorageAdapter {
 // Singleton Export
 // ============================================================================
 
-export const storage: StorageAdapter = new IndexedDBStorage();
+export const storage: StorageAdapter = new IndexedDBStorage()
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
 export function createNotebook(name: string): Notebook {
-  const now = Date.now();
+  const now = Date.now()
   return {
     id: crypto.randomUUID(),
     name,
     syncStatus: 'local',
     createdAt: now,
     updatedAt: now,
-  };
+  }
 }
 
 export function createSource(
@@ -243,9 +244,9 @@ export function createSource(
   url: string,
   title: string,
   content: string,
-  links?: ExtractedLink[]
+  links?: ExtractedLink[],
 ): Source {
-  const now = Date.now();
+  const now = Date.now()
   return {
     id: crypto.randomUUID(),
     notebookId,
@@ -260,7 +261,7 @@ export function createSource(
     metadata: {
       wordCount: content.split(/\s+/).length,
     },
-  };
+  }
 }
 
 /**
@@ -270,7 +271,7 @@ export function createChatMessage(
   notebookId: string,
   role: ChatMessage['role'],
   content: string,
-  citations?: ChatMessage['citations']
+  citations?: ChatMessage['citations'],
 ): ChatMessage {
   return {
     id: crypto.randomUUID(),
@@ -279,7 +280,7 @@ export function createChatMessage(
     content,
     citations,
     timestamp: Date.now(),
-  };
+  }
 }
 
 // ChatEvent creation helpers
@@ -291,16 +292,16 @@ export function createUserEvent(notebookId: string, content: string): ChatEvent 
     timestamp: Date.now(),
     type: 'user',
     content,
-  };
+  }
 }
 
 export function createAssistantEvent(
   notebookId: string,
   content: string,
   options?: {
-    citations?: Citation[];
-    toolCalls?: import('../types/index.js').ToolCall[];
-  }
+    citations?: Citation[]
+    toolCalls?: import('../types/index.js').ToolCall[]
+  },
 ): ChatEvent {
   return {
     id: crypto.randomUUID(),
@@ -310,7 +311,7 @@ export function createAssistantEvent(
     content,
     ...(options?.citations && { citations: options.citations }),
     ...(options?.toolCalls && { toolCalls: options.toolCalls }),
-  };
+  }
 }
 
 export function createToolResultEvent(
@@ -319,7 +320,7 @@ export function createToolResultEvent(
   toolName: string,
   result: JSONValue,
   error?: string,
-  duration?: number
+  duration?: number,
 ): ChatEvent {
   return {
     id: crypto.randomUUID(),
@@ -331,7 +332,7 @@ export function createToolResultEvent(
     result,
     error,
     duration,
-  };
+  }
 }
 
 export function createTransformation(
@@ -339,9 +340,9 @@ export function createTransformation(
   type: Transformation['type'],
   title: string,
   content: string,
-  sourceIds: string[]
+  sourceIds: string[],
 ): Transformation {
-  const now = Date.now();
+  const now = Date.now()
   return {
     id: crypto.randomUUID(),
     notebookId,
@@ -352,20 +353,20 @@ export function createTransformation(
     syncStatus: 'local',
     createdAt: now,
     updatedAt: now,
-  };
+  }
 }
 
 export function createCacheKey(query: string, sourceIds: string[]): string {
   // Create a deterministic cache key from query and sorted source IDs
-  const normalized = `${query.toLowerCase().trim()}:${sourceIds.sort().join(',')}`;
+  const normalized = `${query.toLowerCase().trim()}:${sourceIds.sort().join(',')}`
   // Simple hash function for cache key
-  let hash = 0;
+  let hash = 0
   for (let i = 0; i < normalized.length; i++) {
-    const char = normalized.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
+    const char = normalized.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32bit integer
   }
-  return `cache_${Math.abs(hash).toString(36)}`;
+  return `cache_${Math.abs(hash).toString(36)}`
 }
 
 export function createCachedResponse(
@@ -373,7 +374,7 @@ export function createCachedResponse(
   query: string,
   sourceIds: string[],
   response: string,
-  citations: Citation[]
+  citations: Citation[],
 ): CachedResponse {
   return {
     id: createCacheKey(query, sourceIds),
@@ -383,27 +384,27 @@ export function createCachedResponse(
     response,
     citations,
     createdAt: Date.now(),
-  };
+  }
 }
 
 // ============================================================================
 // Convenience Exports (backwards compatibility)
 // ============================================================================
 
-export const getNotebooks = () => storage.getNotebooks();
-export const getNotebook = (id: string) => storage.getNotebook(id);
-export const saveNotebook = (notebook: Notebook) => storage.saveNotebook(notebook);
-export const deleteNotebook = (id: string) => storage.deleteNotebook(id);
-export const getActiveNotebookId = () => storage.getActiveNotebookId();
-export const setActiveNotebookId = (id: string | null) => storage.setActiveNotebookId(id);
+export const getNotebooks = () => storage.getNotebooks()
+export const getNotebook = (id: string) => storage.getNotebook(id)
+export const saveNotebook = (notebook: Notebook) => storage.saveNotebook(notebook)
+export const deleteNotebook = (id: string) => storage.deleteNotebook(id)
+export const getActiveNotebookId = () => storage.getActiveNotebookId()
+export const setActiveNotebookId = (id: string | null) => storage.setActiveNotebookId(id)
 
-export const getSourcesByNotebook = (notebookId: string) => storage.getSourcesByNotebook(notebookId);
-export const getSource = (id: string) => storage.getSource(id);
-export const saveSource = (source: Source) => storage.saveSource(source);
-export const deleteSource = (id: string) => storage.deleteSource(id);
+export const getSourcesByNotebook = (notebookId: string) => storage.getSourcesByNotebook(notebookId)
+export const getSource = (id: string) => storage.getSource(id)
+export const saveSource = (source: Source) => storage.saveSource(source)
+export const deleteSource = (id: string) => storage.deleteSource(id)
 
-export const getChatHistory = (notebookId: string) => storage.getChatHistory(notebookId);
-export const saveChatEvent = (event: ChatEvent) => storage.saveChatEvent(event);
+export const getChatHistory = (notebookId: string) => storage.getChatHistory(notebookId)
+export const saveChatEvent = (event: ChatEvent) => storage.saveChatEvent(event)
 
 /**
  * @deprecated Use saveChatEvent with ChatEvent instead.
@@ -417,27 +418,27 @@ export const saveChatMessage = (message: ChatMessage) => {
     type: message.role,
     content: message.content,
     ...(message.citations && { citations: message.citations }),
-  };
-  return storage.saveChatEvent(event);
-};
+  }
+  return storage.saveChatEvent(event)
+}
 
-export const getTransformations = (notebookId: string) => storage.getTransformations(notebookId);
-export const saveTransformation = (transformation: Transformation) => storage.saveTransformation(transformation);
+export const getTransformations = (notebookId: string) => storage.getTransformations(notebookId)
+export const saveTransformation = (transformation: Transformation) => storage.saveTransformation(transformation)
 
-export const getCachedResponse = (cacheKey: string) => storage.getCachedResponse(cacheKey);
-export const saveCachedResponse = (cached: CachedResponse) => storage.saveCachedResponse(cached);
-export const clearChatHistory = (notebookId: string) => storage.clearChatHistory(notebookId);
+export const getCachedResponse = (cacheKey: string) => storage.getCachedResponse(cacheKey)
+export const saveCachedResponse = (cached: CachedResponse) => storage.saveCachedResponse(cached)
+export const clearChatHistory = (notebookId: string) => storage.clearChatHistory(notebookId)
 
-export const getSummary = (notebookId: string) => storage.getSummary(notebookId);
-export const saveSummary = (summary: NotebookSummary) => storage.saveSummary(summary);
-export const deleteSummary = (notebookId: string) => storage.deleteSummary(notebookId);
+export const getSummary = (notebookId: string) => storage.getSummary(notebookId)
+export const saveSummary = (summary: NotebookSummary) => storage.saveSummary(summary)
+export const deleteSummary = (notebookId: string) => storage.deleteSummary(notebookId)
 
 export function createSummary(
   notebookId: string,
   sourceIds: string[],
-  content: string
+  content: string,
 ): NotebookSummary {
-  const now = Date.now();
+  const now = Date.now()
   return {
     id: `summary_${notebookId}`,
     notebookId,
@@ -445,7 +446,7 @@ export function createSummary(
     content,
     createdAt: now,
     updatedAt: now,
-  };
+  }
 }
 
-export const clearAllData = () => storage.clearAll();
+export const clearAllData = () => storage.clearAll()

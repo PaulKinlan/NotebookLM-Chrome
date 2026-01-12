@@ -1,9 +1,4 @@
-interface PickerModalProps {
-  onClose?: () => void;
-  onAdd?: () => void;
-}
-
-export function PickerModal(_props: PickerModalProps = {}) {
+export function PickerModal() {
   return (
     <div id="picker-modal" className="modal hidden">
       <div className="modal-backdrop"></div>
@@ -34,15 +29,10 @@ export function PickerModal(_props: PickerModalProps = {}) {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-interface NotebookDialogProps {
-  onCancel?: () => void;
-  onConfirm?: () => void;
-}
-
-export function NotebookDialog(_props: NotebookDialogProps = {}) {
+export function NotebookDialog() {
   return (
     <dialog id="notebook-dialog" className="dialog">
       <h3 id="notebook-dialog-title">New Notebook</h3>
@@ -52,15 +42,10 @@ export function NotebookDialog(_props: NotebookDialogProps = {}) {
         <button id="notebook-dialog-confirm" className="btn btn-primary">Create</button>
       </div>
     </dialog>
-  );
+  )
 }
 
-interface ConfirmDialogProps {
-  onCancel?: () => void;
-  onConfirm?: () => void;
-}
-
-export function ConfirmDialog(_props: ConfirmDialogProps = {}) {
+export function ConfirmDialog() {
   return (
     <dialog id="confirm-dialog" className="dialog">
       <h3 id="confirm-dialog-title">Confirm</h3>
@@ -70,5 +55,5 @@ export function ConfirmDialog(_props: ConfirmDialogProps = {}) {
         <button id="confirm-dialog-confirm" className="btn btn-danger">Delete</button>
       </div>
     </dialog>
-  );
+  )
 }

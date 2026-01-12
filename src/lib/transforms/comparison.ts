@@ -1,12 +1,12 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts';
-import { trackUsage } from '../usage.ts';
+import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { trackUsage } from '../usage.ts'
 
 export async function generateComparison(sources: Source[]): Promise<string> {
-  const config = await getModelWithConfig();
+  const config = await getModelWithConfig()
   if (!config) {
     throw new Error(
-      "AI provider not configured. Please add your API key in settings."
-    );
+      'AI provider not configured. Please add your API key in settings.',
+    )
   }
 
   const result = await generateText({
@@ -25,7 +25,7 @@ Format as a markdown table comparing key items:
 | Feature 2| Detail   | Detail   | Detail   |
 
 Include a summary of key differences and similarities after the table.`,
-  });
+  })
 
   // Track usage
   if (result.usage) {
@@ -36,8 +36,8 @@ Include a summary of key differences and similarities after the table.`,
       inputTokens: result.usage.inputTokens ?? 0,
       outputTokens: result.usage.outputTokens ?? 0,
       operation: 'transform',
-    }).catch((err) => console.warn('[Transform] Failed to track comparison usage:', err));
+    }).catch(err => console.warn('[Transform] Failed to track comparison usage:', err))
   }
 
-  return result.text;
+  return result.text
 }

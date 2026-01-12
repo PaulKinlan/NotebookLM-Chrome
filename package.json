@@ -4,6 +4,7 @@
   "description": "FolioLM - Collect and query content from tabs, bookmarks, and history. Your AI research companion.",
   "type": "module",
   "scripts": {
+    "prepare": "husky",
     "dev": "vite",
     "watch": "npm run build -- --watch",
     "build": "tsc && vite build",
@@ -52,6 +53,7 @@
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.28",
+    "@stylistic/eslint-plugin": "^5.7.0",
     "@types/chrome": "^0.1.33",
     "@types/dompurify": "^3.2.0",
     "@types/eslint": "^9.6.1",
@@ -67,16 +69,26 @@
     "eslint-plugin-eslint-comments": "^3.2.0",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.1.0",
+    "husky": "^9.1.7",
     "jiti": "^2.6.1",
     "jsdom": "^27.4.0",
+    "lint-staged": "^16.2.7",
     "puppeteer": "^24.35.0",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",
     "vitest": "^4.0.16"
   },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix"
+    ]
+  },
   "overrides": {
     "@openrouter/ai-sdk-provider": {
       "ai": "^6.0.14"
     }
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.55.1"
   }
 }

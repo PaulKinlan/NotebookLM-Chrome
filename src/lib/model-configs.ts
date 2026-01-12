@@ -5,135 +5,135 @@
  * Each model config belongs to one credential and one registry provider entry.
  */
 
-import type { ModelConfig, ModelConfigSettings, Credential, Notebook } from '../types/index.ts';
-import { dbGet, dbPut, dbDelete } from './db.ts';
-import { getCredential, createCredential, findCredentialByApiKey } from './credentials.ts';
-import { getProviderConfigById, getAllProviders } from './provider-registry.ts';
+import type { ModelConfig, ModelConfigSettings, Credential, Notebook } from '../types/index.ts'
+import { dbGet, dbPut, dbDelete } from './db.ts'
+import { getCredential, createCredential, findCredentialByApiKey } from './credentials.ts'
+import { getProviderConfigById, getAllProviders } from './provider-registry.ts'
 
 // Type guard for legacy AISettings
 function isLegacyAISettings(data: unknown): data is {
-  provider: string;
-  model: string;
-  apiKeys: Record<string, string>;
-  temperature?: number;
-  maxTokens?: number;
+  provider: string
+  model: string
+  apiKeys: Record<string, string>
+  temperature?: number
+  maxTokens?: number
 } {
   if (typeof data !== 'object' || data === null) {
-    return false;
+    return false
   }
 
-  const obj = data;
+  const obj = data
 
   // Check provider
   if (!('provider' in obj) || typeof obj.provider !== 'string') {
-    return false;
+    return false
   }
 
   // Check model
   if (!('model' in obj) || typeof obj.model !== 'string') {
-    return false;
+    return false
   }
 
   // Check apiKeys
   if (!('apiKeys' in obj) || typeof obj.apiKeys !== 'object' || obj.apiKeys === null || Array.isArray(obj.apiKeys)) {
-    return false;
+    return false
   }
 
   // Check temperature (optional)
   if ('temperature' in obj && typeof obj.temperature !== 'number') {
-    return false;
+    return false
   }
 
   // Check maxTokens (optional)
   if ('maxTokens' in obj && typeof obj.maxTokens !== 'number') {
-    return false;
+    return false
   }
 
-  return true;
+  return true
 }
 
 // Special placeholder for providers that don't require API keys
-export const NO_API_KEY_PLACEHOLDER = '__NO_API_KEY__';
+export const NO_API_KEY_PLACEHOLDER = '__NO_API_KEY__'
 
-const MODEL_CONFIG_SETTINGS_KEY = 'modelConfigSettings';
+const MODEL_CONFIG_SETTINGS_KEY = 'modelConfigSettings'
 
 /**
  * Get all model config settings including configs and default ID
  */
 export async function getModelConfigSettings(): Promise<ModelConfigSettings> {
-  const result = await dbGet<{ key: string; value: ModelConfigSettings }>(
+  const result = await dbGet<{ key: string, value: ModelConfigSettings }>(
     'settings',
-    MODEL_CONFIG_SETTINGS_KEY
-  );
+    MODEL_CONFIG_SETTINGS_KEY,
+  )
 
   if (!result) {
-    return { modelConfigs: [], defaultModelConfigId: '' };
+    return { modelConfigs: [], defaultModelConfigId: '' }
   }
 
-  return result.value;
+  return result.value
 }
 
 /**
  * Save model config settings
  */
 export async function saveModelConfigSettings(settings: ModelConfigSettings): Promise<void> {
-  await dbPut('settings', { key: MODEL_CONFIG_SETTINGS_KEY, value: settings });
+  await dbPut('settings', { key: MODEL_CONFIG_SETTINGS_KEY, value: settings })
 }
 
 /**
  * Get all model configurations
  */
 export async function getModelConfigs(): Promise<ModelConfig[]> {
-  const settings = await getModelConfigSettings();
-  return settings.modelConfigs;
+  const settings = await getModelConfigSettings()
+  return settings.modelConfigs
 }
 
 /**
  * Get a specific model config by ID
  */
 export async function getModelConfig(id: string): Promise<ModelConfig | null> {
-  const modelConfigs = await getModelConfigs();
-  return modelConfigs.find((m) => m.id === id) || null;
+  const modelConfigs = await getModelConfigs()
+  return modelConfigs.find(m => m.id === id) || null
 }
 
 /**
  * Get the default model config
  */
 export async function getDefaultModelConfig(): Promise<ModelConfig | null> {
-  const settings = await getModelConfigSettings();
+  const settings = await getModelConfigSettings()
   if (!settings.defaultModelConfigId) {
-    return null;
+    return null
   }
-  return getModelConfig(settings.defaultModelConfigId);
+  return getModelConfig(settings.defaultModelConfigId)
 }
 
 /**
  * Create a new model config
  */
 export async function createModelConfig(
-  modelConfig: Omit<ModelConfig, 'id' | 'createdAt' | 'updatedAt'>
+  modelConfig: Omit<ModelConfig, 'id' | 'createdAt' | 'updatedAt'>,
 ): Promise<ModelConfig> {
-  const settings = await getModelConfigSettings();
+  const settings = await getModelConfigSettings()
 
   const newModelConfig: ModelConfig = {
     ...modelConfig,
     id: crypto.randomUUID(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
-  };
+  }
 
   // If this is the first model config or marked as default, make it default
   if (settings.modelConfigs.length === 0 || modelConfig.isDefault) {
     // Unmark existing default
-    settings.modelConfigs.forEach((m) => (m.isDefault = false));
-    newModelConfig.isDefault = true;
-    settings.defaultModelConfigId = newModelConfig.id;
+    settings.modelConfigs.forEach(m => (m.isDefault = false))
+    newModelConfig.isDefault = true
+    settings.defaultModelConfigId = newModelConfig.id
   }
 
-  settings.modelConfigs.push(newModelConfig);
-  await saveModelConfigSettings(settings);
+  settings.modelConfigs.push(newModelConfig)
+  await saveModelConfigSettings(settings)
 
-  return newModelConfig;
+  return newModelConfig
 }
 
 /**
@@ -141,21 +141,21 @@ export async function createModelConfig(
  */
 export async function updateModelConfig(
   id: string,
-  updates: Partial<Omit<ModelConfig, 'id' | 'createdAt'>>
+  updates: Partial<Omit<ModelConfig, 'id' | 'createdAt'>>,
 ): Promise<void> {
-  const settings = await getModelConfigSettings();
-  const configIndex = settings.modelConfigs.findIndex((m) => m.id === id);
+  const settings = await getModelConfigSettings()
+  const configIndex = settings.modelConfigs.findIndex(m => m.id === id)
 
   if (configIndex === -1) {
-    throw new Error(`ModelConfig ${id} not found`);
+    throw new Error(`ModelConfig ${id} not found`)
   }
 
-  const modelConfig = settings.modelConfigs[configIndex];
+  const modelConfig = settings.modelConfigs[configIndex]
 
   // If setting as default, unmark others
   if (updates.isDefault && !modelConfig.isDefault) {
-    settings.modelConfigs.forEach((m) => (m.isDefault = false));
-    settings.defaultModelConfigId = id;
+    settings.modelConfigs.forEach(m => (m.isDefault = false))
+    settings.defaultModelConfigId = id
   }
 
   // Update the model config
@@ -165,9 +165,9 @@ export async function updateModelConfig(
     id, // Ensure ID doesn't change
     createdAt: modelConfig.createdAt, // Preserve creation time
     updatedAt: Date.now(),
-  };
+  }
 
-  await saveModelConfigSettings(settings);
+  await saveModelConfigSettings(settings)
 }
 
 /**
@@ -175,9 +175,9 @@ export async function updateModelConfig(
  */
 export async function updateModelConfigCompressionMode(
   modelConfigId: string,
-  compressionMode: 'two-pass' | 'single-pass'
+  compressionMode: 'two-pass' | 'single-pass',
 ): Promise<void> {
-  await updateModelConfig(modelConfigId, { compressionMode });
+  await updateModelConfig(modelConfigId, { compressionMode })
 }
 
 /**
@@ -185,44 +185,45 @@ export async function updateModelConfigCompressionMode(
  * @throws Error if trying to delete the last model config
  */
 export async function deleteModelConfig(id: string): Promise<void> {
-  const settings = await getModelConfigSettings();
-  const configIndex = settings.modelConfigs.findIndex((m) => m.id === id);
+  const settings = await getModelConfigSettings()
+  const configIndex = settings.modelConfigs.findIndex(m => m.id === id)
 
   if (configIndex === -1) {
-    throw new Error(`ModelConfig ${id} not found`);
+    throw new Error(`ModelConfig ${id} not found`)
   }
 
   // If deleting default model config, need to assign new default
   if (settings.defaultModelConfigId === id) {
-    const remainingConfigs = settings.modelConfigs.filter((m) => m.id !== id);
+    const remainingConfigs = settings.modelConfigs.filter(m => m.id !== id)
     if (remainingConfigs.length === 0) {
-      settings.defaultModelConfigId = '';
-    } else {
-      const newDefault = remainingConfigs[0];
-      settings.defaultModelConfigId = newDefault.id;
+      settings.defaultModelConfigId = ''
+    }
+    else {
+      const newDefault = remainingConfigs[0]
+      settings.defaultModelConfigId = newDefault.id
     }
   }
 
-  settings.modelConfigs = settings.modelConfigs.filter((m) => m.id !== id);
-  await saveModelConfigSettings(settings);
+  settings.modelConfigs = settings.modelConfigs.filter(m => m.id !== id)
+  await saveModelConfigSettings(settings)
 }
 
 /**
  * Set a specific model config as the default
  */
 export async function setDefaultModelConfig(id: string): Promise<void> {
-  await updateModelConfig(id, { isDefault: true });
+  await updateModelConfig(id, { isDefault: true })
 }
 
 /**
  * Resolved Model Config with Credential and Provider Info
  */
 export interface ResolvedModelConfig {
-  modelConfig: ModelConfig;
-  credential: Credential;
-  providerId: string;  // Registry provider entry ID
-  baseURL: string;     // Resolved from registry
-  providerType: string; // SDK type (anthropic, openai, etc.)
+  modelConfig: ModelConfig
+  credential: Credential
+  providerId: string // Registry provider entry ID
+  baseURL: string // Resolved from registry
+  providerType: string // SDK type (anthropic, openai, etc.)
 }
 
 /**
@@ -231,49 +232,50 @@ export interface ResolvedModelConfig {
  * Applies optional credential override from notebook
  */
 export async function resolveModelConfig(notebook?: Notebook): Promise<ResolvedModelConfig | null> {
-  const settings = await getModelConfigSettings();
+  const settings = await getModelConfigSettings()
 
   if (!settings.defaultModelConfigId) {
-    return null;
+    return null
   }
 
   // Determine which model config to use
-  let modelConfigId = settings.defaultModelConfigId;
+  let modelConfigId = settings.defaultModelConfigId
 
   if (notebook?.modelConfigId) {
-    const notebookConfig = settings.modelConfigs.find((m) => m.id === notebook.modelConfigId);
+    const notebookConfig = settings.modelConfigs.find(m => m.id === notebook.modelConfigId)
     if (notebookConfig) {
-      modelConfigId = notebookConfig.id;
-    } else {
+      modelConfigId = notebookConfig.id
+    }
+    else {
       console.warn(
-        `[ModelConfigs] Notebook model config ${notebook.modelConfigId} not found, falling back to default`
-      );
+        `[ModelConfigs] Notebook model config ${notebook.modelConfigId} not found, falling back to default`,
+      )
     }
   }
 
-  const modelConfig = settings.modelConfigs.find((m) => m.id === modelConfigId);
+  const modelConfig = settings.modelConfigs.find(m => m.id === modelConfigId)
   if (!modelConfig) {
-    return null;
+    return null
   }
 
   // Get credential (with optional override from notebook)
-  const credentialId = notebook?.credentialOverrideId || modelConfig.credentialId;
-  const credential = await getCredential(credentialId);
+  const credentialId = notebook?.credentialOverrideId || modelConfig.credentialId
+  const credential = await getCredential(credentialId)
 
   if (!credential) {
     console.warn(
-      `[ModelConfigs] Credential ${credentialId} not found for model config ${modelConfig.id}`
-    );
-    return null;
+      `[ModelConfigs] Credential ${credentialId} not found for model config ${modelConfig.id}`,
+    )
+    return null
   }
 
   // Get provider config from registry
-  const providerConfig = getProviderConfigById(modelConfig.providerId);
+  const providerConfig = getProviderConfigById(modelConfig.providerId)
   if (!providerConfig) {
     console.warn(
-      `[ModelConfigs] Provider ${modelConfig.providerId} not found in registry`
-    );
-    return null;
+      `[ModelConfigs] Provider ${modelConfig.providerId} not found in registry`,
+    )
+    return null
   }
 
   return {
@@ -282,7 +284,7 @@ export async function resolveModelConfig(notebook?: Notebook): Promise<ResolvedM
     providerId: modelConfig.providerId,
     baseURL: providerConfig.baseURL || '',
     providerType: providerConfig.id,
-  };
+  }
 }
 
 /**
@@ -295,65 +297,66 @@ export async function resolveModelConfig(notebook?: Notebook): Promise<ResolvedM
  * Returns true if migration occurred, false otherwise
  */
 export async function migrateLegacyAISettings(): Promise<boolean> {
-  const LEGACY_AI_SETTINGS_KEY = 'aiSettings';
+  const LEGACY_AI_SETTINGS_KEY = 'aiSettings'
 
   try {
-    const result = await dbGet<{ key: string; value: unknown }>('settings', LEGACY_AI_SETTINGS_KEY);
+    const result = await dbGet<{ key: string, value: unknown }>('settings', LEGACY_AI_SETTINGS_KEY)
 
     if (!result) {
-      return false;
+      return false
     }
 
     // Use type guard to check if data is legacy AISettings
     if (!isLegacyAISettings(result.value)) {
-      return false;
+      return false
     }
 
-    const aiSettings = result.value;
+    const aiSettings = result.value
 
-    console.log('[ModelConfigs] Migrating AISettings to Credential + ModelConfig...');
+    console.log('[ModelConfigs] Migrating AISettings to Credential + ModelConfig...')
 
     // Get the provider registry to verify the provider exists
-    const providers = getAllProviders();
-    const providerConfig = providers.find((p) => p.id === aiSettings.provider);
+    const providers = getAllProviders()
+    const providerConfig = providers.find(p => p.id === aiSettings.provider)
 
     if (!providerConfig) {
-      console.warn('[ModelConfigs] Provider', aiSettings.provider, 'not found in registry, skipping migration');
-      return false;
+      console.warn('[ModelConfigs] Provider', aiSettings.provider, 'not found in registry, skipping migration')
+      return false
     }
 
     // Create credentials for each API key
-    const credentialIds = new Map<string, string>(); // Maps provider type → credential ID
+    const credentialIds = new Map<string, string>() // Maps provider type → credential ID
 
     for (const [providerType, apiKey] of Object.entries(aiSettings.apiKeys)) {
-      if (!apiKey) continue;
+      if (!apiKey) continue
 
       // Check if credential with this API key already exists (deduplication)
-      const existing = await findCredentialByApiKey(apiKey);
+      const existing = await findCredentialByApiKey(apiKey)
 
       if (existing) {
-        credentialIds.set(providerType, existing.id);
-        console.log('[ModelConfigs] Reusing existing credential for', providerType);
-      } else {
+        credentialIds.set(providerType, existing.id)
+        console.log('[ModelConfigs] Reusing existing credential for', providerType)
+      }
+      else {
         // Create new credential (name includes provider type for identification)
         const credential = await createCredential({
           name: `Migrated ${providerType}`,
           apiKey,
-        });
-        credentialIds.set(providerType, credential.id);
-        console.log('[ModelConfigs] Created credential for', providerType);
+        })
+        credentialIds.set(providerType, credential.id)
+        console.log('[ModelConfigs] Created credential for', providerType)
       }
     }
 
     // Create default model config
-    const selectedCredentialId = credentialIds.get(aiSettings.provider);
+    const selectedCredentialId = credentialIds.get(aiSettings.provider)
     if (!selectedCredentialId) {
-      console.warn('[ModelConfigs] No credential found for selected provider', aiSettings.provider);
-      return false;
+      console.warn('[ModelConfigs] No credential found for selected provider', aiSettings.provider)
+      return false
     }
 
     // Check if a model config already exists
-    const existingConfigs = await getModelConfigs();
+    const existingConfigs = await getModelConfigs()
     if (existingConfigs.length === 0) {
       // Create default model config
       await createModelConfig({
@@ -364,18 +367,19 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
         temperature: aiSettings.temperature,
         maxTokens: aiSettings.maxTokens,
         isDefault: true,
-      });
-      console.log('[ModelConfigs] Created default model config');
+      })
+      console.log('[ModelConfigs] Created default model config')
     }
 
     // Clean up legacy settings
-    await dbDelete('settings', LEGACY_AI_SETTINGS_KEY);
-    console.log('[ModelConfigs] Cleaned up legacy aiSettings');
+    await dbDelete('settings', LEGACY_AI_SETTINGS_KEY)
+    console.log('[ModelConfigs] Cleaned up legacy aiSettings')
 
-    return true;
-  } catch (error) {
-    console.error('[ModelConfigs] Migration failed:', error);
-    return false;
+    return true
+  }
+  catch (error) {
+    console.error('[ModelConfigs] Migration failed:', error)
+    return false
   }
 }
 
@@ -387,27 +391,28 @@ export async function migrateLegacyAISettings(): Promise<boolean> {
  */
 export async function initializeDefaultProfile(): Promise<boolean> {
   try {
-    const existingConfigs = await getModelConfigs();
+    const existingConfigs = await getModelConfigs()
 
     // Only create default if no profiles exist
     if (existingConfigs.length > 0) {
-      return false;
+      return false
     }
 
-    console.log('[ModelConfigs] No profiles found, creating default Chrome Built-in profile...');
+    console.log('[ModelConfigs] No profiles found, creating default Chrome Built-in profile...')
 
     // Create a placeholder credential for Chrome Built-in (no API key needed)
-    let credentialId: string;
-    const existingCredential = await findCredentialByApiKey(NO_API_KEY_PLACEHOLDER);
+    let credentialId: string
+    const existingCredential = await findCredentialByApiKey(NO_API_KEY_PLACEHOLDER)
 
     if (existingCredential) {
-      credentialId = existingCredential.id;
-    } else {
+      credentialId = existingCredential.id
+    }
+    else {
       const credential = await createCredential({
         name: 'Chrome Built-in',
         apiKey: NO_API_KEY_PLACEHOLDER,
-      });
-      credentialId = credential.id;
+      })
+      credentialId = credential.id
     }
 
     // Create the default Chrome Built-in model config
@@ -417,12 +422,13 @@ export async function initializeDefaultProfile(): Promise<boolean> {
       providerId: 'chrome',
       model: 'chrome-built-in',
       isDefault: true,
-    });
+    })
 
-    console.log('[ModelConfigs] Created default Chrome Built-in profile');
-    return true;
-  } catch (error) {
-    console.error('[ModelConfigs] Failed to initialize default profile:', error);
-    return false;
+    console.log('[ModelConfigs] Created default Chrome Built-in profile')
+    return true
+  }
+  catch (error) {
+    console.error('[ModelConfigs] Failed to initialize default profile:', error)
+    return false
   }
 }

@@ -1,10 +1,10 @@
 interface TransformTabProps {
-  active: boolean;
-  onTransform: (type: string) => void;
+  active: boolean
+  onTransform: (type: string) => void
 }
 
 export function TransformTab(props: TransformTabProps) {
-  const { active } = props;
+  const { active } = props
   return (
     <section id="tab-transform" className={`tab-content ${active ? 'active' : ''}`}>
       <h2>Transform</h2>
@@ -311,5 +311,5 @@ export function TransformTab(props: TransformTabProps) {
       {/* Transform History Container */}
       <div id="transform-history" className="transform-history"></div>
     </section>
-  );
+  )
 }

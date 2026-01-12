@@ -8,50 +8,50 @@
  * Unique providers are defined inline.
  */
 
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createGroq } from '@ai-sdk/groq';
-import { createHuggingFace } from '@ai-sdk/huggingface';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { builtInAI } from '@built-in-ai/core';
-import { createVertexExpress } from './vertex-express';
-import type { LanguageModel } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic'
+import { createOpenAI } from '@ai-sdk/openai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createGroq } from '@ai-sdk/groq'
+import { createHuggingFace } from '@ai-sdk/huggingface'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import { createOpenRouter } from '@openrouter/ai-sdk-provider'
+import { builtInAI } from '@built-in-ai/core'
+import { createVertexExpress } from './vertex-express'
+import type { LanguageModel } from 'ai'
 
 /**
  * Authentication style for API requests
  */
-export type AuthStyle = 'bearer' | 'x-api-key' | 'query' | 'none';
+export type AuthStyle = 'bearer' | 'x-api-key' | 'query' | 'none'
 
 /**
  * Model pricing per million tokens (in USD)
  */
 export interface ModelPricing {
-  inputPerMillion: number;   // Cost per million input tokens
-  outputPerMillion: number;  // Cost per million output tokens
+  inputPerMillion: number // Cost per million input tokens
+  outputPerMillion: number // Cost per million output tokens
 }
 
 /**
  * Pricing map for models within a provider
  * Key is the model ID (or prefix for wildcard matching)
  */
-export type ProviderPricingMap = Record<string, ModelPricing>;
+export type ProviderPricingMap = Record<string, ModelPricing>
 
 /**
  * Provider feature flags
  */
 export interface ProviderFeatures {
   /** Supports dynamic model fetching via API */
-  supportsModelFetching: boolean;
+  supportsModelFetching: boolean
   /** Requires API key for model fetching */
-  requiresApiKeyForFetching: boolean;
+  requiresApiKeyForFetching: boolean
   /** Requires API key for chat completion */
-  requiresApiKey: boolean;
+  requiresApiKey: boolean
   /** Authentication style for API requests */
-  authStyle: AuthStyle;
+  authStyle: AuthStyle
   /** Additional headers to include in requests (e.g., anthropic-version) */
-  extraHeaders?: Record<string, string>;
+  extraHeaders?: Record<string, string>
 }
 
 /**
@@ -59,11 +59,11 @@ export interface ProviderFeatures {
  */
 export interface ModelsResponseFormat {
   /** Path to models array in response: 'data', 'models', or '' for root array */
-  modelsPath: string;
+  modelsPath: string
   /** Field to use as model ID */
-  idField: string;
+  idField: string
   /** Field to use as display name */
-  nameField: string;
+  nameField: string
 }
 
 /**
@@ -71,46 +71,46 @@ export interface ModelsResponseFormat {
  */
 export interface ModelOption {
   /** Model ID to send to API */
-  value: string;
+  value: string
   /** Human-readable display name */
-  label: string;
+  label: string
 }
 
 /**
  * Model ID transformation function
  */
-export type ModelIdTransform = (id: string) => string;
+export type ModelIdTransform = (id: string) => string
 
 /**
  * Provider configuration metadata
  */
 export interface ProviderConfig<Id extends string = string> {
   /** Internal provider identifier */
-  id: Id;
+  id: Id
   /** Human-readable display name */
-  displayName: string;
+  displayName: string
   /** Default model to use if none specified */
-  defaultModel: string;
+  defaultModel: string
   /** API base URL for chat completion (hardcoded for CSP compliance) */
-  baseURL?: string;
+  baseURL?: string
   /** API endpoint for fetching available models */
-  modelsAPIEndpoint?: string;
+  modelsAPIEndpoint?: string
   /** Feature support flags */
-  features: ProviderFeatures;
+  features: ProviderFeatures
   /** Response format for model list API */
-  modelsResponseFormat: ModelsResponseFormat;
+  modelsResponseFormat: ModelsResponseFormat
   /** Optional transform function to process model IDs (e.g., strip prefixes) */
-  modelIdTransform?: ModelIdTransform;
+  modelIdTransform?: ModelIdTransform
   /** Group name for organizing providers in UI */
-  group: string;
+  group: string
   /** Function to create a LanguageModel instance for this provider */
-  createModel: (apiKey: string, modelId: string, baseURL?: string) => LanguageModel;
+  createModel: (apiKey: string, modelId: string, baseURL?: string) => LanguageModel
   /** Commonly used models for fuzzy search dropdown */
-  commonModels?: readonly ModelOption[];
+  commonModels?: readonly ModelOption[]
   /** Whether custom model IDs (not in the fetched list) are allowed. Default: true */
-  allowCustomModels?: boolean;
+  allowCustomModels?: boolean
   /** Model pricing information for cost calculation */
-  pricing?: ProviderPricingMap;
+  pricing?: ProviderPricingMap
 }
 
 // ============================================================================
@@ -122,9 +122,9 @@ export interface ProviderConfig<Id extends string = string> {
  * Used by: anthropic, zai-anthropic
  */
 function anthropicProvider(
-  config: { id: string; displayName: string; defaultModel: string; baseURL: string; pricing?: ProviderPricingMap }
+  config: { id: string, displayName: string, defaultModel: string, baseURL: string, pricing?: ProviderPricingMap },
 ): ProviderConfig {
-  const { id, displayName, defaultModel, baseURL, pricing } = config;
+  const { id, displayName, defaultModel, baseURL, pricing } = config
   return {
     id,
     displayName,
@@ -143,7 +143,7 @@ function anthropicProvider(
     createModel: (apiKey, modelId, baseURL) =>
       createAnthropic({ apiKey, baseURL })(modelId),
     pricing,
-  };
+  }
 }
 
 /**
@@ -152,18 +152,18 @@ function anthropicProvider(
  */
 function openAICompatibleProvider(
   config: {
-    id: string;
-    displayName: string;
-    defaultModel: string;
-    baseURL: string;
-    modelsAPIEndpoint?: string;
-    authStyle?: 'bearer' | 'none';
-    requiresApiKeyForFetching?: boolean;
-    modelIdTransform?: ModelIdTransform;
-    pricing?: ProviderPricingMap;
-  }
+    id: string
+    displayName: string
+    defaultModel: string
+    baseURL: string
+    modelsAPIEndpoint?: string
+    authStyle?: 'bearer' | 'none'
+    requiresApiKeyForFetching?: boolean
+    modelIdTransform?: ModelIdTransform
+    pricing?: ProviderPricingMap
+  },
 ): ProviderConfig {
-  const { id, displayName, defaultModel, baseURL, modelsAPIEndpoint, authStyle, requiresApiKeyForFetching, modelIdTransform, pricing } = config;
+  const { id, displayName, defaultModel, baseURL, modelsAPIEndpoint, authStyle, requiresApiKeyForFetching, modelIdTransform, pricing } = config
   return {
     id,
     displayName,
@@ -182,7 +182,7 @@ function openAICompatibleProvider(
     createModel: (apiKey, modelId, baseURL) =>
       createOpenAICompatible({ name: id, apiKey, baseURL: baseURL ?? '' })(modelId),
     pricing,
-  };
+  }
 }
 
 /**
@@ -196,7 +196,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // Anthropic (Claude)
   // ==========================================================================
-  anthropic: anthropicProvider({
+  'anthropic': anthropicProvider({
     id: 'anthropic',
     displayName: 'Anthropic',
     defaultModel: 'claude-sonnet-4-5-20250514',
@@ -221,7 +221,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // OpenAI
   // ==========================================================================
-  openai: {
+  'openai': {
     id: 'openai',
     displayName: 'OpenAI',
     defaultModel: 'gpt-5',
@@ -265,7 +265,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // OpenRouter (aggregator)
   // ==========================================================================
-  openrouter: {
+  'openrouter': {
     id: 'openrouter',
     displayName: 'OpenRouter',
     defaultModel: 'anthropic/claude-3.5-sonnet',
@@ -290,7 +290,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // Google (Gemini)
   // ==========================================================================
-  google: {
+  'google': {
     id: 'google',
     displayName: 'Google',
     defaultModel: 'gemini-3-pro-preview',
@@ -384,7 +384,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // Groq
   // ==========================================================================
-  groq: {
+  'groq': {
     id: 'groq',
     displayName: 'Groq',
     defaultModel: 'llama-3.3-70b-versatile',
@@ -424,7 +424,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // Hugging Face
   // ==========================================================================
-  huggingface: {
+  'huggingface': {
     id: 'huggingface',
     displayName: 'Hugging Face',
     defaultModel: 'Qwen/Qwen2.5-Coder-32B-Instruct',
@@ -437,7 +437,7 @@ export const PROVIDER_REGISTRY = {
       authStyle: 'none',
     },
     modelsResponseFormat: {
-      modelsPath: '',  // Root array
+      modelsPath: '', // Root array
       idField: 'id',
       nameField: 'modelId',
     },
@@ -452,7 +452,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // Mistral AI
   // ==========================================================================
-  mistral: openAICompatibleProvider({
+  'mistral': openAICompatibleProvider({
     id: 'mistral',
     displayName: 'Mistral',
     defaultModel: 'mistral-large-latest',
@@ -471,7 +471,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // Together AI
   // ==========================================================================
-  together: openAICompatibleProvider({
+  'together': openAICompatibleProvider({
     id: 'together',
     displayName: 'Together AI',
     defaultModel: 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
@@ -489,7 +489,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // DeepInfra
   // ==========================================================================
-  deepinfra: openAICompatibleProvider({
+  'deepinfra': openAICompatibleProvider({
     id: 'deepinfra',
     displayName: 'DeepInfra',
     defaultModel: 'meta-llama/Meta-Llama-3.1-70B-Instruct',
@@ -507,7 +507,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // Perplexity
   // ==========================================================================
-  perplexity: openAICompatibleProvider({
+  'perplexity': openAICompatibleProvider({
     id: 'perplexity',
     displayName: 'Perplexity',
     defaultModel: 'sonar',
@@ -524,7 +524,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // Fireworks AI
   // ==========================================================================
-  fireworks: openAICompatibleProvider({
+  'fireworks': openAICompatibleProvider({
     id: 'fireworks',
     displayName: 'Fireworks AI',
     defaultModel: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
@@ -569,7 +569,7 @@ export const PROVIDER_REGISTRY = {
   // ==========================================================================
   // Chrome Built-in AI
   // ==========================================================================
-  chrome: {
+  'chrome': {
     id: 'chrome',
     displayName: 'Chrome Built-in',
     defaultModel: 'chrome-built-in',
@@ -587,7 +587,7 @@ export const PROVIDER_REGISTRY = {
     group: 'Built-in',
     createModel: () => builtInAI(),
   },
-} as const;
+} as const
 
 /**
  * AI Provider type - inferred from registry keys
@@ -595,13 +595,13 @@ export const PROVIDER_REGISTRY = {
  * This type is automatically derived from the PROVIDER_REGISTRY object.
  * When you add a new provider to the registry, it's automatically included in this type.
  */
-export type AIProvider = typeof PROVIDER_REGISTRY[keyof typeof PROVIDER_REGISTRY]['id'];
+export type AIProvider = typeof PROVIDER_REGISTRY[keyof typeof PROVIDER_REGISTRY]['id']
 
 /**
  * Type guard to check if a string is a valid provider key
  */
 function isValidProviderKey(key: string): key is keyof typeof PROVIDER_REGISTRY {
-  return key in PROVIDER_REGISTRY;
+  return key in PROVIDER_REGISTRY
 }
 
 /**
@@ -609,16 +609,16 @@ function isValidProviderKey(key: string): key is keyof typeof PROVIDER_REGISTRY 
  */
 export function getProviderConfig(provider: AIProvider): ProviderConfig {
   if (isValidProviderKey(provider)) {
-    return PROVIDER_REGISTRY[provider];
+    return PROVIDER_REGISTRY[provider]
   }
-  throw new Error(`Invalid provider: ${provider}`);
+  throw new Error(`Invalid provider: ${provider}`)
 }
 
 /**
  * Get provider configuration by registry entry ID
  */
 export function getProviderConfigById(id: string): ProviderConfig | null {
-  return getAllProviders().find((p) => p.id === id) || null;
+  return getAllProviders().find(p => p.id === id) || null
 }
 
 /**
@@ -626,9 +626,9 @@ export function getProviderConfigById(id: string): ProviderConfig | null {
  */
 export function getProviderDisplayName(provider: AIProvider): string {
   if (isValidProviderKey(provider)) {
-    return PROVIDER_REGISTRY[provider].displayName;
+    return PROVIDER_REGISTRY[provider].displayName
   }
-  throw new Error(`Invalid provider: ${provider}`);
+  throw new Error(`Invalid provider: ${provider}`)
 }
 
 /**
@@ -636,9 +636,9 @@ export function getProviderDisplayName(provider: AIProvider): string {
  */
 export function getProviderDefaultModel(provider: AIProvider): string {
   if (isValidProviderKey(provider)) {
-    return PROVIDER_REGISTRY[provider].defaultModel;
+    return PROVIDER_REGISTRY[provider].defaultModel
   }
-  throw new Error(`Invalid provider: ${provider}`);
+  throw new Error(`Invalid provider: ${provider}`)
 }
 
 /**
@@ -646,10 +646,10 @@ export function getProviderDefaultModel(provider: AIProvider): string {
  */
 export function getProviderBaseURL(provider: AIProvider): string | undefined {
   if (isValidProviderKey(provider)) {
-    const config = PROVIDER_REGISTRY[provider];
-    return 'baseURL' in config ? config.baseURL : undefined;
+    const config = PROVIDER_REGISTRY[provider]
+    return 'baseURL' in config ? config.baseURL : undefined
   }
-  throw new Error(`Invalid provider: ${provider}`);
+  throw new Error(`Invalid provider: ${provider}`)
 }
 
 /**
@@ -657,9 +657,9 @@ export function getProviderBaseURL(provider: AIProvider): string | undefined {
  */
 export function providerSupportsModelFetching(provider: AIProvider): boolean {
   if (isValidProviderKey(provider)) {
-    return PROVIDER_REGISTRY[provider].features.supportsModelFetching;
+    return PROVIDER_REGISTRY[provider].features.supportsModelFetching
   }
-  return false;
+  return false
 }
 
 /**
@@ -667,9 +667,9 @@ export function providerSupportsModelFetching(provider: AIProvider): boolean {
  */
 export function providerRequiresApiKey(provider: AIProvider): boolean {
   if (isValidProviderKey(provider)) {
-    return PROVIDER_REGISTRY[provider].features.requiresApiKey;
+    return PROVIDER_REGISTRY[provider].features.requiresApiKey
   }
-  return false;
+  return false
 }
 
 /**
@@ -677,9 +677,9 @@ export function providerRequiresApiKey(provider: AIProvider): boolean {
  */
 export function providerRequiresApiKeyForFetching(provider: AIProvider): boolean {
   if (isValidProviderKey(provider)) {
-    return PROVIDER_REGISTRY[provider].features.requiresApiKeyForFetching;
+    return PROVIDER_REGISTRY[provider].features.requiresApiKeyForFetching
   }
-  return false;
+  return false
 }
 
 /**
@@ -687,8 +687,8 @@ export function providerRequiresApiKeyForFetching(provider: AIProvider): boolean
  */
 export function getProvidersWithModelFetching(): AIProvider[] {
   return Object.keys(PROVIDER_REGISTRY).filter(isValidProviderKey).filter(
-    (p) => PROVIDER_REGISTRY[p].features.supportsModelFetching
-  );
+    p => PROVIDER_REGISTRY[p].features.supportsModelFetching,
+  )
 }
 
 /**
@@ -696,8 +696,8 @@ export function getProvidersWithModelFetching(): AIProvider[] {
  */
 export function getAllProviders(): ProviderConfig[] {
   return Object.keys(PROVIDER_REGISTRY).filter(isValidProviderKey).map(
-    (p) => PROVIDER_REGISTRY[p]
-  );
+    p => PROVIDER_REGISTRY[p],
+  )
 }
 
 // ============================================================================
@@ -713,27 +713,27 @@ export function getAllProviders(): ProviderConfig[] {
  * @returns ModelPricing if found, null if no pricing data available
  */
 export function getModelPricing(providerId: string, modelId: string): ModelPricing | null {
-  const provider = getProviderConfigById(providerId);
+  const provider = getProviderConfigById(providerId)
   if (!provider?.pricing) {
-    return null;
+    return null
   }
 
   // Try exact match first
   if (provider.pricing[modelId]) {
-    return provider.pricing[modelId];
+    return provider.pricing[modelId]
   }
 
   // Try prefix matching (e.g., "claude-sonnet-4-5-20250514" matches "claude-sonnet-4-5")
   // Sort keys by length (longest first) to get most specific match
-  const sortedKeys = Object.keys(provider.pricing).sort((a, b) => b.length - a.length);
+  const sortedKeys = Object.keys(provider.pricing).sort((a, b) => b.length - a.length)
 
   for (const key of sortedKeys) {
     if (modelId.startsWith(key) || modelId.includes(key)) {
-      return provider.pricing[key];
+      return provider.pricing[key]
     }
   }
 
-  return null;
+  return null
 }
 
 /**
@@ -749,43 +749,43 @@ export function calculateTokenCost(
   providerId: string,
   modelId: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
 ): number | null {
-  const pricing = getModelPricing(providerId, modelId);
+  const pricing = getModelPricing(providerId, modelId)
   if (!pricing) {
-    return null;
+    return null
   }
 
-  const inputCost = (inputTokens / 1_000_000) * pricing.inputPerMillion;
-  const outputCost = (outputTokens / 1_000_000) * pricing.outputPerMillion;
+  const inputCost = (inputTokens / 1_000_000) * pricing.inputPerMillion
+  const outputCost = (outputTokens / 1_000_000) * pricing.outputPerMillion
 
-  return inputCost + outputCost;
+  return inputCost + outputCost
 }
 
 // ============================================================================
 // Model Fetching
 // ============================================================================
 
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+const CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
 
 interface CachedModels<T> {
-  data: T[];
-  timestamp: number;
+  data: T[]
+  timestamp: number
 }
 
 /**
  * Type guard to check if value is a record with string keys
  */
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === 'object' && value !== null
 }
 
 /**
  * Unified model interface for dropdown
  */
 export interface SelectableModel {
-  id: string;
-  name: string;
+  id: string
+  name: string
 }
 
 /**
@@ -794,54 +794,60 @@ export interface SelectableModel {
  */
 async function fetchModelsByProvider(
   providerType: AIProvider,
-  apiKey?: string
+  apiKey?: string,
 ): Promise<unknown[]> {
-  const config = getProviderConfig(providerType);
+  const config = getProviderConfig(providerType)
 
   if (!config.modelsAPIEndpoint) {
-    throw new Error(`${providerType} does not support model fetching`);
+    throw new Error(`${providerType} does not support model fetching`)
   }
 
   // Build URL (handle query param auth)
-  let url = config.modelsAPIEndpoint;
+  let url = config.modelsAPIEndpoint
   if (config.features.authStyle === 'query' && apiKey) {
-    url += `?key=${apiKey}`;
+    url += `?key=${apiKey}`
   }
 
   // Build headers
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...config.features.extraHeaders,
-  };
+  }
 
   if (apiKey) {
     switch (config.features.authStyle) {
       case 'bearer':
-        headers['Authorization'] = `Bearer ${apiKey}`;
-        break;
+        headers['Authorization'] = `Bearer ${apiKey}`
+        break
       case 'x-api-key':
-        headers['x-api-key'] = apiKey;
-        break;
+        headers['x-api-key'] = apiKey
+        break
     }
   }
 
-  const response = await fetch(url, { headers });
+  const response = await fetch(url, { headers })
 
   if (!response.ok) {
-    throw new Error(`${providerType} API returned ${response.status}: ${response.statusText}`);
+    throw new Error(`${providerType} API returned ${response.status}: ${response.statusText}`)
   }
 
-  const data = await response.json();
+  // response.json() returns `any` in Fetch API types, so we cast to unknown for type safety
+  const data = await response.json() as unknown
 
   // Extract models array based on configured path
   if (config.modelsResponseFormat.modelsPath === '') {
     // Root array
-    return Array.isArray(data) ? data : [];
+    return Array.isArray(data) ? (data as unknown[]) : []
   }
 
   // Nested path (e.g., 'data', 'models')
-  const path = config.modelsResponseFormat.modelsPath;
-  return data[path] || [];
+  if (isRecord(data)) {
+    const path = config.modelsResponseFormat.modelsPath
+    const value = data[path]
+    return Array.isArray(value) ? (value as unknown[]) : []
+  }
+
+  return []
 }
 
 /**
@@ -851,27 +857,28 @@ async function fetchModelsByProvider(
 async function getModelsByProvider(
   providerType: AIProvider,
   apiKey?: string,
-  forceRefresh = false
+  forceRefresh = false,
 ): Promise<unknown[]> {
-  const cacheKey = `${providerType}_models_cache`;
+  const cacheKey = `${providerType}_models_cache`
 
   if (!forceRefresh) {
     try {
-      const cached = await getCachedModels<unknown>(cacheKey);
+      const cached = await getCachedModels<unknown>(cacheKey)
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        console.log(`[ProviderRegistry] Using cached ${providerType} models`);
-        return cached.data;
+        console.log(`[ProviderRegistry] Using cached ${providerType} models`)
+        return cached.data
       }
-      console.log(`[ProviderRegistry] Cache expired or missing, fetching fresh ${providerType} models`);
-    } catch (error) {
-      console.error('[ProviderRegistry] Failed to read cache:', error);
+      console.log(`[ProviderRegistry] Cache expired or missing, fetching fresh ${providerType} models`)
+    }
+    catch (error) {
+      console.error('[ProviderRegistry] Failed to read cache:', error)
     }
   }
 
-  const models = await fetchModelsByProvider(providerType, apiKey);
-  await setCachedModels(cacheKey, models);
+  const models = await fetchModelsByProvider(providerType, apiKey)
+  await setCachedModels(cacheKey, models)
 
-  return models;
+  return models
 }
 
 /**
@@ -880,58 +887,61 @@ async function getModelsByProvider(
 export async function fetchProviderSelectableModels(
   providerType: AIProvider,
   apiKey?: string,
-  forceRefresh = false
+  forceRefresh = false,
 ): Promise<SelectableModel[]> {
-  const config = getProviderConfig(providerType);
-  const models = await getModelsByProvider(providerType, apiKey, forceRefresh);
-  const fmt = config.modelsResponseFormat;
+  const config = getProviderConfig(providerType)
+  const models = await getModelsByProvider(providerType, apiKey, forceRefresh)
+  const fmt = config.modelsResponseFormat
 
   return models
     .map((m: unknown) => {
-      if (!isRecord(m)) return null;
-      const model = m; // Type is now Record<string, unknown> via type guard
-      let id = model[fmt.idField];
-      const name = model[fmt.nameField] || id;
+      if (!isRecord(m)) return null
+      const model = m // Type is now Record<string, unknown> via type guard
+      let id = model[fmt.idField]
+      const name = model[fmt.nameField] || id
 
       // Apply model ID transformation if configured
       if (id && typeof id === 'string' && config.modelIdTransform) {
-        id = config.modelIdTransform(id);
+        id = config.modelIdTransform(id)
       }
 
-      return id && typeof id === 'string' ? { id, name: String(name ?? id) } : null;
+      // Ensure name is a string - if it's an object, use JSON.stringify, otherwise use toString
+      const nameStr = typeof name === 'string' ? name : typeof name === 'object' && name !== null ? JSON.stringify(name) : String(id)
+      return id && typeof id === 'string' ? { id, name: nameStr } : null
     })
-    .filter((m): m is SelectableModel => m !== null);
+    .filter((m): m is SelectableModel => m !== null)
 }
 
 /**
  * Auto-fetch models for a provider after it is saved
  * Returns count of fetched models (0 if fetch not supported or failed)
  */
-export async function autoFetchProviderModels(provider: { provider: AIProvider; apiKey?: string; name?: string }): Promise<number> {
-  const providerType = provider.provider;
+export async function autoFetchProviderModels(provider: { provider: AIProvider, apiKey?: string, name?: string }): Promise<number> {
+  const providerType = provider.provider
 
   if (!providerSupportsModelFetching(providerType)) {
-    console.log(`[ProviderRegistry] Provider ${providerType} does not support model fetching`);
-    return 0;
+    console.log(`[ProviderRegistry] Provider ${providerType} does not support model fetching`)
+    return 0
   }
 
   if (providerRequiresApiKeyForFetching(providerType) && !provider.apiKey) {
-    console.log(`[ProviderRegistry] Provider ${providerType} requires API key for fetching, skipping`);
-    return 0;
+    console.log(`[ProviderRegistry] Provider ${providerType} requires API key for fetching, skipping`)
+    return 0
   }
 
   try {
     const selectableModels = await fetchProviderSelectableModels(
       providerType,
       provider.apiKey,
-      true  // force refresh
-    );
+      true, // force refresh
+    )
 
-    console.log(`[ProviderRegistry] Auto-fetched ${selectableModels.length} models for ${provider.name || providerType}`);
-    return selectableModels.length;
-  } catch (error) {
-    console.error(`[ProviderRegistry] Auto-fetch failed for ${provider.name || providerType}:`, error);
-    return 0;
+    console.log(`[ProviderRegistry] Auto-fetched ${selectableModels.length} models for ${provider.name || providerType}`)
+    return selectableModels.length
+  }
+  catch (error) {
+    console.error(`[ProviderRegistry] Auto-fetch failed for ${provider.name || providerType}:`, error)
+    return 0
   }
 }
 
@@ -939,18 +949,19 @@ export async function autoFetchProviderModels(provider: { provider: AIProvider; 
  * Clear the models cache for a specific provider
  */
 export async function clearProviderModelsCache(provider: AIProvider): Promise<void> {
-  const cacheKey = `${provider}_models_cache`;
+  const cacheKey = `${provider}_models_cache`
 
   return new Promise((resolve, reject) => {
     chrome.storage.local.remove([cacheKey], () => {
       if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        console.log(`[ProviderRegistry] Cache cleared for ${provider}`);
-        resolve();
+        reject(new Error(chrome.runtime.lastError.message))
       }
-    });
-  });
+      else {
+        console.log(`[ProviderRegistry] Cache cleared for ${provider}`)
+        resolve()
+      }
+    })
+  })
 }
 
 /**
@@ -960,13 +971,14 @@ function getCachedModels<T>(cacheKey: string): Promise<CachedModels<T> | null> {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get([cacheKey], (result) => {
       if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        const cached = result[cacheKey] as CachedModels<T> | undefined;
-        resolve(cached || null);
+        reject(new Error(chrome.runtime.lastError.message))
       }
-    });
-  });
+      else {
+        const cached = result[cacheKey] as CachedModels<T> | undefined
+        resolve(cached || null)
+      }
+    })
+  })
 }
 
 /**
@@ -977,15 +989,16 @@ function setCachedModels<T>(cacheKey: string, models: T[]): Promise<void> {
     const cached: CachedModels<T> = {
       data: models,
       timestamp: Date.now(),
-    };
+    }
 
     chrome.storage.local.set({ [cacheKey]: cached }, () => {
       if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        console.log(`[ProviderRegistry] Cached ${models.length} models for ${cacheKey}`);
-        resolve();
+        reject(new Error(chrome.runtime.lastError.message))
       }
-    });
-  });
+      else {
+        console.log(`[ProviderRegistry] Cached ${models.length} models for ${cacheKey}`)
+        resolve()
+      }
+    })
+  })
 }

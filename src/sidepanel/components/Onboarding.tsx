@@ -1,11 +1,11 @@
 interface OnboardingProps {
-  hidden: boolean;
-  onSkip?: () => void;
-  onNext?: () => void;
+  hidden: boolean
+  onSkip?: () => void
+  onNext?: () => void
 }
 
 export function Onboarding(props: OnboardingProps) {
-  const { hidden } = props;
+  const { hidden } = props
   return (
     <div id="onboarding-overlay" className={`onboarding-overlay ${hidden ? 'hidden' : ''}`}>
       <div className="onboarding-content">
@@ -23,5 +23,5 @@ export function Onboarding(props: OnboardingProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }

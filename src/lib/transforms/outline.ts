@@ -1,12 +1,12 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts';
-import { trackUsage } from '../usage.ts';
+import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { trackUsage } from '../usage.ts'
 
 export async function generateOutline(sources: Source[]): Promise<string> {
-  const config = await getModelWithConfig();
+  const config = await getModelWithConfig()
   if (!config) {
     throw new Error(
-      "AI provider not configured. Please add your API key in settings."
-    );
+      'AI provider not configured. Please add your API key in settings.',
+    )
   }
 
   const result = await generateText({
@@ -43,7 +43,7 @@ Format as:
    B. Key takeaways
 
 Create a comprehensive outline that captures all major themes and details.`,
-  });
+  })
 
   // Track usage
   if (result.usage) {
@@ -54,8 +54,8 @@ Create a comprehensive outline that captures all major themes and details.`,
       inputTokens: result.usage.inputTokens ?? 0,
       outputTokens: result.usage.outputTokens ?? 0,
       operation: 'transform',
-    }).catch((err) => console.warn('[Transform] Failed to track outline usage:', err));
+    }).catch(err => console.warn('[Transform] Failed to track outline usage:', err))
   }
 
-  return result.text;
+  return result.text
 }

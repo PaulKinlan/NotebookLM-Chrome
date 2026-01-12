@@ -5,7 +5,7 @@
  */
 
 // Business logic controllers (all handlers and state)
-export { handlers, getState, initControllers } from './controllers';
+export { handlers, getState, initControllers } from './controllers'
 
 // Services - selective exports to avoid naming conflicts
 
@@ -27,17 +27,17 @@ export {
   saveNotebookSummary,
   getNotebookOptions,
   createAndSelectNotebook,
-} from './services/notebooks';
+} from './services/notebooks'
 
 // Permissions
 export {
   checkAllPermissions,
   togglePermission,
   requestPermissionIfNeeded,
-} from './services/permissions';
+} from './services/permissions'
 
 // Sources
-export type { PickerItem, PickerState } from './services/sources';
+export type { PickerItem, PickerState } from './services/sources'
 export {
   addCurrentTab,
   getTabs,
@@ -48,7 +48,7 @@ export {
   importBookmarks,
   getHistory,
   importHistory,
-} from './services/sources';
+} from './services/sources'
 
 // UI
 export {
@@ -61,5 +61,5 @@ export {
   showOnboarding,
   hideOnboarding,
   setOnboardingStep,
-} from './services/ui';
-export type { DialogOptions, NotebookDialogOptions, OnboardingStep } from './services/ui';
+} from './services/ui'
+export type { DialogOptions, NotebookDialogOptions, OnboardingStep } from './services/ui'
