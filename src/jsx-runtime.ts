@@ -8,7 +8,6 @@ function append(el: Element | DocumentFragment, child: Child): void {
   if (child === null || child === undefined || child === false || child === true) return;
 
   if (Array.isArray(child)) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
     for (const c of child as unknown as Child[]) append(el, c);
     return;
   }
@@ -56,7 +55,6 @@ export function jsx(
       } else if (propKey.startsWith("on") && typeof value === "function") {
         // onClick -> click
         const event = propKey.slice(2).toLowerCase();
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
         el.addEventListener(event, value as EventListener);
       } else if (value === true) {
         el.setAttribute(propKey, "");
@@ -67,10 +65,8 @@ export function jsx(
         typeof value === "object" &&
         !Array.isArray(value)
       ) {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         const style = (el as HTMLElement).style;
         // Type assertion is safe here - we've validated value is a non-array object above
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
         const styleObj = value as Record<string, unknown>;
         for (const [styleName, styleValue] of Object.entries(styleObj)) {
           if (styleValue === null || styleValue === undefined || styleValue === false) {
@@ -86,7 +82,6 @@ export function jsx(
     // Handle children from props
     if ("children" in props) {
       const children = props.children;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
       const childrenValue = children as Child | Child[];
       if (Array.isArray(childrenValue)) {
         for (const c of childrenValue) append(el, c);
