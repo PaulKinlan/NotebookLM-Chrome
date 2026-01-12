@@ -8,16 +8,17 @@
  * Unique providers are defined inline.
  */
 
-import { createAnthropic } from '@ai-sdk/anthropic'
-import { createOpenAI } from '@ai-sdk/openai'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
-import { createGroq } from '@ai-sdk/groq'
-import { createHuggingFace } from '@ai-sdk/huggingface'
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import { createOpenRouter } from '@openrouter/ai-sdk-provider'
-import { builtInAI } from '@built-in-ai/core'
-import { createVertexExpress } from './vertex-express'
-import type { LanguageModel } from 'ai'
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createGroq } from '@ai-sdk/groq';
+import { createHuggingFace } from '@ai-sdk/huggingface';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { builtInAI } from '@built-in-ai/core';
+import { createVertexExpress } from './vertex-express';
+import { createMockModel } from './mock-provider';
+import type { LanguageModel } from 'ai';
 
 /**
  * Authentication style for API requests
@@ -587,7 +588,29 @@ export const PROVIDER_REGISTRY = {
     group: 'Built-in',
     createModel: () => builtInAI(),
   },
-} as const
+
+  // ==========================================================================
+  // Mock Provider (Testing Only)
+  // ==========================================================================
+  mock: {
+    id: 'mock',
+    displayName: 'Mock (Testing)',
+    defaultModel: 'mock-test-model',
+    features: {
+      supportsModelFetching: false,
+      requiresApiKeyForFetching: false,
+      requiresApiKey: false,
+      authStyle: 'none',
+    },
+    modelsResponseFormat: {
+      modelsPath: '',
+      idField: 'id',
+      nameField: 'name',
+    },
+    group: 'Testing',
+    createModel: () => createMockModel(),
+  },
+} as const;
 
 /**
  * AI Provider type - inferred from registry keys
@@ -972,8 +995,7 @@ function getCachedModels<T>(cacheKey: string): Promise<CachedModels<T> | null> {
     chrome.storage.local.get([cacheKey], (result) => {
       if (chrome.runtime.lastError) {
         reject(new Error(chrome.runtime.lastError.message))
-      }
-      else {
+      } else {
         const cached = result[cacheKey] as CachedModels<T> | undefined
         resolve(cached || null)
       }
