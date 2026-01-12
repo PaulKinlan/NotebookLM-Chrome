@@ -26,6 +26,8 @@
       "Bash(ls:*)",
       "Bash(curl:*)",
       "Bash(grep:*)",
+      "Bash(gh issue:*)",
+      "Bash(gh pr:*)",
       "WebSearch",
       "WebFetch(domain:ai-sdk.dev)",
       "WebFetch(domain:developer.chrome.com)",
