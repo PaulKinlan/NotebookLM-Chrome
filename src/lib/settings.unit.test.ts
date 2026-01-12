@@ -58,6 +58,7 @@ describe('settings', () => {
     vi.resetModules()
 
     // Re-import the settings module
+    // eslint-disable-next-line foliolm/no-dynamic-import -- Intentional: reload module with fresh mocks
     settings = await import('./settings.ts')
   })
 

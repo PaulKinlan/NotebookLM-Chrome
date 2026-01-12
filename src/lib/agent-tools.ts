@@ -13,6 +13,12 @@ import {
   createApprovalRequest,
   approvalEvents,
 } from './tool-approvals.ts'
+import { rankSourceRelevance } from './ai.ts'
+import {
+  getVisibleToolNames,
+  getToolPermission,
+  isToolAutoApproved,
+} from './tool-permissions.ts'
 
 // ============================================================================
 // Tool Result Caching
@@ -246,8 +252,6 @@ Use this tool to narrow down which sources to read in detail.`,
       .describe('Minimum relevance score (0.0-1.0) to include'),
   }),
   execute: async ({ notebookId, query, maxSources, minScore }) => {
-    // Import the router function
-    const { rankSourceRelevance } = await import('./ai.ts')
     const sources = await getSourcesByNotebook(notebookId)
 
     // Use the router to rank sources
@@ -368,7 +372,6 @@ const sourceToolsRegistry: Record<string, ToolConfig> = {
  * Call this to get the tools object to pass to streamText()
  */
 export async function getSourceTools() {
-  const { getVisibleToolNames, getToolPermission } = await import('./tool-permissions.ts')
   const visibleTools = await getVisibleToolNames()
 
   console.log('[getSourceTools] Visible tools:', visibleTools)
@@ -398,8 +401,6 @@ export async function getSourceTools() {
       tool = {
         ...tool,
         execute: async (input: unknown, options: ToolExecutionOptions) => {
-          // Import here to avoid circular dependency
-          const { isToolAutoApproved } = await import('./tool-permissions.ts')
           const autoApproved = await isToolAutoApproved(name)
 
           if (autoApproved) {
@@ -408,9 +409,6 @@ export async function getSourceTools() {
           }
 
           // Tool requires approval - use approval system
-          const { createApprovalRequest, approvalEvents } = await import(
-            './tool-approvals.ts',
-          )
           const toolCallId = crypto.randomUUID()
 
           // Extract args from input (AI SDK passes args as input object)
@@ -497,7 +495,6 @@ export function withApproval<TArgs extends Record<string, unknown>, TResult>(
 ): (args: TArgs) => Promise<TResult> {
   return async (args: TArgs): Promise<TResult> => {
     // Check if tool is auto-approved (permanently or for session)
-    const { isToolAutoApproved } = await import('./tool-permissions.ts')
     const autoApproved = await isToolAutoApproved(toolName)
 
     if (autoApproved) {
