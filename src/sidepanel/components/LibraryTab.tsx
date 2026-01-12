@@ -1,5 +1,5 @@
 interface LibraryTabProps {
-  active: boolean;
+  active: boolean
 }
 
 export function LibraryTab({ active }: LibraryTabProps) {
@@ -9,5 +9,5 @@ export function LibraryTab({ active }: LibraryTabProps) {
       <p className="helper-text">Your notebooks and saved content.</p>
       <div id="notebooks-list" className="notebooks-list"></div>
     </section>
-  );
+  )
 }

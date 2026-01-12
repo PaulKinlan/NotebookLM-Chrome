@@ -4,26 +4,26 @@
  * Displays and manages tool approval requests in agentic mode.
  */
 
-import type { ToolApprovalRequest, ApprovalScope } from '../types/index.ts';
+import type { ToolApprovalRequest, ApprovalScope } from '../types/index.ts'
 import {
   getPendingApprovals,
   respondToApproval,
-} from '../lib/tool-approvals.ts';
-import { addToolApproval } from '../lib/tool-permissions.ts';
+} from '../lib/tool-approvals.ts'
+import { addToolApproval } from '../lib/tool-permissions.ts'
 
 // ============================================================================
 // DOM Elements
 // ============================================================================
 
 const elements: {
-  approvalDialog: HTMLDialogElement | null;
-  approvalList: HTMLDivElement | null;
-  approvalTemplate: HTMLTemplateElement | null;
+  approvalDialog: HTMLDialogElement | null
+  approvalList: HTMLDivElement | null
+  approvalTemplate: HTMLTemplateElement | null
 } = {
   approvalDialog: null,
   approvalList: null,
   approvalTemplate: null,
-};
+}
 
 // ============================================================================
 // Initialization
@@ -35,28 +35,28 @@ const elements: {
 export function initApprovalUI(): void {
   // Inject styles if not already present
   if (!document.getElementById('approval-dialog-styles')) {
-    const styleEl = document.createElement('style');
-    styleEl.id = 'approval-dialog-styles';
-    styleEl.textContent = approvalDialogStyles;
-    document.head.appendChild(styleEl);
+    const styleEl = document.createElement('style')
+    styleEl.id = 'approval-dialog-styles'
+    styleEl.textContent = approvalDialogStyles
+    document.head.appendChild(styleEl)
   }
 
-  const dialog = document.getElementById('approval-dialog');
-  const list = document.getElementById('approval-list');
-  const template = document.getElementById('approval-request-template');
+  const dialog = document.getElementById('approval-dialog')
+  const list = document.getElementById('approval-list')
+  const template = document.getElementById('approval-request-template')
 
   if (dialog instanceof HTMLDialogElement) {
-    elements.approvalDialog = dialog;
+    elements.approvalDialog = dialog
   }
   if (list instanceof HTMLDivElement) {
-    elements.approvalList = list;
+    elements.approvalList = list
   }
   if (template instanceof HTMLTemplateElement) {
-    elements.approvalTemplate = template;
+    elements.approvalTemplate = template
   }
 
   if (!elements.approvalDialog) {
-    createApprovalDialog();
+    createApprovalDialog()
   }
 }
 
@@ -64,9 +64,9 @@ export function initApprovalUI(): void {
  * Create approval dialog HTML
  */
 function createApprovalDialog(): void {
-  const dialog = document.createElement('dialog');
-  dialog.id = 'approval-dialog';
-  dialog.className = 'approval-dialog';
+  const dialog = document.createElement('dialog')
+  dialog.id = 'approval-dialog'
+  dialog.className = 'approval-dialog'
 
   dialog.innerHTML = `
     <div class="approval-dialog-content">
@@ -96,36 +96,36 @@ function createApprovalDialog(): void {
         </button>
       </div>
     </div>
-  `;
+  `
 
-  document.body.appendChild(dialog);
-  elements.approvalDialog = dialog;
+  document.body.appendChild(dialog)
+  elements.approvalDialog = dialog
 
-  const listElement = dialog.querySelector('#approval-list');
+  const listElement = dialog.querySelector('#approval-list')
   if (listElement instanceof HTMLDivElement) {
-    elements.approvalList = listElement;
+    elements.approvalList = listElement
   }
 
   // Set up event listeners
-  const closeBtn = dialog.querySelector('.approval-close-btn');
+  const closeBtn = dialog.querySelector('.approval-close-btn')
   if (closeBtn instanceof HTMLButtonElement) {
-    closeBtn.addEventListener('click', () => hideApprovalDialog());
+    closeBtn.addEventListener('click', () => hideApprovalDialog())
   }
 
   dialog.addEventListener('click', (e) => {
     if (e.target === dialog) {
-      hideApprovalDialog();
+      hideApprovalDialog()
     }
-  });
+  })
 
-  const approveAllBtn = dialog.querySelector('.approval-approve-all-btn');
-  const rejectAllBtn = dialog.querySelector('.approval-reject-all-btn');
+  const approveAllBtn = dialog.querySelector('.approval-approve-all-btn')
+  const rejectAllBtn = dialog.querySelector('.approval-reject-all-btn')
 
   if (approveAllBtn instanceof HTMLButtonElement) {
-    approveAllBtn.addEventListener('click', () => approveAllPending());
+    approveAllBtn.addEventListener('click', () => approveAllPending())
   }
   if (rejectAllBtn instanceof HTMLButtonElement) {
-    rejectAllBtn.addEventListener('click', () => rejectAllPending());
+    rejectAllBtn.addEventListener('click', () => rejectAllPending())
   }
 }
 
@@ -137,64 +137,64 @@ function createApprovalDialog(): void {
  * Show approval dialog with pending requests
  */
 export async function showApprovalDialog(): Promise<void> {
-  await renderPendingApprovals();
-  elements.approvalDialog?.showModal();
+  await renderPendingApprovals()
+  elements.approvalDialog?.showModal()
 }
 
 /**
  * Hide approval dialog
  */
 export function hideApprovalDialog(): void {
-  elements.approvalDialog?.close();
+  elements.approvalDialog?.close()
 }
 
 /**
  * Check for pending approvals and show dialog if any exist
  */
 export async function checkAndShowPendingApprovals(): Promise<boolean> {
-  const pending = await getPendingApprovals();
+  const pending = await getPendingApprovals()
   if (pending.length > 0) {
-    await showApprovalDialog();
-    return true;
+    await showApprovalDialog()
+    return true
   }
-  return false;
+  return false
 }
 
 /**
  * Render pending approval requests
  */
 async function renderPendingApprovals(): Promise<void> {
-  if (!elements.approvalList) return;
+  if (!elements.approvalList) return
 
-  const pending = await getPendingApprovals();
+  const pending = await getPendingApprovals()
 
   if (pending.length === 0) {
     elements.approvalList.innerHTML = `
       <div class="empty-state">
         <p>No pending approvals</p>
       </div>
-    `;
-    return;
+    `
+    return
   }
 
   elements.approvalList.innerHTML = pending
-    .map((request) => renderApprovalRequest(request))
-    .join('');
+    .map(request => renderApprovalRequest(request))
+    .join('')
 
   // Attach event listeners to buttons
   for (const request of pending) {
     const approveBtn = elements.approvalList?.querySelector(
-      `[data-approve="${request.id}"]`
-    );
+      `[data-approve="${request.id}"]`,
+    )
     const rejectBtn = elements.approvalList?.querySelector(
-      `[data-reject="${request.id}"]`
-    );
+      `[data-reject="${request.id}"]`,
+    )
 
     if (approveBtn instanceof HTMLButtonElement) {
-      approveBtn.addEventListener('click', () => handleApprove(request.id, request.toolName));
+      approveBtn.addEventListener('click', () => handleApprove(request.id, request.toolName))
     }
     if (rejectBtn instanceof HTMLButtonElement) {
-      rejectBtn.addEventListener('click', () => handleReject(request.id));
+      rejectBtn.addEventListener('click', () => handleReject(request.id))
     }
   }
 }
@@ -205,11 +205,11 @@ async function renderPendingApprovals(): Promise<void> {
 function renderApprovalRequest(request: ToolApprovalRequest): string {
   const argsPreview = Object.entries(request.args)
     .map(([key, value]) => {
-      const valueStr =
-        typeof value === 'object' ? JSON.stringify(value) : String(value);
-      return `<strong>${escapeHtml(key)}</strong>: ${escapeHtml(valueStr)}`;
+      const valueStr
+        = typeof value === 'object' ? JSON.stringify(value) : String(value)
+      return `<strong>${escapeHtml(key)}</strong>: ${escapeHtml(valueStr)}`
     })
-    .join('<br>');
+    .join('<br>')
 
   return `
     <div class="approval-request" data-request-id="${request.id}">
@@ -256,24 +256,24 @@ function renderApprovalRequest(request: ToolApprovalRequest): string {
         </button>
       </div>
     </div>
-  `;
+  `
 }
 
 /**
  * Format timestamp for display
  */
 function formatTimestamp(timestamp: number): string {
-  const date = new Date(timestamp);
-  return date.toLocaleTimeString();
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString()
 }
 
 /**
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
 }
 
 // ============================================================================
@@ -285,41 +285,41 @@ function escapeHtml(text: string): string {
  */
 function getSelectedScope(requestId: string): ApprovalScope {
   const selected = document.querySelector<HTMLInputElement>(
-    `input[name="scope-${requestId}"]:checked`
-  );
-  const value = selected?.value;
+    `input[name="scope-${requestId}"]:checked`,
+  )
+  const value = selected?.value
 
   // Validate that the value is a valid ApprovalScope
   if (value === 'once' || value === 'session' || value === 'forever') {
-    return value;
+    return value
   }
 
-  return 'once';
+  return 'once'
 }
 
 /**
  * Handle approve button click
  */
 async function handleApprove(requestId: string, toolName: string): Promise<void> {
-  const scope = getSelectedScope(requestId);
+  const scope = getSelectedScope(requestId)
 
   await respondToApproval({
     requestId,
     approved: true,
     scope,
     timestamp: Date.now(),
-  });
+  })
 
   // Update tool permissions based on scope
-  await addToolApproval(toolName, scope);
+  await addToolApproval(toolName, scope)
 
   // Re-render to update the list
-  await renderPendingApprovals();
+  await renderPendingApprovals()
 
   // If no more pending, close dialog
-  const pending = await getPendingApprovals();
+  const pending = await getPendingApprovals()
   if (pending.length === 0) {
-    hideApprovalDialog();
+    hideApprovalDialog()
   }
 }
 
@@ -332,15 +332,15 @@ async function handleReject(requestId: string): Promise<void> {
     approved: false,
     scope: 'once',
     timestamp: Date.now(),
-  });
+  })
 
   // Re-render to update the list
-  await renderPendingApprovals();
+  await renderPendingApprovals()
 
   // If no more pending, close dialog
-  const pending = await getPendingApprovals();
+  const pending = await getPendingApprovals()
   if (pending.length === 0) {
-    hideApprovalDialog();
+    hideApprovalDialog()
   }
 }
 
@@ -348,7 +348,7 @@ async function handleReject(requestId: string): Promise<void> {
  * Approve all pending approvals (with 'once' scope)
  */
 async function approveAllPending(): Promise<void> {
-  const pending = await getPendingApprovals();
+  const pending = await getPendingApprovals()
 
   for (const request of pending) {
     await respondToApproval({
@@ -356,17 +356,17 @@ async function approveAllPending(): Promise<void> {
       approved: true,
       scope: 'once',
       timestamp: Date.now(),
-    });
+    })
   }
 
-  hideApprovalDialog();
+  hideApprovalDialog()
 }
 
 /**
  * Reject all pending approvals
  */
 async function rejectAllPending(): Promise<void> {
-  const pending = await getPendingApprovals();
+  const pending = await getPendingApprovals()
 
   for (const request of pending) {
     await respondToApproval({
@@ -374,10 +374,10 @@ async function rejectAllPending(): Promise<void> {
       approved: false,
       scope: 'once',
       timestamp: Date.now(),
-    });
+    })
   }
 
-  hideApprovalDialog();
+  hideApprovalDialog()
 }
 
 // ============================================================================
@@ -544,4 +544,4 @@ export const approvalDialogStyles = `
   justify-content: flex-end;
   gap: 12px;
 }
-`;
+`

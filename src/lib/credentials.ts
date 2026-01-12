@@ -5,85 +5,85 @@
  * Credentials are referenced by ModelConfigs for AI requests.
  */
 
-import type { Credential, CredentialSettings } from '../types/index.ts';
-import { dbGet, dbPut } from './db.ts';
+import type { Credential, CredentialSettings } from '../types/index.ts'
+import { dbGet, dbPut } from './db.ts'
 
-const CREDENTIAL_SETTINGS_KEY = 'credentialSettings';
+const CREDENTIAL_SETTINGS_KEY = 'credentialSettings'
 
 /**
  * Get all credential settings including credentials and default ID
  */
 export async function getCredentialSettings(): Promise<CredentialSettings> {
-  const result = await dbGet<{ key: string; value: CredentialSettings }>(
+  const result = await dbGet<{ key: string, value: CredentialSettings }>(
     'settings',
-    CREDENTIAL_SETTINGS_KEY
-  );
+    CREDENTIAL_SETTINGS_KEY,
+  )
 
   if (!result) {
-    return { credentials: [] };
+    return { credentials: [] }
   }
 
-  return result.value;
+  return result.value
 }
 
 /**
  * Save credential settings
  */
 export async function saveCredentialSettings(settings: CredentialSettings): Promise<void> {
-  await dbPut('settings', { key: CREDENTIAL_SETTINGS_KEY, value: settings });
+  await dbPut('settings', { key: CREDENTIAL_SETTINGS_KEY, value: settings })
 }
 
 /**
  * Get all credentials
  */
 export async function getCredentials(): Promise<Credential[]> {
-  const settings = await getCredentialSettings();
-  return settings.credentials;
+  const settings = await getCredentialSettings()
+  return settings.credentials
 }
 
 /**
  * Get a specific credential by ID
  */
 export async function getCredential(id: string): Promise<Credential | null> {
-  const credentials = await getCredentials();
-  return credentials.find((c) => c.id === id) || null;
+  const credentials = await getCredentials()
+  return credentials.find(c => c.id === id) || null
 }
 
 /**
  * Get the default credential
  */
 export async function getDefaultCredential(): Promise<Credential | null> {
-  const settings = await getCredentialSettings();
+  const settings = await getCredentialSettings()
   if (!settings.defaultCredentialId) {
-    return null;
+    return null
   }
-  return getCredential(settings.defaultCredentialId);
+  return getCredential(settings.defaultCredentialId)
 }
 
 /**
  * Create a new credential
  */
 export async function createCredential(
-  credential: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>
+  credential: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>,
 ): Promise<Credential> {
-  const settings = await getCredentialSettings();
+  const settings = await getCredentialSettings()
 
   const newCredential: Credential = {
     ...credential,
     id: crypto.randomUUID(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
-  };
+  }
 
   // If this is the first credential, make it default
   if (settings.credentials.length === 0) {
-    settings.defaultCredentialId = newCredential.id;
+    settings.defaultCredentialId = newCredential.id
   }
 
-  settings.credentials.push(newCredential);
-  await saveCredentialSettings(settings);
+  settings.credentials.push(newCredential)
+  await saveCredentialSettings(settings)
 
-  return newCredential;
+  return newCredential
 }
 
 /**
@@ -91,16 +91,16 @@ export async function createCredential(
  */
 export async function updateCredential(
   id: string,
-  updates: Partial<Omit<Credential, 'id' | 'createdAt'>>
+  updates: Partial<Omit<Credential, 'id' | 'createdAt'>>,
 ): Promise<void> {
-  const settings = await getCredentialSettings();
-  const credentialIndex = settings.credentials.findIndex((c) => c.id === id);
+  const settings = await getCredentialSettings()
+  const credentialIndex = settings.credentials.findIndex(c => c.id === id)
 
   if (credentialIndex === -1) {
-    throw new Error(`Credential ${id} not found`);
+    throw new Error(`Credential ${id} not found`)
   }
 
-  const credential = settings.credentials[credentialIndex];
+  const credential = settings.credentials[credentialIndex]
 
   // Update the credential
   settings.credentials[credentialIndex] = {
@@ -109,9 +109,9 @@ export async function updateCredential(
     id, // Ensure ID doesn't change
     createdAt: credential.createdAt, // Preserve creation time
     updatedAt: Date.now(),
-  };
+  }
 
-  await saveCredentialSettings(settings);
+  await saveCredentialSettings(settings)
 }
 
 /**
@@ -119,41 +119,41 @@ export async function updateCredential(
  * @throws Error if trying to delete the last credential
  */
 export async function deleteCredential(id: string): Promise<void> {
-  const settings = await getCredentialSettings();
-  const credentialIndex = settings.credentials.findIndex((c) => c.id === id);
+  const settings = await getCredentialSettings()
+  const credentialIndex = settings.credentials.findIndex(c => c.id === id)
 
   if (credentialIndex === -1) {
-    throw new Error(`Credential ${id} not found`);
+    throw new Error(`Credential ${id} not found`)
   }
 
   // Prevent deleting the last credential
   if (settings.credentials.length === 1) {
-    throw new Error('Cannot delete the last credential');
+    throw new Error('Cannot delete the last credential')
   }
 
   // If deleting default, need to assign new default
   if (settings.defaultCredentialId === id) {
-    const remainingCredentials = settings.credentials.filter((c) => c.id !== id);
-    settings.defaultCredentialId = remainingCredentials[0].id;
+    const remainingCredentials = settings.credentials.filter(c => c.id !== id)
+    settings.defaultCredentialId = remainingCredentials[0].id
   }
 
-  settings.credentials = settings.credentials.filter((c) => c.id !== id);
-  await saveCredentialSettings(settings);
+  settings.credentials = settings.credentials.filter(c => c.id !== id)
+  await saveCredentialSettings(settings)
 }
 
 /**
  * Set a specific credential as the default
  */
 export async function setDefaultCredential(id: string): Promise<void> {
-  const settings = await getCredentialSettings();
-  const credential = settings.credentials.find((c) => c.id === id);
+  const settings = await getCredentialSettings()
+  const credential = settings.credentials.find(c => c.id === id)
 
   if (!credential) {
-    throw new Error(`Credential ${id} not found`);
+    throw new Error(`Credential ${id} not found`)
   }
 
-  settings.defaultCredentialId = id;
-  await saveCredentialSettings(settings);
+  settings.defaultCredentialId = id
+  await saveCredentialSettings(settings)
 }
 
 /**
@@ -161,6 +161,6 @@ export async function setDefaultCredential(id: string): Promise<void> {
  * Returns the credential if a matching API key exists, null otherwise
  */
 export async function findCredentialByApiKey(apiKey: string): Promise<Credential | null> {
-  const credentials = await getCredentials();
-  return credentials.find((c) => c.apiKey === apiKey) || null;
+  const credentials = await getCredentials()
+  return credentials.find(c => c.apiKey === apiKey) || null
 }

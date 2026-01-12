@@ -3,40 +3,40 @@
 // ============================================================================
 
 // Import all components
-import { Header } from './components/Header';
-import { AddTab } from './components/AddTab';
-import { ChatTab } from './components/ChatTab';
-import { TransformTab } from './components/TransformTab';
-import { LibraryTab } from './components/LibraryTab';
-import { SettingsTab } from './components/SettingsTab';
-import { BottomNav } from './components/BottomNav';
-import { Fab } from './components/Fab';
-import { PickerModal, NotebookDialog, ConfirmDialog } from './components/Modals';
-import { Notification } from './components/Notification';
-import { Onboarding } from './components/Onboarding';
+import { Header } from './components/Header'
+import { AddTab } from './components/AddTab'
+import { ChatTab } from './components/ChatTab'
+import { TransformTab } from './components/TransformTab'
+import { LibraryTab } from './components/LibraryTab'
+import { SettingsTab } from './components/SettingsTab'
+import { BottomNav } from './components/BottomNav'
+import { Fab } from './components/Fab'
+import { PickerModal, NotebookDialog, ConfirmDialog } from './components/Modals'
+import { Notification } from './components/Notification'
+import { Onboarding } from './components/Onboarding'
 
 // ============================================================================
 // Types
 // ============================================================================
 
-type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings';
-type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history';
+type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings'
+type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history'
 
-type BusinessHandlers = typeof import('./index')['handlers'];
+type BusinessHandlers = typeof import('./index')['handlers']
 
 interface AppProps {
-  activeTab: TabName;
-  fabHidden: boolean;
-  onboardingHidden: boolean;
-  businessHandlers: BusinessHandlers | null;
+  activeTab: TabName
+  fabHidden: boolean
+  onboardingHidden: boolean
+  businessHandlers: BusinessHandlers | null
 }
 
 interface AppHandlers {
-  handleTabClick: (tab: TabName) => void;
-  handleHeaderLibraryClick: () => void;
-  handleHeaderSettingsClick: () => void;
-  handleFabClick: () => void;
-  handleTransform: (type: string) => void;
+  handleTabClick: (tab: TabName) => void
+  handleHeaderLibraryClick: () => void
+  handleHeaderSettingsClick: () => void
+  handleFabClick: () => void
+  handleTransform: (type: string) => void
 }
 
 // ============================================================================
@@ -45,54 +45,56 @@ interface AppHandlers {
 
 function createHandlers(state: { activeTab: TabName }, businessHandlers: BusinessHandlers | null): AppHandlers {
   function updateTabVisibility(): void {
-    const navItems = document.querySelectorAll('.nav-item');
-    const tabContents = document.querySelectorAll('.tab-content');
+    const navItems = document.querySelectorAll('.nav-item')
+    const tabContents = document.querySelectorAll('.tab-content')
 
     navItems.forEach((item) => {
-      const tabName = item.getAttribute('data-tab');
+      const tabName = item.getAttribute('data-tab')
       if (tabName === state.activeTab) {
-        item.classList.add('active');
-      } else {
-        item.classList.remove('active');
+        item.classList.add('active')
       }
-    });
+      else {
+        item.classList.remove('active')
+      }
+    })
 
     tabContents.forEach((content) => {
-      const tabId = content.id;
+      const tabId = content.id
       if (tabId === `tab-${state.activeTab}`) {
-        content.classList.add('active');
-      } else {
-        content.classList.remove('active');
+        content.classList.add('active')
       }
-    });
+      else {
+        content.classList.remove('active')
+      }
+    })
   }
 
   return {
     handleTabClick: (tab: TabName) => {
-      state.activeTab = tab;
-      updateTabVisibility();
-      businessHandlers?.switchTab(tab);
+      state.activeTab = tab
+      updateTabVisibility()
+      businessHandlers?.switchTab(tab)
     },
 
     handleHeaderLibraryClick: () => {
-      state.activeTab = 'library';
-      updateTabVisibility();
+      state.activeTab = 'library'
+      updateTabVisibility()
     },
 
     handleHeaderSettingsClick: () => {
-      state.activeTab = 'settings';
-      updateTabVisibility();
+      state.activeTab = 'settings'
+      updateTabVisibility()
     },
 
     handleFabClick: () => {
-      state.activeTab = 'add';
-      updateTabVisibility();
+      state.activeTab = 'add'
+      updateTabVisibility()
     },
 
     handleTransform: (type: string) => {
-      businessHandlers?.handleTransform(type as unknown as 'podcast' | 'quiz' | 'takeaways' | 'email' | 'slidedeck' | 'report' | 'datatable' | 'mindmap' | 'flashcards' | 'timeline' | 'glossary' | 'comparison' | 'faq' | 'actionitems' | 'executivebrief' | 'studyguide' | 'proscons' | 'citations' | 'outline');
+      businessHandlers?.handleTransform(type as unknown as 'podcast' | 'quiz' | 'takeaways' | 'email' | 'slidedeck' | 'report' | 'datatable' | 'mindmap' | 'flashcards' | 'timeline' | 'glossary' | 'comparison' | 'faq' | 'actionitems' | 'executivebrief' | 'studyguide' | 'proscons' | 'citations' | 'outline')
     },
-  };
+  }
 }
 
 // ============================================================================
@@ -105,34 +107,36 @@ export function App(props: AppProps = {
   onboardingHidden: true,
   businessHandlers: null,
 }): Node {
-  const { activeTab, fabHidden, onboardingHidden, businessHandlers } = props;
+  const { activeTab, fabHidden, onboardingHidden, businessHandlers } = props
 
-  const state = { activeTab };
-  const handlers = createHandlers(state, businessHandlers);
+  const state = { activeTab }
+  const handlers = createHandlers(state, businessHandlers)
 
   // Initialize tab visibility
   requestAnimationFrame(() => {
-    const navItems = document.querySelectorAll('.nav-item');
-    const tabContents = document.querySelectorAll('.tab-content');
+    const navItems = document.querySelectorAll('.nav-item')
+    const tabContents = document.querySelectorAll('.tab-content')
 
     navItems.forEach((item) => {
-      const tabName = item.getAttribute('data-tab');
+      const tabName = item.getAttribute('data-tab')
       if (tabName === activeTab) {
-        item.classList.add('active');
-      } else {
-        item.classList.remove('active');
+        item.classList.add('active')
       }
-    });
+      else {
+        item.classList.remove('active')
+      }
+    })
 
     tabContents.forEach((content) => {
-      const tabId = content.id;
+      const tabId = content.id
       if (tabId === `tab-${activeTab}`) {
-        content.classList.add('active');
-      } else {
-        content.classList.remove('active');
+        content.classList.add('active')
       }
-    });
-  });
+      else {
+        content.classList.remove('active')
+      }
+    })
+  })
 
   return (
     <>
@@ -182,5 +186,5 @@ export function App(props: AppProps = {
       <Notification />
       <Onboarding hidden={onboardingHidden} />
     </>
-  );
+  )
 }

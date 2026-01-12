@@ -17,73 +17,73 @@
  *   allows scripts/styles but still sandboxed
  */
 
-import DOMPurify, { Config } from "dompurify";
+import DOMPurify, { Config } from 'dompurify'
 
 // DOMPurify configuration for standard content going to sandbox
 const SANDBOX_DOMPURIFY_CONFIG: Config = {
   ALLOWED_TAGS: [
-    "p", "br", "strong", "em", "b", "i", "code", "pre",
-    "ul", "ol", "li", "a", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6",
-    "span", "div", "table", "thead", "tbody", "tr", "th", "td", "hr",
-    "del", "sup", "sub", "input"
+    'p', 'br', 'strong', 'em', 'b', 'i', 'code', 'pre',
+    'ul', 'ol', 'li', 'a', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'span', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr',
+    'del', 'sup', 'sub', 'input',
   ],
-  ALLOWED_ATTR: ["href", "class", "type", "checked", "disabled"],
+  ALLOWED_ATTR: ['href', 'class', 'type', 'checked', 'disabled'],
   ALLOW_DATA_ATTR: false,
-  FORBID_TAGS: ["script", "style", "iframe", "form", "object", "embed", "svg", "math"],
-  FORBID_ATTR: ["onerror", "onclick", "onload", "onmouseover", "onfocus", "onblur", "target"],
-};
+  FORBID_TAGS: ['script', 'style', 'iframe', 'form', 'object', 'embed', 'svg', 'math'],
+  FORBID_ATTR: ['onerror', 'onclick', 'onload', 'onmouseover', 'onfocus', 'onblur', 'target'],
+}
 
 // DOMPurify configuration for interactive content - allows style tags
 const INTERACTIVE_DOMPURIFY_CONFIG: Config = {
   ALLOWED_TAGS: [
-    "p", "br", "strong", "em", "b", "i", "code", "pre",
-    "ul", "ol", "li", "a", "blockquote", "h1", "h2", "h3", "h4", "h5", "h6",
-    "span", "div", "table", "thead", "tbody", "tr", "th", "td", "hr",
-    "del", "sup", "sub", "input", "label", "button", "style"
+    'p', 'br', 'strong', 'em', 'b', 'i', 'code', 'pre',
+    'ul', 'ol', 'li', 'a', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'span', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr',
+    'del', 'sup', 'sub', 'input', 'label', 'button', 'style',
   ],
   ALLOWED_ATTR: [
-    "href", "class", "type", "checked", "disabled", "id", "for", "data-*",
-    "aria-label", "aria-hidden", "role", "tabindex"
+    'href', 'class', 'type', 'checked', 'disabled', 'id', 'for', 'data-*',
+    'aria-label', 'aria-hidden', 'role', 'tabindex',
   ],
   ALLOW_DATA_ATTR: true,
   // Still forbid scripts - they'll be passed separately
-  FORBID_TAGS: ["script", "iframe", "object", "embed", "svg", "math", "form"],
-  FORBID_ATTR: ["onerror", "onload", "onmouseover", "onfocus", "onblur"],
-};
+  FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'svg', 'math', 'form'],
+  FORBID_ATTR: ['onerror', 'onload', 'onmouseover', 'onfocus', 'onblur'],
+}
 
 interface PendingMessage {
-  handler: (height?: number) => void;
-  reject: (reason?: unknown) => void;
+  handler: (height?: number) => void
+  reject: (reason?: unknown) => void
 }
 
 export class SandboxRenderer {
-  private iframe: HTMLIFrameElement | null = null;
-  private container: HTMLElement;
-  private isReady = false;
-  private readyPromise: Promise<void>;
-  private readyResolve: (() => void) | null = null;
-  private messageId = 0;
-  private pendingMessages = new Map<number, PendingMessage>();
-  private boundHandleMessage: (event: MessageEvent) => void;
+  private iframe: HTMLIFrameElement | null = null
+  private container: HTMLElement
+  private isReady = false
+  private readyPromise: Promise<void>
+  private readyResolve: (() => void) | null = null
+  private messageId = 0
+  private pendingMessages = new Map<number, PendingMessage>()
+  private boundHandleMessage: (event: MessageEvent) => void
 
   constructor(container: HTMLElement) {
-    this.container = container;
-    this.boundHandleMessage = this.handleMessage.bind(this);
+    this.container = container
+    this.boundHandleMessage = this.handleMessage.bind(this)
     this.readyPromise = new Promise((resolve) => {
-      this.readyResolve = resolve;
-    });
-    this.init();
+      this.readyResolve = resolve
+    })
+    this.init()
   }
 
   private init(): void {
     // Create sandboxed iframe
-    this.iframe = document.createElement("iframe");
-    this.iframe.src = chrome.runtime.getURL("src/sandbox/sandbox.html");
+    this.iframe = document.createElement('iframe')
+    this.iframe.src = chrome.runtime.getURL('src/sandbox/sandbox.html')
 
     // Apply sandbox attribute for additional restrictions
     // allow-scripts is needed for the sandbox.js to run
     // No allow-same-origin to ensure complete isolation
-    this.iframe.sandbox.add("allow-scripts");
+    this.iframe.sandbox.add('allow-scripts')
 
     // Style the iframe
     this.iframe.style.cssText = `
@@ -91,47 +91,47 @@ export class SandboxRenderer {
       border: none;
       display: block;
       min-height: 20px;
-    `;
+    `
 
     // Listen for messages from sandbox
-    window.addEventListener("message", this.boundHandleMessage);
+    window.addEventListener('message', this.boundHandleMessage)
 
     // Append to container
-    this.container.appendChild(this.iframe);
+    this.container.appendChild(this.iframe)
   }
 
   private handleMessage(event: MessageEvent): void {
     // Verify the message is from our iframe
     if (event.source !== this.iframe?.contentWindow) {
-      return;
+      return
     }
 
-    const { type, messageId, height } = event.data;
+    const { type, messageId, height } = event.data
 
     switch (type) {
-      case "SANDBOX_READY":
-        this.isReady = true;
+      case 'SANDBOX_READY':
+        this.isReady = true
         if (this.readyResolve) {
-          this.readyResolve();
+          this.readyResolve()
         }
-        break;
+        break
 
-      case "RENDER_COMPLETE":
-      case "HEIGHT_RESPONSE":
+      case 'RENDER_COMPLETE':
+      case 'HEIGHT_RESPONSE':
         // Update iframe height to match content, capped at max-height from CSS
         if (height && this.iframe) {
           // Set the height to content size; CSS max-height will constrain it
-          this.iframe.style.height = `${height}px`;
+          this.iframe.style.height = `${height}px`
         }
         // Resolve pending promise
         if (messageId !== undefined) {
-          const pending = this.pendingMessages.get(messageId);
+          const pending = this.pendingMessages.get(messageId)
           if (pending) {
-            pending.handler(height);
-            this.pendingMessages.delete(messageId);
+            pending.handler(height)
+            this.pendingMessages.delete(messageId)
           }
         }
-        break;
+        break
     }
   }
 
@@ -140,43 +140,43 @@ export class SandboxRenderer {
    * @returns The height of the rendered content
    */
   async render(html: string): Promise<number | undefined> {
-    await this.readyPromise;
+    await this.readyPromise
 
     if (!this.iframe?.contentWindow) {
-      throw new Error("Sandbox iframe not available");
+      throw new Error('Sandbox iframe not available')
     }
 
     // Sanitize content before sending to sandbox
-    const sanitizedHtml = DOMPurify.sanitize(html, SANDBOX_DOMPURIFY_CONFIG);
+    const sanitizedHtml = DOMPurify.sanitize(html, SANDBOX_DOMPURIFY_CONFIG)
 
-    const currentMessageId = ++this.messageId;
+    const currentMessageId = ++this.messageId
 
     return new Promise((resolve, reject) => {
       this.pendingMessages.set(currentMessageId, {
         handler: resolve,
-        reject
-      });
+        reject,
+      })
 
-      const iframe = this.iframe;
+      const iframe = this.iframe
       if (!iframe?.contentWindow) {
-        reject(new Error("Sandbox iframe not available"));
-        return;
+        reject(new Error('Sandbox iframe not available'))
+        return
       }
 
       iframe.contentWindow.postMessage({
-        type: "RENDER_CONTENT",
+        type: 'RENDER_CONTENT',
         content: sanitizedHtml,
-        messageId: currentMessageId
-      }, "*");
+        messageId: currentMessageId,
+      }, '*')
 
       // Timeout after 5 seconds
       setTimeout(() => {
         if (this.pendingMessages.has(currentMessageId)) {
-          this.pendingMessages.delete(currentMessageId);
-          reject(new Error("Sandbox render timeout"));
+          this.pendingMessages.delete(currentMessageId)
+          reject(new Error('Sandbox render timeout'))
         }
-      }, 5000);
-    });
+      }, 5000)
+    })
   }
 
   /**
@@ -185,57 +185,57 @@ export class SandboxRenderer {
    * @returns The height of the rendered content
    */
   async renderInteractive(html: string): Promise<number | undefined> {
-    await this.readyPromise;
+    await this.readyPromise
 
     if (!this.iframe?.contentWindow) {
-      throw new Error("Sandbox iframe not available");
+      throw new Error('Sandbox iframe not available')
     }
 
     // Extract script content before sanitization
-    const scriptMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi);
-    const scripts: string[] = [];
+    const scriptMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi)
+    const scripts: string[] = []
     if (scriptMatch) {
       for (const match of scriptMatch) {
-        const content = match.replace(/<script[^>]*>|<\/script>/gi, '');
-        scripts.push(content);
+        const content = match.replace(/<script[^>]*>|<\/script>/gi, '')
+        scripts.push(content)
       }
     }
 
     // Remove scripts from HTML before sanitization
-    const htmlWithoutScripts = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    const htmlWithoutScripts = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
 
     // Sanitize the HTML (allows style tags in interactive mode)
-    const sanitizedHtml = DOMPurify.sanitize(htmlWithoutScripts, INTERACTIVE_DOMPURIFY_CONFIG);
+    const sanitizedHtml = DOMPurify.sanitize(htmlWithoutScripts, INTERACTIVE_DOMPURIFY_CONFIG)
 
-    const currentMessageId = ++this.messageId;
+    const currentMessageId = ++this.messageId
 
     return new Promise((resolve, reject) => {
       this.pendingMessages.set(currentMessageId, {
         handler: resolve,
-        reject
-      });
+        reject,
+      })
 
-      const iframe = this.iframe;
+      const iframe = this.iframe
       if (!iframe?.contentWindow) {
-        reject(new Error("Sandbox iframe not available"));
-        return;
+        reject(new Error('Sandbox iframe not available'))
+        return
       }
 
       iframe.contentWindow.postMessage({
-        type: "RENDER_INTERACTIVE",
+        type: 'RENDER_INTERACTIVE',
         content: sanitizedHtml,
         scripts: scripts,
-        messageId: currentMessageId
-      }, "*");
+        messageId: currentMessageId,
+      }, '*')
 
       // Timeout after 5 seconds
       setTimeout(() => {
         if (this.pendingMessages.has(currentMessageId)) {
-          this.pendingMessages.delete(currentMessageId);
-          reject(new Error("Sandbox render timeout"));
+          this.pendingMessages.delete(currentMessageId)
+          reject(new Error('Sandbox render timeout'))
         }
-      }, 5000);
-    });
+      }, 5000)
+    })
   }
 
   /**
@@ -243,8 +243,8 @@ export class SandboxRenderer {
    */
   clear(): void {
     if (this.iframe?.contentWindow) {
-      this.iframe.contentWindow.postMessage({ type: "CLEAR_CONTENT" }, "*");
-      this.iframe.style.height = "20px";
+      this.iframe.contentWindow.postMessage({ type: 'CLEAR_CONTENT' }, '*')
+      this.iframe.style.height = '20px'
     }
   }
 
@@ -252,26 +252,26 @@ export class SandboxRenderer {
    * Destroy the sandbox and clean up
    */
   destroy(): void {
-    window.removeEventListener("message", this.boundHandleMessage);
+    window.removeEventListener('message', this.boundHandleMessage)
     if (this.iframe) {
-      this.iframe.remove();
-      this.iframe = null;
+      this.iframe.remove()
+      this.iframe = null
     }
-    this.pendingMessages.clear();
+    this.pendingMessages.clear()
   }
 
   /**
    * Check if the sandbox is ready
    */
   get ready(): boolean {
-    return this.isReady;
+    return this.isReady
   }
 
   /**
    * Wait for the sandbox to be ready
    */
   waitForReady(): Promise<void> {
-    return this.readyPromise;
+    return this.readyPromise
   }
 }
 
@@ -279,5 +279,5 @@ export class SandboxRenderer {
  * Create a sandbox renderer for a container element
  */
 export function createSandboxRenderer(container: HTMLElement): SandboxRenderer {
-  return new SandboxRenderer(container);
+  return new SandboxRenderer(container)
 }

@@ -1,69 +1,70 @@
-type Child = Node | string | number | boolean | null | undefined;
+type Child = Node | string | number | boolean | null | undefined
 
 function isNode(x: unknown): x is Node {
-  return typeof Node !== "undefined" && x instanceof Node;
+  return typeof Node !== 'undefined' && x instanceof Node
 }
 
 // SVG namespace for creating SVG elements
-const SVG_NS = "http://www.w3.org/2000/svg";
+const SVG_NS = 'http://www.w3.org/2000/svg'
 
 // SVG element names that need to be created in the SVG namespace
 const SVG_TAGS = new Set([
-  "svg",
-  "path",
-  "circle",
-  "rect",
-  "ellipse",
-  "line",
-  "polygon",
-  "polyline",
-  "text",
-  "tspan",
-  "g",
-  "defs",
-  "use",
-  "marker",
-  "clipPath",
-  "mask",
-  "pattern",
-  "gradient",
-  "linearGradient",
-  "radialGradient",
-  "stop",
-  "animate",
-  "animateTransform",
-  "animateMotion",
-  "image",
-  "foreignObject",
-]);
+  'svg',
+  'path',
+  'circle',
+  'rect',
+  'ellipse',
+  'line',
+  'polygon',
+  'polyline',
+  'text',
+  'tspan',
+  'g',
+  'defs',
+  'use',
+  'marker',
+  'clipPath',
+  'mask',
+  'pattern',
+  'gradient',
+  'linearGradient',
+  'radialGradient',
+  'stop',
+  'animate',
+  'animateTransform',
+  'animateMotion',
+  'image',
+  'foreignObject',
+])
 
 function append(el: Element | DocumentFragment, child: Child): void {
-  if (child === null || child === undefined || child === false || child === true) return;
+  if (child === null || child === undefined || child === false || child === true) return
 
   if (Array.isArray(child)) {
-    for (const c of child as unknown as Child[]) append(el, c);
-    return;
+    for (const c of child as unknown as Child[]) append(el, c)
+    return
   }
 
   if (isNode(child)) {
-    el.appendChild(child);
-    return;
+    el.appendChild(child)
+    return
   }
 
-  el.appendChild(document.createTextNode(String(child)));
+  el.appendChild(document.createTextNode(String(child)))
 }
 
 export function Fragment(props: { children?: Child | Child[] }): DocumentFragment {
-  const frag = document.createDocumentFragment();
-  const children = props.children;
+  const frag = document.createDocumentFragment()
+  const children = props.children
 
   if (Array.isArray(children)) {
-    for (const c of children) append(frag, c);
-  } else {
-    append(frag, children);
+    for (const c of children) append(frag, c)
+  }
+  else {
+    append(frag, children)
   }
 
-  return frag;
+  return frag
 }
 
 /**
@@ -73,68 +74,74 @@ export function Fragment(props: { children?: Child | Child[] }): DocumentFragmen
 export function jsx(
   tag: string | ((props: Record<string, unknown>) => Node),
   props: Record<string, unknown> & { key?: string | number | null },
-  _key?: string | number | null
+  _key?: string | number | null,
 ): Node {
-  if (typeof tag === "function") {
-    return tag(props);
+  if (typeof tag === 'function') {
+    return tag(props)
   }
 
   // Create element in correct namespace (HTML or SVG)
-  const isSvg = SVG_TAGS.has(tag);
+  const isSvg = SVG_TAGS.has(tag)
   const el = isSvg
     ? document.createElementNS(SVG_NS, tag)
-    : document.createElement(tag);
+    : document.createElement(tag)
 
   if (props) {
     for (const [propKey, value] of Object.entries(props)) {
-      if (propKey === "className") {
+      if (propKey === 'className') {
         // For SVG, set class attribute; for HTML, set class directly
         if (isSvg) {
-          el.setAttribute("class", String(value));
-        } else {
-          (el as HTMLElement).className = String(value);
+          el.setAttribute('class', String(value))
         }
-      } else if (propKey.startsWith("on") && typeof value === "function") {
+        else {
+          (el as HTMLElement).className = String(value)
+        }
+      }
+      else if (propKey.startsWith('on') && typeof value === 'function') {
         // onClick -> click
-        const event = propKey.slice(2).toLowerCase();
-        el.addEventListener(event, value as EventListener);
-      } else if (value === true) {
-        el.setAttribute(propKey, "");
-      } else if (
-        propKey === "style" &&
-        value !== null &&
-        value !== undefined &&
-        typeof value === "object" &&
-        !Array.isArray(value)
+        const event = propKey.slice(2).toLowerCase()
+        el.addEventListener(event, value as EventListener)
+      }
+      else if (value === true) {
+        el.setAttribute(propKey, '')
+      }
+      else if (
+        propKey === 'style'
+        && value !== null
+        && value !== undefined
+        && typeof value === 'object'
+        && !Array.isArray(value)
       ) {
-        const style = (el as HTMLElement).style;
+        const style = (el as HTMLElement).style
         // Type assertion is safe here - we've validated value is a non-array object above
-        const styleObj = value as Record<string, unknown>;
+        const styleObj = value as Record<string, unknown>
         for (const [styleName, styleValue] of Object.entries(styleObj)) {
           if (styleValue === null || styleValue === undefined || styleValue === false) {
-            continue;
+            continue
           }
-          style.setProperty(styleName, String(styleValue));
+          style.setProperty(styleName, String(styleValue))
         }
-      } else if (value !== false && value !== null && propKey !== "children") {
+      }
+      else if (value !== false && value !== null && propKey !== 'children') {
         // For boolean attributes on SVG (like fill="true"), convert to string
-        el.setAttribute(propKey, String(value));
+        el.setAttribute(propKey, String(value))
       }
     }
 
     // Handle children from props
-    if ("children" in props) {
-      const children = props.children;
-      const childrenValue = children as Child | Child[];
+    if ('children' in props) {
+      const children = props.children
+      const childrenValue = children as Child | Child[]
       if (Array.isArray(childrenValue)) {
-        for (const c of childrenValue) append(el, c);
-      } else {
-        append(el, childrenValue);
+        for (const c of childrenValue) append(el, c)
+      }
+      else {
+        append(el, childrenValue)
       }
     }
   }
 
-  return el;
+  return el
 }
 
 /**
@@ -145,7 +152,7 @@ export function jsx(
 export function jsxs(
   tag: string | ((props: Record<string, unknown>) => Node),
   props: Record<string, unknown> & { key?: string | number | null },
-  _key?: string | number | null
+  _key?: string | number | null,
 ): Node {
-  return jsx(tag, props, _key);
+  return jsx(tag, props, _key)
 }

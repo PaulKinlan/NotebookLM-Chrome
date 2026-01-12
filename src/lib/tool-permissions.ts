@@ -7,10 +7,10 @@
  * - Session-based and permanent approval tracking
  */
 
-import type { ToolPermission, ToolPermissionsConfig, ApprovalScope } from '../types/index.ts';
-import { storage } from './storage.ts';
+import type { ToolPermission, ToolPermissionsConfig, ApprovalScope } from '../types/index.ts'
+import { storage } from './storage.ts'
 
-const TOOL_PERMISSIONS_KEY = 'toolPermissions';
+const TOOL_PERMISSIONS_KEY = 'toolPermissions'
 
 // Default permissions for source tools (never require approval)
 const DEFAULT_SOURCE_TOOL_PERMISSIONS: Record<string, ToolPermission> = {
@@ -32,7 +32,7 @@ const DEFAULT_SOURCE_TOOL_PERMISSIONS: Record<string, ToolPermission> = {
     requiresApproval: false,
     autoApproved: true,
   },
-};
+}
 
 // Default permissions for browser tools (require approval by default)
 const DEFAULT_BROWSER_TOOL_PERMISSIONS: Record<string, ToolPermission> = {
@@ -60,7 +60,7 @@ const DEFAULT_BROWSER_TOOL_PERMISSIONS: Record<string, ToolPermission> = {
     requiresApproval: true,
     autoApproved: false,
   },
-};
+}
 
 const DEFAULT_CONFIG: ToolPermissionsConfig = {
   permissions: {
@@ -69,14 +69,14 @@ const DEFAULT_CONFIG: ToolPermissionsConfig = {
   },
   sessionApprovals: [],
   lastModified: Date.now(),
-};
+}
 
 /**
  * Get tool permissions configuration
  */
 export async function getToolPermissions(): Promise<ToolPermissionsConfig> {
-  const config = await storage.getSetting<ToolPermissionsConfig>(TOOL_PERMISSIONS_KEY);
-  return config ?? DEFAULT_CONFIG;
+  const config = await storage.getSetting<ToolPermissionsConfig>(TOOL_PERMISSIONS_KEY)
+  return config ?? DEFAULT_CONFIG
 }
 
 /**
@@ -86,15 +86,15 @@ export async function saveToolPermissions(config: ToolPermissionsConfig): Promis
   await storage.setSetting(TOOL_PERMISSIONS_KEY, {
     ...config,
     lastModified: Date.now(),
-  });
+  })
 }
 
 /**
  * Get permission for a specific tool
  */
 export async function getToolPermission(toolName: string): Promise<ToolPermission | null> {
-  const config = await getToolPermissions();
-  return config.permissions[toolName] || null;
+  const config = await getToolPermissions()
+  return config.permissions[toolName] || null
 }
 
 /**
@@ -102,19 +102,19 @@ export async function getToolPermission(toolName: string): Promise<ToolPermissio
  */
 export async function updateToolPermission(
   toolName: string,
-  updates: Partial<Omit<ToolPermission, 'toolName'>>
+  updates: Partial<Omit<ToolPermission, 'toolName'>>,
 ): Promise<void> {
-  const config = await getToolPermissions();
-  const existing = config.permissions[toolName];
+  const config = await getToolPermissions()
+  const existing = config.permissions[toolName]
 
   config.permissions[toolName] = {
     toolName,
     visible: updates.visible ?? existing?.visible ?? true,
     requiresApproval: updates.requiresApproval ?? existing?.requiresApproval ?? true,
     autoApproved: updates.autoApproved ?? existing?.autoApproved ?? false,
-  };
+  }
 
-  await saveToolPermissions(config);
+  await saveToolPermissions(config)
 }
 
 /**
@@ -122,24 +122,24 @@ export async function updateToolPermission(
  * (either permanently approved or approved for session)
  */
 export async function isToolAutoApproved(toolName: string): Promise<boolean> {
-  const config = await getToolPermissions();
-  const permission = config.permissions[toolName];
+  const config = await getToolPermissions()
+  const permission = config.permissions[toolName]
 
   if (!permission || !permission.visible) {
-    return false; // Tool not visible
+    return false // Tool not visible
   }
 
   // Check if permanently approved
   if (permission.autoApproved) {
-    return true;
+    return true
   }
 
   // Check if approved for session
   if (config.sessionApprovals.includes(toolName)) {
-    return true;
+    return true
   }
 
-  return false;
+  return false
 }
 
 /**
@@ -147,29 +147,29 @@ export async function isToolAutoApproved(toolName: string): Promise<boolean> {
  */
 export async function addToolApproval(
   toolName: string,
-  scope: ApprovalScope
+  scope: ApprovalScope,
 ): Promise<void> {
-  const config = await getToolPermissions();
+  const config = await getToolPermissions()
 
   switch (scope) {
     case 'once':
       // No persistence needed - one-time approval
-      break;
+      break
 
     case 'session':
       if (!config.sessionApprovals.includes(toolName)) {
-        config.sessionApprovals.push(toolName);
+        config.sessionApprovals.push(toolName)
       }
-      await saveToolPermissions(config);
-      break;
+      await saveToolPermissions(config)
+      break
 
     case 'forever':
       // Mark as auto-approved permanently
       if (config.permissions[toolName]) {
-        config.permissions[toolName].autoApproved = true;
-        await saveToolPermissions(config);
+        config.permissions[toolName].autoApproved = true
+        await saveToolPermissions(config)
       }
-      break;
+      break
   }
 }
 
@@ -177,28 +177,28 @@ export async function addToolApproval(
  * Clear session approvals (call on session start/end)
  */
 export async function clearSessionApprovals(): Promise<void> {
-  const config = await getToolPermissions();
-  config.sessionApprovals = [];
-  await saveToolPermissions(config);
+  const config = await getToolPermissions()
+  config.sessionApprovals = []
+  await saveToolPermissions(config)
 }
 
 /**
  * Get tools that should be visible to the LLM
  */
 export async function getVisibleToolNames(): Promise<string[]> {
-  const config = await getToolPermissions();
+  const config = await getToolPermissions()
   return Object.entries(config.permissions)
     .filter(([, permission]) => permission.visible)
-    .map(([name]) => name);
+    .map(([name]) => name)
 }
 
 /**
  * Check if a tool requires approval
  */
 export async function doesToolRequireApproval(toolName: string): Promise<boolean> {
-  const permission = await getToolPermission(toolName);
+  const permission = await getToolPermission(toolName)
   if (!permission || !permission.visible) {
-    return false; // Non-existent or hidden tools don't require approval
+    return false // Non-existent or hidden tools don't require approval
   }
-  return permission.requiresApproval && !permission.autoApproved;
+  return permission.requiresApproval && !permission.autoApproved
 }

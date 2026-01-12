@@ -1,80 +1,80 @@
-const DB_NAME = 'notebooklm-chrome';
-const DB_VERSION = 6;
+const DB_NAME = 'notebooklm-chrome'
+const DB_VERSION = 6
 
 export interface DBSchema {
   notebooks: {
-    key: string;
+    key: string
     indexes: {
-      syncStatus: string;
-      updatedAt: number;
-    };
-  };
+      syncStatus: string
+      updatedAt: number
+    }
+  }
   sources: {
-    key: string;
+    key: string
     indexes: {
-      notebookId: string;
-      syncStatus: string;
-      type: string;
-    };
-  };
+      notebookId: string
+      syncStatus: string
+      type: string
+    }
+  }
   chatEvents: {
-    key: string;
+    key: string
     indexes: {
-      notebookId: string;
-      timestamp: number;
-      type: string;
-    };
-  };
+      notebookId: string
+      timestamp: number
+      type: string
+    }
+  }
   transformations: {
-    key: string;
+    key: string
     indexes: {
-      notebookId: string;
-      type: string;
-    };
-  };
+      notebookId: string
+      type: string
+    }
+  }
   settings: {
-    key: string;
-  };
+    key: string
+  }
   responseCache: {
-    key: string;
+    key: string
     indexes: {
-      notebookId: string;
-      createdAt: number;
-    };
-  };
+      notebookId: string
+      createdAt: number
+    }
+  }
   summaries: {
-    key: string;
+    key: string
     indexes: {
-      notebookId: string;
-    };
-  };
+      notebookId: string
+    }
+  }
   providerConfigs: {
-    key: string;
+    key: string
     indexes: {
-      isDefault: boolean;
-      createdAt: number;
-    };
-  };
+      isDefault: boolean
+      createdAt: number
+    }
+  }
   toolResults: {
-    key: string;
+    key: string
     indexes: {
-      expiresAt: number;
-    };
-  };
+      expiresAt: number
+    }
+  }
   approvalRequests: {
-    key: string;
+    key: string
     indexes: {
-      status: string;
-    };
-  };
+      status: string
+    }
+  }
   // @deprecated Kept for migration from v5
   chatMessages: {
-    key: string;
+    key: string
     indexes: {
-      notebookId: string;
-      timestamp: number;
-    };
-  };
+      notebookId: string
+      timestamp: number
+    }
+  }
 }
 
 /**
@@ -87,22 +87,22 @@ export interface DBSchema {
  * the implicit version change transaction passed as a parameter.
  */
 function migrateChatMessagesToChatEvents(transaction: IDBTransaction): void {
-  const db = transaction.db;
+  const db = transaction.db
   if (!db.objectStoreNames.contains('chatMessages') || !db.objectStoreNames.contains('chatEvents')) {
-    console.log('[DB Migration] chatMessages or chatEvents store missing, skipping migration');
-    return;
+    console.log('[DB Migration] chatMessages or chatEvents store missing, skipping migration')
+    return
   }
 
-  const oldStore = transaction.objectStore('chatMessages');
-  const newStore = transaction.objectStore('chatEvents');
+  const oldStore = transaction.objectStore('chatMessages')
+  const newStore = transaction.objectStore('chatEvents')
 
-  const request = oldStore.openCursor();
-  let migratedCount = 0;
+  const request = oldStore.openCursor()
+  let migratedCount = 0
 
   request.onsuccess = () => {
-    const cursor = request.result;
+    const cursor = request.result
     if (cursor) {
-      const msg = cursor.value;
+      const msg = cursor.value
       // Convert ChatMessage to ChatEvent
       const chatEvent = {
         id: msg.id,
@@ -111,253 +111,255 @@ function migrateChatMessagesToChatEvents(transaction: IDBTransaction): void {
         type: msg.role, // 'user' or 'assistant'
         content: msg.content,
         ...(msg.citations && { citations: msg.citations }),
-      };
-      newStore.put(chatEvent);
-      migratedCount++;
-      cursor.continue();
-    } else {
-      console.log(`[DB Migration] Migrated ${migratedCount} chatMessages to chatEvents`);
+      }
+      newStore.put(chatEvent)
+      migratedCount++
+      cursor.continue()
     }
-  };
+    else {
+      console.log(`[DB Migration] Migrated ${migratedCount} chatMessages to chatEvents`)
+    }
+  }
 
   request.onerror = () => {
-    console.error('[DB Migration] Error migrating chatMessages:', request.error);
-  };
+    console.error('[DB Migration] Error migrating chatMessages:', request.error)
+  }
 }
 
-let dbInstance: IDBDatabase | null = null;
+let dbInstance: IDBDatabase | null = null
 
 export function getDB(): Promise<IDBDatabase> {
   if (dbInstance) {
-    return Promise.resolve(dbInstance);
+    return Promise.resolve(dbInstance)
   }
 
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => {
-      reject(new Error('Failed to open database'));
-    };
+      reject(new Error('Failed to open database'))
+    }
 
     request.onsuccess = () => {
-      dbInstance = request.result;
-      resolve(dbInstance);
-    };
+      dbInstance = request.result
+      resolve(dbInstance)
+    }
 
     request.onupgradeneeded = (event) => {
-      const request = event.target;
+      const request = event.target
       if (!request || !(request instanceof IDBOpenDBRequest)) {
-        throw new Error('Invalid upgrade request');
+        throw new Error('Invalid upgrade request')
       }
-      const db = request.result;
+      const db = request.result
 
       // Notebooks store
       if (!db.objectStoreNames.contains('notebooks')) {
-        const notebooksStore = db.createObjectStore('notebooks', { keyPath: 'id' });
-        notebooksStore.createIndex('syncStatus', 'syncStatus', { unique: false });
-        notebooksStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+        const notebooksStore = db.createObjectStore('notebooks', { keyPath: 'id' })
+        notebooksStore.createIndex('syncStatus', 'syncStatus', { unique: false })
+        notebooksStore.createIndex('updatedAt', 'updatedAt', { unique: false })
       }
 
       // Sources store
       if (!db.objectStoreNames.contains('sources')) {
-        const sourcesStore = db.createObjectStore('sources', { keyPath: 'id' });
-        sourcesStore.createIndex('notebookId', 'notebookId', { unique: false });
-        sourcesStore.createIndex('syncStatus', 'syncStatus', { unique: false });
-        sourcesStore.createIndex('type', 'type', { unique: false });
+        const sourcesStore = db.createObjectStore('sources', { keyPath: 'id' })
+        sourcesStore.createIndex('notebookId', 'notebookId', { unique: false })
+        sourcesStore.createIndex('syncStatus', 'syncStatus', { unique: false })
+        sourcesStore.createIndex('type', 'type', { unique: false })
       }
 
       // Chat messages store (deprecated - replaced by chatEvents)
       if (!db.objectStoreNames.contains('chatMessages')) {
-        const chatStore = db.createObjectStore('chatMessages', { keyPath: 'id' });
-        chatStore.createIndex('notebookId', 'notebookId', { unique: false });
-        chatStore.createIndex('timestamp', 'timestamp', { unique: false });
+        const chatStore = db.createObjectStore('chatMessages', { keyPath: 'id' })
+        chatStore.createIndex('notebookId', 'notebookId', { unique: false })
+        chatStore.createIndex('timestamp', 'timestamp', { unique: false })
       }
 
       // Chat events store (new - replaces chatMessages)
       if (!db.objectStoreNames.contains('chatEvents')) {
-        const chatEventsStore = db.createObjectStore('chatEvents', { keyPath: 'id' });
-        chatEventsStore.createIndex('notebookId', 'notebookId', { unique: false });
-        chatEventsStore.createIndex('timestamp', 'timestamp', { unique: false });
-        chatEventsStore.createIndex('type', 'type', { unique: false });
+        const chatEventsStore = db.createObjectStore('chatEvents', { keyPath: 'id' })
+        chatEventsStore.createIndex('notebookId', 'notebookId', { unique: false })
+        chatEventsStore.createIndex('timestamp', 'timestamp', { unique: false })
+        chatEventsStore.createIndex('type', 'type', { unique: false })
       }
 
       // Migration: v5 → v6 (chatMessages → chatEvents)
       if (event.oldVersion < 6 && db.objectStoreNames.contains('chatMessages')) {
         // Get the transaction from the event (implicit version change transaction)
-        const request = event.target;
+        const request = event.target
         if (request && request instanceof IDBOpenDBRequest && request.transaction) {
-          migrateChatMessagesToChatEvents(request.transaction);
+          migrateChatMessagesToChatEvents(request.transaction)
         }
       }
 
       // Transformations store
       if (!db.objectStoreNames.contains('transformations')) {
-        const transformStore = db.createObjectStore('transformations', { keyPath: 'id' });
-        transformStore.createIndex('notebookId', 'notebookId', { unique: false });
-        transformStore.createIndex('type', 'type', { unique: false });
+        const transformStore = db.createObjectStore('transformations', { keyPath: 'id' })
+        transformStore.createIndex('notebookId', 'notebookId', { unique: false })
+        transformStore.createIndex('type', 'type', { unique: false })
       }
 
       // Settings store (key-value)
       if (!db.objectStoreNames.contains('settings')) {
-        db.createObjectStore('settings', { keyPath: 'key' });
+        db.createObjectStore('settings', { keyPath: 'key' })
       }
 
       // Response cache store (for offline support)
       if (!db.objectStoreNames.contains('responseCache')) {
-        const cacheStore = db.createObjectStore('responseCache', { keyPath: 'id' });
-        cacheStore.createIndex('notebookId', 'notebookId', { unique: false });
-        cacheStore.createIndex('createdAt', 'createdAt', { unique: false });
+        const cacheStore = db.createObjectStore('responseCache', { keyPath: 'id' })
+        cacheStore.createIndex('notebookId', 'notebookId', { unique: false })
+        cacheStore.createIndex('createdAt', 'createdAt', { unique: false })
       }
 
       // Summaries store (cached notebook overviews)
       if (!db.objectStoreNames.contains('summaries')) {
-        const summariesStore = db.createObjectStore('summaries', { keyPath: 'id' });
-        summariesStore.createIndex('notebookId', 'notebookId', { unique: true });
+        const summariesStore = db.createObjectStore('summaries', { keyPath: 'id' })
+        summariesStore.createIndex('notebookId', 'notebookId', { unique: true })
       }
 
       // Provider configurations store
       if (!db.objectStoreNames.contains('providerConfigs')) {
-        const configsStore = db.createObjectStore('providerConfigs', { keyPath: 'id' });
-        configsStore.createIndex('isDefault', 'isDefault', { unique: false });
-        configsStore.createIndex('createdAt', 'createdAt', { unique: false });
+        const configsStore = db.createObjectStore('providerConfigs', { keyPath: 'id' })
+        configsStore.createIndex('isDefault', 'isDefault', { unique: false })
+        configsStore.createIndex('createdAt', 'createdAt', { unique: false })
       }
 
       // Tool results cache (for agentic mode)
       if (!db.objectStoreNames.contains('toolResults')) {
-        const toolsStore = db.createObjectStore('toolResults', { keyPath: 'key' });
-        toolsStore.createIndex('expiresAt', 'expiresAt', { unique: false });
+        const toolsStore = db.createObjectStore('toolResults', { keyPath: 'key' })
+        toolsStore.createIndex('expiresAt', 'expiresAt', { unique: false })
       }
 
       // Approval requests (for tool requiring user approval)
       if (!db.objectStoreNames.contains('approvalRequests')) {
-        const approvalStore = db.createObjectStore('approvalRequests', { keyPath: 'key' });
-        approvalStore.createIndex('status', 'status', { unique: false });
+        const approvalStore = db.createObjectStore('approvalRequests', { keyPath: 'key' })
+        approvalStore.createIndex('status', 'status', { unique: false })
       }
-    };
-  });
+    }
+  })
 }
 
 // Generic CRUD operations
 
 export async function dbGet<T>(storeName: string, key: string): Promise<T | null> {
-  const db = await getDB();
+  const db = await getDB()
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readonly');
-    const store = transaction.objectStore(storeName);
-    const request = store.get(key);
+    const transaction = db.transaction(storeName, 'readonly')
+    const store = transaction.objectStore(storeName)
+    const request = store.get(key)
 
-    request.onerror = () => reject(new Error(`Failed to get ${key} from ${storeName}`));
-    request.onsuccess = () => resolve(request.result ?? null);
-  });
+    request.onerror = () => reject(new Error(`Failed to get ${key} from ${storeName}`))
+    request.onsuccess = () => resolve(request.result ?? null)
+  })
 }
 
 export async function dbGetAll<T>(storeName: string): Promise<T[]> {
-  const db = await getDB();
+  const db = await getDB()
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readonly');
-    const store = transaction.objectStore(storeName);
-    const request = store.getAll();
+    const transaction = db.transaction(storeName, 'readonly')
+    const store = transaction.objectStore(storeName)
+    const request = store.getAll()
 
-    request.onerror = () => reject(new Error(`Failed to get all from ${storeName}`));
-    request.onsuccess = () => resolve(request.result);
-  });
+    request.onerror = () => reject(new Error(`Failed to get all from ${storeName}`))
+    request.onsuccess = () => resolve(request.result)
+  })
 }
 
 export async function dbGetByIndex<T>(
   storeName: string,
   indexName: string,
-  value: IDBValidKey
+  value: IDBValidKey,
 ): Promise<T[]> {
-  const db = await getDB();
+  const db = await getDB()
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readonly');
-    const store = transaction.objectStore(storeName);
-    const index = store.index(indexName);
-    const request = index.getAll(value);
+    const transaction = db.transaction(storeName, 'readonly')
+    const store = transaction.objectStore(storeName)
+    const index = store.index(indexName)
+    const request = index.getAll(value)
 
-    request.onerror = () => reject(new Error(`Failed to query ${storeName} by ${indexName}`));
-    request.onsuccess = () => resolve(request.result);
-  });
+    request.onerror = () => reject(new Error(`Failed to query ${storeName} by ${indexName}`))
+    request.onsuccess = () => resolve(request.result)
+  })
 }
 
 export async function dbPut<T>(storeName: string, value: T): Promise<void> {
-  const db = await getDB();
+  const db = await getDB()
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const request = store.put(value);
+    const transaction = db.transaction(storeName, 'readwrite')
+    const store = transaction.objectStore(storeName)
+    const request = store.put(value)
 
-    request.onerror = () => reject(new Error(`Failed to put into ${storeName}`));
-    request.onsuccess = () => resolve();
-  });
+    request.onerror = () => reject(new Error(`Failed to put into ${storeName}`))
+    request.onsuccess = () => resolve()
+  })
 }
 
 export async function dbDelete(storeName: string, key: string): Promise<void> {
-  const db = await getDB();
+  const db = await getDB()
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const request = store.delete(key);
+    const transaction = db.transaction(storeName, 'readwrite')
+    const store = transaction.objectStore(storeName)
+    const request = store.delete(key)
 
-    request.onerror = () => reject(new Error(`Failed to delete ${key} from ${storeName}`));
-    request.onsuccess = () => resolve();
-  });
+    request.onerror = () => reject(new Error(`Failed to delete ${key} from ${storeName}`))
+    request.onsuccess = () => resolve()
+  })
 }
 
 export async function dbDeleteByIndex(
   storeName: string,
   indexName: string,
-  value: IDBValidKey
+  value: IDBValidKey,
 ): Promise<void> {
-  const db = await getDB();
+  const db = await getDB()
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const index = store.index(indexName);
-    const request = index.openCursor(value);
+    const transaction = db.transaction(storeName, 'readwrite')
+    const store = transaction.objectStore(storeName)
+    const index = store.index(indexName)
+    const request = index.openCursor(value)
 
-    request.onerror = () => reject(new Error(`Failed to delete from ${storeName} by ${indexName}`));
+    request.onerror = () => reject(new Error(`Failed to delete from ${storeName} by ${indexName}`))
     request.onsuccess = () => {
-      const cursor = request.result;
+      const cursor = request.result
       if (cursor) {
-        cursor.delete();
-        cursor.continue();
-      } else {
-        resolve();
+        cursor.delete()
+        cursor.continue()
       }
-    };
-  });
+      else {
+        resolve()
+      }
+    }
+  })
 }
 
 export async function dbClear(storeName: string): Promise<void> {
-  const db = await getDB();
+  const db = await getDB()
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const request = store.clear();
+    const transaction = db.transaction(storeName, 'readwrite')
+    const store = transaction.objectStore(storeName)
+    const request = store.clear()
 
-    request.onerror = () => reject(new Error(`Failed to clear ${storeName}`));
-    request.onsuccess = () => resolve();
-  });
+    request.onerror = () => reject(new Error(`Failed to clear ${storeName}`))
+    request.onsuccess = () => resolve()
+  })
 }
 
 /**
  * Clear all data from the database
  */
 export async function dbClearAll(): Promise<void> {
-  const db = await getDB();
-  const storeNames = ['notebooks', 'sources', 'chatEvents', 'transformations', 'responseCache', 'settings', 'providerConfigs', 'toolResults', 'approvalRequests'];
+  const db = await getDB()
+  const storeNames = ['notebooks', 'sources', 'chatEvents', 'transformations', 'responseCache', 'settings', 'providerConfigs', 'toolResults', 'approvalRequests']
 
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(storeNames, 'readwrite');
+    const transaction = db.transaction(storeNames, 'readwrite')
 
-    transaction.onerror = () => reject(new Error('Failed to clear database'));
+    transaction.onerror = () => reject(new Error('Failed to clear database'))
 
-    transaction.oncomplete = () => resolve();
+    transaction.oncomplete = () => resolve()
 
     for (const storeName of storeNames) {
-      const store = transaction.objectStore(storeName);
-      store.clear();
+      const store = transaction.objectStore(storeName)
+      store.clear()
     }
-  });
+  })
 }

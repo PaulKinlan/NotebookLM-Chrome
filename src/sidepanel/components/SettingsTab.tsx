@@ -1,13 +1,13 @@
-type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history';
+type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history'
 
 interface SettingsTabProps {
-  active: boolean;
-  onPermissionToggle: (permission: PermissionType) => void;
-  onClearAllData: () => void;
+  active: boolean
+  onPermissionToggle: (permission: PermissionType) => void
+  onClearAllData: () => void
 }
 
 export function SettingsTab(props: SettingsTabProps) {
-  const { active } = props;
+  const { active } = props
   return (
     <section id="tab-settings" className={`tab-content ${active ? 'active' : ''}`}>
       <h2>Settings</h2>
@@ -38,11 +38,18 @@ export function SettingsTab(props: SettingsTabProps) {
           <span>Tool-based Context - AI queries sources as needed</span>
         </label>
         <p className="setting-hint">
-          <strong>Pre-loaded (unchecked):</strong> All sources bundled into initial context.<br />
-          <strong>Tool-based (checked):</strong> AI uses tools to fetch sources on demand.
+          <strong>Pre-loaded (unchecked):</strong>
+          {' '}
+          All sources bundled into initial context.
+          <br />
+          <strong>Tool-based (checked):</strong>
+          {' '}
+          AI uses tools to fetch sources on demand.
         </p>
         <p id="chrome-tools-warning" className="setting-warning hidden">
-          <strong>Warning:</strong> Chrome Built-in AI has limited tool support. For best results with tool-based context, use a cloud provider like Anthropic or OpenAI.
+          <strong>Warning:</strong>
+          {' '}
+          Chrome Built-in AI has limited tool support. For best results with tool-based context, use a cloud provider like Anthropic or OpenAI.
         </p>
       </div>
 
@@ -81,5 +88,5 @@ export function SettingsTab(props: SettingsTabProps) {
         <button id="clear-all-data-btn" className="btn btn-danger btn-small">Clear All Data</button>
       </div>
     </section>
-  );
+  )
 }

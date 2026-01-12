@@ -3,15 +3,15 @@
  */
 
 interface FabProps {
-  hidden: boolean;
-  onClick?: () => void;
+  hidden: boolean
+  onClick?: () => void
 }
 
 export function Fab(props: FabProps) {
-  const { hidden, onClick } = props;
+  const { hidden, onClick } = props
 
   if (hidden) {
-    return null;
+    return null
   }
 
   return (
@@ -28,5 +28,5 @@ export function Fab(props: FabProps) {
         <line x1="5" y1="12" x2="19" y2="12"></line>
       </svg>
     </button>
-  );
+  )
 }

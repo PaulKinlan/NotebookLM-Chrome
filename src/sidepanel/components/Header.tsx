@@ -3,14 +3,14 @@
  */
 
 interface HeaderProps {
-  onLibraryClick: () => void;
-  onSettingsClick: () => void;
-  onNotebookChange: (id: string) => void;
-  onNewNotebook: () => void;
+  onLibraryClick: () => void
+  onSettingsClick: () => void
+  onNotebookChange: (id: string) => void
+  onNewNotebook: () => void
 }
 
 export function Header(props: HeaderProps) {
-  const { onLibraryClick, onSettingsClick, onNotebookChange, onNewNotebook } = props;
+  const { onLibraryClick, onSettingsClick, onNotebookChange, onNewNotebook } = props
 
   return (
     <header className="header">
@@ -109,5 +109,5 @@ export function Header(props: HeaderProps) {
         </button>
       </div>
     </header>
-  );
+  )
 }

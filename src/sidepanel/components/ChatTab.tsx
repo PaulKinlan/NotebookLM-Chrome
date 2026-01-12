@@ -1,13 +1,13 @@
 interface ChatTabProps {
-  active: boolean;
-  onQuery: () => void;
-  onClearChat: () => void;
-  onRegenerateSummary: () => void;
-  onAddCurrentTab: () => void;
+  active: boolean
+  onQuery: () => void
+  onClearChat: () => void
+  onRegenerateSummary: () => void
+  onAddCurrentTab: () => void
 }
 
 export function ChatTab(props: ChatTabProps) {
-  const { active } = props;
+  const { active } = props
   return (
     <section id="tab-chat" className={`tab-content ${active ? 'active' : ''}`}>
       {/* Summary Section (Collapsible) */}
@@ -43,7 +43,9 @@ export function ChatTab(props: ChatTabProps) {
       </details>
 
       <h3 className="section-title">
-        Active Sources (<span id="source-count">0</span>)
+        Active Sources (
+        <span id="source-count">0</span>
+        )
         <a href="#" id="manage-sources" className="link">Manage</a>
       </h3>
       <div id="active-sources" className="sources-list compact"></div>
@@ -92,5 +94,5 @@ export function ChatTab(props: ChatTabProps) {
       </div>
       <p className="helper-text" id="chat-status">Ask questions to synthesize information from your sources.</p>
     </section>
-  );
+  )
 }

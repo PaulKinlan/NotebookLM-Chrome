@@ -5,44 +5,44 @@
  * Uses AI SDK's tool() function for type-safe tool definitions with automatic validation.
  */
 
-import { tool, type Tool } from 'ai';
-import { z } from 'zod';
-import { getSourcesByNotebook, getSource } from './storage.ts';
-import { dbGet, dbPut, dbDelete, dbGetAll } from './db.ts';
+import { tool, type Tool } from 'ai'
+import { z } from 'zod'
+import { getSourcesByNotebook, getSource } from './storage.ts'
+import { dbGet, dbPut, dbDelete, dbGetAll } from './db.ts'
 import {
   createApprovalRequest,
   approvalEvents,
-} from './tool-approvals.ts';
+} from './tool-approvals.ts'
 
 // ============================================================================
 // Tool Result Caching
 // ============================================================================
 
-const TOOL_RESULTS_STORE = 'toolResults';
-const TOOL_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const TOOL_RESULTS_STORE = 'toolResults'
+const TOOL_CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
 
 interface CachedToolResult {
-  id: string;
-  toolName: string;
-  input: unknown;
-  output: unknown;
-  createdAt: number;
-  expiresAt: number;
+  id: string
+  toolName: string
+  input: unknown
+  output: unknown
+  createdAt: number
+  expiresAt: number
 }
 
 /**
  * Generate a cache key for a tool call
  */
 function generateCacheKey(toolName: string, input: unknown): string {
-  const inputStr = JSON.stringify(input);
+  const inputStr = JSON.stringify(input)
   // Simple hash function for cache key
-  let hash = 0;
+  let hash = 0
   for (let i = 0; i < inputStr.length; i++) {
-    const char = inputStr.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    const char = inputStr.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
   }
-  return `${toolName}:${Math.abs(hash)}`;
+  return `${toolName}:${Math.abs(hash)}`
 }
 
 /**
@@ -52,7 +52,7 @@ function isType<T>(_value: unknown): _value is T {
   // This is a runtime type guard placeholder
   // In a production system, you would use Zod or similar for validation
   // For now, we trust that the cached data is correctly typed
-  return true;
+  return true
 }
 
 /**
@@ -60,37 +60,38 @@ function isType<T>(_value: unknown): _value is T {
  */
 export async function getCachedToolResult<TINPUT, TOUTPUT>(
   toolName: string,
-  input: TINPUT
+  input: TINPUT,
 ): Promise<TOUTPUT | null> {
-  const key = generateCacheKey(toolName, input);
+  const key = generateCacheKey(toolName, input)
 
   try {
-    const result = await dbGet<{ key: string; value: CachedToolResult }>(
+    const result = await dbGet<{ key: string, value: CachedToolResult }>(
       TOOL_RESULTS_STORE,
-      key
-    );
+      key,
+    )
 
     if (!result) {
-      return null;
+      return null
     }
 
-    const cached = result.value;
+    const cached = result.value
     if (Date.now() > cached.expiresAt) {
       // Expired, remove from cache
-      await dbDelete(TOOL_RESULTS_STORE, key);
-      return null;
+      await dbDelete(TOOL_RESULTS_STORE, key)
+      return null
     }
 
     // Use type guard to narrow the type
-    const output = cached.output;
+    const output = cached.output
     if (isType<TOUTPUT>(output)) {
-      return output;
+      return output
     }
 
-    return null;
-  } catch {
+    return null
+  }
+  catch {
     // If tool results store doesn't exist yet, just return null
-    return null;
+    return null
   }
 }
 
@@ -100,10 +101,10 @@ export async function getCachedToolResult<TINPUT, TOUTPUT>(
 export async function setCachedToolResult<TINPUT, TOUTPUT>(
   toolName: string,
   input: TINPUT,
-  output: TOUTPUT
+  output: TOUTPUT,
 ): Promise<void> {
-  const key = generateCacheKey(toolName, input);
-  const now = Date.now();
+  const key = generateCacheKey(toolName, input)
+  const now = Date.now()
 
   const cached: CachedToolResult = {
     id: key,
@@ -112,11 +113,12 @@ export async function setCachedToolResult<TINPUT, TOUTPUT>(
     output,
     createdAt: now,
     expiresAt: now + TOOL_CACHE_TTL_MS,
-  };
+  }
 
   try {
-    await dbPut(TOOL_RESULTS_STORE, { key, value: cached });
-  } catch {
+    await dbPut(TOOL_RESULTS_STORE, { key, value: cached })
+  }
+  catch {
     // If tool results store doesn't exist yet, skip caching
     // This will be created when DB is upgraded to version 4
   }
@@ -128,17 +130,18 @@ export async function setCachedToolResult<TINPUT, TOUTPUT>(
  */
 export async function cleanupExpiredToolResults(): Promise<void> {
   try {
-    const results = await dbGetAll<{ key: string; value: CachedToolResult }>(
-      TOOL_RESULTS_STORE
-    );
-    const now = Date.now();
+    const results = await dbGetAll<{ key: string, value: CachedToolResult }>(
+      TOOL_RESULTS_STORE,
+    )
+    const now = Date.now()
 
     for (const result of results) {
       if (now > result.value.expiresAt) {
-        await dbDelete(TOOL_RESULTS_STORE, result.key);
+        await dbDelete(TOOL_RESULTS_STORE, result.key)
       }
     }
-  } catch {
+  }
+  catch {
     // Store doesn't exist yet, nothing to clean
   }
 }
@@ -162,32 +165,33 @@ export const listSources = tool({
     notebookId: z.string().describe('The ID of the notebook to list sources from'),
   }),
   execute: async ({ notebookId }: { notebookId: string }) => {
-    console.log('[listSources] Called with notebookId:', notebookId);
+    console.log('[listSources] Called with notebookId:', notebookId)
     try {
-      const sources = await getSourcesByNotebook(notebookId);
-      console.log('[listSources] Found sources:', sources.length);
+      const sources = await getSourcesByNotebook(notebookId)
+      console.log('[listSources] Found sources:', sources.length)
 
       // Transform to lightweight metadata format
-      const sourceMetadata: SourceMetadata[] = sources.map((s) => ({
+      const sourceMetadata: SourceMetadata[] = sources.map(s => ({
         id: s.id,
         title: s.title,
         url: s.url,
         type: s.type,
         wordCount: s.metadata?.wordCount || 0,
-      }));
+      }))
 
       const result = {
         sources: sourceMetadata,
         totalCount: sources.length,
-      };
-      console.log('[listSources] Returning:', result);
-      return result;
-    } catch (error) {
-      console.error('[listSources] Error:', error);
-      throw error;
+      }
+      console.log('[listSources] Returning:', result)
+      return result
+    }
+    catch (error) {
+      console.error('[listSources] Error:', error)
+      throw error
     }
   },
-});
+})
 
 /**
  * readSource - Get full content of a specific source
@@ -204,10 +208,10 @@ export const readSource = tool({
     sourceId: z.string().describe('The ID of the source to read'),
   }),
   execute: async ({ sourceId }: { sourceId: string }) => {
-    const source = await getSource(sourceId);
+    const source = await getSource(sourceId)
 
     if (!source) {
-      throw new Error(`Source ${sourceId} not found`);
+      throw new Error(`Source ${sourceId} not found`)
     }
 
     return {
@@ -217,9 +221,9 @@ export const readSource = tool({
       type: source.type,
       content: source.content,
       metadata: source.metadata,
-    };
+    }
   },
-});
+})
 
 /**
  * findRelevantSources - Use LLM to rank sources by relevance to a query
@@ -256,16 +260,16 @@ Use this tool to narrow down which sources to read in detail.`,
   }),
   execute: async ({ notebookId, query, maxSources, minScore }) => {
     // Import the router function
-    const { rankSourceRelevance } = await import('./ai.ts');
-    const sources = await getSourcesByNotebook(notebookId);
+    const { rankSourceRelevance } = await import('./ai.ts')
+    const sources = await getSourcesByNotebook(notebookId)
 
     // Use the router to rank sources
-    const ranked = await rankSourceRelevance(sources, query);
+    const ranked = await rankSourceRelevance(sources, query)
 
     // Filter by min score and limit
     const filtered = ranked
       .filter(s => (s.relevanceScore ?? 0) >= minScore)
-      .slice(0, maxSources);
+      .slice(0, maxSources)
 
     return {
       query,
@@ -277,10 +281,10 @@ Use this tool to narrow down which sources to read in detail.`,
         type: s.type,
         relevanceScore: s.relevanceScore,
         relevanceReason: s.relevanceReason,
-      }))
-    };
+      })),
+    }
   },
-});
+})
 
 // ============================================================================
 // Tool Types
@@ -290,27 +294,27 @@ Use this tool to narrow down which sources to read in detail.`,
  * Lightweight metadata for a source (returned by listSources)
  */
 export interface SourceMetadata {
-  id: string;
-  title: string;
-  url: string;
-  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text';
-  wordCount: number;
+  id: string
+  title: string
+  url: string
+  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text'
+  wordCount: number
 }
 
 /**
  * Full content of a source (returned by readSource)
  */
 export interface SourceContent {
-  id: string;
-  title: string;
-  url: string;
-  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text';
-  content: string;
+  id: string
+  title: string
+  url: string
+  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text'
+  content: string
   metadata?: {
-    favicon?: string;
-    description?: string;
-    wordCount?: number;
-  };
+    favicon?: string
+    description?: string
+    wordCount?: number
+  }
 }
 
 // ============================================================================
@@ -323,9 +327,9 @@ export interface SourceContent {
  */
 interface ToolConfig {
   /** The AI SDK tool definition */
-  tool: Tool;
+  tool: Tool
   /** Enable caching for this tool (default: false) */
-  cache?: boolean;
+  cache?: boolean
 }
 
 /**
@@ -334,28 +338,28 @@ interface ToolConfig {
 function wrapToolWithCache(
   toolName: string,
   coreTool: Tool,
-  enabled: boolean
+  enabled: boolean,
 ): Tool {
-  if (!enabled || !coreTool.execute) return coreTool;
+  if (!enabled || !coreTool.execute) return coreTool
 
-  const originalExecute = coreTool.execute;
+  const originalExecute = coreTool.execute
 
   return {
     ...coreTool,
     execute: async (input, options) => {
       // Check cache first
-      const cached = await getCachedToolResult<unknown, unknown>(toolName, input);
-      if (cached !== null) return cached;
+      const cached = await getCachedToolResult<unknown, unknown>(toolName, input)
+      if (cached !== null) return cached
 
       // Execute the original function
-      const result = await originalExecute(input, options);
+      const result = await originalExecute(input, options)
 
       // Cache the result
-      await setCachedToolResult(toolName, input, result);
+      await setCachedToolResult(toolName, input, result)
 
-      return result;
+      return result
     },
-  };
+  }
 }
 
 /**
@@ -366,7 +370,7 @@ const sourceToolsRegistry: Record<string, ToolConfig> = {
   listSources: { tool: listSources, cache: false },
   readSource: { tool: readSource, cache: false },
   findRelevantSources: { tool: findRelevantSources, cache: true },
-};
+}
 
 /**
  * Get tools with caching applied based on registry configuration
@@ -374,37 +378,37 @@ const sourceToolsRegistry: Record<string, ToolConfig> = {
  * Call this to get the tools object to pass to streamText()
  */
 export async function getSourceTools() {
-  const { getVisibleToolNames } = await import('./tool-permissions.ts');
-  const visibleTools = await getVisibleToolNames();
+  const { getVisibleToolNames } = await import('./tool-permissions.ts')
+  const visibleTools = await getVisibleToolNames()
 
-  console.log('[getSourceTools] Visible tools:', visibleTools);
+  console.log('[getSourceTools] Visible tools:', visibleTools)
 
-  const result: Record<string, Tool> = {};
+  const result: Record<string, Tool> = {}
 
   for (const [name, config] of Object.entries(sourceToolsRegistry)) {
     // Only include visible tools
     if (!visibleTools.includes(name)) {
-      console.log('[getSourceTools] Skipping invisible tool:', name);
-      continue;
+      console.log('[getSourceTools] Skipping invisible tool:', name)
+      continue
     }
-    result[name] = wrapToolWithCache(name, config.tool, config.cache ?? false);
+    result[name] = wrapToolWithCache(name, config.tool, config.cache ?? false)
   }
 
-  console.log('[getSourceTools] Returning tools:', Object.keys(result));
-  return result;
+  console.log('[getSourceTools] Returning tools:', Object.keys(result))
+  return result
 }
 
 /**
  * Synchronous version - returns all tools (use async version for permission filtering)
  */
 export function getSourceToolsSync() {
-  const result: Record<string, Tool> = {};
+  const result: Record<string, Tool> = {}
 
   for (const [name, config] of Object.entries(sourceToolsRegistry)) {
-    result[name] = wrapToolWithCache(name, config.tool, config.cache ?? false);
+    result[name] = wrapToolWithCache(name, config.tool, config.cache ?? false)
   }
 
-  return result;
+  return result
 }
 
 /**
@@ -412,7 +416,7 @@ export function getSourceToolsSync() {
  * Enable caching by setting `cache: true` in sourceToolsRegistry above
  * @deprecated Use getSourceTools() async function instead
  */
-export const sourceTools = getSourceToolsSync();
+export const sourceTools = getSourceToolsSync()
 
 // ============================================================================
 // Tool Approval Wrapper
@@ -440,43 +444,43 @@ export const sourceTools = getSourceToolsSync();
 export function withApproval<TArgs extends Record<string, unknown>, TResult>(
   toolName: string,
   reason: string,
-  executeFn: (args: TArgs) => Promise<TResult>
+  executeFn: (args: TArgs) => Promise<TResult>,
 ): (args: TArgs) => Promise<TResult> {
   return async (args: TArgs): Promise<TResult> => {
     // Check if tool is auto-approved (permanently or for session)
-    const { isToolAutoApproved } = await import('./tool-permissions.ts');
-    const autoApproved = await isToolAutoApproved(toolName);
+    const { isToolAutoApproved } = await import('./tool-permissions.ts')
+    const autoApproved = await isToolAutoApproved(toolName)
 
     if (autoApproved) {
       // Tool is auto-approved, execute directly
-      return await executeFn(args);
+      return await executeFn(args)
     }
 
     // Tool requires approval, prompt user
-    const toolCallId = crypto.randomUUID();
+    const toolCallId = crypto.randomUUID()
 
     // Create approval request (persisted to IndexedDB)
     const request = await createApprovalRequest(
       toolCallId,
       toolName,
       args,
-      reason
-    );
+      reason,
+    )
 
     // Wait indefinitely for user decision via event
     const approved = await new Promise<boolean>((resolve) => {
       approvalEvents.on(request.id, (_requestId, approved) => {
-        resolve(approved);
-      });
-    });
+        resolve(approved)
+      })
+    })
 
     // Execute the tool if approved, otherwise throw
     if (!approved) {
-      throw new Error(`Tool execution rejected by user: ${reason}`);
+      throw new Error(`Tool execution rejected by user: ${reason}`)
     }
 
-    return await executeFn(args);
-  };
+    return await executeFn(args)
+  }
 }
 
 // ============================================================================
