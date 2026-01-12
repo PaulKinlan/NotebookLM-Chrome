@@ -1,4 +1,25 @@
+/**
+ * Modals Components
+ *
+ * Contains picker modal, confirm dialog, and notebook dialog components.
+ * These are controlled components that receive their state as props.
+ * The parent component (App.tsx) uses useDialog and usePickerModal hooks.
+ */
+
+import type { ConfirmDialogState, NotebookDialogState } from '../hooks/useDialog.ts'
+
+// ============================================================================
+// Picker Modal (imperative wrapper for compatibility)
+// ============================================================================
+
+/**
+ * PickerModal Component
+ *
+ * Placeholder for picker modal - currently managed imperatively by controllers.ts.
+ * TODO: Convert to fully stateful component with usePickerModal.
+ */
 export function PickerModal() {
+  // Imperative placeholder - modal visibility controlled by controllers.ts
   return (
     <div id="picker-modal" className="modal hidden">
       <div className="modal-backdrop"></div>
@@ -32,27 +53,107 @@ export function PickerModal() {
   )
 }
 
-export function NotebookDialog() {
+// ============================================================================
+// Notebook Dialog
+// ============================================================================
+
+export interface NotebookDialogProps extends NotebookDialogState {
+  onConfirm: () => void
+  onCancel: () => void
+  onInput: (value: string) => void
+}
+
+export function NotebookDialog(props: NotebookDialogProps) {
+  const { visible, title, placeholder, confirmText, inputValue, onConfirm, onCancel, onInput } = props
+
+  if (!visible) {
+    return null
+  }
+
+  const handleSubmit = (e: { preventDefault: () => void }) => {
+    e.preventDefault()
+    onConfirm()
+  }
+
   return (
-    <dialog id="notebook-dialog" className="dialog">
-      <h3 id="notebook-dialog-title">New Notebook</h3>
-      <input type="text" id="notebook-name-input" placeholder="Enter notebook name..." />
-      <div className="dialog-actions">
-        <button id="notebook-dialog-cancel" className="btn btn-outline">Cancel</button>
-        <button id="notebook-dialog-confirm" className="btn btn-primary">Create</button>
-      </div>
+    <dialog
+      id="notebook-dialog"
+      className="dialog"
+      open={visible}
+      onCancel={onCancel}
+    >
+      <h3 id="notebook-dialog-title">{title}</h3>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          id="notebook-name-input"
+          placeholder={placeholder}
+          value={inputValue}
+          onInput={(e: { target: HTMLInputElement }) => onInput(e.target.value)}
+          autoFocus
+        />
+        <div className="dialog-actions">
+          <button
+            type="button"
+            id="notebook-dialog-cancel"
+            className="btn btn-outline"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            id="notebook-dialog-confirm"
+            className="btn btn-primary"
+          >
+            {confirmText}
+          </button>
+        </div>
+      </form>
     </dialog>
   )
 }
 
-export function ConfirmDialog() {
+// ============================================================================
+// Confirm Dialog
+// ============================================================================
+
+export interface ConfirmDialogProps extends ConfirmDialogState {
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+export function ConfirmDialog(props: ConfirmDialogProps) {
+  const { visible, title, message, confirmText, cancelText, isDestructive, onConfirm, onCancel } = props
+
+  if (!visible) {
+    return null
+  }
+
   return (
-    <dialog id="confirm-dialog" className="dialog">
-      <h3 id="confirm-dialog-title">Confirm</h3>
-      <p id="confirm-dialog-message"></p>
+    <dialog
+      id="confirm-dialog"
+      className="dialog"
+      open={visible}
+      onCancel={onCancel}
+    >
+      <h3 id="confirm-dialog-title">{title}</h3>
+      <p id="confirm-dialog-message">{message}</p>
       <div className="dialog-actions">
-        <button id="confirm-dialog-cancel" className="btn btn-outline">Cancel</button>
-        <button id="confirm-dialog-confirm" className="btn btn-danger">Delete</button>
+        <button
+          id="confirm-dialog-cancel"
+          className="btn btn-outline"
+          onClick={onCancel}
+        >
+          {cancelText}
+        </button>
+        <button
+          id="confirm-dialog-confirm"
+          className={`btn ${isDestructive ? 'btn-danger' : 'btn-primary'}`}
+          onClick={onConfirm}
+        >
+          {confirmText}
+        </button>
       </div>
     </dialog>
   )
