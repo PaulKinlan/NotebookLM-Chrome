@@ -24,7 +24,7 @@
     "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.anthropic.com https://api.openai.com https://openrouter.ai https://generativelanguage.googleapis.com https://api.groq.com https://router.huggingface.co https://huggingface.co https://api.mistral.ai https://api.together.xyz https://api.deepinfra.com https://api.perplexity.ai https://api.fireworks.ai https://api.z.ai;"
   },
   "background": {
-    "service_worker": "src/background/index.ts",
+    "service_worker": "src/background.ts",
     "type": "module"
   },
   "side_panel": {
@@ -81,7 +81,7 @@
         "<all_urls>"
       ],
       "js": [
-        "src/content/index.ts"
+        "src/content-script.ts"
       ],
       "run_at": "document_idle"
     }
