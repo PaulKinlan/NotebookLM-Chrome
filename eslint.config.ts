@@ -85,6 +85,7 @@ export default [
         MessageEvent: 'readonly',
         requestAnimationFrame: 'readonly',
         cancelAnimationFrame: 'readonly',
+        queueMicrotask: 'readonly',
       },
     },
     plugins: {

@@ -6,6 +6,7 @@
  */
 
 import type { VNode } from './vnode.ts'
+import { scheduleUpdate } from './scheduler.ts'
 
 // Re-export scheduler functions for convenience
 export { scheduleUpdate, getUpdatePromise } from './scheduler.ts'
@@ -15,7 +16,7 @@ export { scheduleUpdate, getUpdatePromise } from './scheduler.ts'
  */
 export interface Hook {
   /** Hook type determines how it's processed during render */
-  type: 'state' | 'effect' | 'memo' | 'callback' | 'context'
+  type: 'state' | 'effect' | 'memo' | 'callback' | 'context' | 'reducer' | 'layout' | 'external' | 'id'
   /** The current value of the hook */
   value: unknown
   /** Dependency array for memoization (effect, useMemo, useCallback) */
@@ -49,6 +50,15 @@ export interface ComponentInstance {
   parent?: ComponentInstance | null
   /** Whether this component is currently unmounted */
   isUnmounted: boolean
+  /** Error boundary state (for ErrorBoundary components) */
+  errorState?: Error | null
+  /** Whether this component is an error boundary */
+  isErrorBoundary?: boolean
+  /** Error boundary props (fallback, onError callback) */
+  errorBoundaryProps?: {
+    fallback?: (error: Error) => VNode | Node
+    onError?: (error: Error, errorInfo: { componentStack?: string }) => void
+  }
 }
 
 /**
@@ -122,5 +132,61 @@ export function unmountComponent(component: ComponentInstance): void {
       hook.cleanup()
       hook.cleanup = undefined
     }
+  }
+
+  // External store cleanup is called by the reconciler to avoid circular dep
+}
+
+/**
+ * Find the nearest error boundary ancestor of a component
+ */
+export function findNearestErrorBoundary(
+  component: ComponentInstance,
+): ComponentInstance | null {
+  let current: ComponentInstance | null = component.parent ?? null
+  while (current) {
+    if (current.isErrorBoundary) {
+      return current
+    }
+    current = current.parent ?? null
+  }
+  return null
+}
+
+/**
+ * Capture an error in a component and propagate to nearest error boundary
+ */
+export function captureError(
+  component: ComponentInstance,
+  error: Error,
+): boolean {
+  const errorBoundary = findNearestErrorBoundary(component)
+
+  if (errorBoundary) {
+    // Set error state on the error boundary
+    errorBoundary.errorState = error
+
+    // Call the onError callback if provided
+    if (errorBoundary.errorBoundaryProps?.onError) {
+      errorBoundary.errorBoundaryProps.onError(error, {
+        componentStack: `${component.fn.name || 'Anonymous'}`,
+      })
+    }
+
+    // Trigger re-render of the error boundary
+    scheduleUpdate(errorBoundary)
+
+    return true // Error was captured
+  }
+
+  return false // No error boundary found
+}
+
+/**
+ * Reset error state for a component (called after successful render)
+ */
+export function resetErrorState(component: ComponentInstance): void {
+  if (component.isErrorBoundary && component.errorState) {
+    component.errorState = null
   }
 }
