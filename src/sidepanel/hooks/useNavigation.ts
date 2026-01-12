@@ -8,7 +8,7 @@
 import { getCurrentComponent } from '../../jsx-runtime/component.ts'
 
 // Valid tab names in the side panel
-export type TabName = 'library' | 'chat' | 'transform' | 'add'
+export type TabName = 'library' | 'chat' | 'transform' | 'add' | 'settings'
 
 // Reference to the global switchTab function from controllers.ts
 let switchTabFn: ((tabName: TabName) => void) | null = null

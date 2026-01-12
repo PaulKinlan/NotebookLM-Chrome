@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
 import type { Source } from '../../types/index.ts'
+import { getSourcesByNotebook, saveSource, deleteSource } from '../../lib/storage.ts'
 
 export interface UseSourcesReturn {
   /** Sources for the current notebook */
@@ -79,7 +80,6 @@ export function useSources(notebookId: string | null): UseSourcesReturn {
     setIsLoading(true)
     setError(null)
     try {
-      const { getSourcesByNotebook } = await import('../../lib/storage.ts')
       const loaded = await getSourcesByNotebook(id)
       setSources(loaded)
     }
@@ -96,7 +96,6 @@ export function useSources(notebookId: string | null): UseSourcesReturn {
 
     setIsLoading(true)
     try {
-      const { saveSource } = await import('../../lib/storage.ts')
       await saveSource(source)
       // Reload sources
       await loadSources(notebookId)
@@ -111,7 +110,6 @@ export function useSources(notebookId: string | null): UseSourcesReturn {
 
     setIsLoading(true)
     try {
-      const { deleteSource } = await import('../../lib/storage.ts')
       await deleteSource(sourceId)
       // Reload sources
       await loadSources(notebookId)

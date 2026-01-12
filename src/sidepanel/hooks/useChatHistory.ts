@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
 import type { ChatEvent } from '../../types/index.ts'
+import { getChatHistory, saveChatEvent, clearChatHistory } from '../../lib/storage.ts'
 
 export interface UseChatHistoryReturn {
   /** Chat events for the notebook */
@@ -64,7 +65,6 @@ export function useChatHistory(notebookId: string | null): UseChatHistoryReturn 
   const loadHistory = async (id: string): Promise<void> => {
     setIsLoading(true)
     try {
-      const { getChatHistory } = await import('../../lib/storage.ts')
       const history = await getChatHistory(id)
       setEvents(history)
     }
@@ -80,14 +80,12 @@ export function useChatHistory(notebookId: string | null): UseChatHistoryReturn 
       return
     }
 
-    const { saveChatEvent } = await import('../../lib/storage.ts')
     await saveChatEvent(event)
     // Reload history to get the updated list
     await loadHistory(event.notebookId)
   }
 
   const clearHistory = async (id: string): Promise<void> => {
-    const { clearChatHistory } = await import('../../lib/storage.ts')
     await clearChatHistory(id)
     setEvents([])
   }

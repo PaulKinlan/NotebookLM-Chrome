@@ -7,6 +7,7 @@
 
 import { useState } from '../../jsx-runtime/hooks/index.ts'
 import type { PickerItem } from '../services/sources.ts'
+import { getTabs, getBookmarks, getHistory, getTabGroups } from '../services/sources.ts'
 
 export type PickerType = 'tab' | 'tabGroup' | 'bookmark' | 'history' | null
 
@@ -88,22 +89,18 @@ export function usePickerModal(): UsePickerModalReturn {
 
       switch (type) {
         case 'tab': {
-          const { getTabs } = await import('../services/sources.ts')
           loadedItems = await getTabs()
           break
         }
         case 'bookmark': {
-          const { getBookmarks } = await import('../services/sources.ts')
           loadedItems = await getBookmarks()
           break
         }
         case 'history': {
-          const { getHistory } = await import('../services/sources.ts')
           loadedItems = await getHistory()
           break
         }
         case 'tabGroup': {
-          const { getTabGroups } = await import('../services/sources.ts')
           loadedItems = await getTabGroups()
           break
         }

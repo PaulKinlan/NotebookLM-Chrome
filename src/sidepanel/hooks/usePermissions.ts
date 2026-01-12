@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { checkPermissions, requestPermission } from '../../lib/permissions.ts'
 
 export interface PermissionStatus {
   tabs: boolean
@@ -62,7 +63,6 @@ export function usePermissions(): UsePermissionsReturn {
   }, [])
 
   const reloadPermissions = async (): Promise<void> => {
-    const { checkPermissions } = await import('../../lib/permissions.ts')
     const updated = await checkPermissions()
     setPermissions(updated)
   }
@@ -78,7 +78,6 @@ export function usePermissions(): UsePermissionsReturn {
     }
 
     // Request permission
-    const { requestPermission, checkPermissions } = await import('../../lib/permissions.ts')
     const granted = await requestPermission(type)
 
     if (granted) {

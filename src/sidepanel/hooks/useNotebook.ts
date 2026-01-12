@@ -7,6 +7,14 @@
 
 import { useState, useCallback, useEffect } from '../../jsx-runtime/hooks/index.ts'
 import type { Notebook } from '../../types/index.ts'
+import {
+  getNotebooks,
+  getActiveNotebookId,
+  setActiveNotebookId,
+  saveNotebook,
+  deleteNotebook as deleteNb,
+  createNotebook as createNb,
+} from '../../lib/storage.ts'
 
 export interface UseNotebookReturn {
   /** Current selected notebook ID */
@@ -59,7 +67,6 @@ export function useNotebook(): UseNotebookReturn {
   const loadNotebooks = useCallback(async () => {
     setIsLoading(true)
     try {
-      const { getNotebooks } = await import('../../lib/storage.ts')
       const loaded = await getNotebooks()
       setNotebooks(loaded)
     }
@@ -69,14 +76,11 @@ export function useNotebook(): UseNotebookReturn {
   }, [])
 
   const loadActiveNotebook = useCallback(async () => {
-    const { getActiveNotebookId } = await import('../../lib/storage.ts')
     const activeId = await getActiveNotebookId()
     setCurrentNotebookId(activeId)
   }, [])
 
   const selectNotebook = async (id: string): Promise<void> => {
-    const { setActiveNotebookId, getNotebooks } = await import('../../lib/storage.ts')
-
     // Update active notebook
     await setActiveNotebookId(id)
     setCurrentNotebookId(id)
@@ -87,12 +91,9 @@ export function useNotebook(): UseNotebookReturn {
   }
 
   const createNotebook = async (name: string): Promise<Notebook | null> => {
-    const { createNotebook: createNb, getNotebooks } = await import('../../lib/storage.ts')
-
     const newNotebook = createNb(name)
 
     // Save the new notebook
-    const { saveNotebook } = await import('../../lib/storage.ts')
     await saveNotebook(newNotebook)
 
     // Reload notebooks list
@@ -102,8 +103,6 @@ export function useNotebook(): UseNotebookReturn {
   }
 
   const deleteNotebook = async (id: string): Promise<void> => {
-    const { deleteNotebook: deleteNb, getNotebooks, getActiveNotebookId } = await import('../../lib/storage.ts')
-
     await deleteNb(id)
 
     // If we deleted the active notebook, clear it

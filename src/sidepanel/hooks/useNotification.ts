@@ -63,7 +63,7 @@ export function useNotification() {
 
     // Auto-hide after duration
     hideTimeout = window.setTimeout(() => {
-      setNotification((prev) => ({ ...prev, visible: false }))
+      setNotification(prev => ({ ...prev, visible: false }))
     }, AUTO_HIDE_DURATION)
   }
 
@@ -72,7 +72,7 @@ export function useNotification() {
       clearTimeout(hideTimeout)
       hideTimeout = null
     }
-    setNotification((prev) => ({ ...prev, visible: false }))
+    setNotification(prev => ({ ...prev, visible: false }))
   }
 
   return { notification, showNotification, hideNotification }

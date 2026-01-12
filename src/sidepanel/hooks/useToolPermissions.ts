@@ -8,7 +8,8 @@
 
 import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
 import { getToolPermissions, saveToolPermissions } from '../../lib/tool-permissions.ts'
-import type { ToolPermissionsConfig, ToolPermission } from '../../types/index.ts'
+import type { ToolPermissionsConfig } from '../../types/index.ts'
+import { storage } from '../../lib/storage.ts'
 
 export interface ToolPermissionItem {
   name: string
@@ -171,7 +172,6 @@ export function useToolPermissions(): UseToolPermissionsReturn {
 
   const resetToDefaults = async (): Promise<void> => {
     // Reset to defaults by clearing and reloading
-    const { storage } = await import('../../lib/storage.ts')
     await storage.setSetting('toolPermissions', null)
     await loadPermissions()
   }

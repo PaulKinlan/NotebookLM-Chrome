@@ -144,7 +144,7 @@ export function useDialog(): UseDialogReturn {
   }
 
   const hideConfirm = (result: boolean) => {
-    setConfirmDialog((prev) => ({ ...prev, visible: false }))
+    setConfirmDialog(prev => ({ ...prev, visible: false }))
     if (confirmResolveRef.current) {
       confirmResolveRef.current(result)
       confirmResolveRef.current = null
@@ -165,7 +165,7 @@ export function useDialog(): UseDialogReturn {
   }
 
   const hideNotebook = (result: string | null) => {
-    setNotebookDialog((prev) => ({ ...prev, visible: false, inputValue: '' }))
+    setNotebookDialog(prev => ({ ...prev, visible: false, inputValue: '' }))
     if (notebookResolveRef.current) {
       notebookResolveRef.current(result)
       notebookResolveRef.current = null
@@ -183,7 +183,7 @@ export function useDialog(): UseDialogReturn {
     _handleNotebookConfirm: () => hideNotebook(notebookDialog.inputValue || null),
     _handleNotebookCancel: () => hideNotebook(null),
     _setNotebookInput: (value: string) => {
-      setNotebookDialog((prev) => ({ ...prev, inputValue: value }))
+      setNotebookDialog(prev => ({ ...prev, inputValue: value }))
     },
   }
 }
