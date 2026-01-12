@@ -13,7 +13,7 @@ import type {
   LanguageModelV3Text,
   LanguageModelV3FinishReason,
   LanguageModelV3Usage,
-} from '@ai-sdk/provider';
+} from '@ai-sdk/provider'
 
 /**
  * Mock behavior configuration
@@ -21,14 +21,14 @@ import type {
  */
 interface MockBehavior {
   /** Tools to call (in order) */
-  toolCalls: Array<{ toolName: string; args: Record<string, unknown> }>;
+  toolCalls: Array<{ toolName: string, args: Record<string, unknown> }>
   /** Final response after tools execute */
-  finalResponse: string;
+  finalResponse: string
   /** Delay before each response chunk (ms) */
-  delay?: number;
+  delay?: number
 }
 
-const MOCK_BEHAVIOR_KEY = '__mock_ai_behavior__';
+const MOCK_BEHAVIOR_KEY = '__mock_ai_behavior__'
 
 /**
  * Get the mock behavior configuration from storage
@@ -36,42 +36,42 @@ const MOCK_BEHAVIOR_KEY = '__mock_ai_behavior__';
 async function getMockBehavior(): Promise<MockBehavior | null> {
   return new Promise((resolve) => {
     chrome.storage.local.get([MOCK_BEHAVIOR_KEY], (result) => {
-      resolve((result[MOCK_BEHAVIOR_KEY] as MockBehavior | undefined) || null);
-    });
-  });
+      resolve((result[MOCK_BEHAVIOR_KEY] as MockBehavior | undefined) || null)
+    })
+  })
 }
 
 /**
  * Mock Language Model implementation
  */
 class MockLanguageModel implements LanguageModelV3 {
-  readonly specificationVersion = 'v3' as const;
-  readonly provider = 'mock-test' as const;
+  readonly specificationVersion = 'v3' as const
+  readonly provider = 'mock-test' as const
 
   // Generate unique IDs for stream parts
-  private chunkId = 0;
-  private getId = () => `chunk-${this.chunkId++}`;
+  private chunkId = 0
+  private getId = () => `chunk-${this.chunkId++}`
 
   constructor(
     public readonly modelId: string,
-    private readonly supported: Record<string, RegExp[]> = {}
+    private readonly supported: Record<string, RegExp[]> = {},
   ) {}
 
   get supportedUrls(): Record<string, RegExp[]> {
-    return this.supported;
+    return this.supported
   }
 
   async doGenerate(): Promise<LanguageModelV3GenerateResult> {
-    const behavior = await getMockBehavior();
+    const behavior = await getMockBehavior()
 
     const content: LanguageModelV3Text[] = [
       { type: 'text', text: behavior?.finalResponse || 'Mock response' },
-    ];
+    ]
 
     const finishReason: LanguageModelV3FinishReason = {
       unified: 'stop',
       raw: 'stop',
-    };
+    }
 
     const usage: LanguageModelV3Usage = {
       inputTokens: {
@@ -85,7 +85,7 @@ class MockLanguageModel implements LanguageModelV3 {
         text: undefined,
         reasoning: undefined,
       },
-    };
+    }
 
     return {
       content,
@@ -93,36 +93,36 @@ class MockLanguageModel implements LanguageModelV3 {
       usage,
       warnings: [],
       request: {},
-    };
+    }
   }
 
   async doStream(): Promise<LanguageModelV3StreamResult> {
-    const behavior = await getMockBehavior();
+    const behavior = await getMockBehavior()
 
     if (!behavior) {
       throw new Error(
-        'Mock AI behavior not set. Set chrome.storage.local.__mock_ai_behavior__ first.'
-      );
+        'Mock AI behavior not set. Set chrome.storage.local.__mock_ai_behavior__ first.',
+      )
     }
 
-    const delay = behavior.delay || 100;
+    const delay = behavior.delay || 100
 
     // Create a ReadableStream with mock chunks
-    const chunks: LanguageModelV3StreamPart[] = [];
+    const chunks: LanguageModelV3StreamPart[] = []
 
     // Add tool-call events
     for (const toolCall of behavior.toolCalls) {
-      const toolCallId = `mock-${toolCall.toolName}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      const toolCallId = `mock-${toolCall.toolName}-${Date.now()}-${Math.random().toString(36).substring(7)}`
 
       // Tool call input must be a JSON string
-      const input = JSON.stringify(toolCall.args);
+      const input = JSON.stringify(toolCall.args)
 
       chunks.push({
         type: 'tool-call',
         toolCallId,
         toolName: toolCall.toolName,
         input,
-      });
+      })
     }
 
     // Add final text
@@ -130,24 +130,24 @@ class MockLanguageModel implements LanguageModelV3 {
       type: 'text-delta',
       delta: behavior.finalResponse,
       id: this.getId(),
-    });
+    })
 
     // Convert chunks to ReadableStream with delays
     const stream = new ReadableStream<LanguageModelV3StreamPart>({
       async start(controller) {
         for (const chunk of chunks) {
-          controller.enqueue(chunk);
+          controller.enqueue(chunk)
           // Add delay between chunks
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          await new Promise(resolve => setTimeout(resolve, delay))
         }
-        controller.close();
+        controller.close()
       },
-    });
+    })
 
     return {
       stream,
       request: {},
-    };
+    }
   }
 }
 
@@ -168,7 +168,7 @@ class MockLanguageModel implements LanguageModelV3 {
  * ```
  */
 export function createMockModel(): LanguageModelV3 {
-  return new MockLanguageModel('mock-test-model');
+  return new MockLanguageModel('mock-test-model')
 }
 
 /**
@@ -176,8 +176,8 @@ export function createMockModel(): LanguageModelV3 {
  */
 export async function setMockBehavior(behavior: MockBehavior): Promise<void> {
   return new Promise((resolve) => {
-    chrome.storage.local.set({ [MOCK_BEHAVIOR_KEY]: behavior }, () => resolve());
-  });
+    chrome.storage.local.set({ [MOCK_BEHAVIOR_KEY]: behavior }, () => resolve())
+  })
 }
 
 /**
@@ -185,6 +185,6 @@ export async function setMockBehavior(behavior: MockBehavior): Promise<void> {
  */
 export async function clearMockBehavior(): Promise<void> {
   return new Promise((resolve) => {
-    chrome.storage.local.remove([MOCK_BEHAVIOR_KEY], () => resolve());
-  });
+    chrome.storage.local.remove([MOCK_BEHAVIOR_KEY], () => resolve())
+  })
 }
