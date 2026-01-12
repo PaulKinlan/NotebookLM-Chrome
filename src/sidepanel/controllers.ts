@@ -574,6 +574,15 @@ async function init(): Promise<void> {
   await checkPendingAction();
 }
 
+interface PendingAction {
+  type: string;
+  payload: {
+    tabId?: number;
+    linkUrl?: string;
+    links?: string[];
+  };
+}
+
 async function checkPendingAction(): Promise<void> {
   try {
     const result = await chrome.storage.session.get("pendingAction");
@@ -581,7 +590,7 @@ async function checkPendingAction(): Promise<void> {
       // Clear the pending action first to prevent duplicate processing
       await chrome.storage.session.remove("pendingAction");
 
-      const { type, payload } = result.pendingAction;
+      const { type, payload } = result.pendingAction as PendingAction;
       if (type === "CREATE_NOTEBOOK_AND_ADD_PAGE" && payload.tabId) {
         handleCreateNotebookAndAddPage(payload.tabId);
       } else if (type === "CREATE_NOTEBOOK_AND_ADD_LINK" && payload.linkUrl) {

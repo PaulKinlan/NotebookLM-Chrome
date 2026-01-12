@@ -823,7 +823,7 @@ function waitForTabLoad(tabId: number, timeoutMs: number = 30000): Promise<void>
 
     const listener = (
       updatedTabId: number,
-      changeInfo: chrome.tabs.TabChangeInfo
+      changeInfo: { status?: string }
     ) => {
       if (updatedTabId === tabId && changeInfo.status === "complete") {
         if (!resolved) {
@@ -966,7 +966,7 @@ async function handleListTabGroups(): Promise<{
     id: number;
     windowId: number;
     title: string;
-    color: chrome.tabGroups.ColorEnum;
+    color: string;
     collapsed: boolean;
   }>;
 }> {

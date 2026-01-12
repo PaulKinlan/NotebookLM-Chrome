@@ -962,7 +962,8 @@ function getCachedModels<T>(cacheKey: string): Promise<CachedModels<T> | null> {
       if (chrome.runtime.lastError) {
         reject(chrome.runtime.lastError);
       } else {
-        resolve(result[cacheKey] || null);
+        const cached = result[cacheKey] as CachedModels<T> | undefined;
+        resolve(cached || null);
       }
     });
   });
