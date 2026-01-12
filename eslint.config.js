@@ -99,8 +99,8 @@ export default [
       'foliolm/barrel-only-re-exports': 'error',
       // Disallow eslint-disable comments - code should be fixed, not suppressed
       'eslint-comments/no-use': ['error', { allow: [] }],
-      // Disallow unused eslint-disable comments (native ESLint)
-      'no-unused-disable': 'error',
+      // Disallow unused eslint-disable comments
+      'eslint-comments/no-unused-disable': 'error',
       // Disallow type coercion
       'no-implicit-coercion': 'error',
       'no-eq-null': 'error',
