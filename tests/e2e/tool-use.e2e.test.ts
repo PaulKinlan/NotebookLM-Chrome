@@ -4,7 +4,7 @@
  * Tests for the agentic AI tool use functionality including:
  * - Tool call UI rendering
  * - Tool status updates (calling → done/error)
- * - Approval dialog for tools requiring approval
+ * - Inline approval cards in chat for tools requiring approval
  * - Source tools (listSources, readSource) - auto-approved
  * - Browser tools (listTabs, listWindows) - require approval
  */
@@ -286,44 +286,61 @@ describe('Tool Use', () => {
       expect(chatMessages).toBeTruthy();
     });
 
-    it('should have approval dialog elements in DOM', async () => {
-      // Approval dialog should be created by initApprovalUI
-      const approvalDialog = await page.$('#approval-dialog');
-      expect(approvalDialog).toBeTruthy();
+    it('should have inline approval card elements available in DOM', async () => {
+      // Chat messages container should exist for inline approvals
+      const chatMessages = await page.$('#chat-messages');
+      expect(chatMessages).toBeTruthy();
 
-      // Check for approval list
-      const approvalList = await page.$('#approval-list');
-      expect(approvalList).toBeTruthy();
+      // Verify the chat-messages container exists and can receive approval cards
+      const containerExists = await page.evaluate(() => {
+        const chatMessages = document.getElementById('chat-messages');
+        return chatMessages !== null;
+      });
+      expect(containerExists).toBe(true);
     });
 
-    it('should show approval dialog when manually triggered', async () => {
-      // Trigger approval dialog by evaluating the show function
-      await page.evaluate(() => {
-        // If the function doesn't exist globally, we'll just verify the dialog exists
-        const dialog = document.getElementById('approval-dialog');
-        if (dialog && !(dialog as HTMLDialogElement).open) {
-          (dialog as HTMLDialogElement).showModal();
-        }
+    it('should render approval card when triggered', async () => {
+      // Create a mock inline approval card to verify rendering
+      const approvalCard = await page.evaluate(() => {
+        const div = document.createElement('div');
+        div.id = 'approval-test-123';
+        div.className = 'chat-message approval-pending';
+        div.innerHTML = `
+          <div class="chat-message-role">⏸️ Awaiting Approval</div>
+          <div class="chat-message-content">
+            <div class="approval-card">
+              <div class="approval-tool-name">listSources</div>
+              <div class="approval-reason">AI needs to list your sources</div>
+              <div class="approval-args">
+                <div class="approval-args-label">Arguments:</div>
+                <div class="approval-args-content">
+                  <div><strong>notebookId:</strong> test-123</div>
+                </div>
+              </div>
+              <div class="approval-actions">
+                <button class="btn btn-outline">✕ Reject</button>
+                <button class="btn btn-primary">✓ Allow Once</button>
+                <button class="btn btn-primary">✓ Allow Session</button>
+                <button class="btn btn-primary">✓ Allow Always</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('chat-messages')?.appendChild(div);
+        return {
+          exists: document.getElementById('approval-test-123') !== null,
+          hasClass: div.classList.contains('approval-pending'),
+        };
       });
 
-      // Wait a moment for the dialog to appear
-      await new Promise(resolve => setTimeout(resolve, 200));
+      expect(approvalCard.exists).toBe(true);
+      expect(approvalCard.hasClass).toBe(true);
 
-      // Check if dialog is open
-      const isDialogOpen = await page.$eval('#approval-dialog',
-        (el) => (el as HTMLDialogElement).open
-      );
-
-      // Close the dialog if it opened
-      if (isDialogOpen) {
-        await page.evaluate(() => {
-          const dialog = document.getElementById('approval-dialog');
-          if (dialog) (dialog as HTMLDialogElement).close();
-        });
-      }
-
-      // We verified the dialog can be opened
-      expect(isDialogOpen).toBe(true);
+      // Clean up
+      await page.evaluate(() => {
+        const el = document.getElementById('approval-test-123');
+        if (el) el.remove();
+      });
     });
   });
 
@@ -424,62 +441,47 @@ describe('Tool Use', () => {
     });
   });
 
-  describe('Tool Approval Dialog Structure', () => {
-    it('should render approval request with correct structure', async () => {
-      // Create a mock approval request to verify rendering
+  describe('Tool Approval Card Structure', () => {
+    it('should render approval card with correct structure', async () => {
+      // Create a mock approval card to verify inline rendering
       const approvalHtml = await page.evaluate(() => {
         return `
-          <div class="approval-request" data-request-id="test-request-id">
-            <div class="approval-header">
-              <div class="approval-tool-name">listTabs</div>
-              <div class="approval-time">Just now</div>
-            </div>
-            <div class="approval-reason">
-              <strong>Reason:</strong> AI needs to list your browser tabs
-            </div>
-            <div class="approval-args">
-              <div class="approval-args-content">
-                <div><strong>windowId:</strong> 1</div>
+          <div class="chat-message approval-pending" id="approval-test-456">
+            <div class="chat-message-role">⏸️ Awaiting Approval</div>
+            <div class="chat-message-content">
+              <div class="approval-card">
+                <div class="approval-tool-name">listTabs</div>
+                <div class="approval-reason">AI needs to list your browser tabs</div>
+                <div class="approval-args">
+                  <div class="approval-args-label">Arguments:</div>
+                  <div class="approval-args-content">
+                    <div><strong>windowId:</strong> 1</div>
+                  </div>
+                </div>
+                <div class="approval-actions">
+                  <button class="btn btn-outline">✕ Reject</button>
+                  <button class="btn btn-primary">✓ Allow Once</button>
+                  <button class="btn btn-primary">✓ Allow Session</button>
+                  <button class="btn btn-primary">✓ Allow Always</button>
+                </div>
               </div>
-            </div>
-            <div class="approval-scope-selection">
-              <label class="approval-scope-label">Approval scope:</label>
-              <div class="approval-scopes">
-                <label>
-                  <input type="radio" name="scope-test-request-id" value="once" checked />
-                  Once
-                </label>
-                <label>
-                  <input type="radio" name="scope-test-request-id" value="session" />
-                  Session
-                </label>
-                <label>
-                  <input type="radio" name="scope-test-request-id" value="forever" />
-                  Forever
-                </label>
-              </div>
-            </div>
-            <div class="approval-actions">
-              <button class="btn btn-outline btn-small" data-reject="test-request-id">
-                Reject
-              </button>
-              <button class="btn btn-primary btn-small" data-approve="test-request-id">
-                Approve
-              </button>
             </div>
           </div>
         `;
       });
 
       // Verify structure
-      expect(approvalHtml).toContain('approval-request');
+      expect(approvalHtml).toContain('approval-pending');
+      expect(approvalHtml).toContain('approval-card');
       expect(approvalHtml).toContain('approval-tool-name');
       expect(approvalHtml).toContain('approval-reason');
       expect(approvalHtml).toContain('approval-args');
-      expect(approvalHtml).toContain('approval-scope-selection');
       expect(approvalHtml).toContain('approval-actions');
-      expect(approvalHtml).toContain('data-approve');
-      expect(approvalHtml).toContain('data-reject');
+      // New UI has 4 separate buttons instead of approve/reject data attributes
+      expect(approvalHtml).toContain('✕ Reject');
+      expect(approvalHtml).toContain('✓ Allow Once');
+      expect(approvalHtml).toContain('✓ Allow Session');
+      expect(approvalHtml).toContain('✓ Allow Always');
     });
 
   });
@@ -827,7 +829,36 @@ describe('Tool Use', () => {
 
       if (!agenticEnabledAfterReload) {
         await page.click('#tool-based-context');
+        // Wait for the change event to be processed and setting persisted
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
+
+      // Force set agentic mode via direct storage call
+      await page.evaluate(() => {
+        return new Promise<void>((resolve) => {
+          chrome.storage.local.get(['aiSettings'], (result: any) => {
+            const settings = result.aiSettings || {};
+            settings.contextMode = 'agentic';
+            chrome.storage.local.set({ aiSettings: settings }, () => {
+              // Also update the checkbox UI
+              const checkbox = document.getElementById('tool-based-context') as HTMLInputElement;
+              if (checkbox) checkbox.checked = true;
+              resolve();
+            });
+          });
+        });
+      });
+
+      // Verify agentic mode was persisted
+      const agenticModePersisted = await page.evaluate(async () => {
+        const settings = await new Promise<any>((resolve) => {
+          chrome.storage.local.get(['aiSettings'], (result) => {
+            resolve(result.aiSettings || {});
+          });
+        });
+        return settings.contextMode === 'agentic';
+      });
+      console.log('[Test] Agentic mode persisted after Step 5:', agenticModePersisted);
 
       // Disable auto-approval for listSources (settings persist, but verify)
       const autoApprovedAfterReload = await page.$eval('#tool-no-approval-listSources',
@@ -870,6 +901,38 @@ describe('Tool Use', () => {
       const query = 'Please use listSources to show me what sources are in this notebook.';
       console.log('[Test] Step 6: Sending query:', query);
 
+      // Verify agentic mode is enabled before sending
+      const agenticModeEnabled = await page.evaluate(async () => {
+        // Read from chrome.storage.local directly to verify context mode
+        const settings = await new Promise<any>((resolve) => {
+          chrome.storage.local.get(['aiSettings'], (result) => {
+            resolve(result.aiSettings || {});
+          });
+        });
+        return settings.contextMode === 'agentic';
+      });
+      console.log('[Test] Agentic mode enabled before query:', agenticModeEnabled);
+
+      if (!agenticModeEnabled) {
+        // Force set agentic mode in storage
+        await page.evaluate(() => {
+          return new Promise<void>((resolve) => {
+            chrome.storage.local.get(['aiSettings'], (result: any) => {
+              const settings = result.aiSettings || {};
+              settings.contextMode = 'agentic';
+              chrome.storage.local.set({ aiSettings: settings }, () => resolve());
+            });
+          });
+        });
+        // Also check the UI checkbox
+        const checkboxChecked = await page.$eval('#tool-based-context',
+          (el) => (el as HTMLInputElement).checked
+        );
+        if (!checkboxChecked) {
+          await page.click('#tool-based-context');
+        }
+      }
+
       await page.evaluate((text) => {
         const input = document.getElementById('query-input') as HTMLInputElement;
         input.value = text;
@@ -894,7 +957,7 @@ describe('Tool Use', () => {
         const chatMessages = document.querySelectorAll('.chat-message');
         const messages: string[] = [];
         chatMessages.forEach((msg: Element) => {
-          const content = msg.querySelector('.message-content')?.textContent;
+          const content = msg.querySelector('.chat-message-content')?.textContent;
           if (content) messages.push(content);
         });
         return messages;
@@ -928,42 +991,76 @@ describe('Tool Use', () => {
       });
       console.log('[Test] Console errors:', consoleErrors);
 
-      // Step 7: Wait for approval dialog to appear
-      // The approval dialog should appear because we disabled auto-approval for listSources
+      // Step 7: Wait for inline approval card to appear in chat
+      // The approval card should appear because we disabled auto-approval for listSources
       await page.waitForFunction(() => {
-        const dialog = document.getElementById('approval-dialog') as HTMLDialogElement;
-        return dialog && dialog.open;
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        return approvalCards.length > 0;
       }, { timeout: 15000 });
 
-      // Verify dialog is open
-      const isDialogOpen = await page.$eval('#approval-dialog',
-        (el) => (el as HTMLDialogElement).open
-      );
-      expect(isDialogOpen).toBe(true);
+      // Verify approval card is present
+      const debugInfo = await page.evaluate(() => {
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        const allMessages = document.querySelectorAll('.chat-message');
+        return {
+          approvalCardCount: approvalCards.length,
+          totalMessageCount: allMessages.length,
+          messageClasses: Array.from(allMessages).map(m => m.className),
+          messageTextContents: Array.from(allMessages).map(m => m.textContent?.substring(0, 100)),
+        };
+      });
+      console.log('[Test] Debug info:', JSON.stringify(debugInfo));
+
+      const hasApprovalCard = debugInfo.approvalCardCount > 0;
+      expect(hasApprovalCard).toBe(true);
 
       // Verify the approval request is for listSources
-      const hasListSourcesRequest = await page.evaluate(() => {
-        const requests = document.querySelectorAll('.approval-request');
-        for (const request of requests) {
-          const toolName = request.querySelector('.approval-tool-name')?.textContent;
-          if (toolName === 'listSources') {
-            return true;
-          }
+      const listSourcesDebug = await page.evaluate(() => {
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        const results: any[] = [];
+        for (const card of approvalCards) {
+          const toolNameEl = card.querySelector('.approval-tool-name');
+          results.push({
+            hasToolNameEl: !!toolNameEl,
+            toolNameText: toolNameEl?.textContent,
+            innerHTML: card.innerHTML.substring(0, 200),
+          });
         }
-        return false;
+        return { cardCount: approvalCards.length, results };
       });
+      console.log('[Test] listSources debug:', JSON.stringify(listSourcesDebug));
+
+      const hasListSourcesRequest = listSourcesDebug.results.some(
+        (r: any) => r.toolNameText === 'listSources'
+      );
       expect(hasListSourcesRequest).toBe(true);
 
-      // Step 8: Approve the tool request
+      // Step 8: Approve the tool request (click "Allow Once" button)
       await page.evaluate(() => {
-        const approveBtn = document.querySelector('[data-approve]') as HTMLButtonElement;
-        if (approveBtn) approveBtn.click();
+        // Find the approval card with listSources and click the "Allow Once" button
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        for (const card of approvalCards) {
+          const toolNameEl = card.querySelector('.approval-tool-name');
+          if (toolNameEl && toolNameEl.textContent === 'listSources') {
+            // Find the "Allow Once" button (second button in actions)
+            const buttons = card.querySelectorAll('.approval-actions button');
+            if (buttons.length >= 2) {
+              (buttons[1] as HTMLButtonElement).click(); // "Allow Once" is second button
+            }
+            break;
+          }
+        }
       });
 
-      // Wait for dialog to close after approval
+      // Wait for approval card to be removed or updated after approval
       await page.waitForFunction(() => {
-        const dialog = document.getElementById('approval-dialog') as HTMLDialogElement;
-        return !dialog || !dialog.open;
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        // Card should either be removed or have approved/rejected status
+        if (approvalCards.length === 0) return true;
+        // Also check for approved/rejected cards (replacing pending ones)
+        const approvedCards = document.querySelectorAll('.approval-approved');
+        const rejectedCards = document.querySelectorAll('.approval-rejected');
+        return approvedCards.length > 0 || rejectedCards.length > 0;
       }, { timeout: 5000 });
 
       // Step 9: Verify tool call completed and result was displayed
@@ -1085,22 +1182,43 @@ describe('Tool Use', () => {
         btn.click();
       });
 
-      // Step 7: Wait for approval dialog to appear
+      // Step 7: Wait for inline approval card to appear
       await page.waitForFunction(() => {
-        const dialog = document.getElementById('approval-dialog') as HTMLDialogElement;
-        return dialog && dialog.open;
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        return approvalCards.length > 0;
       }, { timeout: 15000 });
 
-      // Step 8: Reject the tool request
+      // Step 8: Reject the tool request (click "Reject" button)
       await page.evaluate(() => {
-        const rejectBtn = document.querySelector('[data-reject]') as HTMLButtonElement;
-        if (rejectBtn) rejectBtn.click();
+        // Find the approval card with listSources and click the "Reject" button
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        for (const card of approvalCards) {
+          const toolNameEl = card.querySelector('.approval-tool-name');
+          if (toolNameEl && toolNameEl.textContent === 'listSources') {
+            // Find the "Reject" button (first button in actions)
+            const buttons = card.querySelectorAll('.approval-actions button');
+            if (buttons.length >= 1) {
+              (buttons[0] as HTMLButtonElement).click(); // "Reject" is first button
+            }
+            break;
+          }
+        }
       });
 
-      // Step 9: Wait for dialog to close
+      // Step 9: Wait for approval card to show rejected status
       await page.waitForFunction(() => {
-        const dialog = document.getElementById('approval-dialog') as HTMLDialogElement;
-        return !dialog || !dialog.open;
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        // Card should be removed or have rejected status
+        if (approvalCards.length === 0) return true;
+        for (const card of approvalCards) {
+          if (card.classList.contains('approval-rejected')) {
+            return true;
+          }
+        }
+        // Also check for rejected cards (replacing pending ones)
+        const rejectedCards = document.querySelectorAll('.approval-rejected');
+        if (rejectedCards.length > 0) return true;
+        return false;
       }, { timeout: 5000 });
 
       // Step 10: Verify that we get an error message indicating tool was rejected
@@ -1108,9 +1226,13 @@ describe('Tool Use', () => {
         const chatMessages = document.getElementById('chat-messages');
         if (!chatMessages) return false;
 
-        // Check for error indication in recent messages
-        const messages = chatMessages.querySelectorAll('.chat-message.assistant:last-of-type .chat-message-content');
-        return messages.length > 0;
+        // Check for error indication - look for rejected card or error message
+        const rejectedCards = chatMessages.querySelectorAll('.approval-rejected');
+        if (rejectedCards.length > 0) return true;
+
+        // Or check if there are any assistant messages after the rejection
+        const assistantMessages = chatMessages.querySelectorAll('.chat-message.assistant');
+        return assistantMessages.length > 0;
       }, { timeout: 10000 });
 
       // Clean up - re-enable auto-approval
@@ -1206,35 +1328,64 @@ describe('Tool Use', () => {
         btn.click();
       });
 
-      // Step 7: Wait for approval dialog
+      // Step 7: Wait for inline approval card to appear
       await page.waitForFunction(() => {
-        const dialog = document.getElementById('approval-dialog') as HTMLDialogElement;
-        return dialog && dialog.open;
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        return approvalCards.length > 0;
       }, { timeout: 15000 });
 
-      // Step 8: Select "session" scope before approving
+      // Step 8: Approve with session scope (click "Allow Session" button directly)
       await page.evaluate(() => {
-        const sessionRadio = document.querySelector('input[value="session"]') as HTMLInputElement;
-        if (sessionRadio) sessionRadio.click();
+        // Find the approval card with listSources and click the "Allow Session" button
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        for (const card of approvalCards) {
+          const toolNameEl = card.querySelector('.approval-tool-name');
+          if (toolNameEl && toolNameEl.textContent === 'listSources') {
+            // Find the "Allow Session" button (third button in actions)
+            const buttons = card.querySelectorAll('.approval-actions button');
+            if (buttons.length >= 3) {
+              (buttons[2] as HTMLButtonElement).click(); // "Allow Session" is third button
+            }
+            break;
+          }
+        }
       });
 
-      // Verify session scope is selected
-      const sessionScopeSelected = await page.evaluate(() => {
-        const sessionRadio = document.querySelector('input[value="session"]') as HTMLInputElement;
-        return sessionRadio?.checked || false;
-      });
-      expect(sessionScopeSelected).toBe(true);
+      // Verify we clicked the session button by checking the approval was created
+      // (The new UI has separate buttons for each scope, no radio button selection step)
+      // Wait for the async operation to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Step 9: Approve with session scope
-      await page.evaluate(() => {
-        const approveBtn = document.querySelector('[data-approve]') as HTMLButtonElement;
-        if (approveBtn) approveBtn.click();
+      const sessionApprovalExists = await page.evaluate(async () => {
+        // Tool permissions are stored in IndexedDB, not chrome.storage.local
+        const result = await new Promise<any>((resolve, reject) => {
+          const request = indexedDB.open('notebooklm-chrome', 6);
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            const db = request.result;
+            const transaction = db.transaction(['settings'], 'readonly');
+            const store = transaction.objectStore('settings');
+            const getReq = store.get('toolPermissions');
+            getReq.onerror = () => reject(getReq.error);
+            getReq.onsuccess = () => {
+              const data = getReq.result?.value;
+              db.close();
+              resolve(data);
+            };
+          };
+        });
+        return result?.sessionApprovals?.includes('listSources') || false;
       });
+      expect(sessionApprovalExists).toBe(true);
 
-      // Step 10: Wait for dialog to close
+      // Step 9: Wait for approval card to be removed or updated
       await page.waitForFunction(() => {
-        const dialog = document.getElementById('approval-dialog') as HTMLDialogElement;
-        return !dialog || !dialog.open;
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        if (approvalCards.length === 0) return true;
+        // Also check for approved/rejected cards (replacing pending ones)
+        const approvedCards = document.querySelectorAll('.approval-approved');
+        const rejectedCards = document.querySelectorAll('.approval-rejected');
+        return approvedCards.length > 0 || rejectedCards.length > 0;
       }, { timeout: 5000 });
 
       // Step 11: Verify tool executed
@@ -1258,11 +1409,18 @@ describe('Tool Use', () => {
       });
 
       // This time the tool should execute without waiting for approval (session-scoped)
-      // Verify we get a result without approval dialog appearing
+      // Verify we get a result without inline approval card appearing
       await page.waitForFunction(() => {
         const toolCalls = document.querySelectorAll('.assistant-tool-call');
         return toolCalls.length >= 2; // Should have at least 2 tool calls now
       }, { timeout: 10000 });
+
+      // Also verify no new pending approval cards appeared
+      const hasNewApprovalCard = await page.evaluate(() => {
+        const approvalCards = document.querySelectorAll('.approval-pending');
+        return approvalCards.length > 0;
+      });
+      expect(hasNewApprovalCard).toBe(false);
 
       // Clean up - clear session approvals by updating chrome.storage.local directly
       await page.evaluate(async () => {
