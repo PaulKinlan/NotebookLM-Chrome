@@ -69,7 +69,7 @@
     "happy-dom": "^20.1.0",
     "jiti": "^2.6.1",
     "jsdom": "^27.4.0",
-    "puppeteer": "^24.34.0",
+    "puppeteer": "^24.35.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.6",
     "vitest": "^4.0.16"
