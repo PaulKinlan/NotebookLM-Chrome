@@ -318,8 +318,7 @@ function createProfileCard(profile: AIProfile): HTMLElement {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         // Handle clicks on SVG elements inside buttons
-        const target = e.target instanceof HTMLElement ? e.target.closest('button') ?? e.target : e.target;
-        if (!(target instanceof HTMLButtonElement)) return;
+        const target = (e.target instanceof Element ? e.target.closest('button') : btn) as HTMLButtonElement;
         const action = target.dataset.action;
         if (action === 'edit') handleEditProfile(modelConfig.id);
         else if (action === 'set-default') handleSetDefaultProfile(modelConfig.id);
