@@ -956,7 +956,7 @@ async function handleListTabs(payload: { windowId?: number } | undefined): Promi
         url: t.url || 'about:blank',
         active: t.active,
         pinned: t.pinned,
-        groupId: t.windowId,
+        groupId: t.groupId,
       })),
   };
 }
