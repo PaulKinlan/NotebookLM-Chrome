@@ -928,7 +928,6 @@ export async function* streamChat(
           break;
         case 'tool-call': {
           console.log('[Agentic Mode] Tool called:', chunk.toolName, chunk.input);
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
           const args = chunk.input !== null ? (chunk.input as Record<string, unknown>) : {};
           yield {
             type: 'tool-call',
