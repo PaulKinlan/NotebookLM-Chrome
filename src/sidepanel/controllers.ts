@@ -3524,7 +3524,10 @@ function updateToolCallStatus(
 
 async function handleQuery(): Promise<void> {
   const query = elements.queryInput.value.trim();
-  if (!query || !currentNotebookId) return;
+  if (!query) return;
+
+  // Allow chat without a notebook - use empty string as notebook ID for transient chats
+  const notebookId = currentNotebookId || "";
 
   // Check for slash commands first
   const slashCommand = parseSlashCommand(query);
@@ -3534,23 +3537,21 @@ async function handleQuery(): Promise<void> {
     return;
   }
 
-  const sources = await getSourcesByNotebook(currentNotebookId);
-  if (sources.length === 0) {
-    showNotification("Add some sources first");
-    return;
-  }
+  // Get sources if we have a notebook, otherwise empty array
+  const sources = notebookId ? await getSourcesByNotebook(notebookId) : [];
+  // Allow chat without sources or notebook - user can still ask questions
 
   elements.queryInput.value = "";
   elements.queryBtn.disabled = true;
   elements.chatStatus.textContent = "Preparing...";
 
   // Save user message
-  const userEvent = createUserEvent(currentNotebookId, query);
+  const userEvent = createUserEvent(notebookId, query);
   await saveChatEvent(userEvent);
   appendChatEvent(userEvent, sources);
 
   // Get conversation history (includes the message we just saved)
-  const history = await getChatHistory(currentNotebookId);
+  const history = await getChatHistory(notebookId);
 
   // Check cache first
   const sourceIds = sources.map((s) => s.id);
@@ -3560,7 +3561,7 @@ async function handleQuery(): Promise<void> {
   if (cached && !navigator.onLine) {
     // Use cached response when offline
     const assistantEvent = createAssistantEvent(
-      currentNotebookId,
+      notebookId,
       cached.response,
       { citations: cached.citations }
     );
@@ -3573,7 +3574,7 @@ async function handleQuery(): Promise<void> {
   }
 
   // Create placeholder for assistant message
-  const assistantEvent = createAssistantEvent(currentNotebookId, "");
+  const assistantEvent = createAssistantEvent(notebookId, "");
   const messageDiv = appendChatEvent(assistantEvent, sources, true);
 
   try {
@@ -3645,7 +3646,7 @@ async function handleQuery(): Promise<void> {
 
         // Persist tool result as separate event
         const toolResultEvent = createToolResultEvent(
-          currentNotebookId,
+          notebookId,
           event.toolCallId,
           event.toolName,
           event.result
@@ -3690,15 +3691,17 @@ async function handleQuery(): Promise<void> {
       );
     }
 
-    // Cache the response for offline use
-    const cachedResponse = createCachedResponse(
-      currentNotebookId,
-      query,
-      sourceIds,
-      fullContent,
-      citations
-    );
-    await saveCachedResponse(cachedResponse);
+    // Cache the response for offline use (only if we have a notebook)
+    if (notebookId) {
+      const cachedResponse = createCachedResponse(
+        notebookId,
+        query,
+        sourceIds,
+        fullContent,
+        citations
+      );
+      await saveCachedResponse(cachedResponse);
+    }
 
     elements.chatStatus.textContent =
       "Ask questions to synthesize information from your sources.";
@@ -4793,4 +4796,6 @@ export const getState = {
 // Start
 // ============================================================================
 
-init();
+// Export init to be called after DOM is rendered (from main.tsx)
+// This prevents race condition where event listeners are attached before DOM exists
+export { init as initControllers };

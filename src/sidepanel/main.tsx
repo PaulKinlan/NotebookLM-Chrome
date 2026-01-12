@@ -4,7 +4,7 @@
 // Renders App component with business logic handlers
 
 import { App } from './App';
-import { handlers } from './index';
+import { handlers, initControllers } from './index';
 
 // ============================================================================
 // Render
@@ -23,5 +23,9 @@ const appElement = App({
   businessHandlers: handlers,
 });
 appContainer.appendChild(appElement);
+
+// Initialize controllers AFTER DOM is rendered
+// This ensures event listeners can find their target elements
+void initControllers();
 
 console.log('FolioLM sidepanel initialized');

@@ -5,7 +5,7 @@
  */
 
 // Business logic controllers (all handlers and state)
-export { handlers, getState } from './controllers';
+export { handlers, getState, initControllers } from './controllers';
 
 // Services - selective exports to avoid naming conflicts
 
