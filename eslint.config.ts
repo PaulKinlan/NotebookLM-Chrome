@@ -2,6 +2,7 @@ import eslint from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import eslintComments from 'eslint-plugin-eslint-comments';
+import stylistic from '@stylistic/eslint-plugin';
 import barrelReExports from './eslint-rules/barrel-only-re-exports.ts';
 
 export default [
@@ -89,6 +90,7 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint,
       'eslint-comments': eslintComments,
+      '@stylistic': stylistic,
       'foliolm': {
         rules: {
           'barrel-only-re-exports': barrelReExports,
@@ -96,7 +98,8 @@ export default [
       },
     },
     rules: {
-      ...tseslint.configs.recommended.rules,
+      ...tseslint.configs['recommended-type-checked'].rules,
+      ...stylistic.configs.recommended.rules,
       // Disallow eslint-disable comments - code should be fixed, not suppressed
       'eslint-comments/no-use': ['error', { allow: [] }],
       // Disallow unused eslint-disable comments
@@ -125,9 +128,11 @@ export default [
     plugins: {
       '@typescript-eslint': tseslint,
       'eslint-comments': eslintComments,
+      '@stylistic': stylistic,
     },
     rules: {
-      ...tseslint.configs.recommended.rules,
+      ...tseslint.configs['recommended-type-checked'].rules,
+      ...stylistic.configs.recommended.rules,
       // Allow type assertions in tests (needed for mocks)
       '@typescript-eslint/no-unsafe-type-assertion': 'off',
       '@typescript-eslint/no-unnecessary-type-assertion': 'off',
@@ -164,9 +169,11 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tseslint,
+      '@stylistic': stylistic,
     },
     rules: {
-      ...tseslint.configs.recommended.rules,
+      ...tseslint.configs['recommended-type-checked'].rules,
+      ...stylistic.configs.recommended.rules,
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
