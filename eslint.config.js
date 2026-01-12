@@ -1,6 +1,8 @@
 import eslint from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
+import eslintComments from 'eslint-plugin-eslint-comments';
+import barrelReExports from './eslint-rules/barrel-only-re-exports.ts';
 
 export default [
   eslint.configs.recommended,
@@ -84,9 +86,21 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tseslint,
+      'eslint-comments': eslintComments,
+      'foliolm': {
+        rules: {
+          'barrel-only-re-exports': barrelReExports,
+        },
+      },
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      // Custom rule: enforce barrel file pattern
+      'foliolm/barrel-only-re-exports': 'error',
+      // Disallow eslint-disable comments - code should be fixed, not suppressed
+      'eslint-comments/no-use': ['error', { allow: [] }],
+      // Disallow unused eslint-disable comments (native ESLint)
+      'no-unused-disable': 'error',
       // Disallow type coercion
       'no-implicit-coercion': 'error',
       'no-eq-null': 'error',
@@ -103,6 +117,28 @@ export default [
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       // Limit file length for AI code analysis (400 lines = ~12-16k tokens)
       'max-lines': ['warn', { max: 400, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // Test files: Allow type assertions and other test-specific patterns
+    files: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/test/setup.ts', 'src/sandbox/**/*.ts'],
+    plugins: {
+      '@typescript-eslint': tseslint,
+      'eslint-comments': eslintComments,
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      // Allow type assertions in tests (needed for mocks)
+      '@typescript-eslint/no-unsafe-type-assertion': 'off',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      // Allow namespaces for global declarations in test setup
+      '@typescript-eslint/no-namespace': 'off',
+      // Allow unused vars with underscore prefix
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      // Allow global directive for sandbox and other ESLint directives in tests
+      'no-console': 'off',
+      'eslint-comments/no-use': 'off',
     },
   },
   {
