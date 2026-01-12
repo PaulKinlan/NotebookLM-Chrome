@@ -82,6 +82,8 @@ export default [
         HTMLIFrameElement: 'readonly',
         NodeListOf: 'readonly',
         MessageEvent: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
       },
     },
     plugins: {
@@ -95,8 +97,6 @@ export default [
     },
     rules: {
       ...tseslint.configs.recommended.rules,
-      // Custom rule: enforce barrel file pattern
-      'foliolm/barrel-only-re-exports': 'error',
       // Disallow eslint-disable comments - code should be fixed, not suppressed
       'eslint-comments/no-use': ['error', { allow: [] }],
       // Disallow unused eslint-disable comments
@@ -139,6 +139,13 @@ export default [
       // Allow global directive for sandbox and other ESLint directives in tests
       'no-console': 'off',
       'eslint-comments/no-use': 'off',
+    },
+  },
+  {
+    // Apply barrel-only-re-exports rule only to sidepanel index files
+    files: ['src/sidepanel/index.ts'],
+    rules: {
+      'foliolm/barrel-only-re-exports': 'error',
     },
   },
   {
