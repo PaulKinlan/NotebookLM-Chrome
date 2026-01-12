@@ -324,9 +324,9 @@ function createProfileCard(profile: AIProfile): HTMLElement {
         const target = (e.target instanceof Element ? e.target.closest('button') : btn) as HTMLButtonElement
         const action = target.dataset.action
         if (action === 'edit') handleEditProfile(modelConfig.id)
-        else if (action === 'set-default') handleSetDefaultProfile(modelConfig.id)
-        else if (action === 'stats') handleShowUsageStats(modelConfig.id, modelConfig.name)
-        else if (action === 'delete') handleDeleteProfile(modelConfig.id)
+        else if (action === 'set-default') void handleSetDefaultProfile(modelConfig.id)
+        else if (action === 'stats') void handleShowUsageStats(modelConfig.id, modelConfig.name)
+        else if (action === 'delete') void handleDeleteProfile(modelConfig.id)
       })
     })
   }
@@ -1035,10 +1035,10 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
 
   // Test connection button
   if (testBtn) {
-    testBtn.addEventListener('click', async (e) => {
+    testBtn.addEventListener('click', (e) => {
       // Stop propagation to prevent interference with dropdown's document click handler
       e.stopPropagation()
-      await handleTestConnection(card)
+      void handleTestConnection(card)
     })
   }
 
@@ -1091,7 +1091,7 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
           const requiresApiKeyForFetch = providerRequiresApiKeyForFetching(option.id)
 
           if (supportsFetching && (!requiresApiKeyForFetch || apiKey)) {
-            fetchModelsForCard(card, option.id, apiKey || undefined)
+            void fetchModelsForCard(card, option.id, apiKey || undefined)
           }
         }
 
@@ -1118,7 +1118,7 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
   }
 
   // API key input - auto-fetch models when entered (for providers that require it)
-  apiKeyInput?.addEventListener('blur', async () => {
+  apiKeyInput?.addEventListener('blur', () => {
     if (isNew && providerValueInput) {
       const providerId = providerValueInput.value
       const apiKey = apiKeyInput.value.trim()
@@ -1128,7 +1128,7 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
         const cacheKey = generateCacheKey(providerId, apiKey)
         // Only fetch if we don't have cached models for this provider/API key combo
         if (requiresApiKey && !modelsCache.has(cacheKey)) {
-          await fetchModelsForCard(card, providerId, apiKey)
+          void fetchModelsForCard(card, providerId, apiKey)
         }
       }
     }
@@ -1179,7 +1179,7 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
       return
     }
 
-    refreshBtn.addEventListener('click', async (e) => {
+    refreshBtn.addEventListener('click', (e) => {
       e.stopPropagation()
 
       // Get provider ID from the FuzzyDropdown instance (current selection) as primary source,
@@ -1223,36 +1223,38 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
       refreshBtn.classList.add('refreshing')
       showIcon('.refresh-spinner-icon')
 
-      const success = await fetchModelsForCard(card, providerId, apiKey || undefined)
+      void (async () => {
+        const success = await fetchModelsForCard(card, providerId, apiKey || undefined)
 
-      // If dropdown is open, refresh it
-      if (dropdownMenu && !dropdownMenu.hidden) {
-        populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value)
-      }
+        // If dropdown is open, refresh it
+        if (dropdownMenu && !dropdownMenu.hidden) {
+          populateModelDropdown(dropdownMenu, modelInput.value, providerId, modelInput.value)
+        }
 
-      refreshBtn.disabled = false
-      refreshBtn.classList.remove('refreshing')
+        refreshBtn.disabled = false
+        refreshBtn.classList.remove('refreshing')
 
-      if (success) {
-        refreshBtn.classList.add('refresh-success')
-        showIcon('.refresh-success-icon')
-        // Reset to refresh icon after delay
-        setTimeout(() => {
-          refreshBtn.classList.remove('refresh-success')
-          showIcon('.refresh-icon')
-        }, 2000)
-      }
-      else {
-        refreshBtn.classList.add('refresh-error')
-        showIcon('.refresh-error-icon')
-        // Reset to refresh icon after delay
-        setTimeout(() => {
-          refreshBtn.classList.remove('refresh-error')
-          showIcon('.refresh-icon')
-        }, 2000)
-        // Show notification for error
-        showNotification('Failed to fetch models. Check your API key and try again.', 'error')
-      }
+        if (success) {
+          refreshBtn.classList.add('refresh-success')
+          showIcon('.refresh-success-icon')
+          // Reset to refresh icon after delay
+          setTimeout(() => {
+            refreshBtn.classList.remove('refresh-success')
+            showIcon('.refresh-icon')
+          }, 2000)
+        }
+        else {
+          refreshBtn.classList.add('refresh-error')
+          showIcon('.refresh-error-icon')
+          // Reset to refresh icon after delay
+          setTimeout(() => {
+            refreshBtn.classList.remove('refresh-error')
+            showIcon('.refresh-icon')
+          }, 2000)
+          // Show notification for error
+          showNotification('Failed to fetch models. Check your API key and try again.', 'error')
+        }
+      })()
     })
 
     // Input handler - repopulate dropdown if open
@@ -1289,7 +1291,9 @@ function setupProfileFormListeners(card: HTMLElement, profileId: string | null, 
   })
 
   // Save button
-  saveBtn?.addEventListener('click', () => handleSaveProfile(card, profileId, isNew))
+  saveBtn?.addEventListener('click', () => {
+    void handleSaveProfile(card, profileId, isNew)
+  })
 }
 
 /**
@@ -1689,7 +1693,7 @@ function isUsageTimeRange(value: string): value is UsageTimeRange {
 function setupTimeRangeSelector(modal: HTMLElement, profileId: string): void {
   const buttons = modal.querySelectorAll('.time-range-btn')
   buttons.forEach((btn) => {
-    btn.addEventListener('click', async (e) => {
+    btn.addEventListener('click', (e) => {
       if (!(e.target instanceof HTMLElement)) return
       const rangeRaw = e.target.dataset.range
       if (!rangeRaw) return
@@ -1702,7 +1706,7 @@ function setupTimeRangeSelector(modal: HTMLElement, profileId: string): void {
       e.target.classList.add('active')
 
       currentTimeRange = rangeRaw
-      await renderUsageStats(profileId, rangeRaw)
+      void renderUsageStats(profileId, rangeRaw)
     })
   })
 }

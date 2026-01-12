@@ -92,7 +92,7 @@ function createHandlers(state: { activeTab: TabName }, businessHandlers: Busines
     },
 
     handleTransform: (type: string) => {
-      businessHandlers?.handleTransform(type as unknown as 'podcast' | 'quiz' | 'takeaways' | 'email' | 'slidedeck' | 'report' | 'datatable' | 'mindmap' | 'flashcards' | 'timeline' | 'glossary' | 'comparison' | 'faq' | 'actionitems' | 'executivebrief' | 'studyguide' | 'proscons' | 'citations' | 'outline')
+      void businessHandlers?.handleTransform(type as unknown as 'podcast' | 'quiz' | 'takeaways' | 'email' | 'slidedeck' | 'report' | 'datatable' | 'mindmap' | 'flashcards' | 'timeline' | 'glossary' | 'comparison' | 'faq' | 'actionitems' | 'executivebrief' | 'studyguide' | 'proscons' | 'citations' | 'outline')
     },
   }
 }
@@ -143,26 +143,26 @@ export function App(props: AppProps = {
       <Header
         onLibraryClick={handlers.handleHeaderLibraryClick}
         onSettingsClick={handlers.handleHeaderSettingsClick}
-        onNotebookChange={(_id: string) => businessHandlers?.handleNotebookChange()}
-        onNewNotebook={() => businessHandlers?.handleNewNotebook()}
+        onNotebookChange={(_id: string) => { void businessHandlers?.handleNotebookChange() }}
+        onNewNotebook={() => { void businessHandlers?.handleNewNotebook() }}
       />
 
       <main className="content">
         <AddTab
           active={activeTab === 'add'}
-          onAddCurrentTab={() => businessHandlers?.handleAddCurrentTab()}
-          onImportTabs={() => businessHandlers?.handleImportTabs()}
-          onImportTabGroups={() => businessHandlers?.handleImportTabGroups()}
-          onImportBookmarks={() => businessHandlers?.handleImportBookmarks()}
-          onImportHistory={() => businessHandlers?.handleImportHistory()}
+          onAddCurrentTab={() => { void businessHandlers?.handleAddCurrentTab() }}
+          onImportTabs={() => { void businessHandlers?.handleImportTabs() }}
+          onImportTabGroups={() => { void businessHandlers?.handleImportTabGroups() }}
+          onImportBookmarks={() => { void businessHandlers?.handleImportBookmarks() }}
+          onImportHistory={() => { void businessHandlers?.handleImportHistory() }}
         />
 
         <ChatTab
           active={activeTab === 'chat'}
-          onQuery={() => businessHandlers?.handleQuery()}
-          onClearChat={() => businessHandlers?.handleClearChat()}
-          onRegenerateSummary={() => businessHandlers?.handleRegenerateSummary()}
-          onAddCurrentTab={() => businessHandlers?.handleAddCurrentTab()}
+          onQuery={() => { void businessHandlers?.handleQuery() }}
+          onClearChat={() => { void businessHandlers?.handleClearChat() }}
+          onRegenerateSummary={() => { void businessHandlers?.handleRegenerateSummary() }}
+          onAddCurrentTab={() => { void businessHandlers?.handleAddCurrentTab() }}
         />
 
         <TransformTab active={activeTab === 'transform'} onTransform={handlers.handleTransform} />
@@ -171,8 +171,8 @@ export function App(props: AppProps = {
 
         <SettingsTab
           active={activeTab === 'settings'}
-          onPermissionToggle={(permission: PermissionType) => businessHandlers?.handlePermissionToggle(permission)}
-          onClearAllData={() => businessHandlers?.handleClearAllData()}
+          onPermissionToggle={(permission: PermissionType) => { void businessHandlers?.handlePermissionToggle(permission) }}
+          onClearAllData={() => { void businessHandlers?.handleClearAllData() }}
         />
       </main>
 

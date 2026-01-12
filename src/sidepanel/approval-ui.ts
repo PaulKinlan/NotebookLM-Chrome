@@ -122,10 +122,14 @@ function createApprovalDialog(): void {
   const rejectAllBtn = dialog.querySelector('.approval-reject-all-btn')
 
   if (approveAllBtn instanceof HTMLButtonElement) {
-    approveAllBtn.addEventListener('click', () => approveAllPending())
+    approveAllBtn.addEventListener('click', () => {
+      void approveAllPending()
+    })
   }
   if (rejectAllBtn instanceof HTMLButtonElement) {
-    rejectAllBtn.addEventListener('click', () => rejectAllPending())
+    rejectAllBtn.addEventListener('click', () => {
+      void rejectAllPending()
+    })
   }
 }
 
@@ -191,10 +195,14 @@ async function renderPendingApprovals(): Promise<void> {
     )
 
     if (approveBtn instanceof HTMLButtonElement) {
-      approveBtn.addEventListener('click', () => handleApprove(request.id, request.toolName))
+      approveBtn.addEventListener('click', () => {
+        void handleApprove(request.id, request.toolName)
+      })
     }
     if (rejectBtn instanceof HTMLButtonElement) {
-      rejectBtn.addEventListener('click', () => handleReject(request.id))
+      rejectBtn.addEventListener('click', () => {
+        void handleReject(request.id)
+      })
     }
   }
 }
@@ -205,8 +213,21 @@ async function renderPendingApprovals(): Promise<void> {
 function renderApprovalRequest(request: ToolApprovalRequest): string {
   const argsPreview = Object.entries(request.args)
     .map(([key, value]) => {
-      const valueStr
-        = typeof value === 'object' ? JSON.stringify(value) : String(value)
+      let valueStr: string
+      if (value === null) {
+        valueStr = 'null'
+      }
+      else if (value === undefined) {
+        valueStr = 'undefined'
+      }
+      else if (typeof value === 'object') {
+        valueStr = JSON.stringify(value)
+      }
+      else {
+        // After filtering out null, undefined, and object types,
+        // only primitives remain (string, number, boolean, bigint, symbol)
+        valueStr = String(value as string | number | boolean | bigint | symbol)
+      }
       return `<strong>${escapeHtml(key)}</strong>: ${escapeHtml(valueStr)}`
     })
     .join('<br>')
