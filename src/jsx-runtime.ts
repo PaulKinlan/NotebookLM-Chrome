@@ -4,6 +4,39 @@ function isNode(x: unknown): x is Node {
   return typeof Node !== "undefined" && x instanceof Node;
 }
 
+// SVG namespace for creating SVG elements
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+// SVG element names that need to be created in the SVG namespace
+const SVG_TAGS = new Set([
+  "svg",
+  "path",
+  "circle",
+  "rect",
+  "ellipse",
+  "line",
+  "polygon",
+  "polyline",
+  "text",
+  "tspan",
+  "g",
+  "defs",
+  "use",
+  "marker",
+  "clipPath",
+  "mask",
+  "pattern",
+  "gradient",
+  "linearGradient",
+  "radialGradient",
+  "stop",
+  "animate",
+  "animateTransform",
+  "animateMotion",
+  "image",
+  "foreignObject",
+]);
+
 function append(el: Element | DocumentFragment, child: Child): void {
   if (child === null || child === undefined || child === false || child === true) return;
 
@@ -46,12 +79,21 @@ export function jsx(
     return tag(props);
   }
 
-  const el = document.createElement(tag);
+  // Create element in correct namespace (HTML or SVG)
+  const isSvg = SVG_TAGS.has(tag);
+  const el = isSvg
+    ? document.createElementNS(SVG_NS, tag)
+    : document.createElement(tag);
 
   if (props) {
     for (const [propKey, value] of Object.entries(props)) {
       if (propKey === "className") {
-        el.setAttribute("class", String(value));
+        // For SVG, set class attribute; for HTML, set class directly
+        if (isSvg) {
+          el.setAttribute("class", String(value));
+        } else {
+          (el as HTMLElement).className = String(value);
+        }
       } else if (propKey.startsWith("on") && typeof value === "function") {
         // onClick -> click
         const event = propKey.slice(2).toLowerCase();
@@ -75,6 +117,7 @@ export function jsx(
           style.setProperty(styleName, String(styleValue));
         }
       } else if (value !== false && value !== null && propKey !== "children") {
+        // For boolean attributes on SVG (like fill="true"), convert to string
         el.setAttribute(propKey, String(value));
       }
     }
