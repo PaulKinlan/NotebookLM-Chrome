@@ -5,6 +5,7 @@ import eslintComments from 'eslint-plugin-eslint-comments';
 import stylistic from '@stylistic/eslint-plugin';
 import barrelReExports from './eslint-rules/barrel-only-re-exports.ts';
 import testFileNaming from './eslint-rules/test-file-naming.ts';
+import noDynamicImport from './eslint-rules/no-dynamic-import.ts';
 
 export default [
   eslint.configs.recommended,
@@ -97,6 +98,7 @@ export default [
         rules: {
           'barrel-only-re-exports': barrelReExports,
           'test-file-naming': testFileNaming,
+          'no-dynamic-import': noDynamicImport,
         },
       },
     },
@@ -125,6 +127,8 @@ export default [
       'max-lines': ['warn', { max: 400, skipBlankLines: true, skipComments: true }],
       // Enforce test file naming convention
       'foliolm/test-file-naming': 'error',
+      // Disallow dynamic imports in favor of static imports
+      'foliolm/no-dynamic-import': 'error',
     },
   },
   {
