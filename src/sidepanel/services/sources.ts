@@ -73,6 +73,11 @@ export async function ensurePermission(
 // Add Current Tab
 // ============================================================================
 
+export interface AddCurrentTabResult {
+  added: number
+  sources: Source[]
+}
+
 export async function addCurrentTab(): Promise<Source | null> {
   // Get the current active tab
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -120,6 +125,77 @@ export async function addCurrentTab(): Promise<Source | null> {
   chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
 
   return source
+}
+
+/**
+ * Add current tab or multiple highlighted tabs.
+ * Handles the case where multiple tabs are selected.
+ */
+export async function addHighlightedTabs(): Promise<AddCurrentTabResult> {
+  // Check for multiple highlighted tabs
+  const highlightedTabs = await chrome.tabs.query({
+    highlighted: true,
+    currentWindow: true,
+  })
+
+  const tabsToAdd = highlightedTabs.filter(
+    tab => tab.url && !tab.url.startsWith('chrome://'),
+  )
+
+  if (tabsToAdd.length === 0) {
+    return { added: 0, sources: [] }
+  }
+
+  const notebookId = await getCurrentNotebookIdState()
+  if (!notebookId) {
+    throw new Error('No notebook selected')
+  }
+
+  const sources: Source[] = []
+
+  for (const tab of tabsToAdd) {
+    if (!tab.id || !tab.url) continue
+
+    try {
+      // Send message directly to the content script in the tab
+      const results = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: extractPageContent,
+      })
+
+      const result = results?.[0]?.result
+      if (result) {
+        const { title, content, links } = result
+        const source = addSourceToNotebook(
+          notebookId,
+          'tab',
+          tab.url,
+          title || tab.title || 'Untitled',
+          content,
+          links,
+        )
+        sources.push(source)
+      }
+    }
+    catch (error) {
+      console.error(`Failed to add tab ${tab.url}:`, error)
+      // Fallback: add with just title/url if content script not available
+      const source = addSourceToNotebook(
+        notebookId,
+        'tab',
+        tab.url,
+        tab.title || 'Untitled',
+        `Content from: ${tab.url}`,
+      )
+      sources.push(source)
+    }
+  }
+
+  if (sources.length > 0) {
+    chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
+  }
+
+  return { added: sources.length, sources }
 }
 
 // ============================================================================
