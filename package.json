@@ -69,6 +69,7 @@
     "happy-dom": "^20.1.0",
     "jiti": "^2.6.1",
     "jsdom": "^27.4.0",
+    "lint-staged": "^16.2.7",
     "puppeteer": "^24.35.0",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",
