@@ -7,6 +7,7 @@
 import type { ToolApprovalRequest, ApprovalScope } from '../types/index.ts'
 import {
   getPendingApprovals,
+  getApprovalRequest,
   respondToApproval,
   pendingApprovalEvents,
   updateApprovalStatus,
@@ -290,7 +291,6 @@ async function handleApprovalAction(
 
   // Update tool permissions if not 'once'
   if (scope !== 'once') {
-    const { getApprovalRequest } = await import('../lib/tool-approvals.ts')
     const request = await getApprovalRequest(requestId)
     if (request) {
       await addToolApproval(request.toolName, scope)
