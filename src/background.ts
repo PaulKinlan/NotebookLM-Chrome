@@ -206,7 +206,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 async function buildContextMenus(): Promise<void> {
   // Remove all existing menus first
-  chrome.contextMenus.removeAll()
+  void chrome.contextMenus.removeAll()
 
   const notebooks = await getNotebooks()
 

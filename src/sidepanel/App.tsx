@@ -143,7 +143,7 @@ export function App(props: AppProps = {
       <Header
         onLibraryClick={handlers.handleHeaderLibraryClick}
         onSettingsClick={handlers.handleHeaderSettingsClick}
-        onNotebookChange={(_id: string) => { void businessHandlers?.handleNotebookChange() }}
+        onNotebookChange={() => { void businessHandlers?.handleNotebookChange() }}
         onNewNotebook={() => { void businessHandlers?.handleNewNotebook() }}
       />
 

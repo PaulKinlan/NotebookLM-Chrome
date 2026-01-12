@@ -10,8 +10,6 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-// AISettings type would be used for typing tests if needed
-import type { AISettings as _AISettings } from '../types/index.ts'
 
 // Global mock storage that will be cleared in beforeEach
 // Use a global variable that vitest can see across module boundaries

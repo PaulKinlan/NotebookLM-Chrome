@@ -43,7 +43,7 @@ function isUsageRecordArray(value: unknown): value is UsageRecord[] {
  */
 export async function getUsageRecords(): Promise<UsageRecord[]> {
   const result = await chrome.storage.local.get({ [USAGE_STORAGE_KEY]: [] })
-  const value = result[USAGE_STORAGE_KEY] as unknown
+  const value = result[USAGE_STORAGE_KEY]
 
   if (value === undefined) return []
   if (isUsageRecordArray(value)) return value

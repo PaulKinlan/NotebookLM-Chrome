@@ -4,8 +4,6 @@
  * Helper functions for showing notifications, dialogs, and other UI interactions.
  */
 
-import type { PickerItem } from './sources.ts'
-
 // ============================================================================
 // Notification
 // ============================================================================
@@ -134,7 +132,7 @@ export function showNotebookDialog(options: NotebookDialogOptions = {}): Promise
 // Picker Modal
 // ============================================================================
 
-export function showPickerModal(type: 'tab' | 'tabGroup' | 'bookmark' | 'history', _items: PickerItem[]): void {
+export function showPickerModal(type: 'tab' | 'tabGroup' | 'bookmark' | 'history'): void {
   const modal = document.getElementById('picker-modal') as HTMLDivElement | null
   const titleEl = document.getElementById('picker-title') as HTMLHeadingElement | null
   const listEl = document.getElementById('picker-list') as HTMLDivElement | null
