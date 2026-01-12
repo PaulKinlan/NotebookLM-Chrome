@@ -3,13 +3,12 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { useMemo, useState, useCallback } from './index.ts'
+import { render } from '../render.ts'
 import { textVNode, componentVNode } from '../test/setup.ts'
 
 describe('useMemo', () => {
   it('should memoize computed values', async () => {
-    const { useMemo } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let computeCount = 0
 
     function MemoComponent() {
@@ -28,9 +27,6 @@ describe('useMemo', () => {
   })
 
   it('should recompute when dependencies change', async () => {
-    const { useMemo, useState } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let computeCount = 0
 
     function MemoComponent() {
@@ -54,9 +50,6 @@ describe('useMemo', () => {
 
 describe('useCallback', () => {
   it('should return stable function reference', async () => {
-    const { useCallback } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let firstCallback: (() => number) | null = null
 
     function CallbackComponent() {

@@ -53,7 +53,11 @@ export function useState<T>(
     // Only trigger update if value actually changed
     if (hookValue !== nextValue) {
       hook.value = nextValue
+      console.log('[useState] State changed from', hookValue, 'to', nextValue, ', scheduling update')
       scheduleUpdate(component)
+    }
+    else {
+      console.log('[useState] State unchanged, skipping update')
     }
   }
 

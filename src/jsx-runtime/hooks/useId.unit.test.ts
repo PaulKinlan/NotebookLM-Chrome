@@ -3,18 +3,17 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { useId, useState, getUpdatePromise } from './index.ts'
+import { render } from '../render.ts'
 import { textVNode, componentVNode } from '../test/setup.ts'
 
 describe('useId', () => {
   it('should generate a stable ID across re-renders', async () => {
-    const { useId, useState, getUpdatePromise } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let capturedIds: string[] = []
     let setCountFn: ((n: number) => void) | null = null
 
     function Component() {
-      const [count, setCount] = useState(0)
+      const [, setCount] = useState(0)
       setCountFn = setCount
       const id = useId()
 
@@ -36,9 +35,6 @@ describe('useId', () => {
   })
 
   it('should generate unique IDs for multiple useId calls in same component', async () => {
-    const { useId } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     const ids: string[] = []
 
     function Component() {
@@ -58,9 +54,6 @@ describe('useId', () => {
   })
 
   it('should generate different IDs for different component instances', async () => {
-    const { useId } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     const ids: string[] = []
 
     function ComponentA() {

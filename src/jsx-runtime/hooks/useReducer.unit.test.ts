@@ -3,13 +3,12 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { useReducer, getUpdatePromise } from './index.ts'
+import { render } from '../render.ts'
 import { textVNode, componentVNode } from '../test/setup.ts'
 
 describe('useReducer', () => {
   it('should initialize with initial state and provide dispatch', async () => {
-    const { useReducer } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let capturedState: number | null = null
     let capturedDispatch: ((action: unknown) => void) | null = null
 
@@ -24,7 +23,7 @@ describe('useReducer', () => {
       })
 
       capturedState = state
-      capturedDispatch = dispatch
+      capturedDispatch = dispatch as (action: unknown) => void
 
       return textVNode(`Count: ${state}`)
     }
@@ -38,14 +37,11 @@ describe('useReducer', () => {
   })
 
   it('should update state when dispatch is called', async () => {
-    const { useReducer, getUpdatePromise } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let dispatchFn: ((action: unknown) => void) | null = null
 
     function Counter() {
       const [count, dispatch] = useReducer({
-        reducer: (state: number, action: { type: 'increment' } | { type: 'set'; value: number }) => {
+        reducer: (state: number, action: { type: 'increment' } | { type: 'set', value: number }) => {
           if (action.type === 'increment') return state + 1
           if (action.type === 'set') return action.value
           return state
@@ -53,7 +49,7 @@ describe('useReducer', () => {
         initialArg: 0,
       })
 
-      dispatchFn = dispatch
+      dispatchFn = dispatch as (action: unknown) => void
 
       return textVNode(`Count: ${count}`)
     }
@@ -70,14 +66,11 @@ describe('useReducer', () => {
   })
 
   it('should support lazy initialization with init function', async () => {
-    const { useReducer } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
-    let capturedState: { count: number; step: number } | null = null
+    let capturedState: { count: number, step: number } | null = null
 
     function Counter() {
       const [state] = useReducer({
-        reducer: (state: { count: number; step: number }, action: { type: 'increment' }) => ({
+        reducer: (state: { count: number, step: number }, _action: { type: 'increment' }) => ({
           ...state,
           count: state.count + state.step,
         }),

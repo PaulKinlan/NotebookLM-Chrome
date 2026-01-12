@@ -3,14 +3,13 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { createContext, useContext } from './index.ts'
+import { render } from '../render.ts'
+import { ContextProvider } from './useContext.ts'
 import { textVNode, componentVNode } from '../test/setup.ts'
 
 describe('useContext', () => {
   it('should provide and consume context values', async () => {
-    const { createContext, useContext } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-    const { ContextProvider } = await import('./useContext.ts')
-
     const ThemeContext = createContext({ mode: 'light' })
     let consumedTheme: { mode: string } | null = null
 

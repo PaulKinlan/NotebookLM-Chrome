@@ -3,13 +3,12 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { useLayoutEffect, useState, getUpdatePromise } from './index.ts'
+import { render } from '../render.ts'
 import { textVNode, componentVNode } from '../test/setup.ts'
 
 describe('useLayoutEffect', () => {
   it('should run effect synchronously before browser paint', async () => {
-    const { useLayoutEffect } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let effectRun = false
 
     function Component() {
@@ -27,9 +26,6 @@ describe('useLayoutEffect', () => {
   })
 
   it('should run cleanup function before next effect when deps change', async () => {
-    const { useLayoutEffect, useState, getUpdatePromise } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let cleanupRun = false
     let setCountFn: ((n: number) => void) | null = null
 
@@ -58,9 +54,6 @@ describe('useLayoutEffect', () => {
   })
 
   it('should not run effect when dependencies have not changed', async () => {
-    const { useLayoutEffect, useState, getUpdatePromise } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let effectRunCount = 0
     let setCountFn: ((n: number) => void) | null = null
 

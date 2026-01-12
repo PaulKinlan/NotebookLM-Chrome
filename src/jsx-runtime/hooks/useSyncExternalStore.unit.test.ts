@@ -3,17 +3,17 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { useSyncExternalStore, getUpdatePromise, cleanupExternalStore } from './index.ts'
+import { render } from '../render.ts'
+import { getCurrentComponent } from '../component.ts'
 import { textVNode, componentVNode } from '../test/setup.ts'
 
 describe('useSyncExternalStore', () => {
   it('should subscribe to store on mount', async () => {
-    const { useSyncExternalStore } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let subscribeCalled = false
     const store = {
       state: 42,
-      subscribe: (callback: () => void) => {
+      subscribe: (_callback: () => void) => {
         subscribeCalled = true
         return () => {}
       },
@@ -33,9 +33,6 @@ describe('useSyncExternalStore', () => {
   })
 
   it('should re-render when store updates', async () => {
-    const { useSyncExternalStore, getUpdatePromise } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     const listeners = new Set<() => void>()
     const store = {
       state: 0,
@@ -67,10 +64,6 @@ describe('useSyncExternalStore', () => {
   })
 
   it('should unsubscribe on unmount', async () => {
-    const { useSyncExternalStore, cleanupExternalStore } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-    const { getCurrentComponent } = await import('../component.ts')
-
     let unsubscribeCalled = false
     const store = {
       state: 42,

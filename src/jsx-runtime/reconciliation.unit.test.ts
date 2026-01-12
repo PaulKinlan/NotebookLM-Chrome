@@ -3,13 +3,12 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { render, renderToDOM } from './render.ts'
+import { useState, getUpdatePromise } from './hooks/index.ts'
 import { textVNode, componentVNode, elementVNode } from './test/setup.ts'
 
 describe('Key-Based Reconciliation', () => {
   it('should preserve keyed elements during re-order', async () => {
-    const { render } = await import('./render.ts')
-    const { useState, getUpdatePromise } = await import('./hooks/index.ts')
-
     let renderCount = 0
     let setItemsFn: ((items: string[]) => void) | null = null
 
@@ -43,9 +42,6 @@ describe('Key-Based Reconciliation', () => {
   })
 
   it('should add and remove elements by key', async () => {
-    const { render } = await import('./render.ts')
-    const { useState, getUpdatePromise } = await import('./hooks/index.ts')
-
     let setItemsFn: ((items: string[]) => void) | null = null
 
     function List() {
@@ -76,8 +72,6 @@ describe('Key-Based Reconciliation', () => {
 
 describe('VNode Reconciliation', () => {
   it('should mount text nodes', async () => {
-    const { renderToDOM } = await import('./render.ts')
-
     const vnode = textVNode('Hello World')
     const node = await renderToDOM(vnode)
 
@@ -86,7 +80,6 @@ describe('VNode Reconciliation', () => {
   })
 
   it('should mount element nodes with props', async () => {
-    const { renderToDOM } = await import('./render.ts')
     type VNode = import('./vnode.ts').VNode
 
     const vnode: VNode = {
@@ -109,7 +102,6 @@ describe('VNode Reconciliation', () => {
   })
 
   it('should mount fragments', async () => {
-    const { render } = await import('./render.ts')
     type VNode = import('./vnode.ts').VNode
 
     const vnode: VNode = {

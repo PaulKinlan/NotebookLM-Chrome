@@ -3,18 +3,16 @@
  */
 
 import { describe, it, expect } from 'vitest'
+import { useState, getUpdatePromise } from './index.ts'
+import { render } from '../render.ts'
 import { textVNode, componentVNode } from '../test/setup.ts'
 
 describe('useState', () => {
   it('should initialize with initial value', async () => {
-    const { useState } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let getState: (() => number) | null = null
 
     function Counter() {
       const [count] = useState(0)
-      // Assign a function that captures the current count value
       const capturedCount = count
       getState = () => capturedCount
       return textVNode(`Count: ${count}`)
@@ -28,9 +26,6 @@ describe('useState', () => {
   })
 
   it('should update state and re-render', async () => {
-    const { useState, getUpdatePromise } = await import('./index.ts')
-    const { render } = await import('../render.ts')
-
     let setState: ((n: number) => void) | null = null
 
     function Counter() {
@@ -44,12 +39,9 @@ describe('useState', () => {
 
     expect(container.textContent).toBe('Count: 0')
 
-    // Update state
     setState!(1)
     await getUpdatePromise()
 
-    // Note: Current implementation may have timing issues with DOM updates
-    // The state is updated, but the DOM may not be re-rendered in this simple test
-    // This is expected to improve with better reconciliation
+    expect(container.textContent).toBe('Count: 1')
   })
 })
