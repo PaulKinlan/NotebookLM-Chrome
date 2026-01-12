@@ -123,6 +123,43 @@ interface UrlExtractResponse {
   success?: boolean
 }
 
+/**
+ * Type guard for TabExtractContentResponse
+ */
+function isTabExtractContentResponse(value: unknown): value is TabExtractContentResponse {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'url' in value
+    && 'title' in value
+    && 'markdown' in value
+    && typeof value.url === 'string'
+    && typeof value.title === 'string'
+    && typeof value.markdown === 'string'
+  )
+}
+
+/**
+ * Type guard for UrlExtractResponse
+ */
+function isUrlExtractResponse(value: unknown): value is UrlExtractResponse {
+  return (
+    typeof value === 'object'
+    && value !== null
+  )
+}
+
+/**
+ * Type guard for successful UrlExtractResponse with success: true
+ */
+function isSuccessfulUrlExtractResponse(value: unknown): value is UrlExtractResponse & { success: true } {
+  return (
+    isUrlExtractResponse(value)
+    && 'success' in value
+    && value.success === true
+  )
+}
+
 // ============================================================================
 // State
 // ============================================================================
@@ -664,10 +701,11 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
 
   // Now extract and add the page
   try {
-    const result = await chrome.tabs.sendMessage<TabExtractContentResponse>(tabId, {
+    const result: unknown = await chrome.tabs.sendMessage(tabId, {
       action: 'extractContent',
     })
-    if (result) {
+    // Type guard to ensure result has expected properties
+    if (isTabExtractContentResponse(result)) {
       const source = createSource(
         notebook.id,
         'tab',
@@ -706,18 +744,23 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
 
   // Now extract and add the link
   try {
-    const response = await chrome.runtime.sendMessage<UrlExtractResponse>({
+    const response: unknown = await chrome.runtime.sendMessage({
       type: 'EXTRACT_FROM_URL',
       payload: linkUrl,
     })
 
-    if (response) {
+    // Type guard to ensure response has expected properties
+    if (isUrlExtractResponse(response)) {
+      const url = response.url ?? linkUrl
+      const title = response.title ?? 'Untitled'
+      const content = response.content ?? ''
+
       const source = createSource(
         notebook.id,
         'tab',
-        response.url ?? linkUrl,
-        response.title ?? 'Untitled',
-        response.content ?? '',
+        url,
+        title,
+        content,
         response.links,
       )
       await saveSource(source)
@@ -753,18 +796,23 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
   let addedCount = 0
   for (const linkUrl of links) {
     try {
-      const response = await chrome.runtime.sendMessage<UrlExtractResponse>({
+      const response: unknown = await chrome.runtime.sendMessage({
         type: 'EXTRACT_FROM_URL',
         payload: linkUrl,
       })
 
-      if (response) {
+      // Type guard to ensure response has expected properties
+      if (isUrlExtractResponse(response)) {
+        const url = response.url ?? linkUrl
+        const title = response.title ?? 'Untitled'
+        const content = response.content ?? ''
+
         const source = createSource(
           notebook.id,
           'tab',
-          response.url ?? linkUrl,
-          response.title ?? 'Untitled',
-          response.content ?? '',
+          url,
+          title,
+          content,
           response.links,
         )
         await saveSource(source)
@@ -1041,7 +1089,9 @@ function setupEventListeners(): void {
   elements.refreshLinksBtn?.addEventListener('click', () => {
     void handleRefreshSuggestedLinks()
   })
-  elements.suggestedLinksList?.addEventListener('click', handleSuggestedLinkClick)
+  elements.suggestedLinksList?.addEventListener('click', (e) => {
+    void handleSuggestedLinkClick(e)
+  })
 
   // Transform tab
   elements.transformPodcast?.addEventListener('click', () => {
@@ -1120,7 +1170,7 @@ function setupEventListeners(): void {
   })
 
   // Tool Permissions
-  elements.toolPermissionsList.addEventListener('change', async (e) => {
+  elements.toolPermissionsList.addEventListener('change', (e) => {
     const target = e.target
     if (
       target instanceof HTMLInputElement
@@ -1131,19 +1181,19 @@ function setupEventListeners(): void {
       const action = target.dataset.action
 
       if (action === 'visible') {
-        await handleToggleToolVisible(toolName, target.checked)
+        void handleToggleToolVisible(toolName, target.checked)
       }
       else if (action === 'noApproval') {
         // Checkbox is "Auto approve", so checked = no approval needed
-        await handleToggleToolRequiresApproval(toolName, !target.checked)
+        void handleToggleToolRequiresApproval(toolName, !target.checked)
       }
     }
   })
 
-  elements.toolBasedContext.addEventListener('change', async () => {
+  elements.toolBasedContext.addEventListener('change', () => {
     const mode = elements.toolBasedContext.checked ? 'agentic' : 'classic'
-    await setContextMode(mode)
-    await updateChromeToolsWarning()
+    void setContextMode(mode)
+    void updateChromeToolsWarning()
   })
   elements.clearAllDataBtn.addEventListener('click', () => {
     void handleClearAllData()
@@ -1724,7 +1774,7 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
     const removeBtn = div.querySelector('.btn-remove')
     removeBtn?.addEventListener('click', (e) => {
       e.stopPropagation()
-      handleRemoveSource(source.id)
+      void handleRemoveSource(source.id)
     })
 
     container.appendChild(div)
@@ -2067,12 +2117,13 @@ async function handleAddSuggestedLink(url: string, linkItem: HTMLElement): Promi
 
   try {
     // Request content extraction from background script
-    const response = await chrome.runtime.sendMessage<UrlExtractResponse & { success: boolean }>({
+    const response: unknown = await chrome.runtime.sendMessage({
       type: 'EXTRACT_FROM_URL',
       payload: { url, notebookId: currentNotebookId },
     })
 
-    if (response && response.success) {
+    // Type guard for response
+    if (isSuccessfulUrlExtractResponse(response)) {
       // Remove the item from the list since it's now a source
       linkItem.remove()
 
@@ -2148,11 +2199,12 @@ async function handleAddCurrentTab(): Promise<void> {
 
         try {
           // Send message directly to the content script in the tab
-          const result = await chrome.tabs.sendMessage<TabExtractContentResponse>(tab.id, {
+          const result: unknown = await chrome.tabs.sendMessage(tab.id, {
             action: 'extractContent',
           })
 
-          if (result) {
+          // Type guard to ensure result has expected properties
+          if (isTabExtractContentResponse(result)) {
             const source = createSource(
               notebookId,
               'tab',
@@ -2190,17 +2242,22 @@ async function handleAddCurrentTab(): Promise<void> {
     else {
       // Single tab - use existing logic
       elements.addCurrentTabBtn.textContent = 'Adding...'
-      const response = await chrome.runtime.sendMessage<UrlExtractResponse>({
+      const response: unknown = await chrome.runtime.sendMessage({
         type: 'EXTRACT_CONTENT',
       })
 
-      if (response) {
+      // Type guard to ensure response has expected properties
+      if (isUrlExtractResponse(response)) {
+        const url = response.url ?? ''
+        const title = response.title ?? ''
+        const content = response.content ?? ''
+
         const source = createSource(
           notebookId,
           'tab',
-          response.url ?? '',
-          response.title ?? '',
-          response.content ?? '',
+          url,
+          title,
+          content,
           response.links,
         )
         await saveSource(source)
@@ -2663,11 +2720,12 @@ async function handlePickerAdd(): Promise<void> {
 
           try {
             // Send message directly to content script
-            const result = await chrome.tabs.sendMessage<TabExtractContentResponse>(tab.id, {
+            const result: unknown = await chrome.tabs.sendMessage(tab.id, {
               action: 'extractContent',
             })
 
-            if (result) {
+            // Type guard to ensure result has expected properties
+            if (isTabExtractContentResponse(result)) {
               const source = createSource(
                 notebookId,
                 'tab',
@@ -2705,18 +2763,23 @@ async function handlePickerAdd(): Promise<void> {
     for (const item of selectedItems) {
       try {
         // Extract content from the URL
-        const response = await chrome.runtime.sendMessage<UrlExtractResponse>({
+        const response: unknown = await chrome.runtime.sendMessage({
           type: 'EXTRACT_FROM_URL',
           payload: item.url,
         })
 
-        if (response) {
+        // Type guard to ensure response has expected properties
+        if (isUrlExtractResponse(response)) {
+          const url = response.url ?? item.url
+          const title = response.title ?? item.title
+          const content = response.content ?? ''
+
           const source = createSource(
             notebookId,
             pickerType || 'tab',
-            response.url ?? item.url,
-            response.title ?? item.title,
-            response.content ?? '',
+            url,
+            title,
+            content,
             response.links,
           )
           await saveSource(source)
@@ -4787,16 +4850,24 @@ function showConfirmDialog(title: string, message: string): Promise<boolean> {
 // Onboarding
 // ============================================================================
 
+// Store handler references for proper cleanup
+let onboardingSkipHandler: (() => void) | null = null
+let onboardingNextHandler: (() => void) | null = null
+
 function showOnboarding(): void {
   onboardingStep = 0
   renderOnboardingStep()
   elements.onboardingOverlay.classList.remove('hidden')
 
   // Setup event listeners
-  elements.onboardingSkip.addEventListener('click', () => {
+  onboardingSkipHandler = () => {
     void completeOnboarding()
-  })
-  elements.onboardingNext.addEventListener('click', nextOnboardingStep)
+  }
+  onboardingNextHandler = () => {
+    nextOnboardingStep()
+  }
+  elements.onboardingSkip.addEventListener('click', onboardingSkipHandler)
+  elements.onboardingNext.addEventListener('click', onboardingNextHandler)
 }
 
 function renderOnboardingStep(): void {
@@ -4833,8 +4904,14 @@ async function completeOnboarding(): Promise<void> {
   elements.onboardingOverlay.classList.add('hidden')
 
   // Clean up event listeners
-  elements.onboardingSkip.removeEventListener('click', completeOnboarding)
-  elements.onboardingNext.removeEventListener('click', nextOnboardingStep)
+  if (onboardingSkipHandler) {
+    elements.onboardingSkip.removeEventListener('click', onboardingSkipHandler)
+    onboardingSkipHandler = null
+  }
+  if (onboardingNextHandler) {
+    elements.onboardingNext.removeEventListener('click', onboardingNextHandler)
+    onboardingNextHandler = null
+  }
 
   // Switch to settings tab to prompt AI setup
   switchTab('settings')
