@@ -44,7 +44,8 @@ class StorageArea {
   )
 
   set = vi.fn((items: Record<string, unknown>): Promise<void> => {
-    return Promise.resolve(Object.assign(this.data, items))
+    Object.assign(this.data, items)
+    return Promise.resolve()
   })
 
   clear = vi.fn((): Promise<void> => {
