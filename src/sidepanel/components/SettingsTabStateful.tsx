@@ -202,45 +202,47 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
       <div className="settings-group">
         <h3 className="section-title">Tool Permissions</h3>
         <p className="setting-hint">Control which AI tools are visible and require approval before execution.</p>
-        {isLoadingTools ? (
-          <p>Loading tool permissions...</p>
-        ) : (
-          <div id="tool-permissions-list" className="tool-permissions-list">
-            {toolPermissions.map((tool) => (
-              <div key={tool.name} className="tool-permission-item">
-                <div className="tool-permission-header">
-                  <div className="tool-permission-name">
-                    <strong>{tool.displayName}</strong>
-                    <span className={`tool-permission-status ${tool.statusClass}`}>{tool.statusText}</span>
+        {isLoadingTools
+          ? (
+              <p>Loading tool permissions...</p>
+            )
+          : (
+              <div id="tool-permissions-list" className="tool-permissions-list">
+                {toolPermissions.map(tool => (
+                  <div key={tool.name} className="tool-permission-item">
+                    <div className="tool-permission-header">
+                      <div className="tool-permission-name">
+                        <strong>{tool.displayName}</strong>
+                        <span className={`tool-permission-status ${tool.statusClass}`}>{tool.statusText}</span>
+                      </div>
+                    </div>
+                    <div className="tool-permission-controls">
+                      <div className="tool-permission-control">
+                        <input
+                          type="checkbox"
+                          id={`tool-enabled-${tool.name}`}
+                          data-tool-name={tool.name}
+                          checked={tool.visible}
+                          onChange={(e: { target: HTMLInputElement }) => void toggleToolVisibility(tool.name, e.target.checked)}
+                        />
+                        <label htmlFor={`tool-enabled-${tool.name}`}>Enabled</label>
+                      </div>
+                      <div className="tool-permission-control">
+                        <input
+                          type="checkbox"
+                          id={`tool-no-approval-${tool.name}`}
+                          data-tool-name={tool.name}
+                          checked={tool.visible && tool.autoApprove}
+                          disabled={!tool.visible}
+                          onChange={(e: { target: HTMLInputElement }) => void toggleToolAutoApprove(tool.name, e.target.checked)}
+                        />
+                        <label htmlFor={`tool-no-approval-${tool.name}`}>Auto approve</label>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="tool-permission-controls">
-                  <div className="tool-permission-control">
-                    <input
-                      type="checkbox"
-                      id={`tool-enabled-${tool.name}`}
-                      data-tool-name={tool.name}
-                      checked={tool.visible}
-                      onChange={(e: { target: HTMLInputElement }) => void toggleToolVisibility(tool.name, e.target.checked)}
-                    />
-                    <label htmlFor={`tool-enabled-${tool.name}`}>Enabled</label>
-                  </div>
-                  <div className="tool-permission-control">
-                    <input
-                      type="checkbox"
-                      id={`tool-no-approval-${tool.name}`}
-                      data-tool-name={tool.name}
-                      checked={tool.visible && tool.autoApprove}
-                      disabled={!tool.visible}
-                      onChange={(e: { target: HTMLInputElement }) => void toggleToolAutoApprove(tool.name, e.target.checked)}
-                    />
-                    <label htmlFor={`tool-no-approval-${tool.name}`}>Auto approve</label>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
         <div className="tool-permissions-footer">
           <button
             id="reset-tool-permissions-btn"

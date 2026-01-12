@@ -10,14 +10,20 @@ import { useState, useRef } from '../../jsx-runtime/hooks/index.ts'
 import { useNotebook } from '../hooks/useNotebook.ts'
 import { useSources } from '../hooks/useSources.ts'
 import { useChatHistory } from '../hooks/useChatHistory.ts'
+import { useNotification } from '../hooks/useNotification.ts'
 import { ChatMessages } from './ChatMessages.tsx'
 import { ChatInput } from './ChatInput.tsx'
 import { SourcesList } from './SourcesList.tsx'
 import { PickerModal } from './PickerModal.tsx'
-import { importTabs, importBookmarks, importHistory } from '../services/sources.ts'
+import { importTabs, importBookmarks, importHistory, addHighlightedTabs } from '../services/sources.ts'
 import type { Source, ChatEvent, Citation, ToolCall } from '../../types/index.ts'
 import type { PickerItem } from '../services/sources.ts'
 import type { SlashCommand } from './ChatInput.tsx'
+import * as storage from '../../lib/storage.ts'
+import { getContextMode } from '../../lib/settings.ts'
+import { getSourceTools } from '../../lib/agent-tools.ts'
+import { streamChat, formatErrorForUser } from '../../lib/ai.ts'
+import { generateSummary } from '../../lib/transforms/summary.ts'
 
 // Available slash commands
 const SLASH_COMMANDS: SlashCommand[] = [
@@ -40,7 +46,6 @@ const SLASH_COMMANDS: SlashCommand[] = [
 
 interface ChatTabStatefulProps {
   active: boolean
-  onAddCurrentTab?: () => void
 }
 
 /**
@@ -60,12 +65,15 @@ function parseSlashCommand(input: string): { command: string, args: string } | n
 /**
  * ChatTabStateful - Fully self-contained chat component
  */
-export function ChatTabStateful({ active, onAddCurrentTab }: ChatTabStatefulProps): Node {
+export function ChatTabStateful({ active }: ChatTabStatefulProps): Node {
   // Notebook state
   const { currentNotebookId } = useNotebook()
 
   // Sources state
   const { sources, removeSource } = useSources(currentNotebookId)
+
+  // Notification state
+  const { showNotification } = useNotification()
 
   // Chat history state
   const { events, addEvent, clearHistory } = useChatHistory(currentNotebookId)
@@ -150,7 +158,6 @@ export function ChatTabStateful({ active, onAddCurrentTab }: ChatTabStatefulProp
     }
 
     // Get sources if we have a notebook
-    const storage = await import('../../lib/storage.ts')
     const sourcesForQuery = notebookId ? await storage.getSourcesByNotebook(notebookId) : []
 
     setIsGenerating(true)
@@ -165,10 +172,6 @@ export function ChatTabStateful({ active, onAddCurrentTab }: ChatTabStatefulProp
 
     try {
       // Get context mode and source tools
-      const { getContextMode } = await import('../../lib/settings.ts')
-      const { getSourceTools } = await import('../../lib/agent-tools.ts')
-      const { streamChat } = await import('../../lib/ai.ts')
-
       const contextMode = await getContextMode()
       const tools = contextMode === 'agentic' ? await getSourceTools() : undefined
 
@@ -239,10 +242,8 @@ export function ChatTabStateful({ active, onAddCurrentTab }: ChatTabStatefulProp
     }
     catch (error) {
       console.error('Query failed:', error)
-      const { formatErrorForUser } = await import('../../lib/ai.ts')
       const userFriendlyError = formatErrorForUser(error)
 
-      const storage = await import('../../lib/storage.ts')
       const errorEvent = storage.createAssistantEvent(
         notebookId,
         `Failed to generate response: ${userFriendlyError}`,
@@ -278,16 +279,12 @@ export function ChatTabStateful({ active, onAddCurrentTab }: ChatTabStatefulProp
         setChatStatus('Generating overview...')
         setIsGenerating(true)
         try {
-          const { generateSummary } = await import('../../lib/transforms/summary.ts')
-          const { saveSummary, createSummary } = await import('../../lib/storage.ts')
-
           const summary = await generateSummary(sources)
           const sourceIds = sources.map(s => s.id)
-          const summaryEntity = createSummary(currentNotebookId, sourceIds, summary)
-          await saveSummary(summaryEntity)
+          const summaryEntity = storage.createSummary(currentNotebookId, sourceIds, summary)
+          await storage.saveSummary(summaryEntity)
 
           // Add as assistant message
-          const storage = await import('../../lib/storage.ts')
           const assistantEvent = storage.createAssistantEvent(currentNotebookId, `## Overview\n\n${summary}`)
           await addEvent(assistantEvent)
 
@@ -306,7 +303,6 @@ export function ChatTabStateful({ active, onAddCurrentTab }: ChatTabStatefulProp
         const helpText = `Available commands:
 ${SLASH_COMMANDS.map(c => `  /${c.command} - ${c.description}`).join('\n')}
 `
-        const storage = await import('../../lib/storage.ts')
         const notebookId = currentNotebookId || ''
         const assistantEvent = storage.createAssistantEvent(notebookId, helpText)
         await addEvent(assistantEvent)
@@ -338,16 +334,12 @@ ${SLASH_COMMANDS.map(c => `  /${c.command} - ${c.description}`).join('\n')}
     setChatStatus('Regenerating overview...')
     setIsGenerating(true)
     try {
-      const { generateSummary } = await import('../../lib/transforms/summary.ts')
-      const { saveSummary, createSummary } = await import('../../lib/storage.ts')
-
       const summary = await generateSummary(sources)
       const sourceIds = sources.map(s => s.id)
-      const summaryEntity = createSummary(currentNotebookId, sourceIds, summary)
-      await saveSummary(summaryEntity)
+      const summaryEntity = storage.createSummary(currentNotebookId, sourceIds, summary)
+      await storage.saveSummary(summaryEntity)
 
       // Add as assistant message
-      const storage = await import('../../lib/storage.ts')
       const assistantEvent = storage.createAssistantEvent(currentNotebookId, `## Overview\n\n${summary}`)
       await addEvent(assistantEvent)
 
@@ -365,8 +357,22 @@ ${SLASH_COMMANDS.map(c => `  /${c.command} - ${c.description}`).join('\n')}
   /**
    * Handle add current tab button click
    */
-  function handleAddCurrentTabClick(): void {
-    onAddCurrentTab?.()
+  async function handleAddCurrentTabClick(): Promise<void> {
+    if (!currentNotebookId) {
+      showNotification('Please select a notebook first')
+      return
+    }
+
+    try {
+      const result = await addHighlightedTabs()
+      if (result.added > 0) {
+        showNotification(`Added ${result.added} source${result.added > 1 ? 's' : ''}`)
+      }
+    }
+    catch (error) {
+      console.error('Failed to add tab:', error)
+      showNotification('Failed to add tab')
+    }
   }
 
   function handlePickerClose(): void {

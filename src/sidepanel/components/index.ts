@@ -7,9 +7,11 @@
 // Stateful Components (hooks-based)
 export { AddTabStateful } from './AddTabStateful.tsx'
 export { ChatTabStateful } from './ChatTabStateful.tsx'
+export { HeaderStateful } from './Header.tsx'
 export { LibraryTabStateful } from './LibraryTabStateful.tsx'
 export { SettingsTabStateful } from './SettingsTabStateful.tsx'
 export { NotificationStateful } from './NotificationStateful.tsx'
+export { TransformTabStateful } from './TransformTabStateful.tsx'
 
 // Presentational Components
 export { SourcesList } from './SourcesList.tsx'

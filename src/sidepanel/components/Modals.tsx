@@ -7,6 +7,7 @@
  */
 
 import type { ConfirmDialogState, NotebookDialogState } from '../hooks/useDialog.ts'
+import type { UsePickerModalReturn } from '../hooks/usePickerModal.ts'
 
 // ============================================================================
 // Picker Modal (imperative wrapper for compatibility)
@@ -46,6 +47,98 @@ export function PickerModal() {
           <div className="modal-actions">
             <button id="picker-cancel" className="btn btn-outline">Cancel</button>
             <button id="picker-add" className="btn btn-primary">Add Selected</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * PickerModalStateful Component
+ *
+ * Stateful picker modal that uses usePickerModal hook.
+ * Not yet integrated - planned for next phase.
+ */
+export interface PickerModalStatefulProps {
+  /** usePickerModal hook return value */
+  picker: UsePickerModalReturn
+  /** Callback when items are selected and confirmed */
+  onConfirm: (items: { id: string, url: string, title: string, favicon?: string }[]) => Promise<void>
+}
+
+export function PickerModalStateful({ picker, onConfirm }: PickerModalStatefulProps) {
+  const { items, selectedItems, pickerType, isLoading, closePicker, toggleItem, getSelectedItems } = picker
+
+  if (!pickerType) {
+    return null
+  }
+
+  const typeNames: Record<string, string> = {
+    tab: 'Select from Tabs',
+    tabGroup: 'Select from Tab Groups',
+    bookmark: 'Select from Bookmarks',
+    history: 'Select from History',
+  }
+
+  const handleConfirm = async () => {
+    const selected = getSelectedItems()
+    await onConfirm(selected)
+    closePicker()
+  }
+
+  return (
+    <div id="picker-modal" className="modal">
+      <div className="modal-backdrop" onClick={closePicker}></div>
+      <div className="modal-content">
+        <div className="modal-header">
+          <h3 id="picker-title">{typeNames[pickerType] || 'Select Items'}</h3>
+          <button id="picker-close" className="icon-btn" onClick={closePicker}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div className="modal-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="picker-search" placeholder="Search..." />
+        </div>
+        <div id="picker-list" className="picker-list">
+          {isLoading
+            ? (
+                <p>Loading...</p>
+              )
+            : (
+                items.map(item => (
+                  <div
+                    key={item.id}
+                    className={`picker-item ${selectedItems.has(item.id) ? 'selected' : ''}`}
+                    onClick={() => toggleItem(item.id)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.has(item.id)}
+                      onChange={() => toggleItem(item.id)}
+                    />
+                    <span className="picker-item-title">{item.title}</span>
+                    {item.favicon && <img className="picker-item-favicon" src={item.favicon} alt="" />}
+                  </div>
+                ))
+              )}
+        </div>
+        <div className="modal-footer">
+          <span id="picker-selected-count">
+            {selectedItems.size}
+            {' '}
+            selected
+          </span>
+          <div className="modal-actions">
+            <button id="picker-cancel" className="btn btn-outline" onClick={closePicker}>Cancel</button>
+            <button id="picker-add" className="btn btn-primary" onClick={handleConfirm}>Add Selected</button>
           </div>
         </div>
       </div>

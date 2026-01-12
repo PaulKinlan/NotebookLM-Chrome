@@ -1,16 +1,46 @@
 /**
- * Header component - Top navigation bar with logo, library/settings buttons, notebook selector, and AI model picker
+ * HeaderStateful Component
+ *
+ * Top navigation bar with logo, library/settings buttons, notebook selector, and AI model picker.
+ * Uses useNotebook hook to populate and manage the notebook select dropdown.
  */
 
-interface HeaderProps {
-  onLibraryClick: () => void
-  onSettingsClick: () => void
-  onNotebookChange: (id: string) => void
-  onNewNotebook: () => void
+import { useNotebook } from '../hooks/useNotebook.ts'
+import { useDialog } from '../hooks/useDialog.ts'
+import { useNavigation } from '../hooks/useNavigation.ts'
+import { createNotebook } from '../../lib/storage.ts'
+
+interface HeaderStatefulProps {
+  /** Optional callback when notebook changes (in addition to hook's selectNotebook) */
+  onNotebookChange?: (id: string) => void
 }
 
-export function Header(props: HeaderProps) {
-  const { onLibraryClick, onSettingsClick, onNotebookChange, onNewNotebook } = props
+export function HeaderStateful({ onNotebookChange }: HeaderStatefulProps) {
+  const { notebooks, currentNotebookId, selectNotebook } = useNotebook()
+  const { showNotebook } = useDialog()
+  const { switchTab } = useNavigation()
+
+  const handleNotebookChange = async (e: { target: HTMLSelectElement }) => {
+    const notebookId = e.target.value || null
+    if (notebookId) {
+      await selectNotebook(notebookId)
+      if (onNotebookChange) {
+        onNotebookChange(notebookId)
+      }
+    }
+  }
+
+  const handleNewNotebook = async () => {
+    const name = await showNotebook({
+      title: 'New Folio',
+      placeholder: 'Enter folio name...',
+      confirmText: 'Create',
+    })
+    if (name) {
+      const nb = createNotebook(name)
+      await selectNotebook(nb.id)
+    }
+  }
 
   return (
     <header className="header">
@@ -21,7 +51,7 @@ export function Header(props: HeaderProps) {
           id="header-library-btn"
           className="header-icon-btn"
           title="Library"
-          onClick={onLibraryClick}
+          onClick={() => switchTab('library')}
         >
           <svg
             width="18"
@@ -39,7 +69,7 @@ export function Header(props: HeaderProps) {
           id="header-settings-btn"
           className="header-icon-btn"
           title="Settings"
-          onClick={onSettingsClick}
+          onClick={() => switchTab('settings')}
         >
           <svg
             width="18"
@@ -58,9 +88,15 @@ export function Header(props: HeaderProps) {
         <select
           id="notebook-select"
           className="header-notebook-select"
-          onChange={(e: Event) => onNotebookChange((e.target as HTMLSelectElement).value)}
+          value={currentNotebookId ?? ''}
+          onChange={handleNotebookChange}
         >
           <option value="">Select a folio...</option>
+          {notebooks.map(notebook => (
+            <option key={notebook.id} value={notebook.id}>
+              {notebook.name}
+            </option>
+          ))}
         </select>
         <div className="ai-model-picker">
           <button
@@ -93,7 +129,7 @@ export function Header(props: HeaderProps) {
           id="new-notebook-btn"
           className="header-icon-btn"
           title="New Folio"
-          onClick={onNewNotebook}
+          onClick={handleNewNotebook}
         >
           <svg
             width="18"

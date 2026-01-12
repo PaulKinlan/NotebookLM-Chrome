@@ -20,6 +20,8 @@ import {
   setActiveNotebookId,
 } from '../../lib/storage.ts'
 import { showNotebookDialog } from '../services/ui.ts'
+import { addSourceToNotebook } from '../services/notebooks.ts'
+import { importTabs, importBookmarks, importHistory } from '../services/sources.ts'
 import type { PickerItem } from '../services/sources.ts'
 
 interface AddTabStatefulProps {
@@ -124,7 +126,6 @@ export function AddTabStateful({ active }: AddTabStatefulProps): Node {
 
           const result = results?.[0]?.result
           if (result) {
-            const { addSourceToNotebook } = await import('../services/notebooks.ts')
             const { title, content, links } = result
             addSourceToNotebook(
               notebookId,
@@ -182,7 +183,6 @@ export function AddTabStateful({ active }: AddTabStatefulProps): Node {
     }
 
     // Import each batch
-    const { importTabs, importBookmarks, importHistory } = await import('../services/sources.ts')
 
     if (tabIds.length > 0) {
       await importTabs(tabIds)
