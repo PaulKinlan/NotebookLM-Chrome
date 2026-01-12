@@ -1,12 +1,12 @@
-import type { Message, ContentExtractionResult } from "../types/index.ts";
+import type { Message, ContentExtractionResult } from "./types/index.ts";
 import {
   createSource,
   saveSource,
   getNotebooks,
   getActiveNotebookId,
   setActiveNotebookId,
-} from "../lib/storage.ts";
-import { getLinksInSelection } from "../lib/selection-links.ts";
+} from "./lib/storage.ts";
+import { getLinksInSelection } from "./lib/selection-links.ts";
 
 // ============================================================================
 // Side Panel Setup
