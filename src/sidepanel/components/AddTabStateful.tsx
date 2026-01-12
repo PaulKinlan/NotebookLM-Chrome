@@ -10,6 +10,7 @@ import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
 import { useNotebook } from '../hooks/useNotebook.ts'
 import { useSources } from '../hooks/useSources.ts'
 import { usePermissions } from '../hooks/usePermissions.ts'
+import { useNavigation } from '../hooks/useNavigation.ts'
 import { SourcesList } from './SourcesList.tsx'
 import { PickerModal } from './PickerModal.tsx'
 import { addCurrentTab } from '../services/sources.ts'
@@ -37,6 +38,9 @@ export function AddTabStateful({ active }: AddTabStatefulProps): Node {
 
   // Permissions state
   const { permissions } = usePermissions()
+
+  // Navigation
+  const { switchTab } = useNavigation()
 
   // UI state
   const [showPicker, setShowPicker] = useState(false)
@@ -367,7 +371,7 @@ export function AddTabStateful({ active }: AddTabStatefulProps): Node {
           className="link"
           onClick={(e: Event): void => {
             e.preventDefault()
-            // TODO: Navigate to library tab or show all sources modal
+            switchTab('library')
           }}
         >
           View All

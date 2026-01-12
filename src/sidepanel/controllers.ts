@@ -7,6 +7,7 @@ import type {
   StreamEvent,
   Message,
 } from '../types/index.ts'
+import { initNavigation } from './hooks/index.ts'
 import DOMPurify from 'dompurify'
 import type { ExtractedLink } from '../types/index.ts'
 import { checkPermissions, requestPermission } from '../lib/permissions.ts'
@@ -547,6 +548,9 @@ async function updateChromeToolsWarning(): Promise<void> {
 }
 
 async function init(): Promise<void> {
+  // Initialize navigation hook with switchTab function
+  initNavigation(switchTab)
+
   permissions = await checkPermissions()
   currentNotebookId = await getActiveNotebookId()
 
@@ -1728,52 +1732,8 @@ async function loadSources(): Promise<void> {
   const sources = await getSourcesByNotebook(currentNotebookId)
   elements.sourceCount.textContent = sources.length.toString()
 
-  // TODO: Replace with stateful component rendering
-  // Render using SourcesList component in Chat tab
-  // mountSourcesList('active-sources', {
-  //   notebookId: currentNotebookId,
-  //   onRemoveSource: handleRemoveSource,
-  // })
-
-  // Render in Add tab (recent sources) - show first 5
-  // We need to use a different approach since we're limiting to 5
-  elements.sourcesList.innerHTML = ''
-  for (const source of sources.slice(0, 5)) {
-    const div = document.createElement('div')
-    div.className = 'source-item'
-    const domain = new URL(source.url).hostname.replace('www.', '')
-    const initial = source.title.charAt(0).toUpperCase()
-    div.innerHTML = `
-      <div class="source-icon">${initial}</div>
-      <div class="source-info">
-        <div class="source-title">
-          <span class="source-title-text">${source.title}</span>
-          <a href="${source.url}" target="_blank" rel="noopener noreferrer" class="source-external" title="Open in new tab">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-              <polyline points="15 3 21 3 21 9"></polyline>
-              <line x1="10" y1="14" x2="21" y2="3"></line>
-            </svg>
-          </a>
-        </div>
-        <div class="source-url">${domain}</div>
-      </div>
-      <div class="source-actions">
-        <button class="icon-btn btn-remove" data-id="${source.id}" title="Remove">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-    `
-    const removeBtn = div.querySelector('.btn-remove')
-    removeBtn?.addEventListener('click', (e) => {
-      e.stopPropagation()
-      void handleRemoveSource(source.id)
-    })
-    elements.sourcesList.appendChild(div)
-  }
+  // Note: Sources list rendering is now handled by AddTabStateful component
+  // which uses the SourcesList component with hooks for state management
 
   // Load or generate summary
   await loadOrGenerateSummary(sources)
@@ -3422,38 +3382,10 @@ function updateAutocompleteSelection(): void {
 // ============================================================================
 
 function loadChatHistory(): void {
-  if (!currentNotebookId) {
-    elements.chatMessages.innerHTML = `
-      <div class="empty-state">
-        <p>Select a notebook to view chat history.</p>
-      </div>
-    `
-    return
-  }
-
-  // Load chat history for stateful component
-  // const events = await getChatHistory(currentNotebookId)
-
-  // Fetch sources for citation rendering
-  // const sources = await getSourcesByNotebook(currentNotebookId)
-
-  // TODO: Replace with stateful component rendering
-  // Render using ChatMessages component
-  // mountChatMessages('chat-messages', {
-  //   notebookId: currentNotebookId,
-  //   events,
-  //   sources,
-  //   onCitationClick: (url: string, excerpt: string) => {
-  //     // Handle citation click - open with text fragment if available
-  //     if (excerpt && excerpt !== 'Referenced in response') {
-  //       const fragmentUrl = `${url.split('#')[0]}#:~:text=${encodeURIComponent(excerpt.slice(0, 100))}`
-  //       void chrome.tabs.create({ url: fragmentUrl })
-  //     }
-  //     else {
-  //       void chrome.tabs.create({ url })
-  //     }
-  //   },
-  // })
+  // Note: Chat history rendering is now handled by ChatTabStateful component
+  // which uses the ChatMessages component with useChatHistory hook
+  // This function is kept for compatibility but may be removed in future refactoring
+  void currentNotebookId
 }
 
 /**

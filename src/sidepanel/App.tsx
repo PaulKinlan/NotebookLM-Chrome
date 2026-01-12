@@ -4,8 +4,8 @@
 
 // Import all components
 import { Header } from './components/Header'
-import { AddTab } from './components/AddTab'
-import { ChatTab } from './components/ChatTab'
+import { AddTabStateful } from './components/AddTabStateful'
+import { ChatTabStateful } from './components/ChatTabStateful'
 import { TransformTab } from './components/TransformTab'
 import { LibraryTab } from './components/LibraryTab'
 import { SettingsTab } from './components/SettingsTab'
@@ -148,20 +148,10 @@ export function App(props: AppProps = {
       />
 
       <main className="content">
-        <AddTab
-          active={activeTab === 'add'}
-          onAddCurrentTab={() => { void businessHandlers?.handleAddCurrentTab() }}
-          onImportTabs={() => { void businessHandlers?.handleImportTabs() }}
-          onImportTabGroups={() => { void businessHandlers?.handleImportTabGroups() }}
-          onImportBookmarks={() => { void businessHandlers?.handleImportBookmarks() }}
-          onImportHistory={() => { void businessHandlers?.handleImportHistory() }}
-        />
+        <AddTabStateful active={activeTab === 'add'} />
 
-        <ChatTab
+        <ChatTabStateful
           active={activeTab === 'chat'}
-          onQuery={() => { void businessHandlers?.handleQuery() }}
-          onClearChat={() => { void businessHandlers?.handleClearChat() }}
-          onRegenerateSummary={() => { void businessHandlers?.handleRegenerateSummary() }}
           onAddCurrentTab={() => { void businessHandlers?.handleAddCurrentTab() }}
         />
 
