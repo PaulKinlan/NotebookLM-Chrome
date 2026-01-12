@@ -153,6 +153,17 @@ async function mountComponent(
   // Create component instance
   const instance = mod.createComponentInstance(fn, props, parentComponent)
 
+  // Check if this is an ErrorBoundary component
+  // We identify it by checking if it has the special __isErrorBoundary property
+  // or by checking the component name
+  if ((fn as { __isErrorBoundary?: boolean }).__isErrorBoundary) {
+    instance.isErrorBoundary = true
+    instance.errorBoundaryProps = {
+      fallback: (props as { fallback?: (error: Error) => VNode | Node }).fallback,
+      onError: (props as { onError?: (error: Error, errorInfo: { componentStack?: string }) => void }).onError,
+    }
+  }
+
   // Create a container node for this component
   const container = document.createComment('')
   parent.appendChild(container)
@@ -257,6 +268,48 @@ export async function renderComponent(instance: ComponentInstance): Promise<void
     return
   }
 
+  // Handle error boundary state - if there's an error, render fallback
+  if (instance.isErrorBoundary && instance.errorState) {
+    const error = instance.errorState
+    const fallback = instance.errorBoundaryProps?.fallback
+
+    let newVNode: VNode
+    if (fallback) {
+      try {
+        const result = fallback(error)
+        newVNode = normalizeVNode(result)
+      }
+      catch {
+        newVNode = { type: 'text', value: `Error: ${error.message}` }
+      }
+    }
+    else {
+      // Default fallback UI
+      newVNode = {
+        type: 'element',
+        tag: 'div',
+        props: { className: 'error-boundary' },
+        children: [
+          { type: 'element', tag: 'h3', props: {}, children: [{ type: 'text', value: 'Something went wrong' }] },
+          { type: 'element', tag: 'p', props: {}, children: [{ type: 'text', value: error.message }] },
+        ],
+      }
+    }
+
+    // Update with fallback content
+    instance.currentVNode = newVNode
+    const oldNode = instance.mountedNode
+    const oldVNode = instance.currentVNode
+
+    if (!oldNode || !oldNode.parentNode) {
+      return
+    }
+
+    const parent = oldNode.parentNode
+    await reconcile(parent, oldVNode, newVNode, instance)
+    return
+  }
+
   // Set current component for hooks
   mod.setCurrentComponent(instance)
 
@@ -273,9 +326,25 @@ export async function renderComponent(instance: ComponentInstance): Promise<void
     const result = instance.fn(instance.props)
     // Wrap raw Node in a text VNode if needed
     newVNode = normalizeVNode(result)
+
+    // Reset error state on successful render
+    mod.resetErrorState(instance)
   }
   catch (error) {
-    console.error('Error rendering component:', error)
+    const errorObj = error instanceof Error ? error : new Error(String(error))
+
+    // Try to find an error boundary to handle this error
+    const captured = mod.captureError(instance, errorObj)
+
+    if (captured) {
+      // Error was captured by an error boundary
+      // The error boundary will re-render with its fallback
+      mod.setCurrentComponent(null)
+      return
+    }
+
+    // No error boundary found - log error and render empty
+    console.error('Error rendering component (no error boundary):', errorObj)
     newVNode = { type: 'text', value: '' }
   }
 
@@ -429,7 +498,23 @@ function diffProps(el: Element, oldProps: Record<string, unknown>, newProps: Rec
 }
 
 /**
- * Diff children between old and new VNode
+ * Get the key for a VNode, using index as fallback
+ */
+function getVNodeKey(vnode: VNode, index: number): string {
+  if (vnode.type === 'component' || vnode.type === 'element') {
+    return vnode.key ?? `__index_${index}`
+  }
+  return `__index_${index}`
+}
+
+/**
+ * Diff children between old and new VNode using key-based reconciliation
+ *
+ * This algorithm:
+ * 1. Builds a map of old children by key
+ * 2. Matches new children to old children by key
+ * 3. Handles moves using insertBefore
+ * 4. Removes unmatched old children
  */
 async function diffChildren(
   parent: Node,
@@ -437,36 +522,91 @@ async function diffChildren(
   newChildren: VNode[],
   component?: ComponentInstance,
 ): Promise<void> {
-  const oldLen = oldChildren.length
-  const newLen = newChildren.length
-  const maxLen = Math.max(oldLen, newLen)
+  const mod = await getComponentModule()
 
-  // Simple diff algorithm - iterate and reconcile
-  // A production system would use React's key-based diffing
-  for (let i = 0; i < maxLen; i++) {
-    const oldChild = oldChildren[i]
-    const newChild = newChildren[i]
-
-    if (!oldChild && newChild) {
-      // Mount new child
+  // Edge case: no old children - mount all new children
+  if (oldChildren.length === 0) {
+    for (const newChild of newChildren) {
       await reconcile(parent, null, newChild, component)
     }
-    else if (oldChild && !newChild) {
-      // Remove old child
-      if (i < parent.childNodes.length) {
-        const childNode = parent.childNodes[i]
-        const mounted = mountedNodes.get(childNode)
-        const mod = await getComponentModule()
-        if (mounted?.component) {
-          mod.unmountComponent(mounted.component)
+    return
+  }
+
+  // Edge case: no new children - remove all old children
+  if (newChildren.length === 0) {
+    for (let i = parent.childNodes.length - 1; i >= 0; i--) {
+      const childNode = parent.childNodes[i]
+      const mounted = mountedNodes.get(childNode)
+      if (mounted?.component) {
+        mod.unmountComponent(mounted.component)
+      }
+      if (childNode.parentNode === parent) {
+        try {
+          parent.removeChild(childNode)
         }
-        // Only remove if this node is still a child of the parent
-        if (childNode.parentNode === parent) {
+        catch (e) {
+          if ((e as DOMException).name !== 'NotFoundError') {
+            throw e
+          }
+        }
+      }
+    }
+    return
+  }
+
+  // Build a map of old children by key for O(1) lookup
+  const oldByKey = new Map<string, { vnode: VNode, domIndex: number }>()
+  for (let i = 0; i < oldChildren.length; i++) {
+    const key = getVNodeKey(oldChildren[i], i)
+    oldByKey.set(key, { vnode: oldChildren[i], domIndex: i })
+  }
+
+  // Track which old children have been matched
+  const matched = new Set<string>()
+
+  // Get current DOM children for reference
+  const domChildren = Array.from(parent.childNodes)
+
+  // Process each new child
+  for (let newIdx = 0; newIdx < newChildren.length; newIdx++) {
+    const newChild = newChildren[newIdx]
+    const key = getVNodeKey(newChild, newIdx)
+    const match = oldByKey.get(key)
+
+    if (match && !matched.has(key)) {
+      // Found a matching old child - reconcile it
+      matched.add(key)
+
+      // Find the corresponding DOM node
+      const oldDomNode = domChildren[match.domIndex]
+
+      if (oldDomNode && oldDomNode.parentNode === parent) {
+        // Reconcile the existing node
+        await reconcile(oldDomNode, match.vnode, newChild, component)
+
+        // Check if we need to move this node
+        // Find the position where this node should be
+        let targetBefore: Node | null = null
+        for (let i = 0; i < newIdx; i++) {
+          const prevKey = getVNodeKey(newChildren[i], i)
+          const prevMatch = oldByKey.get(prevKey)
+          if (prevMatch && matched.has(prevKey)) {
+            const prevDomNode = domChildren[prevMatch.domIndex]
+            if (prevDomNode && prevDomNode.parentNode === parent) {
+              targetBefore = prevDomNode.nextSibling
+              break
+            }
+          }
+        }
+
+        // Move the node if it's not in the right position
+        const nextSibling = oldDomNode.nextSibling
+        if (targetBefore !== nextSibling && targetBefore !== oldDomNode) {
           try {
-            parent.removeChild(childNode)
+            parent.insertBefore(oldDomNode, targetBefore)
           }
           catch (e) {
-            // Ignore NotFoundError - node may have been removed already
+            // Node may have been removed or invalid
             if ((e as DOMException).name !== 'NotFoundError') {
               throw e
             }
@@ -474,30 +614,81 @@ async function diffChildren(
         }
       }
     }
-    else if (oldChild && newChild) {
-      // Reconcile existing child
-      if (i < parent.childNodes.length) {
-        await reconcile(parent.childNodes[i], oldChild, newChild, component)
+    else if (match && matched.has(key)) {
+      // Duplicate key - this is an error, but we'll handle it by creating a new node
+      const newNode = await reconcile(parent, null, newChild, component)
+      // Insert at correct position
+      const nextSibling = domChildren[newIdx]?.nextSibling ?? null
+      try {
+        parent.insertBefore(newNode, nextSibling)
+      }
+      catch (e) {
+        if ((e as DOMException).name !== 'NotFoundError') {
+          throw e
+        }
+      }
+    }
+    else {
+      // No match - this is a new child, mount it
+      const newNode = await reconcile(parent, null, newChild, component)
+
+      // Find the correct position to insert
+      // Look for the next sibling in the new children that's already in the DOM
+      let insertBeforeNode: Node | null = null
+      for (let i = newIdx + 1; i < newChildren.length; i++) {
+        const searchKey = getVNodeKey(newChildren[i], i)
+        const searchMatch = oldByKey.get(searchKey)
+        if (searchMatch && matched.has(searchKey)) {
+          const domNode = domChildren[searchMatch.domIndex]
+          if (domNode && domNode.parentNode === parent) {
+            insertBeforeNode = domNode
+            break
+          }
+        }
+      }
+
+      // Insert the new node at the correct position
+      if (insertBeforeNode) {
+        try {
+          parent.insertBefore(newNode, insertBeforeNode)
+        }
+        catch (e) {
+          if ((e as DOMException).name !== 'NotFoundError') {
+            throw e
+          }
+        }
+      }
+      else {
+        // Append to end
+        try {
+          parent.appendChild(newNode)
+        }
+        catch (e) {
+          if ((e as DOMException).name !== 'NotFoundError') {
+            throw e
+          }
+        }
       }
     }
   }
 
-  // Remove extra children
-  while (parent.childNodes.length > newLen) {
-    const lastChild = parent.lastChild!
-    if (lastChild.parentNode === parent) {
-      const mounted = mountedNodes.get(lastChild)
-      const mod = await getComponentModule()
-      if (mounted?.component) {
-        mod.unmountComponent(mounted.component)
-      }
-      try {
-        parent.removeChild(lastChild)
-      }
-      catch (e) {
-        // Ignore NotFoundError - node may have been removed already
-        if ((e as DOMException).name !== 'NotFoundError') {
-          throw e
+  // Remove unmatched old children
+  for (let i = 0; i < oldChildren.length; i++) {
+    const key = getVNodeKey(oldChildren[i], i)
+    if (!matched.has(key)) {
+      const domNode = domChildren[i]
+      if (domNode && domNode.parentNode === parent) {
+        const mounted = mountedNodes.get(domNode)
+        if (mounted?.component) {
+          mod.unmountComponent(mounted.component)
+        }
+        try {
+          parent.removeChild(domNode)
+        }
+        catch (e) {
+          if ((e as DOMException).name !== 'NotFoundError') {
+            throw e
+          }
         }
       }
     }
