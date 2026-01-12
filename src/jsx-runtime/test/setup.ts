@@ -23,8 +23,22 @@ beforeEach(() => {
   globalThis.Node = jsdom.window.Node
   globalThis.HTMLElement = jsdom.window.HTMLElement
   globalThis.Text = jsdom.window.Text
+
+  // Use a synchronous mock for requestAnimationFrame in tests
+  // This ensures updates are processed immediately when scheduled
+  let rafCallback: FrameRequestCallback | null = null
   globalThis.requestAnimationFrame = (cb: FrameRequestCallback) => {
-    return setTimeout(() => cb(Date.now()), 0) as unknown as number
+    rafCallback = cb
+    return 1 as unknown as number
+  }
+
+  // @ts-expect-error - Adding test helper
+  globalThis._flushRAF = () => {
+    if (rafCallback) {
+      const cb = rafCallback
+      rafCallback = null
+      cb(Date.now())
+    }
   }
 
   // Suppress DOM errors during test cleanup

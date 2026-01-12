@@ -89,8 +89,16 @@ let updateResolveCallback: (() => void) | null = null
 let updatePromise: Promise<void> | null = null
 
 export function getUpdatePromise(): Promise<void> {
+  // In test environment, flush the RAF callback BEFORE creating the promise
+  // This ensures any scheduled updates run synchronously
+  const flushRAF = (globalThis as { _flushRAF?: () => void })._flushRAF
+  if (flushRAF) {
+    flushRAF()
+  }
+
   if (!updatePromise) {
     updatePromise = new Promise((resolve) => {
+      // After flushing, check if there are still updates
       if (updateQueue.size === 0 && !updateScheduled) {
         resolve()
         updatePromise = null
