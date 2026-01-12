@@ -5,9 +5,12 @@
  * and accessing extension pages for testing.
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer';
 import * as path from 'path';
 import * as fs from 'fs';
+import puppeteer, { Browser, Page } from 'puppeteer';
+
+// Re-export types for test imports
+export type { Browser, Page };
 
 const EXTENSION_PATH = path.join(process.cwd(), 'dist');
 const PROFILE_DIR = path.join(process.cwd(), 'tests', '.chrome-profile');
