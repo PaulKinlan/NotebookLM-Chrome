@@ -10,21 +10,12 @@ import { getCurrentComponent } from '../../jsx-runtime/component.ts'
 // Valid tab names in the side panel
 export type TabName = 'library' | 'chat' | 'transform' | 'add' | 'settings'
 
-// Reference to the global switchTab function from controllers.ts
-let switchTabFn: ((tabName: TabName) => void) | null = null
-
-/**
- * Initialize the navigation hook with the switchTab function.
- * Called by controllers.ts on initialization.
- */
-export function initNavigation(switchTab: (tabName: TabName) => void): void {
-  switchTabFn = switchTab
-}
-
 /**
  * useNavigation hook
  *
  * Returns a function to switch tabs.
+ * Tab state is now managed by the parent App component using useState.
+ * Components can accept an onTabChange callback prop to notify parents.
  *
  * @example
  * ```tsx
@@ -47,12 +38,10 @@ export function useNavigation(): { switchTab: (tabName: TabName) => void } {
     }
   }
 
-  const switchTab = (tabName: TabName): void => {
-    if (!switchTabFn) {
-      console.warn('Navigation not initialized. Call initNavigation() first.')
-      return
-    }
-    switchTabFn(tabName)
+  const switchTab = (): void => {
+    // Tab switching is now handled by parent components via props
+    // This hook is kept for type safety and future extensibility
+    console.warn('Navigation: Tab switching should be handled via onTabChange callback from parent component')
   }
 
   return { switchTab }
