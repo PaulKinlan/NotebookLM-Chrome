@@ -268,30 +268,79 @@ describe('User Flow', () => {
       });
       expect(addTabActive).toBe(true);
 
-      // Check if sources are displayed
-      const hasSourcesList = await page.evaluate(() => {
-        const sourcesList = document.getElementById('active-sources');
-        if (!sourcesList) return false;
-
-        const sourceItems = sourcesList.querySelectorAll('.source-item');
-        return sourceItems.length > 0;
+      // Get the current notebook ID and create a source via IndexedDB
+      const notebookId = await page.evaluate(() => {
+        const select = document.getElementById('notebook-select') as HTMLSelectElement;
+        return select.value;
       });
 
-      expect(hasSourcesList).toBe(true);
+      // Create a source directly via IndexedDB
+      await page.evaluate((nbId) => {
+        return new Promise<void>((resolve, reject) => {
+          const sourceId = `source_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+          const request = indexedDB.open('notebooklm-chrome', 6);
 
-      // Get the first source title
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            const db = request.result;
+            const transaction = db.transaction(['sources'], 'readwrite');
+            const store = transaction.objectStore('sources');
+
+            const source = {
+              id: sourceId,
+              notebookId: nbId,
+              type: 'tab',
+              url: 'https://example.com/e2e-test-source',
+              title: 'E2E Test Source',
+              content: '# E2E Test Source\n\nThis is a test source for E2E testing.',
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            };
+
+            const addRequest = store.add(source);
+            addRequest.onerror = () => reject(addRequest.error);
+            addRequest.onsuccess = () => {
+              db.close();
+              resolve();
+            };
+          };
+
+          request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains('sources')) {
+              const sourcesStore = db.createObjectStore('sources', { keyPath: 'id' });
+              sourcesStore.createIndex('notebookId', 'notebookId', { unique: false });
+            }
+          };
+        });
+      }, notebookId);
+
+      // Wait for storage to update and trigger a reload by switching tabs
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await page.click('[data-tab="chat"]');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await page.click('[data-tab="add"]');
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Wait for source to appear in the list
+      await page.waitForFunction(() => {
+        const sourcesList = document.getElementById('active-sources');
+        if (!sourcesList) return false;
+        const sourceItems = sourcesList.querySelectorAll('.source-item');
+        return sourceItems.length > 0;
+      }, { timeout: 5000 });
+
+      // Verify source is displayed and has the expected title
       const firstSourceTitle = await page.evaluate(() => {
         const sourcesList = document.getElementById('active-sources');
         if (!sourcesList) return '';
-
         const firstSource = sourcesList.querySelector('.source-item');
         if (!firstSource) return '';
-
         const titleEl = firstSource.querySelector('.source-title');
-        return titleEl ? titleEl.textContent : '';
+        return titleEl ? titleEl.textContent?.trim() : '';
       });
 
-      expect(firstSourceTitle).toBeTruthy();
+      expect(firstSourceTitle).toBe('E2E Test Source');
 
       await page.close();
     });
