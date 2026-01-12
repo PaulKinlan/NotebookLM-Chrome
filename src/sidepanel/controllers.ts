@@ -974,6 +974,9 @@ async function handleToggleToolRequiresApproval(toolName: string, requiresApprov
   // If removing approval requirement, mark as auto-approved
   if (!requiresApproval) {
     config.permissions[toolName].autoApproved = true
+  } else {
+    // If adding approval requirement, mark as NOT auto-approved
+    config.permissions[toolName].autoApproved = false
   }
 
   config.lastModified = Date.now()
