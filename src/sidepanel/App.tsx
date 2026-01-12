@@ -3,24 +3,25 @@
 // ============================================================================
 
 // Import all components
+import { useState, useEffect } from '../jsx-runtime/hooks/index.ts'
 import { Header } from './components/Header'
 import { AddTabStateful } from './components/AddTabStateful'
 import { ChatTabStateful } from './components/ChatTabStateful'
 import { TransformTab } from './components/TransformTab'
-import { LibraryTab } from './components/LibraryTab'
-import { SettingsTab } from './components/SettingsTab'
+import { LibraryTabStateful } from './components/LibraryTabStateful'
+import { SettingsTabStateful } from './components/SettingsTabStateful'
 import { BottomNav } from './components/BottomNav'
 import { Fab } from './components/Fab'
 import { PickerModal, NotebookDialog, ConfirmDialog } from './components/Modals'
-import { Notification } from './components/Notification'
+import { NotificationStateful } from './components/NotificationStateful'
 import { Onboarding } from './components/Onboarding'
+import { useDialog } from './hooks/useDialog.ts'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings'
-type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history'
 
 type BusinessHandlers = typeof import('./index')['handlers']
 
@@ -29,72 +30,6 @@ interface AppProps {
   fabHidden: boolean
   onboardingHidden: boolean
   businessHandlers: BusinessHandlers | null
-}
-
-interface AppHandlers {
-  handleTabClick: (tab: TabName) => void
-  handleHeaderLibraryClick: () => void
-  handleHeaderSettingsClick: () => void
-  handleFabClick: () => void
-  handleTransform: (type: string) => void
-}
-
-// ============================================================================
-// Handlers (will be connected to business logic later)
-// ============================================================================
-
-function createHandlers(state: { activeTab: TabName }, businessHandlers: BusinessHandlers | null): AppHandlers {
-  function updateTabVisibility(): void {
-    const navItems = document.querySelectorAll('.nav-item')
-    const tabContents = document.querySelectorAll('.tab-content')
-
-    navItems.forEach((item) => {
-      const tabName = item.getAttribute('data-tab')
-      if (tabName === state.activeTab) {
-        item.classList.add('active')
-      }
-      else {
-        item.classList.remove('active')
-      }
-    })
-
-    tabContents.forEach((content) => {
-      const tabId = content.id
-      if (tabId === `tab-${state.activeTab}`) {
-        content.classList.add('active')
-      }
-      else {
-        content.classList.remove('active')
-      }
-    })
-  }
-
-  return {
-    handleTabClick: (tab: TabName) => {
-      state.activeTab = tab
-      updateTabVisibility()
-      businessHandlers?.switchTab(tab)
-    },
-
-    handleHeaderLibraryClick: () => {
-      state.activeTab = 'library'
-      updateTabVisibility()
-    },
-
-    handleHeaderSettingsClick: () => {
-      state.activeTab = 'settings'
-      updateTabVisibility()
-    },
-
-    handleFabClick: () => {
-      state.activeTab = 'add'
-      updateTabVisibility()
-    },
-
-    handleTransform: (type: string) => {
-      void businessHandlers?.handleTransform(type as unknown as 'podcast' | 'quiz' | 'takeaways' | 'email' | 'slidedeck' | 'report' | 'datatable' | 'mindmap' | 'flashcards' | 'timeline' | 'glossary' | 'comparison' | 'faq' | 'actionitems' | 'executivebrief' | 'studyguide' | 'proscons' | 'citations' | 'outline')
-    },
-  }
 }
 
 // ============================================================================
@@ -107,16 +42,35 @@ export function App(props: AppProps = {
   onboardingHidden: true,
   businessHandlers: null,
 }): Node {
-  const { activeTab, fabHidden, onboardingHidden, businessHandlers } = props
+  const { activeTab: initialTab, fabHidden, onboardingHidden, businessHandlers } = props
 
-  const state = { activeTab }
-  const handlers = createHandlers(state, businessHandlers)
+  // Use useState for tab management instead of imperative DOM manipulation
+  const [activeTab, setActiveTab] = useState<TabName>(initialTab)
 
-  // Initialize tab visibility
-  requestAnimationFrame(() => {
+  // Use useDialog hook for dialog state management
+  const {
+    confirmDialog,
+    notebookDialog,
+    showConfirm,
+    showNotebook,
+    _handleConfirm,
+    _handleConfirmCancel,
+    _handleNotebookConfirm,
+    _handleNotebookCancel,
+    _setNotebookInput,
+  } = useDialog()
+
+  // Expose dialog functions globally for backward compatibility with controllers.ts
+  useEffect(() => {
+    ;(window as { showConfirm?: typeof showConfirm }).showConfirm = showConfirm
+    ;(window as { showNotebookDialog?: typeof showNotebook }).showNotebookDialog = showNotebook
+  }, [showConfirm, showNotebook])
+
+  // Apply active class to nav items and tab contents via CSS-based rendering
+  // The stateful components handle their own visibility based on the `active` prop
+  useEffect(() => {
+    // Update data-tab attributes for navigation highlighting
     const navItems = document.querySelectorAll('.nav-item')
-    const tabContents = document.querySelectorAll('.tab-content')
-
     navItems.forEach((item) => {
       const tabName = item.getAttribute('data-tab')
       if (tabName === activeTab) {
@@ -126,23 +80,34 @@ export function App(props: AppProps = {
         item.classList.remove('active')
       }
     })
+  }, [activeTab])
 
-    tabContents.forEach((content) => {
-      const tabId = content.id
-      if (tabId === `tab-${activeTab}`) {
-        content.classList.add('active')
-      }
-      else {
-        content.classList.remove('active')
-      }
-    })
-  })
+  const handleTabClick = (tab: TabName) => {
+    setActiveTab(tab)
+    businessHandlers?.switchTab(tab)
+  }
+
+  const handleHeaderLibraryClick = () => {
+    setActiveTab('library')
+  }
+
+  const handleHeaderSettingsClick = () => {
+    setActiveTab('settings')
+  }
+
+  const handleFabClick = () => {
+    setActiveTab('add')
+  }
+
+  const handleTransform = (type: string) => {
+    void businessHandlers?.handleTransform(type as unknown as 'podcast' | 'quiz' | 'takeaways' | 'email' | 'slidedeck' | 'report' | 'datatable' | 'mindmap' | 'flashcards' | 'timeline' | 'glossary' | 'comparison' | 'faq' | 'actionitems' | 'executivebrief' | 'studyguide' | 'proscons' | 'citations' | 'outline')
+  }
 
   return (
     <>
       <Header
-        onLibraryClick={handlers.handleHeaderLibraryClick}
-        onSettingsClick={handlers.handleHeaderSettingsClick}
+        onLibraryClick={handleHeaderLibraryClick}
+        onSettingsClick={handleHeaderSettingsClick}
         onNotebookChange={() => { void businessHandlers?.handleNotebookChange() }}
         onNewNotebook={() => { void businessHandlers?.handleNewNotebook() }}
       />
@@ -155,25 +120,39 @@ export function App(props: AppProps = {
           onAddCurrentTab={() => { void businessHandlers?.handleAddCurrentTab() }}
         />
 
-        <TransformTab active={activeTab === 'transform'} onTransform={handlers.handleTransform} />
+        <TransformTab active={activeTab === 'transform'} onTransform={handleTransform} />
 
-        <LibraryTab active={activeTab === 'library'} />
+        <LibraryTabStateful active={activeTab === 'library'} />
 
-        <SettingsTab
-          active={activeTab === 'settings'}
-          onPermissionToggle={(permission: PermissionType) => { void businessHandlers?.handlePermissionToggle(permission) }}
-          onClearAllData={() => { void businessHandlers?.handleClearAllData() }}
-        />
+        <SettingsTabStateful active={activeTab === 'settings'} />
       </main>
 
-      <BottomNav activeTab={activeTab} onTabClick={handlers.handleTabClick} />
+      <BottomNav activeTab={activeTab} onTabClick={handleTabClick} />
 
-      <Fab hidden={fabHidden} onClick={handlers.handleFabClick} />
+      <Fab hidden={fabHidden} onClick={handleFabClick} />
 
       <PickerModal />
-      <NotebookDialog />
-      <ConfirmDialog />
-      <Notification />
+      <NotebookDialog
+        visible={notebookDialog.visible}
+        title={notebookDialog.title}
+        placeholder={notebookDialog.placeholder}
+        confirmText={notebookDialog.confirmText}
+        inputValue={notebookDialog.inputValue}
+        onConfirm={_handleNotebookConfirm}
+        onCancel={_handleNotebookCancel}
+        onInput={_setNotebookInput}
+      />
+      <ConfirmDialog
+        visible={confirmDialog.visible}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        isDestructive={confirmDialog.isDestructive}
+        onConfirm={_handleConfirm}
+        onCancel={_handleConfirmCancel}
+      />
+      <NotificationStateful />
       <Onboarding hidden={onboardingHidden} />
     </>
   )
