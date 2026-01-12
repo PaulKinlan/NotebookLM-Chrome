@@ -1,3 +1,17 @@
+// ============================================================================
+// Re-export hooks system
+// ============================================================================
+
+// Export hooks and VDOM types for components that use state
+export { useState, useEffect, useContext, useMemo, useCallback, createContext, ContextProvider } from './jsx-runtime/hooks/index.ts'
+export type { Context } from './jsx-runtime/hooks/useContext.ts'
+export type { VNode, ComponentFn } from './jsx-runtime/vnode.ts'
+export { render, renderToDOM } from './jsx-runtime/render.ts'
+
+// ============================================================================
+// Legacy JSX Runtime (for non-hook components)
+// ============================================================================
+
 type Child = Node | string | number | boolean | null | undefined
 
 function isNode(x: unknown): x is Node {
