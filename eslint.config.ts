@@ -4,6 +4,7 @@ import tsparser from '@typescript-eslint/parser';
 import eslintComments from 'eslint-plugin-eslint-comments';
 import stylistic from '@stylistic/eslint-plugin';
 import barrelReExports from './eslint-rules/barrel-only-re-exports.ts';
+import testFileNaming from './eslint-rules/test-file-naming.ts';
 
 export default [
   eslint.configs.recommended,
@@ -95,6 +96,7 @@ export default [
       'foliolm': {
         rules: {
           'barrel-only-re-exports': barrelReExports,
+          'test-file-naming': testFileNaming,
         },
       },
     },
@@ -121,11 +123,22 @@ export default [
       '@typescript-eslint/no-unused-vars': 'error',
       // Limit file length for AI code analysis (400 lines = ~12-16k tokens)
       'max-lines': ['warn', { max: 400, skipBlankLines: true, skipComments: true }],
+      // Enforce test file naming convention
+      'foliolm/test-file-naming': 'error',
     },
   },
   {
     // Test files: Allow type assertions and other test-specific patterns
-    files: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/test/setup.ts', 'src/sandbox/**/*.ts'],
+    files: [
+      'src/**/*.unit.test.ts',
+      'src/**/*.unit.test.tsx',
+      'src/**/*.integration.test.ts',
+      'src/**/*.integration.test.tsx',
+      'src/**/*.e2e.test.ts',
+      'src/**/*.e2e.test.tsx',
+      'src/test/setup.ts',
+      'src/sandbox/**/*.ts',
+    ],
     plugins: {
       '@typescript-eslint': tseslint,
       'eslint-comments': eslintComments,

@@ -16,8 +16,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          include: ['src/**/*.unit.{test,spec}.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}'],
-          exclude: ['**/*.integration.{test,spec}.{ts,tsx}', '**/*.e2e.{test,spec}.{ts,tsx}'],
+          include: ['src/**/*.unit.test.{ts,tsx}'],
         },
       },
       // Integration tests
@@ -25,7 +24,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'integration',
-          include: ['src/**/*.integration.{test,spec}.{ts,tsx}'],
+          include: ['src/**/*.integration.test.{ts,tsx}'],
           testTimeout: 10000,
           hookTimeout: 10000,
         },
