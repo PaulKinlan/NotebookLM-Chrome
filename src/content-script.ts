@@ -1,6 +1,6 @@
 import TurndownService from 'turndown';
 import { Readability } from '@mozilla/readability';
-import type { ExtractedLink } from '../types/index.js';
+import type { ExtractedLink } from './types/index.js';
 
 const turndownService = new TurndownService({
   headingStyle: 'atx',
