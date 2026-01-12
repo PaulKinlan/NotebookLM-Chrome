@@ -119,11 +119,19 @@ export function jsx(
           if (styleValue === null || styleValue === undefined || styleValue === false) {
             continue
           }
+          // CSS property values must be strings - skip non-primitive values
+          if (typeof styleValue !== 'string' && typeof styleValue !== 'number') {
+            continue
+          }
           style.setProperty(styleName, String(styleValue))
         }
       }
       else if (value !== false && value !== null && propKey !== 'children') {
         // For boolean attributes on SVG (like fill="true"), convert to string
+        // Only primitive types are valid attribute values
+        if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
+          continue
+        }
         el.setAttribute(propKey, String(value))
       }
     }

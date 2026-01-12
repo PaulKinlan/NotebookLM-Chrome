@@ -19,6 +19,48 @@
 
 import DOMPurify, { Config } from 'dompurify'
 
+// Message types for sandbox communication
+type SandboxMessage
+  = | RenderContentMessage
+    | RenderInteractiveMessage
+    | ClearContentMessage
+    | SandboxReadyMessage
+    | RenderCompleteMessage
+    | HeightResponseMessage
+
+interface RenderContentMessage {
+  type: 'RENDER_CONTENT'
+  content: string
+  messageId: number
+}
+
+interface RenderInteractiveMessage {
+  type: 'RENDER_INTERACTIVE'
+  content: string
+  scripts: string[]
+  messageId: number
+}
+
+interface ClearContentMessage {
+  type: 'CLEAR_CONTENT'
+}
+
+interface SandboxReadyMessage {
+  type: 'SANDBOX_READY'
+}
+
+interface RenderCompleteMessage {
+  type: 'RENDER_COMPLETE'
+  messageId: number
+  height: number
+}
+
+interface HeightResponseMessage {
+  type: 'HEIGHT_RESPONSE'
+  messageId: number
+  height: number
+}
+
 // DOMPurify configuration for standard content going to sandbox
 const SANDBOX_DOMPURIFY_CONFIG: Config = {
   ALLOWED_TAGS: [
@@ -106,7 +148,12 @@ export class SandboxRenderer {
       return
     }
 
-    const { type, messageId, height } = event.data
+    const data = event.data as SandboxMessage | undefined
+    if (!data) {
+      return
+    }
+
+    const { type } = data
 
     switch (type) {
       case 'SANDBOX_READY':
@@ -117,21 +164,20 @@ export class SandboxRenderer {
         break
 
       case 'RENDER_COMPLETE':
-      case 'HEIGHT_RESPONSE':
+      case 'HEIGHT_RESPONSE': {
         // Update iframe height to match content, capped at max-height from CSS
-        if (height && this.iframe) {
+        if (data.height && this.iframe) {
           // Set the height to content size; CSS max-height will constrain it
-          this.iframe.style.height = `${height}px`
+          this.iframe.style.height = `${data.height}px`
         }
         // Resolve pending promise
-        if (messageId !== undefined) {
-          const pending = this.pendingMessages.get(messageId)
-          if (pending) {
-            pending.handler(height)
-            this.pendingMessages.delete(messageId)
-          }
+        const pending = this.pendingMessages.get(data.messageId)
+        if (pending) {
+          pending.handler(data.height)
+          this.pendingMessages.delete(data.messageId)
         }
         break
+      }
     }
   }
 

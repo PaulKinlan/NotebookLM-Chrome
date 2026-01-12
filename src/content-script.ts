@@ -240,7 +240,14 @@ function extractMarkdown(): { markdown: string, title: string, url: string, link
 
 // Listen for extraction requests from background script
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-  if (request.action === 'extractContent') {
+  // Type guard to verify this is our message type
+  const isValidRequest = (
+    req: unknown,
+  ): req is { action: string } => {
+    return typeof req === 'object' && req !== null && 'action' in req
+  }
+
+  if (isValidRequest(request) && request.action === 'extractContent') {
     const result = extractMarkdown()
     sendResponse(result)
   }
