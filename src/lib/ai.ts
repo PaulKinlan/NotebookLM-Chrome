@@ -646,7 +646,7 @@ function isJSONValue(value: unknown): boolean {
     return true;
   }
   // Objects
-  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+  if (typeof value === 'object' && !Array.isArray(value)) {
     return true;
   }
   return false;
