@@ -20,6 +20,7 @@
     "test:coverage": "vitest run --coverage",
     "test:coverage:integration": "vitest run --project integration --coverage",
     "test:e2e": "vitest --config tests/e2e/vitest.config.ts",
+    "ci": "npm run typecheck && npm run lint && npm run build && npm run test:run && npm run test:e2e -- --run",
     "package:zip": "cd dist && zip -r ../foliolm-extension-v${npm_package_version}.zip .",
     "package": "npm run package:zip",
     "version:patch": "node scripts/version.js patch",
