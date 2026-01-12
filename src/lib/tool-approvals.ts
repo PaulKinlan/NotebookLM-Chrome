@@ -11,10 +11,11 @@ import { dbGet, dbPut, dbGetAll } from './db.ts'
 const APPROVAL_REQUESTS_STORE = 'approvalRequests'
 
 // ============================================================================
-// Event Emitter for Approval Decisions
+// Event Emitters for Approval System
 // ============================================================================
 
 type ApprovalListener = (requestId: string, approved: boolean) => void
+type PendingApprovalListener = (request: ToolApprovalRequest) => void
 
 class ApprovalEventEmitter {
   private listeners = new Map<string, ApprovalListener>()
@@ -36,7 +37,29 @@ class ApprovalEventEmitter {
   }
 }
 
+class PendingApprovalEventEmitter {
+  private listeners: PendingApprovalListener[] = []
+
+  subscribe(callback: PendingApprovalListener): () => void {
+    this.listeners.push(callback)
+    // Return unsubscribe function
+    return () => {
+      const index = this.listeners.indexOf(callback)
+      if (index > -1) {
+        this.listeners.splice(index, 1)
+      }
+    }
+  }
+
+  emit(request: ToolApprovalRequest): void {
+    for (const listener of this.listeners) {
+      listener(request)
+    }
+  }
+}
+
 export const approvalEvents = new ApprovalEventEmitter()
+export const pendingApprovalEvents = new PendingApprovalEventEmitter()
 
 /**
  * Create a new approval request for a tool call
@@ -67,6 +90,9 @@ export async function createApprovalRequest(
     // If store doesn't exist yet, skip persistence
     // This will be created when DB is upgraded
   }
+
+  // Emit event so UI can show inline approval
+  pendingApprovalEvents.emit(request)
 
   return request
 }
