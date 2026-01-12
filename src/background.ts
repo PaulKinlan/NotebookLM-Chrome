@@ -1,4 +1,4 @@
-import type { Message, ContentExtractionResult } from './types/index.ts'
+import type { Message, ContentExtractionResult, ExtractedLink } from './types/index.ts'
 import {
   createSource,
   saveSource,
@@ -7,6 +7,25 @@ import {
   setActiveNotebookId,
 } from './lib/storage.ts'
 import { getLinksInSelection } from './lib/selection-links.ts'
+
+/**
+ * Response from content script's extractContent action
+ */
+interface ContentScriptResponse {
+  url: string
+  title: string
+  markdown: string
+  textContent?: string
+  content?: string
+  links?: ExtractedLink[]
+}
+
+/**
+ * Message sent to content script
+ */
+interface ContentScriptMessage {
+  action: 'ping' | 'extractContent'
+}
 
 // ============================================================================
 // Side Panel Setup
@@ -20,18 +39,20 @@ chrome.sidePanel
 // Keyboard Command Handlers
 // ============================================================================
 
-chrome.commands.onCommand.addListener(async (command, tab) => {
-  switch (command) {
-    case 'add-page-to-notebook':
-      await handleAddPageCommand(tab)
-      break
-    case 'create-new-notebook':
-      await handleCreateNotebookCommand(tab)
-      break
-    case 'add-selection-as-source':
-      await handleAddSelectionCommand(tab)
-      break
-  }
+chrome.commands.onCommand.addListener((command, tab) => {
+  void (async () => {
+    switch (command) {
+      case 'add-page-to-notebook':
+        await handleAddPageCommand(tab)
+        break
+      case 'create-new-notebook':
+        await handleCreateNotebookCommand(tab)
+        break
+      case 'add-selection-as-source':
+        await handleAddSelectionCommand(tab)
+        break
+    }
+  })()
 })
 
 async function handleAddPageCommand(tab?: chrome.tabs.Tab): Promise<void> {
@@ -177,7 +198,7 @@ const NEW_NOTEBOOK_SUFFIX = 'new-notebook'
 
 // Build context menus on install and when notebooks change
 chrome.runtime.onInstalled.addListener(() => {
-  buildContextMenus()
+  void buildContextMenus()
 })
 
 // Listen for requests to rebuild context menus (when notebooks change)
@@ -185,7 +206,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 async function buildContextMenus(): Promise<void> {
   // Remove all existing menus first
-  await chrome.contextMenus.removeAll()
+  chrome.contextMenus.removeAll()
 
   const notebooks = await getNotebooks()
 
@@ -292,97 +313,99 @@ async function buildContextMenus(): Promise<void> {
   })
 }
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  // Type guard for menuItemId
-  const menuId = typeof info.menuItemId === 'string' ? info.menuItemId : String(info.menuItemId)
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  void (async () => {
+    // Type guard for menuItemId
+    const menuId = typeof info.menuItemId === 'string' ? info.menuItemId : String(info.menuItemId)
 
-  // Open side panel immediately (must be in direct response to user gesture)
-  if (tab?.id) {
-    await chrome.sidePanel.open({ tabId: tab.id })
-  }
+    // Open side panel immediately (must be in direct response to user gesture)
+    if (tab?.id) {
+      await chrome.sidePanel.open({ tabId: tab.id })
+    }
 
-  // Handle page menu clicks
-  if (menuId.startsWith(PAGE_MENU_PREFIX) && tab?.id) {
-    const notebookIdOrNew = menuId.replace(PAGE_MENU_PREFIX, '')
+    // Handle page menu clicks
+    if (menuId.startsWith(PAGE_MENU_PREFIX) && tab?.id) {
+      const notebookIdOrNew = menuId.replace(PAGE_MENU_PREFIX, '')
 
-    if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
-      // Store pending action in session storage for side panel to pick up
-      await chrome.storage.session.set({
-        pendingAction: {
-          type: 'CREATE_NOTEBOOK_AND_ADD_PAGE',
-          payload: { tabId: tab.id },
-        },
-      })
-      // Also try sending message in case side panel is already open
-      chrome.runtime
-        .sendMessage({
-          type: 'CREATE_NOTEBOOK_AND_ADD_PAGE',
-          payload: { tabId: tab.id },
+      if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
+        // Store pending action in session storage for side panel to pick up
+        await chrome.storage.session.set({
+          pendingAction: {
+            type: 'CREATE_NOTEBOOK_AND_ADD_PAGE',
+            payload: { tabId: tab.id },
+          },
         })
-        .catch(() => {})
+        // Also try sending message in case side panel is already open
+        chrome.runtime
+          .sendMessage({
+            type: 'CREATE_NOTEBOOK_AND_ADD_PAGE',
+            payload: { tabId: tab.id },
+          })
+          .catch(() => {})
+      }
+      else {
+        await handleAddPageFromContextMenu(tab.id, notebookIdOrNew)
+      }
     }
-    else {
-      await handleAddPageFromContextMenu(tab.id, notebookIdOrNew)
-    }
-  }
 
-  // Handle link menu clicks
-  if (menuId.startsWith(LINK_MENU_PREFIX) && info.linkUrl) {
-    const notebookIdOrNew = menuId.replace(LINK_MENU_PREFIX, '')
+    // Handle link menu clicks
+    if (menuId.startsWith(LINK_MENU_PREFIX) && info.linkUrl) {
+      const notebookIdOrNew = menuId.replace(LINK_MENU_PREFIX, '')
 
-    if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
-      // Store pending action in session storage for side panel to pick up
-      await chrome.storage.session.set({
-        pendingAction: {
-          type: 'CREATE_NOTEBOOK_AND_ADD_LINK',
-          payload: { linkUrl: info.linkUrl },
-        },
-      })
-      // Also try sending message in case side panel is already open
-      chrome.runtime
-        .sendMessage({
-          type: 'CREATE_NOTEBOOK_AND_ADD_LINK',
-          payload: { linkUrl: info.linkUrl },
+      if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
+        // Store pending action in session storage for side panel to pick up
+        await chrome.storage.session.set({
+          pendingAction: {
+            type: 'CREATE_NOTEBOOK_AND_ADD_LINK',
+            payload: { linkUrl: info.linkUrl },
+          },
         })
-        .catch(() => {})
-    }
-    else {
-      await handleAddLinkFromContextMenu(info.linkUrl, notebookIdOrNew)
-    }
-  }
-
-  // Handle selection links menu clicks
-  if (menuId.startsWith(SELECTION_LINKS_MENU_PREFIX) && tab?.id) {
-    const notebookIdOrNew = menuId.replace(SELECTION_LINKS_MENU_PREFIX, '')
-
-    // Extract links from the selection using scripting API
-    const links = await extractLinksFromSelection(tab.id)
-
-    if (links.length === 0) {
-      console.log('No links found in selection')
-      return
+        // Also try sending message in case side panel is already open
+        chrome.runtime
+          .sendMessage({
+            type: 'CREATE_NOTEBOOK_AND_ADD_LINK',
+            payload: { linkUrl: info.linkUrl },
+          })
+          .catch(() => {})
+      }
+      else {
+        await handleAddLinkFromContextMenu(info.linkUrl, notebookIdOrNew)
+      }
     }
 
-    if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
-      // Store pending action in session storage for side panel to pick up
-      await chrome.storage.session.set({
-        pendingAction: {
-          type: 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS',
-          payload: { links },
-        },
-      })
-      // Also try sending message in case side panel is already open
-      chrome.runtime
-        .sendMessage({
-          type: 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS',
-          payload: { links },
+    // Handle selection links menu clicks
+    if (menuId.startsWith(SELECTION_LINKS_MENU_PREFIX) && tab?.id) {
+      const notebookIdOrNew = menuId.replace(SELECTION_LINKS_MENU_PREFIX, '')
+
+      // Extract links from the selection using scripting API
+      const links = await extractLinksFromSelection(tab.id)
+
+      if (links.length === 0) {
+        console.log('No links found in selection')
+        return
+      }
+
+      if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
+        // Store pending action in session storage for side panel to pick up
+        await chrome.storage.session.set({
+          pendingAction: {
+            type: 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS',
+            payload: { links },
+          },
         })
-        .catch(() => {})
+        // Also try sending message in case side panel is already open
+        chrome.runtime
+          .sendMessage({
+            type: 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS',
+            payload: { links },
+          })
+          .catch(() => {})
+      }
+      else {
+        await handleAddSelectionLinksFromContextMenu(links, notebookIdOrNew)
+      }
     }
-    else {
-      await handleAddSelectionLinksFromContextMenu(links, notebookIdOrNew)
-    }
-  }
+  })()
 })
 
 async function handleAddPageFromContextMenu(
@@ -391,9 +414,12 @@ async function handleAddPageFromContextMenu(
 ): Promise<void> {
   try {
     await ensureContentScript(tabId)
-    const result = await chrome.tabs.sendMessage(tabId, {
-      action: 'extractContent',
-    })
+    const result = await chrome.tabs.sendMessage<ContentScriptMessage, ContentScriptResponse>(
+      tabId,
+      {
+        action: 'extractContent',
+      },
+    )
 
     if (result) {
       const source = createSource(
@@ -642,9 +668,12 @@ async function extractContentFromActiveTab(): Promise<ContentExtractionResult | 
     await ensureContentScript(tab.id)
 
     // Request extraction from content script
-    const result = await chrome.tabs.sendMessage(tab.id, {
-      action: 'extractContent',
-    })
+    const result = await chrome.tabs.sendMessage<ContentScriptMessage, ContentScriptResponse>(
+      tab.id,
+      {
+        action: 'extractContent',
+      },
+    )
 
     return {
       url: result.url,
@@ -678,9 +707,12 @@ async function extractContentFromUrl(
     await ensureContentScript(tab.id)
 
     // Request extraction from content script
-    const result = await chrome.tabs.sendMessage(tab.id, {
-      action: 'extractContent',
-    })
+    const result = await chrome.tabs.sendMessage<ContentScriptMessage, ContentScriptResponse>(
+      tab.id,
+      {
+        action: 'extractContent',
+      },
+    )
 
     // Close the tab
     await chrome.tabs.remove(tab.id)
@@ -702,7 +734,9 @@ async function extractContentFromUrl(
 async function ensureContentScript(tabId: number): Promise<void> {
   try {
     // Try to ping the content script
-    await chrome.tabs.sendMessage(tabId, { action: 'ping' })
+    await chrome.tabs.sendMessage<ContentScriptMessage, { status: string }>(tabId, {
+      action: 'ping',
+    })
   }
   catch {
     // Content script not loaded - inject inline extraction function
@@ -734,7 +768,23 @@ function injectContentScript(): void {
   // Mark as extracted
   markExtracted()
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+    // Type guard for message
+    const isValidMessage = (
+      msg: unknown,
+    ): msg is { action: 'ping' | 'extractContent' } => {
+      return (
+        typeof msg === 'object'
+        && msg !== null
+        && 'action' in msg
+        && (msg.action === 'ping' || msg.action === 'extractContent')
+      )
+    }
+
+    if (!isValidMessage(message)) {
+      return false
+    }
+
     if (message.action === 'ping') {
       sendResponse({ status: 'ok' })
       return true
@@ -1017,15 +1067,18 @@ async function handleReadPageContent(payload: { tabId: number }): Promise<{
     await ensureContentScript(tab.id)
 
     // Request extraction from content script
-    const result = await chrome.tabs.sendMessage(tab.id, {
-      action: 'extractContent',
-    })
+    const result = await chrome.tabs.sendMessage<ContentScriptMessage, ContentScriptResponse>(
+      tab.id,
+      {
+        action: 'extractContent',
+      },
+    )
 
     return {
       tabId: tab.id,
-      title: result.title || tab.title,
-      url: result.url || tab.url,
-      content: result.textContent || result.content,
+      title: result.title || tab.title || '',
+      url: result.url || tab.url || '',
+      content: result.textContent || result.content || '',
     }
   }
   catch (error) {
