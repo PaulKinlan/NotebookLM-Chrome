@@ -5,7 +5,7 @@
  * Uses AI SDK's tool() function for type-safe tool definitions with automatic validation.
  */
 
-import { tool, type Tool } from 'ai'
+import { tool, type Tool, type ToolExecutionOptions } from 'ai'
 import { z } from 'zod'
 import { getSourcesByNotebook, getSource } from './storage.ts'
 import { dbGet, dbPut, dbDelete, dbGetAll } from './db.ts'
@@ -397,31 +397,31 @@ export async function getSourceTools() {
 
       tool = {
         ...tool,
-        execute: async (input: any, options: any) => {
+        execute: async (input: unknown, options: ToolExecutionOptions) => {
           // Import here to avoid circular dependency
           const { isToolAutoApproved } = await import('./tool-permissions.ts')
           const autoApproved = await isToolAutoApproved(name)
 
           if (autoApproved) {
             // Tool is auto-approved (e.g., session-scoped approval), execute directly
-            return await originalExecute(input, options)
+            return (await originalExecute(input, options)) as Tool
           }
 
           // Tool requires approval - use approval system
           const { createApprovalRequest, approvalEvents } = await import(
-            './tool-approvals.ts'
+            './tool-approvals.ts',
           )
           const toolCallId = crypto.randomUUID()
 
           // Extract args from input (AI SDK passes args as input object)
-          const args = input
+          const args = input as Record<string, unknown>
 
           // Create approval request
           const request = await createApprovalRequest(
             toolCallId,
             name,
             args,
-            reason
+            reason,
           )
 
           // Wait for user decision
@@ -435,7 +435,7 @@ export async function getSourceTools() {
             throw new Error(`Tool execution rejected by user: ${reason}`)
           }
 
-          return await originalExecute(input, options)
+          return (await originalExecute(input, options)) as Tool
         },
       }
     }

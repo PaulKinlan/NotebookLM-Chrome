@@ -4,14 +4,14 @@
  * JSX components for displaying and managing tool approval requests in agentic mode.
  */
 
-import type { ToolApprovalRequest, ApprovalScope } from '../types/index.ts';
+import type { ToolApprovalRequest, ApprovalScope } from '../types/index.ts'
 import {
   getPendingApprovals,
   respondToApproval,
   pendingApprovalEvents,
   updateApprovalStatus,
-} from '../lib/tool-approvals.ts';
-import { addToolApproval } from '../lib/tool-permissions.ts';
+} from '../lib/tool-approvals.ts'
+import { addToolApproval } from '../lib/tool-permissions.ts'
 
 // ============================================================================
 // Styles (using CSS objects for JSX runtime)
@@ -47,7 +47,7 @@ const STYLES = {
     color: 'var(--text-secondary)',
   },
   argsContent: {
-    fontFamily: "'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace",
+    fontFamily: '\'SF Mono\', Consolas, \'Liberation Mono\', Menlo, monospace',
     lineHeight: '1.5',
     color: 'var(--text-primary)',
   },
@@ -84,27 +84,42 @@ const STYLES = {
   statusText: {
     fontSize: '13px',
   },
-} as const;
+} as const
 
 // ============================================================================
 // Components
 // ============================================================================
 
 interface ApprovalCardProps {
-  request: ToolApprovalRequest;
-  onAction: (requestId: string, approved: boolean, scope: ApprovalScope) => void;
+  request: ToolApprovalRequest
+  onAction: (requestId: string, approved: boolean, scope: ApprovalScope) => void | Promise<void>
 }
 
 function ApprovalCard({ request, onAction }: ApprovalCardProps): Node {
-  const argRows: Node[] = [];
+  const argRows: Node[] = []
 
   for (const [key, value] of Object.entries(request.args)) {
-    const valueStr = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    let valueStr: string
+    if (typeof value === 'object') {
+      valueStr = JSON.stringify(value)
+    }
+    else if (value === null || value === undefined) {
+      valueStr = ''
+    }
+    else {
+      // At this point value is a primitive (string, number, boolean, bigint, symbol)
+      valueStr = String(value as string | number | boolean | bigint | symbol)
+    }
     argRows.push(
       <div key={key} style={STYLES.argRow}>
-        <strong>{escapeHtml(key)}:</strong> {escapeHtml(valueStr)}
-      </div>
-    );
+        <strong>
+          {escapeHtml(key)}
+          :
+        </strong>
+        {' '}
+        {escapeHtml(valueStr)}
+      </div>,
+    )
   }
 
   return (
@@ -121,7 +136,7 @@ function ApprovalCard({ request, onAction }: ApprovalCardProps): Node {
           <div className="approval-actions" style={STYLES.actions}>
             <button
               className="btn btn-outline"
-              style={{...STYLES.button, ...STYLES.buttonReject}}
+              style={{ ...STYLES.button, ...STYLES.buttonReject }}
               onClick={() => onAction(request.id, false, 'once')}
             >
               ✕ Reject
@@ -152,7 +167,7 @@ function ApprovalCard({ request, onAction }: ApprovalCardProps): Node {
       </div>
       <div className="chat-message-time">Just now</div>
     </div>
-  );
+  )
 }
 
 function ApprovedCard(): Node {
@@ -166,7 +181,7 @@ function ApprovedCard(): Node {
       </div>
       <div className="chat-message-time">Just now</div>
     </div>
-  );
+  )
 }
 
 function RejectedCard(): Node {
@@ -180,15 +195,15 @@ function RejectedCard(): Node {
       </div>
       <div className="chat-message-time">Just now</div>
     </div>
-  );
+  )
 }
 
 // ============================================================================
 // Container
 // ============================================================================
 
-const chatMessagesElement = () => document.getElementById('chat-messages') as HTMLDivElement | null;
-const renderedApprovals = new Set<string>();
+const chatMessagesElement = () => document.getElementById('chat-messages') as HTMLDivElement | null
+const renderedApprovals = new Set<string>()
 
 /**
  * Initialize inline approval UI - subscribes to pending approval events
@@ -196,20 +211,20 @@ const renderedApprovals = new Set<string>();
  */
 export function initInlineApprovals(): void {
   pendingApprovalEvents.subscribe((request) => {
-    renderInlineApproval(request);
-  });
+    renderInlineApproval(request)
+  })
 
   // Also check for pending approvals on page load
-  checkAndRenderPending();
+  void checkAndRenderPending()
 }
 
 /**
  * Check for pending approvals on page load and render them
  */
 async function checkAndRenderPending(): Promise<void> {
-  const pending = await getPendingApprovals();
+  const pending = await getPendingApprovals()
   for (const request of pending) {
-    renderInlineApproval(request);
+    renderInlineApproval(request)
   }
 }
 
@@ -218,19 +233,19 @@ async function checkAndRenderPending(): Promise<void> {
  */
 function renderInlineApproval(request: ToolApprovalRequest): void {
   // Don't render if already exists
-  if (renderedApprovals.has(request.id)) return;
+  if (renderedApprovals.has(request.id)) return
 
-  const container = chatMessagesElement();
-  if (!container) return;
+  const container = chatMessagesElement()
+  if (!container) return
 
   const card = ApprovalCard({
     request,
     onAction: handleApprovalAction,
-  });
+  })
 
-  container.appendChild(card);
-  container.scrollTop = container.scrollHeight;
-  renderedApprovals.add(request.id);
+  container.appendChild(card)
+  container.scrollTop = container.scrollHeight
+  renderedApprovals.add(request.id)
 }
 
 /**
@@ -239,30 +254,30 @@ function renderInlineApproval(request: ToolApprovalRequest): void {
 async function handleApprovalAction(
   requestId: string,
   approved: boolean,
-  scope: ApprovalScope
+  scope: ApprovalScope,
 ): Promise<void> {
-  const card = document.getElementById(`approval-${requestId}`);
-  if (!card) return;
+  const card = document.getElementById(`approval-${requestId}`)
+  if (!card) return
 
   // Disable all buttons
-  const buttons = card.querySelectorAll('.btn') as NodeListOf<HTMLButtonElement>;
-  buttons.forEach(btn => btn.disabled = true);
+  const buttons = card.querySelectorAll('.btn')
+  buttons.forEach(btn => (btn as HTMLButtonElement).disabled = true)
 
   if (!approved) {
     // Mark as rejected
-    await updateApprovalStatus(requestId, 'rejected');
+    await updateApprovalStatus(requestId, 'rejected')
     await respondToApproval({
       requestId,
       approved: false,
       scope: 'once',
       timestamp: Date.now(),
-    });
+    })
 
     // Update UI
-    const newCard = RejectedCard();
-    card.replaceWith(newCard);
-    renderedApprovals.delete(requestId);
-    return;
+    const newCard = RejectedCard()
+    card.replaceWith(newCard)
+    renderedApprovals.delete(requestId)
+    return
   }
 
   // Approve
@@ -271,28 +286,28 @@ async function handleApprovalAction(
     approved: true,
     scope,
     timestamp: Date.now(),
-  });
+  })
 
   // Update tool permissions if not 'once'
   if (scope !== 'once') {
-    const { getApprovalRequest } = await import('../lib/tool-approvals.ts');
-    const request = await getApprovalRequest(requestId);
+    const { getApprovalRequest } = await import('../lib/tool-approvals.ts')
+    const request = await getApprovalRequest(requestId)
     if (request) {
-      await addToolApproval(request.toolName, scope);
+      await addToolApproval(request.toolName, scope)
     }
   }
 
   // Update UI to show approved/executing
-  const newCard = ApprovedCard();
-  card.replaceWith(newCard);
-  renderedApprovals.delete(requestId);
+  const newCard = ApprovedCard()
+  card.replaceWith(newCard)
+  renderedApprovals.delete(requestId)
 }
 
 /**
  * Escape HTML to prevent XSS
  */
 function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
 }
