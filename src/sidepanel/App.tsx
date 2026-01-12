@@ -1,3 +1,8 @@
+// ============================================================================
+// App Root Component
+// ============================================================================
+
+// Import all components
 import { Header } from './components/Header';
 import { AddTab } from './components/AddTab';
 import { ChatTab } from './components/ChatTab';
@@ -10,105 +15,171 @@ import { PickerModal, NotebookDialog, ConfirmDialog } from './components/Modals'
 import { Notification } from './components/Notification';
 import { Onboarding } from './components/Onboarding';
 
+// ============================================================================
+// Types
+// ============================================================================
+
+type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings';
 type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history';
 
+type BusinessHandlers = typeof import('./index')['handlers'];
+
 interface AppProps {
-  activeTab: string;
+  activeTab: TabName;
   fabHidden: boolean;
   onboardingHidden: boolean;
-  onTabClick: (tab: string) => void;
-  onHeaderLibraryClick: () => void;
-  onHeaderSettingsClick: () => void;
-  onNotebookChange: (id: string) => void;
-  onNewNotebook: () => void;
-  onAddCurrentTab: () => void;
-  onImportTabs: () => void;
-  onImportTabGroups: () => void;
-  onImportBookmarks: () => void;
-  onImportHistory: () => void;
-  onQuery: () => void;
-  onClearChat: () => void;
-  onRegenerateSummary: () => void;
-  onTransform: (type: string) => void;
-  onPermissionToggle: (permission: PermissionType) => void;
-  onClearAllData: () => void;
-  onFabClick: () => void;
+  businessHandlers: BusinessHandlers | null;
 }
 
-export function App(props: AppProps) {
-  const {
-    activeTab,
-    fabHidden,
-    onboardingHidden,
-    onTabClick,
-    onHeaderLibraryClick,
-    onHeaderSettingsClick,
-    onNotebookChange,
-    onNewNotebook,
-    onAddCurrentTab,
-    onImportTabs,
-    onImportTabGroups,
-    onImportBookmarks,
-    onImportHistory,
-    onQuery,
-    onClearChat,
-    onRegenerateSummary,
-    onTransform,
-    onPermissionToggle,
-    onClearAllData,
-    onFabClick,
-  } = props;
+interface AppHandlers {
+  handleTabClick: (tab: TabName) => void;
+  handleHeaderLibraryClick: () => void;
+  handleHeaderSettingsClick: () => void;
+  handleFabClick: () => void;
+  handleTransform: (type: string) => void;
+}
+
+// ============================================================================
+// Handlers (will be connected to business logic later)
+// ============================================================================
+
+function createHandlers(state: { activeTab: TabName }, businessHandlers: BusinessHandlers | null): AppHandlers {
+  function updateTabVisibility(): void {
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    navItems.forEach((item) => {
+      const tabName = item.getAttribute('data-tab');
+      if (tabName === state.activeTab) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+
+    tabContents.forEach((content) => {
+      const tabId = content.id;
+      if (tabId === `tab-${state.activeTab}`) {
+        content.classList.add('active');
+      } else {
+        content.classList.remove('active');
+      }
+    });
+  }
+
+  return {
+    handleTabClick: (tab: TabName) => {
+      state.activeTab = tab;
+      updateTabVisibility();
+      businessHandlers?.switchTab(tab);
+    },
+
+    handleHeaderLibraryClick: () => {
+      state.activeTab = 'library';
+      updateTabVisibility();
+    },
+
+    handleHeaderSettingsClick: () => {
+      state.activeTab = 'settings';
+      updateTabVisibility();
+    },
+
+    handleFabClick: () => {
+      state.activeTab = 'add';
+      updateTabVisibility();
+    },
+
+    handleTransform: (type: string) => {
+      businessHandlers?.handleTransform(type as unknown as 'podcast' | 'quiz' | 'takeaways' | 'email' | 'slidedeck' | 'report' | 'datatable' | 'mindmap' | 'flashcards' | 'timeline' | 'glossary' | 'comparison' | 'faq' | 'actionitems' | 'executivebrief' | 'studyguide' | 'proscons' | 'citations' | 'outline');
+    },
+  };
+}
+
+// ============================================================================
+// App Component
+// ============================================================================
+
+export function App(props: AppProps = {
+  activeTab: 'add',
+  fabHidden: true,
+  onboardingHidden: true,
+  businessHandlers: null,
+}): Node {
+  const { activeTab, fabHidden, onboardingHidden, businessHandlers } = props;
+
+  const state = { activeTab };
+  const handlers = createHandlers(state, businessHandlers);
+
+  // Initialize tab visibility
+  requestAnimationFrame(() => {
+    const navItems = document.querySelectorAll('.nav-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    navItems.forEach((item) => {
+      const tabName = item.getAttribute('data-tab');
+      if (tabName === activeTab) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+
+    tabContents.forEach((content) => {
+      const tabId = content.id;
+      if (tabId === `tab-${activeTab}`) {
+        content.classList.add('active');
+      } else {
+        content.classList.remove('active');
+      }
+    });
+  });
 
   return (
     <>
       <Header
-        onLibraryClick={onHeaderLibraryClick}
-        onSettingsClick={onHeaderSettingsClick}
-        onNotebookChange={onNotebookChange}
-        onNewNotebook={onNewNotebook}
+        onLibraryClick={handlers.handleHeaderLibraryClick}
+        onSettingsClick={handlers.handleHeaderSettingsClick}
+        onNotebookChange={(_id: string) => businessHandlers?.handleNotebookChange()}
+        onNewNotebook={() => businessHandlers?.handleNewNotebook()}
       />
 
       <main className="content">
         <AddTab
           active={activeTab === 'add'}
-          onAddCurrentTab={onAddCurrentTab}
-          onImportTabs={onImportTabs}
-          onImportTabGroups={onImportTabGroups}
-          onImportBookmarks={onImportBookmarks}
-          onImportHistory={onImportHistory}
+          onAddCurrentTab={() => businessHandlers?.handleAddCurrentTab()}
+          onImportTabs={() => businessHandlers?.handleImportTabs()}
+          onImportTabGroups={() => businessHandlers?.handleImportTabGroups()}
+          onImportBookmarks={() => businessHandlers?.handleImportBookmarks()}
+          onImportHistory={() => businessHandlers?.handleImportHistory()}
         />
 
         <ChatTab
           active={activeTab === 'chat'}
-          onQuery={onQuery}
-          onClearChat={onClearChat}
-          onRegenerateSummary={onRegenerateSummary}
-          onAddCurrentTab={onAddCurrentTab}
+          onQuery={() => businessHandlers?.handleQuery()}
+          onClearChat={() => businessHandlers?.handleClearChat()}
+          onRegenerateSummary={() => businessHandlers?.handleRegenerateSummary()}
+          onAddCurrentTab={() => businessHandlers?.handleAddCurrentTab()}
         />
 
-        <TransformTab active={activeTab === 'transform'} onTransform={onTransform} />
+        <TransformTab active={activeTab === 'transform'} onTransform={handlers.handleTransform} />
 
         <LibraryTab active={activeTab === 'library'} />
 
         <SettingsTab
           active={activeTab === 'settings'}
-          onPermissionToggle={onPermissionToggle}
-          onClearAllData={onClearAllData}
+          onPermissionToggle={(permission: PermissionType) => businessHandlers?.handlePermissionToggle(permission)}
+          onClearAllData={() => businessHandlers?.handleClearAllData()}
         />
       </main>
 
-      <BottomNav activeTab={activeTab} onTabClick={onTabClick} />
+      <BottomNav activeTab={activeTab} onTabClick={handlers.handleTabClick} />
 
-      <Fab hidden={fabHidden} onClick={onFabClick} />
+      <Fab hidden={fabHidden} onClick={handlers.handleFabClick} />
 
       <PickerModal />
-
       <NotebookDialog />
-
       <ConfirmDialog />
-
       <Notification />
-
       <Onboarding hidden={onboardingHidden} />
     </>
   );

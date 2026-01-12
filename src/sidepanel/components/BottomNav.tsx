@@ -2,9 +2,11 @@
  * BottomNav component - Bottom navigation bar with Add, Chat, and Transform tabs
  */
 
+type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings';
+
 interface BottomNavProps {
-  activeTab: string;
-  onTabClick: (tab: string) => void;
+  activeTab: TabName;
+  onTabClick: (tab: TabName) => void;
 }
 
 export function BottomNav(props: BottomNavProps) {
