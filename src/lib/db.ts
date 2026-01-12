@@ -78,6 +78,30 @@ export interface DBSchema {
 }
 
 /**
+ * ChatMessage type from v5 schema (deprecated)
+ */
+interface ChatMessage {
+  id: string
+  notebookId: string
+  role: 'user' | 'assistant'
+  content: string
+  citations?: string[]
+  timestamp: number
+}
+
+/**
+ * ChatEvent type for v6 schema
+ */
+interface ChatEvent {
+  id: string
+  notebookId: string
+  type: 'user' | 'assistant'
+  content: string
+  timestamp: number
+  citations?: string[]
+}
+
+/**
  * Migration helper: Convert ChatMessage (v5) to ChatEvent (v6)
  * ChatMessage { id, notebookId, role: 'user' | 'assistant', content, citations?, timestamp }
  *   → UserEvent { id, notebookId, type: 'user', content, timestamp }
@@ -102,9 +126,9 @@ function migrateChatMessagesToChatEvents(transaction: IDBTransaction): void {
   request.onsuccess = () => {
     const cursor = request.result
     if (cursor) {
-      const msg = cursor.value
+      const msg = cursor.value as ChatMessage
       // Convert ChatMessage to ChatEvent
-      const chatEvent = {
+      const chatEvent: ChatEvent = {
         id: msg.id,
         notebookId: msg.notebookId,
         timestamp: msg.timestamp,
@@ -248,7 +272,7 @@ export async function dbGet<T>(storeName: string, key: string): Promise<T | null
     const request = store.get(key)
 
     request.onerror = () => reject(new Error(`Failed to get ${key} from ${storeName}`))
-    request.onsuccess = () => resolve(request.result ?? null)
+    request.onsuccess = () => resolve((request.result as T) ?? null)
   })
 }
 
@@ -260,7 +284,7 @@ export async function dbGetAll<T>(storeName: string): Promise<T[]> {
     const request = store.getAll()
 
     request.onerror = () => reject(new Error(`Failed to get all from ${storeName}`))
-    request.onsuccess = () => resolve(request.result)
+    request.onsuccess = () => resolve(request.result as T[])
   })
 }
 
@@ -277,7 +301,7 @@ export async function dbGetByIndex<T>(
     const request = index.getAll(value)
 
     request.onerror = () => reject(new Error(`Failed to query ${storeName} by ${indexName}`))
-    request.onsuccess = () => resolve(request.result)
+    request.onsuccess = () => resolve(request.result as T[])
   })
 }
 

@@ -1,4 +1,5 @@
 import { streamText, generateText, type LanguageModel, type ToolSet, type ModelMessage } from 'ai'
+import type { JSONValue } from '@ai-sdk/provider'
 import type { Source, Citation, Notebook, ChatEvent, ContextMode, StreamEvent } from '../types/index.ts'
 import { getActiveNotebookId, getNotebook } from './storage.ts'
 import { resolveModelConfig, type ResolvedModelConfig } from './model-configs.ts'
@@ -13,6 +14,45 @@ import { trackUsage } from './usage.ts'
 
 // Re-export error utilities for convenience
 export { classifyError, formatErrorForUser, withRetry } from './errors.ts'
+
+// ============================================================================
+// Type Guards
+// ============================================================================
+
+/**
+ * Type assertion function to validate that a value is JSONValue
+ * This provides runtime validation while satisfying TypeScript's type checker
+ */
+function assertIsJSONValue(value: unknown): asserts value is JSONValue {
+  if (
+    value === null
+    || typeof value === 'string'
+    || typeof value === 'number'
+    || typeof value === 'boolean'
+  ) {
+    return // Primitives are valid JSONValue
+  }
+
+  if (Array.isArray(value)) {
+    // Arrays are valid if all elements are JSONValue
+    for (const item of value) {
+      assertIsJSONValue(item)
+    }
+    return
+  }
+
+  if (typeof value === 'object') {
+    // Objects are valid if all values are JSONValue
+    for (const key in value) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        assertIsJSONValue((value as Record<string, unknown>)[key])
+      }
+    }
+    return
+  }
+
+  throw new Error(`Value is not JSON-serializable: ${typeof value}`)
+}
 
 // ============================================================================
 // Provider Factory
@@ -220,23 +260,45 @@ Return the JSON ranking.`,
   try {
     // Handle potential markdown code fences around JSON
     const jsonText = rankingsResult.text.trim().replace(/^```json\s*|\s*```$/g, '')
-    const parsedRankings = JSON.parse(jsonText)
+    const parsedRankings: unknown = JSON.parse(jsonText)
 
     // Type guard to ensure the parsed data has the correct structure
     if (!Array.isArray(parsedRankings)) {
       throw new Error('Rankings result is not an array')
     }
 
+    // Type guard for each ranking item
     const rankings: Array<{
       index: number
       score: number
       reason: string
-    }> = parsedRankings.map((r) => {
-      if (typeof r.index !== 'number' || typeof r.score !== 'number' || typeof r.reason !== 'string') {
+    }> = []
+
+    for (const r of parsedRankings) {
+      // Validate the shape before casting
+      if (
+        typeof r === 'object'
+        && r !== null
+        && 'index' in r
+        && 'score' in r
+        && 'reason' in r
+      ) {
+        const item = r as Record<string, unknown>
+        if (
+          typeof item.index === 'number'
+          && typeof item.score === 'number'
+          && typeof item.reason === 'string'
+        ) {
+          rankings.push({ index: item.index, score: item.score, reason: item.reason })
+        }
+        else {
+          throw new Error('Invalid ranking item structure')
+        }
+      }
+      else {
         throw new Error('Invalid ranking item structure')
       }
-      return r
-    })
+    }
 
     // Map rankings back to sources
     const sourceMap = sources.map((s, i) => ({ ...s, originalIndex: i }))
@@ -337,22 +399,42 @@ Be accurate and concise. Focus on substantive content.`,
   try {
     // Handle potential markdown code fences around JSON
     const jsonText = summaryResult.text.trim().replace(/^```json\s*|\s*```$/g, '')
-    const parsedSummaries = JSON.parse(jsonText)
+    const parsedSummaries: unknown = JSON.parse(jsonText)
 
     // Type guard to ensure the parsed data has the correct structure
     if (!Array.isArray(parsedSummaries)) {
       throw new Error('Summaries result is not an array')
     }
 
+    // Type guard for each summary item
     const parsed: Array<{
       index: number
       summary: string
-    }> = parsedSummaries.map((s) => {
-      if (typeof s.index !== 'number' || typeof s.summary !== 'string') {
+    }> = []
+
+    for (const s of parsedSummaries) {
+      // Validate the shape before casting
+      if (
+        typeof s === 'object'
+        && s !== null
+        && 'index' in s
+        && 'summary' in s
+      ) {
+        const item = s as Record<string, unknown>
+        if (
+          typeof item.index === 'number'
+          && typeof item.summary === 'string'
+        ) {
+          parsed.push({ index: item.index, summary: item.summary })
+        }
+        else {
+          throw new Error('Invalid summary item structure')
+        }
+      }
+      else {
         throw new Error('Invalid summary item structure')
       }
-      return s
-    })
+    }
 
     for (const item of parsed) {
       const source = batch[item.index - 1]
@@ -819,7 +901,7 @@ function parseCitations(
   const sourceCountInText = new Map<number, number>()
   const sourceMatches = cleanContent.matchAll(/\[Source (\d+)\]/g)
   for (const match of sourceMatches) {
-    const sourceNum = parseInt(match[1], 10)
+    const sourceNum = parseInt(match[1] ?? '0', 10)
     sourceCountInText.set(
       sourceNum,
       (sourceCountInText.get(sourceNum) || 0) + 1,
@@ -830,7 +912,8 @@ function parseCitations(
   const sourceOccurrenceIndex = new Map<number, number>()
 
   // Replace inline [Source N] with [Source Na], [Source Nb], etc. if source appears multiple times in text
-  cleanContent = cleanContent.replace(/\[Source (\d+)\]/g, (match, numStr) => {
+  cleanContent = cleanContent.replace(/\[Source (\d+)\]/g, (...args: unknown[]): string => {
+    const [match, numStr] = args as [string, string]
     const sourceNum = parseInt(numStr, 10)
     const countInText = sourceCountInText.get(sourceNum) || 1
 
@@ -948,8 +1031,10 @@ export async function* streamChat(
           }
           break
         }
-        case 'tool-result':
+        case 'tool-result': {
           console.log('[Agentic Mode] Tool result:', chunk.toolName, chunk.output)
+          // Validate tool output is JSON-serializable before yielding
+          assertIsJSONValue(chunk.output)
           yield {
             type: 'tool-result',
             toolName: chunk.toolName,
@@ -957,6 +1042,7 @@ export async function* streamChat(
             toolCallId: chunk.toolCallId,
           }
           break
+        }
       }
     }
 

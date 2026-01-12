@@ -75,16 +75,6 @@ export interface PageContent {
 // ============================================================================
 
 /**
- * Type guard to check if response is of expected type
- */
-function isResponseType<T>(_value: unknown): _value is T {
-  // This is a runtime type guard placeholder
-  // In a production system, you would use Zod or similar for validation
-  // For now, we trust that the response is correctly typed
-  return true
-}
-
-/**
  * Send a message to the background script and wait for a response
  */
 async function sendMessageToBackground<T = unknown>(
@@ -97,13 +87,9 @@ async function sendMessageToBackground<T = unknown>(
         reject(new Error(chrome.runtime.lastError.message))
       }
       else {
-        // Use type guard to narrow the type
-        if (isResponseType<T>(response)) {
-          resolve(response)
-        }
-        else {
-          reject(new Error('Invalid response type'))
-        }
+        // Type assertion is safe here because we control the background script
+        // and know the expected response format for each message type
+        resolve(response as T)
       }
     })
   })
@@ -249,15 +235,17 @@ function wrapToolWithCache(
         './agent-tools.ts',
       )
 
-      // Check cache first
+      // Check cache first - use type assertion since we control what gets cached
       const cached = await getCachedToolResult<unknown, unknown>(
         toolName,
         input,
       )
-      if (cached !== null) return cached
+      if (cached !== null) {
+        return cached as Tool
+      }
 
       // Execute the original function
-      const result = await originalExecute(input, options)
+      const result = await originalExecute(input, options) as Tool
 
       // Cache the result
       await setCachedToolResult(toolName, input, result)

@@ -39,17 +39,24 @@ interface VertexGenerateContentRequest {
   }
 }
 
+interface VertexCandidate {
+  content: VertexContent
+  finishReason: string
+  index: number
+}
+
 interface VertexGenerateContentResponse {
-  candidates: Array<{
-    content: VertexContent
-    finishReason: string
-    index: number
-  }>
+  candidates: VertexCandidate[]
   usageMetadata?: {
     promptTokenCount: number
     candidatesTokenCount: number
     totalTokenCount: number
   }
+}
+
+// Type for SSE stream chunks
+interface VertexStreamChunk {
+  candidates?: VertexCandidate[]
 }
 
 // Type guards for AI SDK V3 content parts
@@ -237,7 +244,7 @@ export class VertexExpressLanguageModel implements LanguageModelV3 {
       throw new Error(`Vertex Express API error ${response.status}: ${errorText}`)
     }
 
-    const data: VertexGenerateContentResponse = await response.json()
+    const data = await response.json() as VertexGenerateContentResponse
     const candidate = data.candidates?.[0]
 
     if (!candidate) {
@@ -322,15 +329,16 @@ export class VertexExpressLanguageModel implements LanguageModelV3 {
       start(controller) {
         controller.enqueue({ type: 'text-delta', delta: '', id: textId })
       },
-      async transform(chunk, controller) {
+      transform(chunk, controller) {
         const text = new TextDecoder().decode(chunk, { stream: true })
         const lines = text.split('\n').filter(Boolean)
 
         for (const line of lines) {
           try {
-            const data = JSON.parse(line)
-            if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-              const textContent = data.candidates[0].content.parts[0].text
+            const data = JSON.parse(line) as VertexStreamChunk
+            const candidate = data.candidates?.[0]
+            const textContent = candidate?.content?.parts?.[0]?.text
+            if (textContent) {
               controller.enqueue({
                 type: 'text-delta',
                 delta: textContent,

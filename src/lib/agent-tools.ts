@@ -46,16 +46,6 @@ function generateCacheKey(toolName: string, input: unknown): string {
 }
 
 /**
- * Type guard to check if value is of expected type
- */
-function isType<T>(_value: unknown): _value is T {
-  // This is a runtime type guard placeholder
-  // In a production system, you would use Zod or similar for validation
-  // For now, we trust that the cached data is correctly typed
-  return true
-}
-
-/**
  * Get cached tool result if available and not expired
  */
 export async function getCachedToolResult<TINPUT, TOUTPUT>(
@@ -81,13 +71,10 @@ export async function getCachedToolResult<TINPUT, TOUTPUT>(
       return null
     }
 
-    // Use type guard to narrow the type
-    const output = cached.output
-    if (isType<TOUTPUT>(output)) {
-      return output
-    }
-
-    return null
+    // Use type assertion to cast cached output to expected type
+    // This is safe because we control what gets cached
+    const output = cached.output as TOUTPUT
+    return output
   }
   catch {
     // If tool results store doesn't exist yet, just return null
@@ -347,12 +334,14 @@ function wrapToolWithCache(
   return {
     ...coreTool,
     execute: async (input, options) => {
-      // Check cache first
+      // Check cache first - use type assertion since we control what gets cached
       const cached = await getCachedToolResult<unknown, unknown>(toolName, input)
-      if (cached !== null) return cached
+      if (cached !== null) {
+        return cached as Tool
+      }
 
       // Execute the original function
-      const result = await originalExecute(input, options)
+      const result = await originalExecute(input, options) as Tool
 
       // Cache the result
       await setCachedToolResult(toolName, input, result)
