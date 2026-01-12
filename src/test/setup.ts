@@ -43,17 +43,19 @@ class StorageArea {
     },
   )
 
-  set = vi.fn(async (items: Record<string, unknown>): Promise<void> => {
-    Object.assign(this.data, items)
+  set = vi.fn((items: Record<string, unknown>): Promise<void> => {
+    return Promise.resolve(Object.assign(this.data, items))
   })
 
-  clear = vi.fn(async (): Promise<void> => {
+  clear = vi.fn((): Promise<void> => {
     this.data = {}
+    return Promise.resolve()
   })
 
-  remove = vi.fn(async (keys: string | string[]): Promise<void> => {
+  remove = vi.fn((keys: string | string[]): Promise<void> => {
     const keysToRemove = Array.isArray(keys) ? keys : [keys]
     keysToRemove.forEach(key => delete this.data[key])
+    return Promise.resolve()
   })
 
   getBytesInUse = vi.fn(
@@ -284,12 +286,12 @@ beforeAll(async () => {
       testDB = request.result
       resolve()
     }
-    request.onerror = () => reject(request.error)
+    request.onerror = () => reject(new Error(request.error?.message ?? 'Database error'))
   })
 })
 
 // Clean up after all tests
-afterAll(async () => {
+afterAll(() => {
   if (testDB) {
     testDB.close()
     testDB = null
@@ -318,7 +320,7 @@ afterEach(async () => {
 
   await new Promise<void>((resolve, reject) => {
     tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
+    tx.onerror = () => reject(new Error(tx.error?.message ?? 'Transaction error'))
 
     // Clear each store that exists
     for (const storeName of DB_STORES) {

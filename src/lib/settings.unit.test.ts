@@ -33,12 +33,13 @@ function isType<T>(value: unknown): value is T {
 // Mock the storage module before importing settings
 vi.mock('./storage.ts', () => ({
   storage: {
-    getSetting: vi.fn(async <T>(key: string): Promise<T | null> => {
+    getSetting: vi.fn(<T>(key: string): Promise<T | null> => {
       const value = globalThis.__mockSettingsStorage[key]
-      return isType<T>(value) ? value : null
+      return Promise.resolve(isType<T>(value) ? value : null)
     }),
-    setSetting: vi.fn(async <T>(key: string, value: T): Promise<void> => {
+    setSetting: vi.fn(<T>(key: string, value: T): Promise<void> => {
       globalThis.__mockSettingsStorage[key] = value
+      return Promise.resolve(undefined)
     }),
   },
 }))

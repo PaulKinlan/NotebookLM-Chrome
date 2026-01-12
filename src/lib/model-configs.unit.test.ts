@@ -9,7 +9,7 @@ describe('model-configs', () => {
   beforeEach(() => {
     // Reset chrome.storage mock before each test
     // @ts-expect-error - Internal test helper
-    globalThis.chrome.storage.local._setData({})
+    (globalThis as { chrome?: { storage: { local: { _setData: (data: unknown) => void } } } }).chrome?.storage.local._setData({})
   })
 
   describe('getModelConfigs', () => {

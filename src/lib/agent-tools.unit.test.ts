@@ -24,49 +24,51 @@ const clearMocks = () => {
 
 // Mock the storage module
 vi.mock('./storage.ts', () => ({
-  getSourcesByNotebook: vi.fn(async (notebookId: string) => {
+  getSourcesByNotebook: vi.fn((notebookId: string) => {
     const sources = (globalThis as unknown as Record<string, unknown>).__mockSources as Source[]
-    return sources.filter(s => s.notebookId === notebookId)
+    return Promise.resolve(sources.filter(s => s.notebookId === notebookId))
   }),
-  getSource: vi.fn(async (sourceId: string) => {
+  getSource: vi.fn((sourceId: string) => {
     const sources = (globalThis as unknown as Record<string, unknown>).__mockSources as Source[]
-    return sources.find(s => s.id === sourceId) ?? null
+    return Promise.resolve(sources.find(s => s.id === sourceId) ?? null)
   }),
 }))
 
 // Mock the db module for caching
 vi.mock('./db.ts', () => ({
-  dbGet: vi.fn(async (store: string, key: string) => {
+  dbGet: vi.fn((store: string, key: string) => {
     const cache = (globalThis as unknown as Record<string, unknown>).__mockToolCache as Record<string, unknown>
     const cacheKey = `${store}:${key}`
     const value = cache[cacheKey]
-    if (!value) return null
+    if (!value) return Promise.resolve(null)
 
     // Parse the cached value
-    const parsed = typeof value === 'string' ? JSON.parse(value) : value
-    return { key, value: parsed }
+    const parsed = typeof value === 'string' ? JSON.parse(value) as unknown : value
+    return Promise.resolve({ key, value: parsed })
   }),
-  dbPut: vi.fn(async (store: string, { key, value }: { key: string, value: unknown }) => {
+  dbPut: vi.fn((store: string, { key, value }: { key: string, value: unknown }) => {
     const cache = (globalThis as unknown as Record<string, unknown>).__mockToolCache as Record<string, unknown>
     const cacheKey = `${store}:${key}`
     cache[cacheKey] = JSON.stringify(value)
+    return Promise.resolve(undefined)
   }),
-  dbDelete: vi.fn(async (store: string, key: string) => {
+  dbDelete: vi.fn((store: string, key: string) => {
     const cache = (globalThis as unknown as Record<string, unknown>).__mockToolCache as Record<string, unknown>
     const cacheKey = `${store}:${key}`
     delete cache[cacheKey]
+    return Promise.resolve(undefined)
   }),
 }))
 
 // Mock the ai module
 vi.mock('./ai.ts', () => ({
-  rankSourceRelevance: vi.fn(async (sources: Source[], query: string) => {
+  rankSourceRelevance: vi.fn((sources: Source[], query: string) => {
     // Return mock ranked sources with varying relevance scores
-    return sources.map((s, i) => ({
+    return Promise.resolve(sources.map((s, i) => ({
       ...s,
       relevanceScore: 1 - (i * 0.2), // Decreasing scores: 1.0, 0.8, 0.6, 0.4, 0.2
       relevanceReason: `Source ${i + 1} is ${i < 2 ? 'highly' : i < 4 ? 'somewhat' : 'less'} relevant to "${query}"`,
-    }))
+    })))
   }),
 }))
 
