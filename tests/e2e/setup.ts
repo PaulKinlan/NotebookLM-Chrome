@@ -23,15 +23,24 @@ export async function cleanupProfile(): Promise<void> {
 
 /**
  * Launch Chrome with the FolioLM extension loaded
+ *
+ * Environment variables:
+ * - HEADED: Set to "true" to run in headed mode (shows browser window)
+ * - CI: Automatically detected for CI environments (enables headless with "new" headless mode)
+ * - SLOW_MO: Slow down actions by specified milliseconds for visibility
  */
 export async function launchWithExtension(): Promise<Browser> {
   const isCI = process.env.CI === 'true';
+  // HEADED=true forces headed mode, otherwise default to headless in CI
+  const isHeaded = process.env.HEADED === 'true' || (!isCI && process.env.HEADED !== 'false');
 
   // Clean up profile before launching to ensure fresh state
   await cleanupProfile();
 
   const browser = await puppeteer.launch({
-    headless: false, // Extensions don't work in headless mode
+    // Use "new" headless mode for better compatibility with extensions
+    // Fall back to false if HEADED is explicitly set
+    headless: (isHeaded ? false : 'new') as boolean,
     userDataDir: PROFILE_DIR,
     args: [
       `--disable-extensions-except=${EXTENSION_PATH}`,
