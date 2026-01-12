@@ -831,17 +831,23 @@ async function fetchModelsByProvider(
     throw new Error(`${providerType} API returned ${response.status}: ${response.statusText}`)
   }
 
-  const data = await response.json()
+  // response.json() returns `any` in Fetch API types, so we cast to unknown for type safety
+  const data = await response.json() as unknown
 
   // Extract models array based on configured path
   if (config.modelsResponseFormat.modelsPath === '') {
     // Root array
-    return Array.isArray(data) ? data : []
+    return Array.isArray(data) ? (data as unknown[]) : []
   }
 
   // Nested path (e.g., 'data', 'models')
-  const path = config.modelsResponseFormat.modelsPath
-  return data[path] || []
+  if (isRecord(data)) {
+    const path = config.modelsResponseFormat.modelsPath
+    const value = data[path]
+    return Array.isArray(value) ? (value as unknown[]) : []
+  }
+
+  return []
 }
 
 /**
@@ -899,7 +905,9 @@ export async function fetchProviderSelectableModels(
         id = config.modelIdTransform(id)
       }
 
-      return id && typeof id === 'string' ? { id, name: String(name ?? id) } : null
+      // Ensure name is a string - if it's an object, use JSON.stringify, otherwise use toString
+      const nameStr = typeof name === 'string' ? name : typeof name === 'object' && name !== null ? JSON.stringify(name) : String(id)
+      return id && typeof id === 'string' ? { id, name: nameStr } : null
     })
     .filter((m): m is SelectableModel => m !== null)
 }
@@ -946,7 +954,7 @@ export async function clearProviderModelsCache(provider: AIProvider): Promise<vo
   return new Promise((resolve, reject) => {
     chrome.storage.local.remove([cacheKey], () => {
       if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError)
+        reject(new Error(chrome.runtime.lastError.message))
       }
       else {
         console.log(`[ProviderRegistry] Cache cleared for ${provider}`)
@@ -963,7 +971,7 @@ function getCachedModels<T>(cacheKey: string): Promise<CachedModels<T> | null> {
   return new Promise((resolve, reject) => {
     chrome.storage.local.get([cacheKey], (result) => {
       if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError)
+        reject(new Error(chrome.runtime.lastError.message))
       }
       else {
         const cached = result[cacheKey] as CachedModels<T> | undefined
@@ -985,7 +993,7 @@ function setCachedModels<T>(cacheKey: string, models: T[]): Promise<void> {
 
     chrome.storage.local.set({ [cacheKey]: cached }, () => {
       if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError)
+        reject(new Error(chrome.runtime.lastError.message))
       }
       else {
         console.log(`[ProviderRegistry] Cached ${models.length} models for ${cacheKey}`)
