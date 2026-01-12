@@ -364,10 +364,11 @@ const sourceToolsRegistry: Record<string, ToolConfig> = {
 /**
  * Get tools with caching applied based on registry configuration
  * Only includes tools that are visible according to permissions
+ * Wraps tools with approval logic if they require approval
  * Call this to get the tools object to pass to streamText()
  */
 export async function getSourceTools() {
-  const { getVisibleToolNames } = await import('./tool-permissions.ts')
+  const { getVisibleToolNames, getToolPermission } = await import('./tool-permissions.ts')
   const visibleTools = await getVisibleToolNames()
 
   console.log('[getSourceTools] Visible tools:', visibleTools)
@@ -380,7 +381,66 @@ export async function getSourceTools() {
       console.log('[getSourceTools] Skipping invisible tool:', name)
       continue
     }
-    result[name] = wrapToolWithCache(name, config.tool, config.cache ?? false)
+
+    let tool = wrapToolWithCache(name, config.tool, config.cache ?? false)
+
+    // Check if tool requires approval and wrap it
+    const permission = await getToolPermission(name)
+    const needsApproval = permission?.requiresApproval && !permission?.autoApproved
+
+    if (needsApproval && tool.execute) {
+      console.log('[getSourceTools] Wrapping tool with approval:', name)
+
+      // Create a wrapped execute function that checks approval
+      const originalExecute = tool.execute
+      const reason = `This tool requires approval: ${name}`
+
+      tool = {
+        ...tool,
+        execute: async (input: any, options: any) => {
+          // Import here to avoid circular dependency
+          const { isToolAutoApproved } = await import('./tool-permissions.ts')
+          const autoApproved = await isToolAutoApproved(name)
+
+          if (autoApproved) {
+            // Tool is auto-approved (e.g., session-scoped approval), execute directly
+            return await originalExecute(input, options)
+          }
+
+          // Tool requires approval - use approval system
+          const { createApprovalRequest, approvalEvents } = await import(
+            './tool-approvals.ts'
+          )
+          const toolCallId = crypto.randomUUID()
+
+          // Extract args from input (AI SDK passes args as input object)
+          const args = input
+
+          // Create approval request
+          const request = await createApprovalRequest(
+            toolCallId,
+            name,
+            args,
+            reason
+          )
+
+          // Wait for user decision
+          const approved = await new Promise<boolean>((resolve) => {
+            approvalEvents.on(request.id, (_requestId, approved) => {
+              resolve(approved)
+            })
+          })
+
+          if (!approved) {
+            throw new Error(`Tool execution rejected by user: ${reason}`)
+          }
+
+          return await originalExecute(input, options)
+        },
+      }
+    }
+
+    result[name] = tool
   }
 
   console.log('[getSourceTools] Returning tools:', Object.keys(result))
