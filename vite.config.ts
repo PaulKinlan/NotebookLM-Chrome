@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [crx({ manifest })],
   resolve: {
     alias: {
-      'jsx-runtime/jsx-runtime': path.resolve(__dirname, './src/jsx-runtime/jsx-runtime.ts'),
+      'jsx-runtime/jsx-runtime': path.resolve(__dirname, './src/jsx-runtime.ts'),
     },
   },
   esbuild: {

@@ -19,7 +19,7 @@
     "jsxImportSource": "jsx-runtime",
     "baseUrl": ".",
     "paths": {
-      "jsx-runtime/jsx-runtime": ["./src/jsx-runtime/jsx-runtime.ts"]
+      "jsx-runtime/jsx-runtime": ["./src/jsx-runtime.ts"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
