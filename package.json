@@ -4,6 +4,7 @@
   "description": "FolioLM - Collect and query content from tabs, bookmarks, and history. Your AI research companion.",
   "type": "module",
   "scripts": {
+    "prepare": "husky",
     "dev": "vite",
     "watch": "npm run build -- --watch",
     "build": "tsc && vite build",
@@ -67,6 +68,7 @@
     "eslint-plugin-eslint-comments": "^3.2.0",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.1.0",
+    "husky": "^9.1.7",
     "jiti": "^2.6.1",
     "jsdom": "^27.4.0",
     "lint-staged": "^16.2.7",
