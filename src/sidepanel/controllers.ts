@@ -5,8 +5,10 @@ import type {
   Citation,
   SuggestedLink,
   StreamEvent,
+  Message,
 } from '../types/index.ts'
 import DOMPurify from 'dompurify'
+import type { ExtractedLink } from '../types/index.ts'
 import { checkPermissions, requestPermission } from '../lib/permissions.ts'
 import { renderMarkdown, isHtmlContent } from '../lib/markdown-renderer.ts'
 import {
@@ -94,6 +96,32 @@ import {
   initApprovalUI,
   checkAndShowPendingApprovals,
 } from './approval-ui.ts'
+
+// ============================================================================
+// Chrome Message Response Types
+// ============================================================================
+
+/**
+ * Response from chrome.tabs.sendMessage for content extraction
+ */
+interface TabExtractContentResponse {
+  url: string
+  title: string
+  markdown: string
+  links?: ExtractedLink[]
+}
+
+/**
+ * Response from chrome.runtime.sendMessage for URL extraction
+ */
+interface UrlExtractResponse {
+  url?: string
+  title?: string
+  content?: string
+  markdown?: string
+  links?: ExtractedLink[]
+  success?: boolean
+}
 
 // ============================================================================
 // State
@@ -505,38 +533,38 @@ async function init(): Promise<void> {
   await loadAIConfigs()
   await loadSources()
   await loadChatHistory()
-  updateTabCount()
-  updateAddTabButton()
+  void updateTabCount()
+  void updateAddTabButton()
 
   // Initialize provider config UI
   await initProviderConfigUI()
 
   // Listen for AI profile changes to update the AI config select
   window.addEventListener(AI_PROFILES_CHANGED_EVENT, () => {
-    loadAIConfigs()
-    updateChromeToolsWarning()
+    void loadAIConfigs()
+    void updateChromeToolsWarning()
   })
 
   // Listen for tab highlight changes to update button text
   chrome.tabs.onHighlighted.addListener(() => {
-    updateAddTabButton()
+    void updateAddTabButton()
   })
 
   // Listen for tab creation/removal to update tab count in real-time
   chrome.tabs.onCreated.addListener(() => {
-    updateTabCount()
-    refreshPickerIfShowingTabs()
+    void updateTabCount()
+    void refreshPickerIfShowingTabs()
   })
 
   chrome.tabs.onRemoved.addListener(() => {
-    updateTabCount()
-    refreshPickerIfShowingTabs()
+    void updateTabCount()
+    void refreshPickerIfShowingTabs()
   })
 
   chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
     // Only refresh when URL or title changes (not for every status update)
     if (changeInfo.url || changeInfo.title) {
-      refreshPickerIfShowingTabs()
+      void refreshPickerIfShowingTabs()
     }
   })
 
@@ -546,31 +574,34 @@ async function init(): Promise<void> {
   }, 1000)
 
   // Listen for messages from background script
-  chrome.runtime.onMessage.addListener((message) => {
+  chrome.runtime.onMessage.addListener((message: Message) => {
     if (message.type === 'SOURCE_ADDED') {
       // Clear suggested links cache so new sources trigger a refresh
       if (currentNotebookId) {
         suggestedLinksCache.delete(currentNotebookId)
       }
-      loadNotebooks()
-      loadSources()
-      loadNotebooksList() // Refresh library page source counts
+      void loadNotebooks()
+      void loadSources()
+      void loadNotebooksList() // Refresh library page source counts
       showNotification('Source added')
     }
     else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_PAGE') {
       // Clear pending action to prevent duplicate processing
       chrome.storage.session.remove('pendingAction').catch(() => {})
-      handleCreateNotebookAndAddPage(message.payload.tabId)
+      const payload = message.payload as { tabId?: number } | undefined
+      if (payload?.tabId !== undefined) void handleCreateNotebookAndAddPage(payload.tabId)
     }
     else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_LINK') {
       // Clear pending action to prevent duplicate processing
       chrome.storage.session.remove('pendingAction').catch(() => {})
-      handleCreateNotebookAndAddLink(message.payload.linkUrl)
+      const payload = message.payload as { linkUrl?: string } | undefined
+      if (payload?.linkUrl !== undefined) void handleCreateNotebookAndAddLink(payload.linkUrl)
     }
     else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS') {
       // Clear pending action to prevent duplicate processing
       chrome.storage.session.remove('pendingAction').catch(() => {})
-      handleCreateNotebookAndAddSelectionLinks(message.payload.links)
+      const payload = message.payload as { links?: string[] } | undefined
+      if (payload?.links !== undefined) void handleCreateNotebookAndAddSelectionLinks(payload.links)
     }
   })
 
@@ -596,13 +627,13 @@ async function checkPendingAction(): Promise<void> {
 
       const { type, payload } = result.pendingAction as PendingAction
       if (type === 'CREATE_NOTEBOOK_AND_ADD_PAGE' && payload.tabId) {
-        handleCreateNotebookAndAddPage(payload.tabId)
+        void handleCreateNotebookAndAddPage(payload.tabId)
       }
       else if (type === 'CREATE_NOTEBOOK_AND_ADD_LINK' && payload.linkUrl) {
-        handleCreateNotebookAndAddLink(payload.linkUrl)
+        void handleCreateNotebookAndAddLink(payload.linkUrl)
       }
       else if (type === 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS' && payload.links) {
-        handleCreateNotebookAndAddSelectionLinks(payload.links)
+        void handleCreateNotebookAndAddSelectionLinks(payload.links)
       }
     }
   }
@@ -633,7 +664,7 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
 
   // Now extract and add the page
   try {
-    const result = await chrome.tabs.sendMessage(tabId, {
+    const result = await chrome.tabs.sendMessage<TabExtractContentResponse>(tabId, {
       action: 'extractContent',
     })
     if (result) {
@@ -675,7 +706,7 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
 
   // Now extract and add the link
   try {
-    const response = await chrome.runtime.sendMessage({
+    const response = await chrome.runtime.sendMessage<UrlExtractResponse>({
       type: 'EXTRACT_FROM_URL',
       payload: linkUrl,
     })
@@ -684,9 +715,9 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
       const source = createSource(
         notebook.id,
         'tab',
-        response.url || linkUrl,
-        response.title || 'Untitled',
-        response.content || '',
+        response.url ?? linkUrl,
+        response.title ?? 'Untitled',
+        response.content ?? '',
         response.links,
       )
       await saveSource(source)
@@ -722,7 +753,7 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
   let addedCount = 0
   for (const linkUrl of links) {
     try {
-      const response = await chrome.runtime.sendMessage({
+      const response = await chrome.runtime.sendMessage<UrlExtractResponse>({
         type: 'EXTRACT_FROM_URL',
         payload: linkUrl,
       })
@@ -731,9 +762,9 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
         const source = createSource(
           notebook.id,
           'tab',
-          response.url || linkUrl,
-          response.title || 'Untitled',
-          response.content || '',
+          response.url ?? linkUrl,
+          response.title ?? 'Untitled',
+          response.content ?? '',
           response.links,
         )
         await saveSource(source)
@@ -931,16 +962,30 @@ function setupEventListeners(): void {
   )
 
   // Add Sources tab
-  elements.addCurrentTabBtn.addEventListener('click', handleAddCurrentTab)
-  elements.importTabs.addEventListener('click', handleImportTabs)
-  elements.importTabGroups.addEventListener('click', handleImportTabGroups)
-  elements.importBookmarks.addEventListener('click', handleImportBookmarks)
-  elements.importHistory.addEventListener('click', handleImportHistory)
+  elements.addCurrentTabBtn.addEventListener('click', () => {
+    void handleAddCurrentTab()
+  })
+  elements.importTabs.addEventListener('click', () => {
+    void handleImportTabs()
+  })
+  elements.importTabGroups.addEventListener('click', () => {
+    void handleImportTabGroups()
+  })
+  elements.importBookmarks.addEventListener('click', () => {
+    void handleImportBookmarks()
+  })
+  elements.importHistory.addEventListener('click', () => {
+    void handleImportHistory()
+  })
 
   // Chat tab
-  elements.notebookSelect.addEventListener('change', handleNotebookChange)
+  elements.notebookSelect.addEventListener('change', () => {
+    void handleNotebookChange()
+  })
   elements.aiModelBtn.addEventListener('click', toggleAIModelDropdown)
-  elements.newNotebookBtn.addEventListener('click', handleNewNotebook)
+  elements.newNotebookBtn.addEventListener('click', () => {
+    void handleNewNotebook()
+  })
 
   // Close AI model dropdown when clicking outside
   document.addEventListener('click', (e) => {
@@ -963,7 +1008,9 @@ function setupEventListeners(): void {
       }
     }
   })
-  elements.queryBtn.addEventListener('click', handleQuery)
+  elements.queryBtn.addEventListener('click', () => {
+    void handleQuery()
+  })
   elements.queryInput.addEventListener('input', handleAutocompleteInput)
   elements.queryInput.addEventListener('keydown', (e) => {
     // Handle autocomplete keyboard navigation first
@@ -973,94 +1020,104 @@ function setupEventListeners(): void {
     if (e.key === 'Enter' && !e.defaultPrevented) {
       // Hide autocomplete before submitting
       hideAutocomplete()
-      handleQuery()
+      void handleQuery()
     }
   })
-  elements.addPageBtn.addEventListener('click', handleAddCurrentTab)
-  elements.clearChatBtn?.addEventListener('click', handleClearChat)
+  elements.addPageBtn.addEventListener('click', () => {
+    void handleAddCurrentTab()
+  })
+  elements.clearChatBtn?.addEventListener('click', () => {
+    void handleClearChat()
+  })
   elements.chatMessages?.addEventListener('click', handleCitationClick)
   elements.regenerateSummaryBtn?.addEventListener(
     'click',
-    handleRegenerateSummary,
+    () => {
+      void handleRegenerateSummary()
+    },
   )
 
   // Suggested links
-  elements.refreshLinksBtn?.addEventListener('click', handleRefreshSuggestedLinks)
+  elements.refreshLinksBtn?.addEventListener('click', () => {
+    void handleRefreshSuggestedLinks()
+  })
   elements.suggestedLinksList?.addEventListener('click', handleSuggestedLinkClick)
 
   // Transform tab
-  elements.transformPodcast?.addEventListener('click', () =>
-    handleTransform('podcast'),
-  )
-  elements.transformQuiz?.addEventListener('click', () =>
-    handleTransform('quiz'),
-  )
-  elements.transformTakeaways?.addEventListener('click', () =>
-    handleTransform('takeaways'),
-  )
-  elements.transformEmail?.addEventListener('click', () =>
-    handleTransform('email'),
-  )
-  elements.transformSlidedeck?.addEventListener('click', () =>
-    handleTransform('slidedeck'),
-  )
-  elements.transformReport?.addEventListener('click', () =>
-    handleTransform('report'),
-  )
-  elements.transformDatatable?.addEventListener('click', () =>
-    handleTransform('datatable'),
-  )
-  elements.transformMindmap?.addEventListener('click', () =>
-    handleTransform('mindmap'),
-  )
-  elements.transformFlashcards?.addEventListener('click', () =>
-    handleTransform('flashcards'),
-  )
-  elements.transformTimeline?.addEventListener('click', () =>
-    handleTransform('timeline'),
-  )
-  elements.transformGlossary?.addEventListener('click', () =>
-    handleTransform('glossary'),
-  )
-  elements.transformComparison?.addEventListener('click', () =>
-    handleTransform('comparison'),
-  )
-  elements.transformFaq?.addEventListener('click', () =>
-    handleTransform('faq'),
-  )
-  elements.transformActionitems?.addEventListener('click', () =>
-    handleTransform('actionitems'),
-  )
-  elements.transformExecutivebrief?.addEventListener('click', () =>
-    handleTransform('executivebrief'),
-  )
-  elements.transformStudyguide?.addEventListener('click', () =>
-    handleTransform('studyguide'),
-  )
-  elements.transformProscons?.addEventListener('click', () =>
-    handleTransform('proscons'),
-  )
-  elements.transformCitations?.addEventListener('click', () =>
-    handleTransform('citations'),
-  )
-  elements.transformOutline?.addEventListener('click', () =>
-    handleTransform('outline'),
-  )
+  elements.transformPodcast?.addEventListener('click', () => {
+    void handleTransform('podcast')
+  })
+  elements.transformQuiz?.addEventListener('click', () => {
+    void handleTransform('quiz')
+  })
+  elements.transformTakeaways?.addEventListener('click', () => {
+    void handleTransform('takeaways')
+  })
+  elements.transformEmail?.addEventListener('click', () => {
+    void handleTransform('email')
+  })
+  elements.transformSlidedeck?.addEventListener('click', () => {
+    void handleTransform('slidedeck')
+  })
+  elements.transformReport?.addEventListener('click', () => {
+    void handleTransform('report')
+  })
+  elements.transformDatatable?.addEventListener('click', () => {
+    void handleTransform('datatable')
+  })
+  elements.transformMindmap?.addEventListener('click', () => {
+    void handleTransform('mindmap')
+  })
+  elements.transformFlashcards?.addEventListener('click', () => {
+    void handleTransform('flashcards')
+  })
+  elements.transformTimeline?.addEventListener('click', () => {
+    void handleTransform('timeline')
+  })
+  elements.transformGlossary?.addEventListener('click', () => {
+    void handleTransform('glossary')
+  })
+  elements.transformComparison?.addEventListener('click', () => {
+    void handleTransform('comparison')
+  })
+  elements.transformFaq?.addEventListener('click', () => {
+    void handleTransform('faq')
+  })
+  elements.transformActionitems?.addEventListener('click', () => {
+    void handleTransform('actionitems')
+  })
+  elements.transformExecutivebrief?.addEventListener('click', () => {
+    void handleTransform('executivebrief')
+  })
+  elements.transformStudyguide?.addEventListener('click', () => {
+    void handleTransform('studyguide')
+  })
+  elements.transformProscons?.addEventListener('click', () => {
+    void handleTransform('proscons')
+  })
+  elements.transformCitations?.addEventListener('click', () => {
+    void handleTransform('citations')
+  })
+  elements.transformOutline?.addEventListener('click', () => {
+    void handleTransform('outline')
+  })
 
   // Settings tab
-  elements.permTabs.addEventListener('change', () =>
-    handlePermissionToggle('tabs'),
-  )
-  elements.permTabGroups.addEventListener('change', () =>
-    handlePermissionToggle('tabGroups'),
-  )
-  elements.permBookmarks.addEventListener('change', () =>
-    handlePermissionToggle('bookmarks'),
-  )
-  elements.permHistory.addEventListener('change', () =>
-    handlePermissionToggle('history'),
-  )
-  elements.resetToolPermissionsBtn.addEventListener('click', handleResetToolPermissions)
+  elements.permTabs.addEventListener('change', () => {
+    void handlePermissionToggle('tabs')
+  })
+  elements.permTabGroups.addEventListener('change', () => {
+    void handlePermissionToggle('tabGroups')
+  })
+  elements.permBookmarks.addEventListener('change', () => {
+    void handlePermissionToggle('bookmarks')
+  })
+  elements.permHistory.addEventListener('change', () => {
+    void handlePermissionToggle('history')
+  })
+  elements.resetToolPermissionsBtn.addEventListener('click', () => {
+    void handleResetToolPermissions()
+  })
 
   // Tool Permissions
   elements.toolPermissionsList.addEventListener('change', async (e) => {
@@ -1088,7 +1145,9 @@ function setupEventListeners(): void {
     await setContextMode(mode)
     await updateChromeToolsWarning()
   })
-  elements.clearAllDataBtn.addEventListener('click', handleClearAllData)
+  elements.clearAllDataBtn.addEventListener('click', () => {
+    void handleClearAllData()
+  })
 
   // Old AI settings event listeners - replaced by provider-config-ui.ts
   /*
@@ -1124,7 +1183,9 @@ function setupEventListeners(): void {
   elements.pickerClose?.addEventListener('click', closePicker)
   elements.pickerCancel?.addEventListener('click', closePicker)
   elements.pickerBackdrop?.addEventListener('click', closePicker)
-  elements.pickerAdd?.addEventListener('click', handlePickerAdd)
+  elements.pickerAdd?.addEventListener('click', () => {
+    void handlePickerAdd()
+  })
   elements.pickerSearch?.addEventListener('input', handlePickerSearch)
 }
 
@@ -1145,14 +1206,14 @@ function switchTab(tabName: string): void {
 
   // Refresh data when switching tabs
   if (tabName === 'library') {
-    loadNotebooksList()
+    void loadNotebooksList()
   }
   else if (tabName === 'chat') {
-    loadSources()
-    loadChatHistory()
+    void loadSources()
+    void loadChatHistory()
   }
   else if (tabName === 'transform') {
-    loadSources()
+    void loadSources()
   }
 }
 
@@ -1259,7 +1320,9 @@ function createModelItem(id: string, name: string, isDefault: boolean): HTMLElem
   item.appendChild(checkmark)
   item.appendChild(content)
 
-  item.addEventListener('click', () => handleModelItemClick(id))
+  item.addEventListener('click', () => {
+    void handleModelItemClick(id)
+  })
 
   return item
 }
@@ -1409,16 +1472,18 @@ async function loadNotebooksList(): Promise<void> {
     div.appendChild(infoDiv)
     div.appendChild(actionsDiv)
 
-    infoDiv.addEventListener('click', () => selectNotebook(notebook.id))
+    infoDiv.addEventListener('click', () => {
+      void selectNotebook(notebook.id)
+    })
 
     exportBtn.addEventListener('click', (e) => {
       e.stopPropagation()
-      handleExportNotebook(notebook.id)
+      void handleExportNotebook(notebook.id)
     })
 
     deleteBtn.addEventListener('click', (e) => {
       e.stopPropagation()
-      handleDeleteNotebook(notebook.id, notebook.name)
+      void handleDeleteNotebook(notebook.id, notebook.name)
     })
 
     elements.notebooksList.appendChild(div)
@@ -2002,7 +2067,7 @@ async function handleAddSuggestedLink(url: string, linkItem: HTMLElement): Promi
 
   try {
     // Request content extraction from background script
-    const response = await chrome.runtime.sendMessage({
+    const response = await chrome.runtime.sendMessage<UrlExtractResponse & { success: boolean }>({
       type: 'EXTRACT_FROM_URL',
       payload: { url, notebookId: currentNotebookId },
     })
@@ -2083,7 +2148,7 @@ async function handleAddCurrentTab(): Promise<void> {
 
         try {
           // Send message directly to the content script in the tab
-          const result = await chrome.tabs.sendMessage(tab.id, {
+          const result = await chrome.tabs.sendMessage<TabExtractContentResponse>(tab.id, {
             action: 'extractContent',
           })
 
@@ -2091,9 +2156,9 @@ async function handleAddCurrentTab(): Promise<void> {
             const source = createSource(
               notebookId,
               'tab',
-              result.url || tab.url,
-              result.title || tab.title || 'Untitled',
-              result.markdown || '',
+              result.url ?? tab.url,
+              result.title ?? tab.title ?? 'Untitled',
+              result.markdown ?? '',
               result.links,
             )
             await saveSource(source)
@@ -2125,7 +2190,7 @@ async function handleAddCurrentTab(): Promise<void> {
     else {
       // Single tab - use existing logic
       elements.addCurrentTabBtn.textContent = 'Adding...'
-      const response = await chrome.runtime.sendMessage({
+      const response = await chrome.runtime.sendMessage<UrlExtractResponse>({
         type: 'EXTRACT_CONTENT',
       })
 
@@ -2133,9 +2198,9 @@ async function handleAddCurrentTab(): Promise<void> {
         const source = createSource(
           notebookId,
           'tab',
-          response.url,
-          response.title,
-          response.content,
+          response.url ?? '',
+          response.title ?? '',
+          response.content ?? '',
           response.links,
         )
         await saveSource(source)
@@ -2150,7 +2215,7 @@ async function handleAddCurrentTab(): Promise<void> {
   }
   finally {
     elements.addCurrentTabBtn.disabled = false
-    updateAddTabButton()
+    void updateAddTabButton()
   }
 }
 
@@ -2598,7 +2663,7 @@ async function handlePickerAdd(): Promise<void> {
 
           try {
             // Send message directly to content script
-            const result = await chrome.tabs.sendMessage(tab.id, {
+            const result = await chrome.tabs.sendMessage<TabExtractContentResponse>(tab.id, {
               action: 'extractContent',
             })
 
@@ -2606,9 +2671,9 @@ async function handlePickerAdd(): Promise<void> {
               const source = createSource(
                 notebookId,
                 'tab',
-                result.url || tab.url,
-                result.title || tab.title || 'Untitled',
-                result.markdown || '',
+                result.url ?? tab.url,
+                result.title ?? tab.title ?? 'Untitled',
+                result.markdown ?? '',
                 result.links,
               )
               await saveSource(source)
@@ -2640,7 +2705,7 @@ async function handlePickerAdd(): Promise<void> {
     for (const item of selectedItems) {
       try {
         // Extract content from the URL
-        const response = await chrome.runtime.sendMessage({
+        const response = await chrome.runtime.sendMessage<UrlExtractResponse>({
           type: 'EXTRACT_FROM_URL',
           payload: item.url,
         })
@@ -2649,9 +2714,9 @@ async function handlePickerAdd(): Promise<void> {
           const source = createSource(
             notebookId,
             pickerType || 'tab',
-            response.url || item.url,
-            response.title || item.title,
-            response.content || '',
+            response.url ?? item.url,
+            response.title ?? item.title,
+            response.content ?? '',
             response.links,
           )
           await saveSource(source)
@@ -2939,7 +3004,7 @@ function selectAutocompleteItem(cmd: SlashCommand, submit = false): void {
   if (submit) {
     // Trigger query submission after a brief delay to allow input to update
     setTimeout(() => {
-      handleQuery()
+      void handleQuery()
     }, 0)
   }
 }
@@ -3236,7 +3301,8 @@ function appendChatEvent(
   // Fallback (shouldn't happen - all ChatEvent types are handled above)
   // This satisfies TypeScript's exhaustiveness check
   const _exhaustiveCheck: never = event
-  throw new Error(`Unknown event type: ${_exhaustiveCheck}`)
+  // Cast to string for error message since `never` cannot be used in template literals
+  throw new Error(`Unknown event type: ${String(_exhaustiveCheck)}`)
 }
 
 /**
@@ -3501,13 +3567,13 @@ function handleCitationClick(event: Event): void {
   // Skip if excerpt is generic
   if (!excerpt || excerpt === 'Referenced in response') {
     // Just open the URL without text fragment
-    chrome.tabs.create({ url: sourceUrl })
+    void chrome.tabs.create({ url: sourceUrl })
     return
   }
 
   // Create URL with text fragment
   const fragmentUrl = createTextFragmentUrl(sourceUrl, excerpt)
-  chrome.tabs.create({ url: fragmentUrl })
+  void chrome.tabs.create({ url: fragmentUrl })
 }
 
 function formatRelativeTime(timestamp: number): string {
@@ -4189,7 +4255,7 @@ async function handlePermissionToggle(
 
   permissions = await checkPermissions()
   updatePermissionUI()
-  updateTabCount()
+  void updateTabCount()
 }
 
 /**
@@ -4727,7 +4793,9 @@ function showOnboarding(): void {
   elements.onboardingOverlay.classList.remove('hidden')
 
   // Setup event listeners
-  elements.onboardingSkip.addEventListener('click', completeOnboarding)
+  elements.onboardingSkip.addEventListener('click', () => {
+    void completeOnboarding()
+  })
   elements.onboardingNext.addEventListener('click', nextOnboardingStep)
 }
 
@@ -4756,7 +4824,7 @@ function nextOnboardingStep(): void {
     renderOnboardingStep()
   }
   else {
-    completeOnboarding()
+    void completeOnboarding()
   }
 }
 

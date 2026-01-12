@@ -107,7 +107,7 @@ export async function addCurrentTab(): Promise<Source | null> {
   const { title, content, links } = result
 
   // Create source
-  const source = await addSourceToNotebook(
+  const source = addSourceToNotebook(
     notebookId,
     'tab',
     tab.url,
@@ -161,7 +161,7 @@ export async function importTabs(tabIds: string[]): Promise<Source[]> {
     const result = results?.[0]?.result
     if (result) {
       const { title, content, links } = result
-      const source = await addSourceToNotebook(
+      const source = addSourceToNotebook(
         notebookId,
         'tab',
         tab.url,
@@ -238,7 +238,7 @@ export async function importTabGroups(groupIds: string[]): Promise<Source[]> {
       const result = results?.[0]?.result
       if (result) {
         const { title, content, links } = result
-        const source = await addSourceToNotebook(
+        const source = addSourceToNotebook(
           notebookId,
           'tab',
           tab.url,
@@ -305,7 +305,7 @@ export async function importBookmarks(bookmarkIds: string[]): Promise<Source[]> 
     if (!bookmark?.url) continue
 
     // For bookmarks, we can't execute scripts, so use the URL as content
-    const source = await addSourceToNotebook(
+    const source = addSourceToNotebook(
       notebookId,
       'bookmark',
       bookmark.url,
@@ -356,7 +356,7 @@ export async function importHistory(urls: string[]): Promise<Source[]> {
 
   for (const url of urls) {
     // For history items, use the URL as content
-    const source = await addSourceToNotebook(
+    const source = addSourceToNotebook(
       notebookId,
       'history',
       url,

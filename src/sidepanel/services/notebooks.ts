@@ -42,8 +42,8 @@ export async function getNotebookById(id: string): Promise<Notebook | null> {
   return await getNotebook(id)
 }
 
-export async function createNewNotebook(name: string): Promise<Notebook> {
-  return await createNotebook(name)
+export function createNewNotebook(name: string): Notebook {
+  return createNotebook(name)
 }
 
 export async function deleteNotebook(id: string): Promise<void> {
@@ -86,15 +86,15 @@ export async function getCurrentNotebookSources(): Promise<Source[]> {
   return await getSourcesByNotebook(id)
 }
 
-export async function addSourceToNotebook(
+export function addSourceToNotebook(
   notebookId: string,
   type: Source['type'],
   url: string,
   title: string,
   content: string,
   links?: ExtractedLink[],
-): Promise<Source> {
-  return await createSource(notebookId, type, url, title, content, links)
+): Source {
+  return createSource(notebookId, type, url, title, content, links)
 }
 
 export async function removeSource(sourceId: string): Promise<void> {
@@ -118,7 +118,8 @@ export async function saveNotebookSummary(notebookId: string, content: string, s
     await saveSummary(existing)
   }
   else {
-    await createSummary(notebookId, sourceIds, content)
+    const summary = createSummary(notebookId, sourceIds, content)
+    await saveSummary(summary)
   }
 }
 
@@ -138,7 +139,7 @@ export async function getNotebookOptions(): Promise<Array<{ value: string, label
  * Creates a new notebook with the given name and sets it as current
  */
 export async function createAndSelectNotebook(name: string): Promise<Notebook> {
-  const notebook = await createNewNotebook(name)
+  const notebook = createNewNotebook(name)
   await setCurrentNotebook(notebook.id)
   return notebook
 }
