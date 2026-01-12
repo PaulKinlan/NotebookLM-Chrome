@@ -139,8 +139,8 @@ export default [
       '@typescript-eslint/no-non-null-assertion': 'off',
       // Allow namespaces for global declarations in test setup
       '@typescript-eslint/no-namespace': 'off',
-      // Disallow unused vars
-      '@typescript-eslint/no-unused-vars': 'error',
+      // Disallow unused vars (allow underscore prefix in tests)
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       // Allow global directive for sandbox and other ESLint directives in tests
       'no-console': 'off',
       'eslint-comments/no-use': 'off',
