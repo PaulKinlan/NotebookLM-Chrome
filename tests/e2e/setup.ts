@@ -31,6 +31,7 @@ export async function cleanupProfile(): Promise<void> {
  * - HEADED: Set to "true" to run in headed mode (shows browser window). Defaults to headless.
  * - CI: Automatically detected for CI environments
  * - SLOW_MO: Slow down actions by specified milliseconds for visibility
+ * - CHROME_PATH: Path to Chrome executable (defaults to system Chrome)
  */
 export async function launchWithExtension(): Promise<Browser> {
   const isCI = process.env.CI === 'true';
@@ -55,6 +56,9 @@ export async function launchWithExtension(): Promise<Browser> {
       // Allow extension to load properly
       '--disable-extensions-file-access-check',
       '--disable-web-security', // Only for testing
+      // Enable Chrome Built-in AI (Gemini Nano) for testing
+      '--enable-features=OptimizationGuideOnDeviceModel:BypassPerfRequirement',
+      '--enable-features=PromptApiForGeminiNano:enable',
     ].filter(Boolean) as string[],
     // Slow down actions for visibility during development
     slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO, 10) : undefined,
