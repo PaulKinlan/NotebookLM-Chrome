@@ -172,7 +172,6 @@ export type ChromeMock = ReturnType<typeof createChromeMock>;
 
 // Extend global scope with chrome and browser
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace NodeJS {
     interface Global {
       chrome: ChromeMock;
@@ -186,9 +185,7 @@ const chromeMock = createChromeMock();
 
 // Extend global scope with test-specific chrome mock
 // Cast to unknown to allow setting properties that aren't in the official Chrome types
-// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Necessary for test mock setup
 (globalThis as unknown as { chrome: typeof chromeMock; browser: typeof chromeMock }).chrome = chromeMock;
-// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Necessary for test mock setup
 (globalThis as unknown as { chrome: typeof chromeMock; browser: typeof chromeMock }).browser = chromeMock;
 
 // Store names in the database (matching db.ts schema)
@@ -306,11 +303,9 @@ beforeEach(() => {
   // Reset chrome.storage mock data
   const chrome = globalThis.chrome;
   if (chrome?.storage?.local && '_setData' in chrome.storage.local) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Test helper method access
     (chrome.storage.local as unknown as { _setData: (data: unknown) => void })._setData({});
   }
   if (chrome?.storage?.sync && '_setData' in chrome.storage.sync) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Test helper method access
     (chrome.storage.sync as unknown as { _setData: (data: unknown) => void })._setData({});
   }
 });

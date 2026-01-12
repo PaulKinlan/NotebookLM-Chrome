@@ -11,7 +11,6 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 // AISettings type would be used for typing tests if needed
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { AISettings as _AISettings } from '../types/index.ts';
 
 // Global mock storage that will be cleared in beforeEach

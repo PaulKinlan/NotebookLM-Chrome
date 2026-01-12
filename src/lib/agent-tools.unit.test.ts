@@ -9,8 +9,6 @@
  * - Error handling when sources are unavailable
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-type-assertion -- Test mocks use controlled type assertions */
-
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Source } from '../types/index.ts';
 
