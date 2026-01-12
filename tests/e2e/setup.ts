@@ -25,14 +25,14 @@ export async function cleanupProfile(): Promise<void> {
  * Launch Chrome with the FolioLM extension loaded
  *
  * Environment variables:
- * - HEADED: Set to "true" to run in headed mode (shows browser window)
- * - CI: Automatically detected for CI environments (enables headless with "new" headless mode)
+ * - HEADED: Set to "true" to run in headed mode (shows browser window). Defaults to headless.
+ * - CI: Automatically detected for CI environments
  * - SLOW_MO: Slow down actions by specified milliseconds for visibility
  */
 export async function launchWithExtension(): Promise<Browser> {
   const isCI = process.env.CI === 'true';
-  // HEADED=true forces headed mode, otherwise default to headless in CI
-  const isHeaded = process.env.HEADED === 'true' || (!isCI && process.env.HEADED !== 'false');
+  // HEADED=true forces headed mode, otherwise default to headless
+  const isHeaded = process.env.HEADED === 'true';
 
   // Clean up profile before launching to ensure fresh state
   await cleanupProfile();
