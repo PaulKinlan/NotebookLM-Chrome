@@ -1,4 +1,4 @@
-import { h, Fragment } from './jsx-runtime';
+import { jsx, Fragment } from './jsx-runtime';
 
 declare global {
   namespace JSX {
@@ -16,4 +16,4 @@ declare global {
   }
 }
 
-export { h, Fragment };
+export { jsx, Fragment };
