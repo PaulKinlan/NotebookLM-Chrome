@@ -10,8 +10,6 @@ import DOMPurify from "dompurify";
 import { checkPermissions, requestPermission } from "../lib/permissions.ts";
 import { renderMarkdown, isHtmlContent } from "../lib/markdown-renderer.ts";
 import {
-  getRequiredQuerySelector,
-  getRequiredElementById,
   escapeHtml,
   formatMarkdown,
 } from "./dom-utils.ts";
@@ -132,135 +130,330 @@ let suggestedLinksLoading = false;
 // DOM Elements
 // ============================================================================
 
+// Helper to lazily get elements (for TSX compatibility where elements render later)
+function getElementById<T extends HTMLElement>(id: string): T | null {
+  return document.getElementById(id) as T | null;
+}
+
 // ============================================================================
 // Elements
 // ============================================================================
 
 const elements = {
   // Navigation
-  navItems: Array.from(
-    document.querySelectorAll(".nav-item")
-  ).filter((item): item is HTMLElement => item instanceof HTMLElement),
-  tabContents: Array.from(
-    document.querySelectorAll(".tab-content")
-  ).filter((item): item is HTMLElement => item instanceof HTMLElement),
+  get navItems(): HTMLElement[] {
+    return Array.from(
+      document.querySelectorAll(".nav-item")
+    ).filter((item): item is HTMLElement => item instanceof HTMLElement);
+  },
+  get tabContents(): HTMLElement[] {
+    return Array.from(
+      document.querySelectorAll(".tab-content")
+    ).filter((item): item is HTMLElement => item instanceof HTMLElement);
+  },
 
   // Header buttons
-  headerLibraryBtn: getRequiredElementById("header-library-btn", HTMLButtonElement),
-  headerSettingsBtn: getRequiredElementById("header-settings-btn", HTMLButtonElement),
+  get headerLibraryBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("header-library-btn")!;
+  },
+  get headerSettingsBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("header-settings-btn")!;
+  },
 
   // Add Sources tab
-  addCurrentTabBtn: getRequiredElementById("add-current-tab-btn", HTMLButtonElement),
-  searchSources: getRequiredElementById("search-sources", HTMLInputElement),
-  importTabs: getRequiredElementById("import-tabs", HTMLButtonElement),
-  importTabGroups: getRequiredElementById("import-tab-groups", HTMLButtonElement),
-  importBookmarks: getRequiredElementById("import-bookmarks", HTMLButtonElement),
-  importHistory: getRequiredElementById("import-history", HTMLButtonElement),
-  tabsCount: getRequiredElementById("tabs-count", HTMLSpanElement),
-  sourcesList: getRequiredElementById("sources-list", HTMLDivElement),
+  get addCurrentTabBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("add-current-tab-btn")!;
+  },
+  get searchSources(): HTMLInputElement {
+    return getElementById<HTMLInputElement>("search-sources")!;
+  },
+  get importTabs(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("import-tabs")!;
+  },
+  get importTabGroups(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("import-tab-groups")!;
+  },
+  get importBookmarks(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("import-bookmarks")!;
+  },
+  get importHistory(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("import-history")!;
+  },
+  get tabsCount(): HTMLSpanElement {
+    return getElementById<HTMLSpanElement>("tabs-count")!;
+  },
+  get sourcesList(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("sources-list")!;
+  },
 
   // Chat tab
-  notebookSelect: getRequiredElementById("notebook-select", HTMLSelectElement),
-  aiModelBtn: getRequiredElementById("ai-model-btn", HTMLButtonElement),
-  aiModelDropdown: getRequiredElementById("ai-model-dropdown", HTMLDivElement),
-  aiModelList: getRequiredElementById("ai-model-list", HTMLDivElement),
-  newNotebookBtn: getRequiredElementById("new-notebook-btn", HTMLButtonElement),
-  queryInput: getRequiredElementById("query-input", HTMLInputElement),
-  queryBtn: getRequiredElementById("query-btn", HTMLButtonElement),
-  sourceCount: getRequiredElementById("source-count", HTMLSpanElement),
-  activeSources: getRequiredElementById("active-sources", HTMLDivElement),
-  addPageBtn: getRequiredElementById("add-page-btn", HTMLButtonElement),
-  chatMessages: getRequiredElementById("chat-messages", HTMLDivElement),
-  clearChatBtn: getRequiredElementById("clear-chat-btn", HTMLButtonElement),
-  chatStatus: getRequiredElementById("chat-status", HTMLParagraphElement),
-  autocompleteDropdown: getRequiredElementById("autocomplete-dropdown", HTMLDivElement),
-  autocompleteGhost: getRequiredElementById("autocomplete-ghost", HTMLSpanElement),
+  get notebookSelect(): HTMLSelectElement {
+    return getElementById<HTMLSelectElement>("notebook-select")!;
+  },
+  get aiModelBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("ai-model-btn")!;
+  },
+  get aiModelDropdown(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("ai-model-dropdown")!;
+  },
+  get aiModelList(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("ai-model-list")!;
+  },
+  get newNotebookBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("new-notebook-btn")!;
+  },
+  get queryInput(): HTMLInputElement {
+    return getElementById<HTMLInputElement>("query-input")!;
+  },
+  get queryBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("query-btn")!;
+  },
+  get sourceCount(): HTMLSpanElement {
+    return getElementById<HTMLSpanElement>("source-count")!;
+  },
+  get activeSources(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("active-sources")!;
+  },
+  get addPageBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("add-page-btn")!;
+  },
+  get chatMessages(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("chat-messages")!;
+  },
+  get clearChatBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("clear-chat-btn")!;
+  },
+  get chatStatus(): HTMLParagraphElement {
+    return getElementById<HTMLParagraphElement>("chat-status")!;
+  },
+  get autocompleteDropdown(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("autocomplete-dropdown")!;
+  },
+  get autocompleteGhost(): HTMLSpanElement {
+    return getElementById<HTMLSpanElement>("autocomplete-ghost")!;
+  },
 
   // Summary section
-  summarySection: getRequiredElementById("summary-section", HTMLDetailsElement),
-  notebookSummary: getRequiredElementById("notebook-summary", HTMLDivElement),
-  regenerateSummaryBtn: getRequiredElementById("regenerate-summary-btn", HTMLButtonElement),
+  get summarySection(): HTMLDetailsElement {
+    return getElementById<HTMLDetailsElement>("summary-section")!;
+  },
+  get notebookSummary(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("notebook-summary")!;
+  },
+  get regenerateSummaryBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("regenerate-summary-btn")!;
+  },
 
   // Suggested links section
-  suggestedLinksSection: document.getElementById("suggested-links-section") as HTMLDetailsElement,
-  suggestedLinksCount: document.getElementById("suggested-links-count") as HTMLSpanElement,
-  suggestedLinksContent: document.getElementById("suggested-links-content") as HTMLDivElement,
-  suggestedLinksList: document.getElementById("suggested-links-list") as HTMLDivElement,
-  refreshLinksBtn: document.getElementById("refresh-links-btn") as HTMLButtonElement,
+  get suggestedLinksSection(): HTMLDetailsElement | null {
+    return getElementById<HTMLDetailsElement>("suggested-links-section");
+  },
+  get suggestedLinksCount(): HTMLSpanElement | null {
+    return getElementById<HTMLSpanElement>("suggested-links-count");
+  },
+  get suggestedLinksContent(): HTMLDivElement | null {
+    return getElementById<HTMLDivElement>("suggested-links-content");
+  },
+  get suggestedLinksList(): HTMLDivElement | null {
+    return getElementById<HTMLDivElement>("suggested-links-list");
+  },
+  get refreshLinksBtn(): HTMLButtonElement | null {
+    return getElementById<HTMLButtonElement>("refresh-links-btn");
+  },
 
   // Transform tab
-  transformPodcast: getRequiredElementById("transform-podcast", HTMLButtonElement),
-  transformQuiz: getRequiredElementById("transform-quiz", HTMLButtonElement),
-  transformTakeaways: getRequiredElementById("transform-takeaways", HTMLButtonElement),
-  transformEmail: getRequiredElementById("transform-email", HTMLButtonElement),
-  transformSlidedeck: getRequiredElementById("transform-slidedeck", HTMLButtonElement),
-  transformReport: getRequiredElementById("transform-report", HTMLButtonElement),
-  transformDatatable: getRequiredElementById("transform-datatable", HTMLButtonElement),
-  transformMindmap: getRequiredElementById("transform-mindmap", HTMLButtonElement),
-  transformFlashcards: getRequiredElementById("transform-flashcards", HTMLButtonElement),
-  transformTimeline: getRequiredElementById("transform-timeline", HTMLButtonElement),
-  transformGlossary: getRequiredElementById("transform-glossary", HTMLButtonElement),
-  transformComparison: getRequiredElementById("transform-comparison", HTMLButtonElement),
-  transformFaq: getRequiredElementById("transform-faq", HTMLButtonElement),
-  transformActionitems: getRequiredElementById("transform-actionitems", HTMLButtonElement),
-  transformExecutivebrief: getRequiredElementById("transform-executivebrief", HTMLButtonElement),
-  transformStudyguide: getRequiredElementById("transform-studyguide", HTMLButtonElement),
-  transformProscons: getRequiredElementById("transform-proscons", HTMLButtonElement),
-  transformCitations: getRequiredElementById("transform-citations", HTMLButtonElement),
-  transformOutline: getRequiredElementById("transform-outline", HTMLButtonElement),
-  transformHistory: getRequiredElementById("transform-history", HTMLDivElement),
+  get transformPodcast(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-podcast")!;
+  },
+  get transformQuiz(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-quiz")!;
+  },
+  get transformTakeaways(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-takeaways")!;
+  },
+  get transformEmail(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-email")!;
+  },
+  get transformSlidedeck(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-slidedeck")!;
+  },
+  get transformReport(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-report")!;
+  },
+  get transformDatatable(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-datatable")!;
+  },
+  get transformMindmap(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-mindmap")!;
+  },
+  get transformFlashcards(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-flashcards")!;
+  },
+  get transformTimeline(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-timeline")!;
+  },
+  get transformGlossary(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-glossary")!;
+  },
+  get transformComparison(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-comparison")!;
+  },
+  get transformFaq(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-faq")!;
+  },
+  get transformActionitems(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-actionitems")!;
+  },
+  get transformExecutivebrief(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-executivebrief")!;
+  },
+  get transformStudyguide(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-studyguide")!;
+  },
+  get transformProscons(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-proscons")!;
+  },
+  get transformCitations(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-citations")!;
+  },
+  get transformOutline(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("transform-outline")!;
+  },
+  get transformHistory(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("transform-history")!;
+  },
 
   // Library tab
-  notebooksList: getRequiredElementById("notebooks-list", HTMLDivElement),
+  get notebooksList(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("notebooks-list")!;
+  },
 
   // Settings tab (permissions only - AI provider configs are in provider-config-ui.ts)
-  permTabs: getRequiredElementById("perm-tabs", HTMLInputElement),
-  permTabGroups: getRequiredElementById("perm-tab-groups", HTMLInputElement),
-  permBookmarks: getRequiredElementById("perm-bookmarks", HTMLInputElement),
-  permHistory: getRequiredElementById("perm-history", HTMLInputElement),
-  toolBasedContext: getRequiredElementById("tool-based-context", HTMLInputElement),
-  chromeToolsWarning: getRequiredElementById("chrome-tools-warning", HTMLParagraphElement),
-  clearAllDataBtn: getRequiredElementById("clear-all-data-btn", HTMLButtonElement),
-  toolPermissionsList: getRequiredElementById("tool-permissions-list", HTMLDivElement),
-  resetToolPermissionsBtn: getRequiredElementById("reset-tool-permissions-btn", HTMLButtonElement),
+  get permTabs(): HTMLInputElement {
+    return getElementById<HTMLInputElement>("perm-tabs")!;
+  },
+  get permTabGroups(): HTMLInputElement {
+    return getElementById<HTMLInputElement>("perm-tab-groups")!;
+  },
+  get permBookmarks(): HTMLInputElement {
+    return getElementById<HTMLInputElement>("perm-bookmarks")!;
+  },
+  get permHistory(): HTMLInputElement {
+    return getElementById<HTMLInputElement>("perm-history")!;
+  },
+  get toolBasedContext(): HTMLInputElement {
+    return getElementById<HTMLInputElement>("tool-based-context")!;
+  },
+  get chromeToolsWarning(): HTMLParagraphElement {
+    return getElementById<HTMLParagraphElement>("chrome-tools-warning")!;
+  },
+  get clearAllDataBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("clear-all-data-btn")!;
+  },
+  get toolPermissionsList(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("tool-permissions-list")!;
+  },
+  get resetToolPermissionsBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("reset-tool-permissions-btn")!;
+  },
 
   // FAB
-  fab: getRequiredElementById("fab", HTMLButtonElement),
+  get fab(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("fab")!;
+  },
 
   // Picker Modal
-  pickerModal: getRequiredElementById("picker-modal", HTMLDivElement),
-  pickerTitle: getRequiredElementById("picker-title", HTMLHeadingElement),
-  pickerSearch: getRequiredElementById("picker-search", HTMLInputElement),
-  pickerList: getRequiredElementById("picker-list", HTMLDivElement),
-  pickerSelectedCount: getRequiredElementById("picker-selected-count", HTMLSpanElement),
-  pickerClose: getRequiredElementById("picker-close", HTMLButtonElement),
-  pickerCancel: getRequiredElementById("picker-cancel", HTMLButtonElement),
-  pickerAdd: getRequiredElementById("picker-add", HTMLButtonElement),
-  pickerBackdrop: getRequiredQuerySelector(".modal-backdrop", HTMLDivElement),
+  get pickerModal(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("picker-modal")!;
+  },
+  get pickerTitle(): HTMLHeadingElement {
+    return getElementById<HTMLHeadingElement>("picker-title")!;
+  },
+  get pickerSearch(): HTMLInputElement {
+    return getElementById<HTMLInputElement>("picker-search")!;
+  },
+  get pickerList(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("picker-list")!;
+  },
+  get pickerSelectedCount(): HTMLSpanElement {
+    return getElementById<HTMLSpanElement>("picker-selected-count")!;
+  },
+  get pickerClose(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("picker-close")!;
+  },
+  get pickerCancel(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("picker-cancel")!;
+  },
+  get pickerAdd(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("picker-add")!;
+  },
+  get pickerBackdrop(): HTMLDivElement {
+    const el = document.querySelector(".modal-backdrop");
+    if (!el || !(el instanceof HTMLDivElement)) {
+      throw new Error("Required element .modal-backdrop not found or is not HTMLDivElement");
+    }
+    return el;
+  },
 
   // Dialogs
-  notebookDialog: getRequiredElementById("notebook-dialog", HTMLDialogElement),
-  notebookDialogTitle: getRequiredElementById("notebook-dialog-title", HTMLHeadingElement),
-  notebookNameInput: getRequiredElementById("notebook-name-input", HTMLInputElement),
-  notebookDialogCancel: getRequiredElementById("notebook-dialog-cancel", HTMLButtonElement),
-  notebookDialogConfirm: getRequiredElementById("notebook-dialog-confirm", HTMLButtonElement),
+  get notebookDialog(): HTMLDialogElement {
+    return getElementById<HTMLDialogElement>("notebook-dialog")!;
+  },
+  get notebookDialogTitle(): HTMLHeadingElement {
+    return getElementById<HTMLHeadingElement>("notebook-dialog-title")!;
+  },
+  get notebookNameInput(): HTMLInputElement {
+    return getElementById<HTMLInputElement>("notebook-name-input")!;
+  },
+  get notebookDialogCancel(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("notebook-dialog-cancel")!;
+  },
+  get notebookDialogConfirm(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("notebook-dialog-confirm")!;
+  },
 
-  confirmDialog: getRequiredElementById("confirm-dialog", HTMLDialogElement),
-  confirmDialogTitle: getRequiredElementById("confirm-dialog-title", HTMLHeadingElement),
-  confirmDialogMessage: getRequiredElementById("confirm-dialog-message", HTMLParagraphElement),
-  confirmDialogCancel: getRequiredElementById("confirm-dialog-cancel", HTMLButtonElement),
-  confirmDialogConfirm: getRequiredElementById("confirm-dialog-confirm", HTMLButtonElement),
+  get confirmDialog(): HTMLDialogElement {
+    return getElementById<HTMLDialogElement>("confirm-dialog")!;
+  },
+  get confirmDialogTitle(): HTMLHeadingElement {
+    return getElementById<HTMLHeadingElement>("confirm-dialog-title")!;
+  },
+  get confirmDialogMessage(): HTMLParagraphElement {
+    return getElementById<HTMLParagraphElement>("confirm-dialog-message")!;
+  },
+  get confirmDialogCancel(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("confirm-dialog-cancel")!;
+  },
+  get confirmDialogConfirm(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("confirm-dialog-confirm")!;
+  },
 
-  notification: getRequiredElementById("notification", HTMLDivElement),
+  get notification(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("notification")!;
+  },
 
   // Onboarding elements
-  onboardingOverlay: getRequiredElementById("onboarding-overlay", HTMLDivElement),
-  onboardingIcon: getRequiredElementById("onboarding-icon", HTMLDivElement),
-  onboardingTitle: getRequiredElementById("onboarding-title", HTMLHeadingElement),
-  onboardingDescription: getRequiredElementById("onboarding-description", HTMLParagraphElement),
-  onboardingDots: getRequiredElementById("onboarding-dots", HTMLDivElement),
-  onboardingSkip: getRequiredElementById("onboarding-skip", HTMLButtonElement),
-  onboardingNext: getRequiredElementById("onboarding-next", HTMLButtonElement),
+  get onboardingOverlay(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("onboarding-overlay")!;
+  },
+  get onboardingIcon(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("onboarding-icon")!;
+  },
+  get onboardingTitle(): HTMLHeadingElement {
+    return getElementById<HTMLHeadingElement>("onboarding-title")!;
+  },
+  get onboardingDescription(): HTMLParagraphElement {
+    return getElementById<HTMLParagraphElement>("onboarding-description")!;
+  },
+  get onboardingDots(): HTMLDivElement {
+    return getElementById<HTMLDivElement>("onboarding-dots")!;
+  },
+  get onboardingSkip(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("onboarding-skip")!;
+  },
+  get onboardingNext(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>("onboarding-next")!;
+  },
 };
 
 // ============================================================================
@@ -1562,31 +1755,33 @@ async function handleRegenerateSummary(): Promise<void> {
  * Show the suggested links section
  */
 function showSuggestedLinksSection(): void {
-  elements.suggestedLinksSection.style.display = "block";
+  elements.suggestedLinksSection?.style.setProperty("display", "block");
 }
 
 /**
  * Hide the suggested links section
  */
 function hideSuggestedLinksSection(): void {
-  elements.suggestedLinksSection.style.display = "none";
+  elements.suggestedLinksSection?.style.setProperty("display", "none");
 }
 
 /**
  * Show loading state in suggested links
  */
 function showSuggestedLinksLoading(): void {
+  if (!elements.suggestedLinksContent) return;
   const loading = elements.suggestedLinksContent.querySelector(".suggested-links-loading") as HTMLElement;
   const empty = elements.suggestedLinksContent.querySelector(".suggested-links-empty") as HTMLElement;
   if (loading) loading.style.display = "flex";
   if (empty) empty.style.display = "none";
-  elements.suggestedLinksList.innerHTML = "";
+  if (elements.suggestedLinksList) elements.suggestedLinksList.innerHTML = "";
 }
 
 /**
  * Hide loading state in suggested links
  */
 function hideSuggestedLinksLoading(): void {
+  if (!elements.suggestedLinksContent) return;
   const loading = elements.suggestedLinksContent.querySelector(".suggested-links-loading") as HTMLElement;
   if (loading) loading.style.display = "none";
 }
@@ -1595,9 +1790,10 @@ function hideSuggestedLinksLoading(): void {
  * Show empty state in suggested links
  */
 function showSuggestedLinksEmpty(): void {
+  if (!elements.suggestedLinksContent) return;
   const empty = elements.suggestedLinksContent.querySelector(".suggested-links-empty") as HTMLElement;
   if (empty) empty.style.display = "block";
-  elements.suggestedLinksList.innerHTML = "";
+  if (elements.suggestedLinksList) elements.suggestedLinksList.innerHTML = "";
 }
 
 /**
@@ -1621,14 +1817,17 @@ function renderSuggestedLinks(links: SuggestedLink[]): void {
 
   if (links.length === 0) {
     showSuggestedLinksEmpty();
-    elements.suggestedLinksCount.textContent = "0";
+    if (elements.suggestedLinksCount) elements.suggestedLinksCount.textContent = "0";
     return;
   }
 
+  if (!elements.suggestedLinksContent) return;
   const empty = elements.suggestedLinksContent.querySelector(".suggested-links-empty") as HTMLElement;
   if (empty) empty.style.display = "none";
 
-  elements.suggestedLinksCount.textContent = String(links.length);
+  if (elements.suggestedLinksCount) elements.suggestedLinksCount.textContent = String(links.length);
+
+  if (!elements.suggestedLinksList) return;
 
   // Build HTML with all dynamic content sanitized via DOMPurify
   elements.suggestedLinksList.innerHTML = links
@@ -1781,22 +1980,24 @@ async function handleAddSuggestedLink(url: string, linkItem: HTMLElement): Promi
       // Remove the item from the list since it's now a source
       linkItem.remove();
 
-      // Update count
-      const remaining = elements.suggestedLinksList.querySelectorAll(".suggested-link-item").length;
-      elements.suggestedLinksCount.textContent = String(remaining);
+      // Update count (with null checks)
+      if (elements.suggestedLinksList && elements.suggestedLinksCount) {
+        const remaining = elements.suggestedLinksList.querySelectorAll(".suggested-link-item").length;
+        elements.suggestedLinksCount.textContent = String(remaining);
 
-      // Update cache
-      const cached = suggestedLinksCache.get(currentNotebookId);
-      if (cached) {
-        suggestedLinksCache.set(
-          currentNotebookId,
-          cached.filter((link) => link.url !== url)
-        );
-      }
+        // Update cache
+        const cached = suggestedLinksCache.get(currentNotebookId);
+        if (cached) {
+          suggestedLinksCache.set(
+            currentNotebookId,
+            cached.filter((link) => link.url !== url)
+          );
+        }
 
-      // Show empty state if no more links
-      if (remaining === 0) {
-        showSuggestedLinksEmpty();
+        // Show empty state if no more links
+        if (remaining === 0) {
+          showSuggestedLinksEmpty();
+        }
       }
     } else {
       // Failed to add - restore state
