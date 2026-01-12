@@ -69,8 +69,6 @@ import {
   formatErrorForUser,
 } from '../lib/ai.ts'
 import { getSourceTools } from '../lib/agent-tools.ts'
-import { getToolPermissions } from '../lib/tool-permissions.ts'
-import type { ToolPermissionsConfig } from '../types/index.ts'
 import {
   getContextMode,
   setContextMode,
@@ -420,12 +418,6 @@ const elements = {
   get clearAllDataBtn(): HTMLButtonElement {
     return getElementById<HTMLButtonElement>('clear-all-data-btn')!
   },
-  get toolPermissionsList(): HTMLDivElement {
-    return getElementById<HTMLDivElement>('tool-permissions-list')!
-  },
-  get resetToolPermissionsBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>('reset-tool-permissions-btn')!
-  },
 
   // FAB
   get fab(): HTMLButtonElement {
@@ -569,9 +561,7 @@ async function init(): Promise<void> {
   // Initialize inline approval UI
   initInlineApprovals()
 
-  // Initialize tool permissions UI
-  await initToolPermissionsUI()
-
+  // Note: Tool permissions UI is now handled by SettingsTabStateful component with useToolPermissions hook
   // updateSettingsUI() is now handled by provider-config-ui.ts
   setupEventListeners()
   await loadNotebooks()
@@ -625,7 +615,6 @@ async function init(): Promise<void> {
       }
       void loadNotebooks()
       void loadSources()
-      void loadNotebooksList() // Refresh library page source counts
       showNotification('Source added')
     }
     else if (message.type === 'SOURCE_REFRESHED') {
@@ -708,7 +697,6 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
   currentNotebookId = notebook.id
   await setActiveNotebookId(notebook.id)
   await loadNotebooks()
-  await loadNotebooksList()
   elements.notebookSelect.value = notebook.id
   notifyNotebooksChanged()
 
@@ -749,7 +737,6 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
   currentNotebookId = notebook.id
   await setActiveNotebookId(notebook.id)
   await loadNotebooks()
-  await loadNotebooksList()
   elements.notebookSelect.value = notebook.id
   notifyNotebooksChanged()
 
@@ -798,7 +785,6 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
   currentNotebookId = notebook.id
   await setActiveNotebookId(notebook.id)
   await loadNotebooks()
-  await loadNotebooksList()
   elements.notebookSelect.value = notebook.id
   notifyNotebooksChanged()
 
@@ -842,167 +828,6 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
   suggestedLinksCache.delete(notebook.id)
   await loadSources()
   showNotification(`Notebook created with ${addedCount} source${addedCount === 1 ? '' : 's'}`)
-}
-
-// ============================================================================
-// Tool Permissions UI
-// ============================================================================
-
-/**
- * Initialize tool permissions UI
- */
-async function initToolPermissionsUI(): Promise<void> {
-  const config = await getToolPermissions()
-  renderToolPermissions(config)
-}
-
-/**
- * Render the tool permissions list
- */
-function renderToolPermissions(config: ToolPermissionsConfig): void {
-  const container = elements.toolPermissionsList
-  container.innerHTML = ''
-
-  const toolNames = Object.keys(config.permissions).sort()
-
-  for (const toolName of toolNames) {
-    const permission = config.permissions[toolName]
-    const isSessionApproved = config.sessionApprovals.includes(toolName)
-
-    const item = document.createElement('div')
-    item.className = 'tool-permission-item'
-
-    // Determine status
-    let statusClass = 'disabled'
-    let statusText = 'Disabled'
-    if (permission.visible) {
-      if (permission.autoApproved) {
-        statusClass = 'auto-approved'
-        statusText = 'Auto-Approved'
-      }
-      else if (isSessionApproved) {
-        statusClass = 'session-approved'
-        statusText = 'Session-Approved'
-      }
-      else if (permission.requiresApproval) {
-        statusClass = 'requires-approval'
-        statusText = 'Requires Approval'
-      }
-      else {
-        statusClass = 'auto-approved'
-        statusText = 'Auto-Approved'
-      }
-    }
-
-    // Format tool name for display
-    const displayName = toolName
-      .replace(/([A-Z])/g, ' $1')
-      .trim()
-      .replace(/^./, s => s.toUpperCase())
-
-    item.innerHTML = `
-      <div class="tool-permission-header">
-        <div class="tool-permission-name">
-          <strong>${escapeHtml(displayName)}</strong>
-          <span class="tool-permission-status ${statusClass}">${statusText}</span>
-        </div>
-      </div>
-      <div class="tool-permission-controls">
-        <div class="tool-permission-control">
-          <input
-            type="checkbox"
-            id="tool-enabled-${toolName}"
-            data-tool-name="${toolName}"
-            data-action="visible"
-            ${permission.visible ? 'checked' : ''}
-          />
-          <label for="tool-enabled-${toolName}">Enabled</label>
-        </div>
-        <div class="tool-permission-control">
-          <input
-            type="checkbox"
-            id="tool-no-approval-${toolName}"
-            data-tool-name="${toolName}"
-            data-action="noApproval"
-            ${!permission.requiresApproval ? 'checked' : ''}
-            ${!permission.visible ? 'disabled' : ''}
-          />
-          <label for="tool-no-approval-${toolName}">Auto approve</label>
-        </div>
-      </div>
-    `
-
-    container.appendChild(item)
-  }
-}
-
-/**
- * Handle toggling tool enabled state
- */
-async function handleToggleToolVisible(toolName: string, visible: boolean): Promise<void> {
-  const config = await getToolPermissions()
-
-  // Update permission
-  config.permissions[toolName].visible = visible
-
-  // If disabling, also clear any auto-approval
-  if (!visible) {
-    config.permissions[toolName].autoApproved = false
-  }
-
-  // If enabling but has no approval requirement, mark as auto-approved
-  if (visible && !config.permissions[toolName].requiresApproval) {
-    config.permissions[toolName].autoApproved = true
-  }
-
-  config.lastModified = Date.now()
-  await saveToolPermissions(config)
-  renderToolPermissions(config)
-}
-
-/**
- * Handle toggling whether tool requires approval
- */
-async function handleToggleToolRequiresApproval(toolName: string, requiresApproval: boolean): Promise<void> {
-  const config = await getToolPermissions()
-
-  // Update permission
-  config.permissions[toolName].requiresApproval = requiresApproval
-
-  // If removing approval requirement, mark as auto-approved
-  if (!requiresApproval) {
-    config.permissions[toolName].autoApproved = true
-  }
-  else {
-    // If adding approval requirement, mark as NOT auto-approved
-    config.permissions[toolName].autoApproved = false
-  }
-
-  config.lastModified = Date.now()
-  await saveToolPermissions(config)
-  renderToolPermissions(config)
-}
-
-/**
- * Handle resetting tool permissions to defaults
- */
-async function handleResetToolPermissions(): Promise<void> {
-  // Reset to defaults by clearing and reloading
-  const { storage } = await import('../lib/storage.ts')
-  await storage.setSetting('toolPermissions', null)
-
-  const config = await getToolPermissions()
-  renderToolPermissions(config)
-
-  showNotification('Tool permissions reset to defaults')
-}
-
-/**
- * Save tool permissions configuration
- */
-async function saveToolPermissions(config: ToolPermissionsConfig): Promise<void> {
-  const { storage } = await import('../lib/storage.ts')
-  await storage.setSetting('toolPermissions', config)
 }
 
 // ============================================================================
@@ -1187,30 +1012,6 @@ function setupEventListeners(): void {
   elements.permHistory.addEventListener('change', () => {
     void handlePermissionToggle('history')
   })
-  elements.resetToolPermissionsBtn.addEventListener('click', () => {
-    void handleResetToolPermissions()
-  })
-
-  // Tool Permissions
-  elements.toolPermissionsList.addEventListener('change', (e) => {
-    const target = e.target
-    if (
-      target instanceof HTMLInputElement
-      && target.dataset.toolName
-      && target.dataset.action
-    ) {
-      const toolName = target.dataset.toolName
-      const action = target.dataset.action
-
-      if (action === 'visible') {
-        void handleToggleToolVisible(toolName, target.checked)
-      }
-      else if (action === 'noApproval') {
-        // Checkbox is "Auto approve", so checked = no approval needed
-        void handleToggleToolRequiresApproval(toolName, !target.checked)
-      }
-    }
-  })
 
   elements.toolBasedContext.addEventListener('change', () => {
     const mode = elements.toolBasedContext.checked ? 'agentic' : 'classic'
@@ -1277,10 +1078,7 @@ function switchTab(tabName: string): void {
   })
 
   // Refresh data when switching tabs
-  if (tabName === 'library') {
-    void loadNotebooksList()
-  }
-  else if (tabName === 'chat') {
+  if (tabName === 'chat') {
     void loadSources()
     void loadChatHistory()
   }
@@ -1477,91 +1275,6 @@ async function updateAIConfigForNotebook(): Promise<void> {
   updateModelDropdownSelection()
 }
 
-async function loadNotebooksList(): Promise<void> {
-  const notebooks = await getNotebooks()
-
-  if (notebooks.length === 0) {
-    elements.notebooksList.innerHTML = `
-      <div class="empty-state">
-        <p>No notebooks yet. Create one to get started.</p>
-      </div>
-    `
-    return
-  }
-
-  elements.notebooksList.innerHTML = ''
-
-  for (const notebook of notebooks) {
-    const sources = await getSourcesByNotebook(notebook.id)
-    const div = document.createElement('div')
-    div.className = 'notebook-item'
-
-    // Build notebook item using DOM methods for security
-    const iconDiv = document.createElement('div')
-    iconDiv.className = 'notebook-icon'
-    iconDiv.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-        </svg>`
-
-    const infoDiv = document.createElement('div')
-    infoDiv.className = 'notebook-info'
-    const nameDiv = document.createElement('div')
-    nameDiv.className = 'notebook-name'
-    nameDiv.textContent = notebook.name
-    const metaDiv = document.createElement('div')
-    metaDiv.className = 'notebook-meta'
-    metaDiv.textContent = `${sources.length} sources`
-    infoDiv.appendChild(nameDiv)
-    infoDiv.appendChild(metaDiv)
-
-    const actionsDiv = document.createElement('div')
-    actionsDiv.className = 'notebook-actions'
-
-    const exportBtn = document.createElement('button')
-    exportBtn.className = 'icon-btn btn-export-notebook'
-    exportBtn.dataset.id = notebook.id
-    exportBtn.title = 'Export notebook'
-    exportBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>`
-
-    const deleteBtn = document.createElement('button')
-    deleteBtn.className = 'icon-btn btn-delete-notebook'
-    deleteBtn.dataset.id = notebook.id
-    deleteBtn.title = 'Delete notebook'
-    deleteBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>`
-
-    actionsDiv.appendChild(exportBtn)
-    actionsDiv.appendChild(deleteBtn)
-
-    div.appendChild(iconDiv)
-    div.appendChild(infoDiv)
-    div.appendChild(actionsDiv)
-
-    infoDiv.addEventListener('click', () => {
-      void selectNotebook(notebook.id)
-    })
-
-    exportBtn.addEventListener('click', (e) => {
-      e.stopPropagation()
-      void handleExportNotebook(notebook.id)
-    })
-
-    deleteBtn.addEventListener('click', (e) => {
-      e.stopPropagation()
-      void handleDeleteNotebook(notebook.id, notebook.name)
-    })
-
-    elements.notebooksList.appendChild(div)
-  }
-}
-
 async function handleDeleteNotebook(id: string, name: string): Promise<void> {
   const confirmed = await showConfirmDialog(
     'Delete Notebook',
@@ -1578,7 +1291,6 @@ async function handleDeleteNotebook(id: string, name: string): Promise<void> {
     await loadNotebooks()
   }
 
-  await loadNotebooksList()
   await loadSources()
   notifyNotebooksChanged()
   showNotification('Notebook deleted')
@@ -1685,7 +1397,6 @@ async function handleNewNotebook(): Promise<void> {
   currentNotebookId = notebook.id
   await setActiveNotebookId(notebook.id)
   await loadNotebooks()
-  await loadNotebooksList()
   elements.notebookSelect.value = notebook.id
   notifyNotebooksChanged()
   showNotification('Notebook created')
@@ -5058,11 +4769,6 @@ export const handlers = {
   // Settings & Permissions
   handlePermissionToggle,
   handleClearAllData,
-
-  // AI Profile tools
-  handleToggleToolVisible,
-  handleToggleToolRequiresApproval,
-  handleResetToolPermissions,
 
   // Autocomplete
   handleAutocompleteInput,

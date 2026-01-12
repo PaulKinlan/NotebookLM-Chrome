@@ -4,10 +4,10 @@
 
 // Import all components
 import { useState, useEffect } from '../jsx-runtime/hooks/index.ts'
-import { Header } from './components/Header'
+import { HeaderStateful } from './components/Header'
 import { AddTabStateful } from './components/AddTabStateful'
 import { ChatTabStateful } from './components/ChatTabStateful'
-import { TransformTab } from './components/TransformTab'
+import { TransformTabStateful } from './components/TransformTabStateful'
 import { LibraryTabStateful } from './components/LibraryTabStateful'
 import { SettingsTabStateful } from './components/SettingsTabStateful'
 import { BottomNav } from './components/BottomNav'
@@ -23,13 +23,10 @@ import { useDialog } from './hooks/useDialog.ts'
 
 type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings'
 
-type BusinessHandlers = typeof import('./index')['handlers']
-
 interface AppProps {
   activeTab: TabName
   fabHidden: boolean
   onboardingHidden: boolean
-  businessHandlers: BusinessHandlers | null
 }
 
 // ============================================================================
@@ -40,9 +37,8 @@ export function App(props: AppProps = {
   activeTab: 'add',
   fabHidden: true,
   onboardingHidden: true,
-  businessHandlers: null,
 }): Node {
-  const { activeTab: initialTab, fabHidden, onboardingHidden, businessHandlers } = props
+  const { activeTab: initialTab, fabHidden, onboardingHidden } = props
 
   // Use useState for tab management instead of imperative DOM manipulation
   const [activeTab, setActiveTab] = useState<TabName>(initialTab)
@@ -84,43 +80,22 @@ export function App(props: AppProps = {
 
   const handleTabClick = (tab: TabName) => {
     setActiveTab(tab)
-    businessHandlers?.switchTab(tab)
-  }
-
-  const handleHeaderLibraryClick = () => {
-    setActiveTab('library')
-  }
-
-  const handleHeaderSettingsClick = () => {
-    setActiveTab('settings')
   }
 
   const handleFabClick = () => {
     setActiveTab('add')
   }
 
-  const handleTransform = (type: string) => {
-    void businessHandlers?.handleTransform(type as unknown as 'podcast' | 'quiz' | 'takeaways' | 'email' | 'slidedeck' | 'report' | 'datatable' | 'mindmap' | 'flashcards' | 'timeline' | 'glossary' | 'comparison' | 'faq' | 'actionitems' | 'executivebrief' | 'studyguide' | 'proscons' | 'citations' | 'outline')
-  }
-
   return (
     <>
-      <Header
-        onLibraryClick={handleHeaderLibraryClick}
-        onSettingsClick={handleHeaderSettingsClick}
-        onNotebookChange={() => { void businessHandlers?.handleNotebookChange() }}
-        onNewNotebook={() => { void businessHandlers?.handleNewNotebook() }}
-      />
+      <HeaderStateful />
 
       <main className="content">
         <AddTabStateful active={activeTab === 'add'} />
 
-        <ChatTabStateful
-          active={activeTab === 'chat'}
-          onAddCurrentTab={() => { void businessHandlers?.handleAddCurrentTab() }}
-        />
+        <ChatTabStateful active={activeTab === 'chat'} />
 
-        <TransformTab active={activeTab === 'transform'} onTransform={handleTransform} />
+        <TransformTabStateful active={activeTab === 'transform'} />
 
         <LibraryTabStateful active={activeTab === 'library'} />
 

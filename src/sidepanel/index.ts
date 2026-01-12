@@ -1,13 +1,12 @@
 /**
  * Side Panel Barrel
  *
- * Re-exports from controllers and services for cleaner import paths.
+ * Re-exports from services for cleaner import paths.
  */
 
-// Business logic controllers (all handlers and state)
-export { handlers, getState, initControllers } from './controllers'
-
-// Services - selective exports to avoid naming conflicts
+// Chrome Bridge (Chrome extension event listeners)
+export { initChromeBridge, checkPendingActions, type ChromeBridgeCallbacks } from './chrome-bridge'
+export type { TabExtractContentResponse, UrlExtractResponse } from './chrome-bridge'
 
 // Notebooks
 export {
@@ -40,6 +39,7 @@ export {
 export type { PickerItem, PickerState } from './services/sources'
 export {
   addCurrentTab,
+  addHighlightedTabs,
   getTabs,
   importTabs,
   getTabGroups,
@@ -49,6 +49,7 @@ export {
   getHistory,
   importHistory,
 } from './services/sources'
+export type { AddCurrentTabResult } from './services/sources'
 
 // UI
 export {
