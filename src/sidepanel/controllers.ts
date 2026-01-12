@@ -573,7 +573,7 @@ async function init(): Promise<void> {
   await loadNotebooks()
   await loadAIConfigs()
   await loadSources()
-  await loadChatHistory()
+  loadChatHistory()
   void updateTabCount()
   void updateAddTabButton()
 
@@ -1693,7 +1693,7 @@ async function handleNotebookChange(): Promise<void> {
   await setActiveNotebookId(currentNotebookId)
   await updateAIConfigForNotebook()
   await loadSources()
-  await loadChatHistory()
+  loadChatHistory()
 }
 
 async function selectNotebook(id: string): Promise<void> {
@@ -1704,7 +1704,7 @@ async function selectNotebook(id: string): Promise<void> {
   await updateAIConfigForNotebook()
   switchTab('chat')
   await loadSources()
-  await loadChatHistory()
+  loadChatHistory()
 }
 
 // ============================================================================
@@ -1728,11 +1728,52 @@ async function loadSources(): Promise<void> {
   const sources = await getSourcesByNotebook(currentNotebookId)
   elements.sourceCount.textContent = sources.length.toString()
 
-  // Render in Chat tab (compact)
-  renderSourcesList(elements.activeSources, sources)
+  // TODO: Replace with stateful component rendering
+  // Render using SourcesList component in Chat tab
+  // mountSourcesList('active-sources', {
+  //   notebookId: currentNotebookId,
+  //   onRemoveSource: handleRemoveSource,
+  // })
 
-  // Render in Add tab (recent sources)
-  renderSourcesList(elements.sourcesList, sources.slice(0, 5))
+  // Render in Add tab (recent sources) - show first 5
+  // We need to use a different approach since we're limiting to 5
+  elements.sourcesList.innerHTML = ''
+  for (const source of sources.slice(0, 5)) {
+    const div = document.createElement('div')
+    div.className = 'source-item'
+    const domain = new URL(source.url).hostname.replace('www.', '')
+    const initial = source.title.charAt(0).toUpperCase()
+    div.innerHTML = `
+      <div class="source-icon">${initial}</div>
+      <div class="source-info">
+        <div class="source-title">
+          <span class="source-title-text">${source.title}</span>
+          <a href="${source.url}" target="_blank" rel="noopener noreferrer" class="source-external" title="Open in new tab">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </a>
+        </div>
+        <div class="source-url">${domain}</div>
+      </div>
+      <div class="source-actions">
+        <button class="icon-btn btn-remove" data-id="${source.id}" title="Remove">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    `
+    const removeBtn = div.querySelector('.btn-remove')
+    removeBtn?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      void handleRemoveSource(source.id)
+    })
+    elements.sourcesList.appendChild(div)
+  }
 
   // Load or generate summary
   await loadOrGenerateSummary(sources)
@@ -3078,7 +3119,7 @@ async function handleCompactCommand(customInstructions: string): Promise<boolean
     await saveChatEvent(summaryEvent)
 
     // Reload chat history to show the summary
-    await loadChatHistory()
+    loadChatHistory()
 
     showNotification('Chat history compacted')
   }
@@ -3380,7 +3421,7 @@ function updateAutocompleteSelection(): void {
 // Chat History & Query
 // ============================================================================
 
-async function loadChatHistory(): Promise<void> {
+function loadChatHistory(): void {
   if (!currentNotebookId) {
     elements.chatMessages.innerHTML = `
       <div class="empty-state">
@@ -3390,28 +3431,29 @@ async function loadChatHistory(): Promise<void> {
     return
   }
 
-  const events = await getChatHistory(currentNotebookId)
-
-  if (events.length === 0) {
-    elements.chatMessages.innerHTML = `
-      <div class="empty-state">
-        <p>Ask a question to get started.</p>
-      </div>
-    `
-    return
-  }
+  // Load chat history for stateful component
+  // const events = await getChatHistory(currentNotebookId)
 
   // Fetch sources for citation rendering
-  const sources = await getSourcesByNotebook(currentNotebookId)
+  // const sources = await getSourcesByNotebook(currentNotebookId)
 
-  elements.chatMessages.innerHTML = ''
-
-  for (const event of events) {
-    appendChatEvent(event, sources)
-  }
-
-  // Scroll to bottom
-  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight
+  // TODO: Replace with stateful component rendering
+  // Render using ChatMessages component
+  // mountChatMessages('chat-messages', {
+  //   notebookId: currentNotebookId,
+  //   events,
+  //   sources,
+  //   onCitationClick: (url: string, excerpt: string) => {
+  //     // Handle citation click - open with text fragment if available
+  //     if (excerpt && excerpt !== 'Referenced in response') {
+  //       const fragmentUrl = `${url.split('#')[0]}#:~:text=${encodeURIComponent(excerpt.slice(0, 100))}`
+  //       void chrome.tabs.create({ url: fragmentUrl })
+  //     }
+  //     else {
+  //       void chrome.tabs.create({ url })
+  //     }
+  //   },
+  // })
 }
 
 /**
@@ -4063,7 +4105,7 @@ async function handleClearChat(): Promise<void> {
   if (!confirmed) return
 
   await clearChatHistory(currentNotebookId)
-  await loadChatHistory()
+  loadChatHistory()
   showNotification('Chat history cleared')
 }
 
