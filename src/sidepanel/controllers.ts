@@ -93,9 +93,8 @@ import {
   ONBOARDING_STEPS,
 } from '../lib/onboarding.ts'
 import {
-  initApprovalUI,
-  checkAndShowPendingApprovals,
-} from './approval-ui.ts'
+  initInlineApprovals,
+} from './approval-ui.tsx'
 import { getTransformConfig } from '../lib/transform-config.ts'
 import { initTransformConfigButtons } from './components/TransformConfigPopover.tsx'
 
@@ -563,8 +562,8 @@ async function init(): Promise<void> {
   elements.toolBasedContext.checked = contextMode === 'agentic'
   await updateChromeToolsWarning()
 
-  // Initialize approval UI
-  initApprovalUI()
+  // Initialize inline approval UI
+  initInlineApprovals()
 
   // Initialize tool permissions UI
   await initToolPermissionsUI()
@@ -612,11 +611,6 @@ async function init(): Promise<void> {
       void refreshPickerIfShowingTabs()
     }
   })
-
-  // Check for pending tool approvals periodically (every 1 second)
-  setInterval(async () => {
-    await checkAndShowPendingApprovals()
-  }, 1000)
 
   // Listen for messages from background script
   chrome.runtime.onMessage.addListener((message: Message) => {
