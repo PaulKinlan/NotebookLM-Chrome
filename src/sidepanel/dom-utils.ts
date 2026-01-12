@@ -10,7 +10,6 @@ export function getRequiredQuerySelector<T extends HTMLElement>(
 ): T {
   const element = parent.querySelector(selector);
   if (element instanceof expectedType) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Safe because verified by instanceof check above
     return element as T;
   }
   throw new Error(`Required element "${selector}" not found or is not ${expectedType.name}`);
@@ -25,7 +24,6 @@ export function getRequiredElementById<T extends HTMLElement>(
 ): T {
   const element = document.getElementById(id);
   if (element instanceof expectedType) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion -- Safe because verified by instanceof check above
     return element as T;
   }
   throw new Error(`Required element #${id} not found or is not ${expectedType.name}`);
