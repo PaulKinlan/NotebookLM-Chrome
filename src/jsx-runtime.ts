@@ -74,10 +74,10 @@ export function Fragment(props: { children?: Child | Child[] }): DocumentFragmen
 export function jsx(
   tag: string | ((props: Record<string, unknown>) => Node),
   props: Record<string, unknown> & { key?: string | number | null },
-  _key?: string | number | null,
+  key?: string | number | null,
 ): Node {
   if (typeof tag === 'function') {
-    return tag(props)
+    return tag({ ...props, ...(key !== undefined ? { key } : {}) })
   }
 
   // Create element in correct namespace (HTML or SVG)
@@ -86,8 +86,15 @@ export function jsx(
     ? document.createElementNS(SVG_NS, tag)
     : document.createElement(tag)
 
+  // Set key as data attribute for debugging/reconciliation
+  if (key !== undefined && key !== null) {
+    el.setAttribute('data-key', String(key))
+  }
+
   if (props) {
     for (const [propKey, value] of Object.entries(props)) {
+      // Skip key - already handled above
+      if (propKey === 'key') continue
       if (propKey === 'className') {
         // For SVG, set class attribute; for HTML, set class directly
         if (isSvg) {
@@ -160,7 +167,7 @@ export function jsx(
 export function jsxs(
   tag: string | ((props: Record<string, unknown>) => Node),
   props: Record<string, unknown> & { key?: string | number | null },
-  _key?: string | number | null,
 ): Node {
-  return jsx(tag, props, _key)
+  const { key, ...restProps } = props
+  return jsx(tag, restProps, key)
 }
