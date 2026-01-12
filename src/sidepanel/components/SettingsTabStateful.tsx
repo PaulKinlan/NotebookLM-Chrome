@@ -9,7 +9,7 @@ import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
 import { usePermissions } from '../hooks/usePermissions.ts'
 import { useNotification } from '../hooks/useNotification.ts'
 import { useDialog } from '../hooks/useDialog.ts'
-import { getToolPermissions, saveToolPermissions } from '../../lib/tool-permissions.ts'
+import { useToolPermissions } from '../hooks/useToolPermissions.ts'
 import { getAISettings, setContextMode, getContextMode } from '../../lib/settings.ts'
 import { clearAllData } from '../../lib/storage.ts'
 
@@ -19,27 +19,21 @@ interface SettingsTabStatefulProps {
   active: boolean
 }
 
-interface ToolPermissionItem {
-  name: string
-  displayName: string
-  statusClass: string
-  statusText: string
-  visible: boolean
-  autoApprove: boolean
-}
-
 export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
-  const { permissions, ensurePermission, reloadPermissions } = usePermissions()
+  const { permissions, ensurePermission } = usePermissions()
   const { showNotification } = useNotification()
   const { showConfirm } = useDialog()
+  const {
+    toolPermissions,
+    isLoading: isLoadingTools,
+    toggleVisibility: toggleToolVisibility,
+    toggleAutoApprove: toggleToolAutoApprove,
+    resetToDefaults: resetToolPermissions,
+  } = useToolPermissions()
 
   // Context mode state
   const [isToolBasedContext, setIsToolBasedContext] = useState(false)
   const [showChromeToolsWarning, setShowChromeToolsWarning] = useState(false)
-
-  // Tool permissions state
-  const [toolPermissions, setToolPermissions] = useState<ToolPermissionItem[]>([])
-  const [isLoadingTools, setIsLoadingTools] = useState(false)
 
   // Load settings on mount
   useEffect(() => {
@@ -55,64 +49,6 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
     const aiSettings = await getAISettings()
     const isChrome = aiSettings.provider === 'chrome'
     setShowChromeToolsWarning(isChrome && contextMode === 'agentic')
-
-    // Load tool permissions
-    await loadToolPermissions()
-  }
-
-  const loadToolPermissions = async () => {
-    setIsLoadingTools(true)
-    try {
-      const config = await getToolPermissions()
-      const items: ToolPermissionItem[] = []
-
-      for (const toolName of Object.keys(config.permissions).sort()) {
-        const permission = config.permissions[toolName]
-        const isSessionApproved = config.sessionApprovals.includes(toolName)
-
-        // Determine status
-        let statusClass = 'disabled'
-        let statusText = 'Disabled'
-        if (permission.visible) {
-          if (permission.autoApproved) {
-            statusClass = 'auto-approved'
-            statusText = 'Auto-Approved'
-          }
-          else if (isSessionApproved) {
-            statusClass = 'session-approved'
-            statusText = 'Session-Approved'
-          }
-          else if (permission.requiresApproval) {
-            statusClass = 'requires-approval'
-            statusText = 'Requires Approval'
-          }
-          else {
-            statusClass = 'auto-approved'
-            statusText = 'Auto-Approved'
-          }
-        }
-
-        // Format tool name for display
-        const displayName = toolName
-          .replace(/([A-Z])/g, ' $1')
-          .trim()
-          .replace(/^./, s => s.toUpperCase())
-
-        items.push({
-          name: toolName,
-          displayName,
-          statusClass,
-          statusText,
-          visible: permission.visible,
-          autoApprove: !permission.requiresApproval,
-        })
-      }
-
-      setToolPermissions(items)
-    }
-    finally {
-      setIsLoadingTools(false)
-    }
   }
 
   // Handle permission toggle
@@ -121,7 +57,6 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
       const granted = await ensurePermission(type)
       if (!granted) {
         showNotification(`${type} permission denied`, 'error')
-        await reloadPermissions()
       }
       else {
         showNotification(`${type} permission granted`, 'success')
@@ -129,7 +64,6 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
     }
     else {
       showNotification('Permissions cannot be revoked from here. Use Chrome extension settings.', 'info')
-      await reloadPermissions()
     }
   }
 
@@ -145,39 +79,9 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
     setShowChromeToolsWarning(isChrome && checked)
   }
 
-  // Handle tool permission toggle
-  const handleToolPermissionToggle = async (toolName: string, action: 'visible' | 'autoApprove', value: boolean) => {
-    const config = await getToolPermissions()
-
-    if (action === 'visible') {
-      config.permissions[toolName].visible = value
-      if (!value) {
-        config.permissions[toolName].autoApproved = false
-      }
-    }
-    else {
-      config.permissions[toolName].requiresApproval = !value
-      if (value) {
-        config.permissions[toolName].autoApproved = true
-      }
-      else {
-        config.permissions[toolName].autoApproved = false
-      }
-    }
-
-    config.lastModified = Date.now()
-    await saveToolPermissions(config)
-    await loadToolPermissions()
-    showNotification('Tool permissions updated', 'success')
-  }
-
   // Handle reset tool permissions
   const handleResetToolPermissions = async () => {
-    // Reset to defaults by clearing and reloading
-    const { storage } = await import('../../lib/storage.ts')
-    await storage.setSetting('toolPermissions', null)
-
-    await loadToolPermissions()
+    await resetToolPermissions()
     showNotification('Tool permissions reset to defaults', 'success')
   }
 
@@ -317,7 +221,7 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
                       id={`tool-enabled-${tool.name}`}
                       data-tool-name={tool.name}
                       checked={tool.visible}
-                      onChange={(e: { target: HTMLInputElement }) => void handleToolPermissionToggle(tool.name, 'visible', e.target.checked)}
+                      onChange={(e: { target: HTMLInputElement }) => void toggleToolVisibility(tool.name, e.target.checked)}
                     />
                     <label htmlFor={`tool-enabled-${tool.name}`}>Enabled</label>
                   </div>
@@ -328,7 +232,7 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
                       data-tool-name={tool.name}
                       checked={tool.visible && tool.autoApprove}
                       disabled={!tool.visible}
-                      onChange={(e: { target: HTMLInputElement }) => void handleToolPermissionToggle(tool.name, 'autoApprove', e.target.checked)}
+                      onChange={(e: { target: HTMLInputElement }) => void toggleToolAutoApprove(tool.name, e.target.checked)}
                     />
                     <label htmlFor={`tool-no-approval-${tool.name}`}>Auto approve</label>
                   </div>
