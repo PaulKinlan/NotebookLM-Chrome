@@ -36,8 +36,8 @@
     "release:major": "npm run version:major && npm run build && npm run package"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.7",
-    "@ai-sdk/google": "^3.0.5",
+    "@ai-sdk/anthropic": "^3.0.9",
+    "@ai-sdk/google": "^3.0.6",
     "@ai-sdk/groq": "^3.0.4",
     "@ai-sdk/huggingface": "^1.0.4",
     "@ai-sdk/openai": "^3.0.8",
@@ -49,10 +49,10 @@
     "ai": "^6.0.28",
     "dompurify": "^3.3.1",
     "marked": "^17.0.1",
-    "turndown": "^7.2.0"
+    "turndown": "^7.2.2"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.0.0-beta.28",
+    "@crxjs/vite-plugin": "^2.3.0",
     "@stylistic/eslint-plugin": "^5.7.0",
     "@types/chrome": "^0.1.33",
     "@types/dompurify": "^3.2.0",
@@ -60,12 +60,12 @@
     "@types/mozilla__readability": "^0.4.2",
     "@types/node": "^25.0.6",
     "@types/puppeteer": "^7.0.4",
-    "@types/turndown": "^5.0.5",
-    "@typescript-eslint/eslint-plugin": "^8.19.0",
-    "@typescript-eslint/parser": "^8.19.0",
+    "@types/turndown": "^5.0.6",
+    "@typescript-eslint/eslint-plugin": "^8.52.0",
+    "@typescript-eslint/parser": "^8.52.0",
     "@vitest/coverage-v8": "^4.0.17",
-    "@vitest/ui": "^4.0.16",
-    "eslint": "^9.17.0",
+    "@vitest/ui": "^4.0.17",
+    "eslint": "^9.39.2",
     "eslint-plugin-eslint-comments": "^3.2.0",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.1.0",
@@ -74,9 +74,9 @@
     "jsdom": "^27.4.0",
     "lint-staged": "^16.2.7",
     "puppeteer": "^24.35.0",
-    "typescript": "^5.7.2",
+    "typescript": "^5.9.3",
     "vite": "^7.3.1",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.17"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
