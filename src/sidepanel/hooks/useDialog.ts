@@ -165,6 +165,7 @@ export function useDialog(): UseDialogReturn {
   }
 
   const hideNotebook = (result: string | null) => {
+    console.log('[useDialog] hideNotebook called with result:', result)
     setNotebookDialog(prev => ({ ...prev, visible: false, inputValue: '' }))
     if (notebookResolveRef.current) {
       notebookResolveRef.current(result)
@@ -180,7 +181,12 @@ export function useDialog(): UseDialogReturn {
     // Internal handlers for components to call
     _handleConfirm: () => hideConfirm(true),
     _handleConfirmCancel: () => hideConfirm(false),
-    _handleNotebookConfirm: () => hideNotebook(notebookDialog.inputValue || null),
+    _handleNotebookConfirm: () => {
+      // Read the current inputValue from state, not from closure
+      // This ensures we get the latest value even if handler was created earlier
+      const currentValue = notebookDialog.inputValue
+      hideNotebook(currentValue || null)
+    },
     _handleNotebookCancel: () => hideNotebook(null),
     _setNotebookInput: (value: string) => {
       setNotebookDialog(prev => ({ ...prev, inputValue: value }))

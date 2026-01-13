@@ -8,6 +8,7 @@
 
 import type { ConfirmDialogState, NotebookDialogState } from '../hooks/useDialog.ts'
 import type { UsePickerModalReturn } from '../hooks/usePickerModal.ts'
+import { useEffect } from '../../jsx-runtime/hooks/index.ts'
 
 // ============================================================================
 // Picker Modal (imperative wrapper for compatibility)
@@ -159,24 +160,58 @@ export interface NotebookDialogProps extends NotebookDialogState {
 export function NotebookDialog(props: NotebookDialogProps) {
   const { visible, title, placeholder, confirmText, inputValue, onConfirm, onCancel, onInput } = props
 
-  if (!visible) {
-    return null
-  }
-
   const handleSubmit = (e: { preventDefault: () => void }) => {
     e.preventDefault()
+    console.log('[NotebookDialog] handleSubmit called, calling onConfirm with inputValue:', inputValue)
     onConfirm()
   }
+
+  // NOTE: For forms inside <dialog>, we need to handle submission specially
+  // The dialog should close after successful submission
+  const handleDialogClick = (e: { target: EventTarget; currentTarget: EventTarget }) => {
+    const dialog = e.currentTarget as HTMLDialogElement
+    if (e.target === dialog) {
+      // Clicking backdrop closes the dialog
+      onCancel()
+    }
+  }
+
+  // Call showModal() when dialog becomes visible
+  useEffect(() => {
+    const dialog = document.getElementById('notebook-dialog') as HTMLDialogElement
+    if (!dialog) return
+
+    if (visible) {
+      dialog.style.display = 'block'
+      if (!dialog.open) {
+        try {
+          dialog.showModal()
+        }
+        catch (e) {
+          console.error('Failed to show modal:', e)
+        }
+      }
+
+      // Debug: Check if form exists after dialog is visible
+      const form = dialog.querySelector('form') as HTMLFormElement
+      console.log('[NotebookDialog] Dialog visible, form exists:', !!form)
+    }
+    else {
+      if (dialog.open) {
+        dialog.close()
+      }
+      dialog.style.display = 'none'
+    }
+  }, [visible, onCancel, onConfirm])
 
   return (
     <dialog
       id="notebook-dialog"
       className="dialog"
-      open={visible}
-      onCancel={onCancel}
+      onClick={handleDialogClick}
     >
       <h3 id="notebook-dialog-title">{title}</h3>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} method="dialog">
         <input
           type="text"
           id="notebook-name-input"
