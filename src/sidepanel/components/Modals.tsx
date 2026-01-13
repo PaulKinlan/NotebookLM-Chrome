@@ -168,8 +168,8 @@ export function NotebookDialog(props: NotebookDialogProps) {
   // NOTE: For forms inside <dialog>, we need to handle submission specially
   // The dialog should close after successful submission
   const handleDialogClick = (e: { target: EventTarget, currentTarget: EventTarget }) => {
-    const dialog = e.currentTarget as HTMLDialogElement
-    if (e.target === dialog) {
+    const dialog = e.currentTarget
+    if (dialog instanceof HTMLDialogElement && e.target === dialog) {
       // Clicking backdrop closes the dialog
       onCancel()
     }

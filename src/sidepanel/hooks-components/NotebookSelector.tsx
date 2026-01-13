@@ -28,8 +28,10 @@ export function NotebookSelector() {
       <select
         value={currentNotebookId || ''}
         onChange={(e: Event) => {
-          const target = e.target as HTMLSelectElement
-          if (target.value) void selectNotebook(target.value)
+          const target = e.currentTarget
+          if (target instanceof HTMLSelectElement && target.value) {
+            void selectNotebook(target.value)
+          }
         }}
       >
         <option value="">Select a notebook...</option>
