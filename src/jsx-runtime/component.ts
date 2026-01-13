@@ -5,7 +5,7 @@
  * Each component instance stores its hooks, props, and DOM reference.
  */
 
-import type { VNode } from './vnode.ts'
+import type { VNode, ComponentFn } from './vnode.ts'
 import { scheduleUpdate } from './scheduler.ts'
 import { unregisterComponentInstance } from './reconciler/reconciler-update.ts'
 
@@ -32,7 +32,7 @@ export interface Hook {
  */
 export interface ComponentInstance {
   /** The component function */
-  fn: (props: Record<string, unknown>) => VNode | Node
+  fn: ComponentFn
   /** Current props passed to the component */
   props: Record<string, unknown>
   /** Hooks array - indexed by the order hooks are called */

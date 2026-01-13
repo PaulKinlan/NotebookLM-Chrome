@@ -4,7 +4,7 @@
  * Handles updating existing VNodes in the DOM.
  */
 
-import type { VNode } from '../vnode.ts'
+import type { VNode, ComponentFn } from '../vnode.ts'
 import type { ComponentInstance } from '../component.ts'
 import type { ReconcilerFn } from './reconciler-types.ts'
 import { mountedNodes } from '../reconciler.ts'
@@ -23,16 +23,16 @@ import { renderComponent } from './reconciler-mount.ts'
  * Key: The component function (reference equality)
  * Value: The component instance (for singletons like App) or an array of instances
  */
-const componentInstances = new WeakMap<object, ComponentInstance[]>()
+const componentInstances = new WeakMap<ComponentFn, ComponentInstance[]>()
 
 /**
  * Register a component instance when it's mounted
  */
-export function registerComponentInstance(fn: ComponentInstance['fn'], instance: ComponentInstance): void {
-  let instances = componentInstances.get(fn as object)
+export function registerComponentInstance(fn: ComponentFn, instance: ComponentInstance): void {
+  let instances = componentInstances.get(fn)
   if (!instances) {
     instances = []
-    componentInstances.set(fn as object, instances)
+    componentInstances.set(fn, instances)
   }
   instances.push(instance)
 }
@@ -40,7 +40,7 @@ export function registerComponentInstance(fn: ComponentInstance['fn'], instance:
 /**
  * Unregister a component instance when it's unmounted
  */
-export function unregisterComponentInstance(fn: ComponentInstance['fn'], instance: ComponentInstance): void {
+export function unregisterComponentInstance(fn: ComponentFn, instance: ComponentInstance): void {
   const instances = componentInstances.get(fn)
   if (instances) {
     const index = instances.indexOf(instance)
@@ -88,8 +88,25 @@ export async function updateElement(
   }
 
   if (!el) {
-    // Fallback to firstChild (for single-child elements)
-    el = parent.firstChild as Element
+    // Fallback to firstChild if it's an Element
+    const firstChild = parent.firstChild
+    if (firstChild instanceof Element) {
+      el = firstChild
+    }
+  }
+
+  if (!el) {
+    // No valid element found - this shouldn't happen in normal flow
+    // Create and append a new element
+    const newEl = document.createElement(oldVNode.tag)
+    parent.appendChild(newEl)
+    // Diff props
+    diffProps(newEl, oldVNode.props, newVNode.props)
+    // Diff children
+    await diffChildren(newEl, oldVNode.children, newVNode.children, undefined, reconcile)
+    // Update mounted node reference
+    mountedNodes.set(newEl, { node: newEl, vdom: newVNode })
+    return newEl
   }
 
   // Diff props
@@ -138,7 +155,10 @@ export async function updateComponent(
   // Same component - look up the instance using our function-based map
   // This is more reliable than DOM-based lookups because the DOM structure
   // changes when component placeholders are replaced with actual content
-  const instances = componentInstances.get(newVNode.fn as object)
+  const instances = componentInstances.get(newVNode.fn)
+
+  console.log(`[updateComponent] "${compName}" Looking up instance in componentInstances map, found ${instances?.length || 0} instances`)
+
   const instance = instances?.[0] // For now, assume first instance (works for singletons like App)
 
   if (!instance) {
