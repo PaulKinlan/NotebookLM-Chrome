@@ -33,6 +33,22 @@ export function applyProps(el: Element, props: Record<string, unknown>): void {
       continue
     }
 
+    // Form element properties - must be set as properties, not attributes
+    // These control the current value, while attributes only set initial values
+    if (key === 'value' && ('value' in el)) {
+      if (value === null || value === undefined) {
+        ;(el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = ''
+      }
+      else if (typeof value === 'string' || typeof value === 'number') {
+        ;(el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = String(value)
+      }
+      continue
+    }
+    if (key === 'checked' && ('checked' in el)) {
+      (el as HTMLInputElement).checked = Boolean(value)
+      continue
+    }
+
     // Boolean attributes
     if (value === false || value === null || value === undefined) {
       el.removeAttribute(key)
@@ -61,6 +77,13 @@ export function diffProps(el: Element, oldProps: Record<string, unknown>, newPro
       }
       else if (key === 'className') {
         el.removeAttribute('class')
+      }
+      else if (key === 'value' && 'value' in el) {
+        // Reset to empty for form elements
+        (el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = ''
+      }
+      else if (key === 'checked' && 'checked' in el) {
+        (el as HTMLInputElement).checked = false
       }
       else {
         el.removeAttribute(key)
@@ -92,6 +115,18 @@ export function diffProps(el: Element, oldProps: Record<string, unknown>, newPro
       }
       else if (key === 'className') {
         el.setAttribute('class', String(value))
+      }
+      // Form element properties - must be set as properties, not attributes
+      else if (key === 'value' && 'value' in el) {
+        if (value === null || value === undefined) {
+          ;(el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = ''
+        }
+        else if (typeof value === 'string' || typeof value === 'number') {
+          ;(el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = String(value)
+        }
+      }
+      else if (key === 'checked' && 'checked' in el) {
+        (el as HTMLInputElement).checked = Boolean(value)
       }
       else if (value === false || value === null || value === undefined) {
         el.removeAttribute(key)
