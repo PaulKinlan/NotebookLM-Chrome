@@ -12,6 +12,12 @@ export function applyProps(el: Element, props: Record<string, unknown>): void {
   for (const [key, value] of Object.entries(props)) {
     if (key === 'children' || key === 'key') continue
 
+    // Ref prop - set ref.current to the element
+    if (key === 'ref' && value && typeof value === 'object' && 'current' in value) {
+      ;(value as { current: Element | null }).current = el
+      continue
+    }
+
     // Event handlers (onClick, onChange, etc.)
     if (key.startsWith('on')) {
       const eventType = key.slice(2).toLowerCase()
@@ -131,6 +137,12 @@ export function diffProps(el: Element, oldProps: Record<string, unknown>, newPro
   for (const key of Object.keys(newProps)) {
     if (key !== 'children' && key !== 'key' && newProps[key] !== oldProps[key]) {
       const value = newProps[key]
+
+      // Ref prop - set ref.current to the element
+      if (key === 'ref' && value && typeof value === 'object' && 'current' in value) {
+        ;(value as { current: Element | null }).current = el
+        continue
+      }
 
       if (key.startsWith('on')) {
         const eventType = key.slice(2).toLowerCase()
