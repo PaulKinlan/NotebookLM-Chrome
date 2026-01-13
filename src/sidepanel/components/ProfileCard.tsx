@@ -29,7 +29,7 @@ export function ProfileCard({
   onSetDefault,
   onDelete,
   onShowUsageStats,
-}: ProfileCardProps): Node {
+}: ProfileCardProps): JSX.Element {
   const { modelConfig, credential, provider } = profile
   const showApiKey = provider.features.requiresApiKey !== false && credential.apiKey !== NO_API_KEY_PLACEHOLDER
 

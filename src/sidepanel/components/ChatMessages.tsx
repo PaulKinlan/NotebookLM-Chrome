@@ -98,7 +98,7 @@ function CitationItem({
   excerpt: string
   index: string
   onCitationClick?: (url: string, excerpt: string) => void
-}): Node {
+}): JSX.Element {
   const handleClick = () => {
     if (onCitationClick) {
       onCitationClick(sourceUrl, excerpt)
@@ -131,7 +131,7 @@ function CitationGroup({
   group: GroupedCitation
   sourceIndex: number
   onCitationClick?: (url: string, excerpt: string) => void
-}): Node {
+}): JSX.Element {
   const sourceNumber = sourceIndex + 1
 
   if (group.excerpts.length === 1) {
@@ -173,7 +173,7 @@ function CitationGroup({
   )
 }
 
-function ChatCitations({ citations, sources, onCitationClick }: ChatCitationsProps): Node | null {
+function ChatCitations({ citations, sources, onCitationClick }: ChatCitationsProps): JSX.Element | null {
   if (citations.length === 0) return null
 
   const grouped = groupCitations(citations, sources)
@@ -213,7 +213,7 @@ interface ToolCallProps {
   status: 'calling' | 'done' | 'error'
 }
 
-function ToolCall({ toolName, args, status }: ToolCallProps): Node {
+function ToolCall({ toolName, args, status }: ToolCallProps): JSX.Element {
   const argsStr = JSON.stringify(args, null, 2)
   const statusText = status === 'calling'
     ? 'Calling...'
@@ -247,7 +247,7 @@ interface UserMessageProps {
   timestamp: number
 }
 
-function UserMessage({ content, timestamp }: UserMessageProps): Node {
+function UserMessage({ content, timestamp }: UserMessageProps): JSX.Element {
   const timeStr = formatRelativeTime(timestamp)
 
   return (
@@ -285,7 +285,7 @@ function AssistantMessage({
   toolCalls,
   isStreaming = false,
   onCitationClick,
-}: AssistantMessageProps): Node {
+}: AssistantMessageProps): JSX.Element {
   const timeStr = formatRelativeTime(timestamp)
 
   return (
@@ -328,7 +328,7 @@ interface ToolResultMessageProps {
   timestamp: number
 }
 
-function ToolResultMessage({ toolName, result, error, duration, timestamp }: ToolResultMessageProps): Node {
+function ToolResultMessage({ toolName, result, error, duration, timestamp }: ToolResultMessageProps): JSX.Element {
   const timeStr = formatRelativeTime(timestamp)
   const resultStr = typeof result === 'string' ? result : JSON.stringify(result, null, 2)
 
@@ -367,7 +367,7 @@ export function ChatMessages({
   sources,
   isStreaming = false,
   onCitationClick,
-}: ChatMessagesProps): Node {
+}: ChatMessagesProps): JSX.Element {
   // Handle empty notebook
   if (!notebookId) {
     return (

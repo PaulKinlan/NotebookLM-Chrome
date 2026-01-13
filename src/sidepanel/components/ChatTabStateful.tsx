@@ -65,7 +65,7 @@ function parseSlashCommand(input: string): { command: string, args: string } | n
 /**
  * ChatTabStateful - Fully self-contained chat component
  */
-export function ChatTabStateful({ active }: ChatTabStatefulProps): Node {
+export function ChatTabStateful({ active }: ChatTabStatefulProps): JSX.Element {
   // Notebook state
   const { currentNotebookId } = useNotebook()
 

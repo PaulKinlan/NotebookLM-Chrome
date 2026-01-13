@@ -30,7 +30,7 @@ function extractDomain(url: string): string {
 /**
  * SVG icons as components
  */
-function ExternalIcon(): Node {
+function ExternalIcon(): JSX.Element {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -40,7 +40,7 @@ function ExternalIcon(): Node {
   )
 }
 
-function RemoveIcon(): Node {
+function RemoveIcon(): JSX.Element {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -58,7 +58,7 @@ interface SourceItemProps {
   onRemove: (id: string) => void
 }
 
-function SourceItem({ source, onRemove }: SourceItemProps): Node {
+function SourceItem({ source, onRemove }: SourceItemProps): JSX.Element {
   const domain = extractDomain(source.url)
   const initial = source.title.charAt(0).toUpperCase()
 
@@ -106,7 +106,7 @@ interface EmptyStateProps {
   message: string
 }
 
-function EmptyState({ message }: EmptyStateProps): Node {
+function EmptyState({ message }: EmptyStateProps): JSX.Element {
   return (
     <div className="empty-state">
       <p>{message}</p>
@@ -120,7 +120,7 @@ function EmptyState({ message }: EmptyStateProps): Node {
  * Renders a list of sources with remove functionality.
  * Can be rendered in compact mode (for chat tab) or full mode.
  */
-export function SourcesList({ notebookId, onRemoveSource, limit }: SourcesListProps): Node {
+export function SourcesList({ notebookId, onRemoveSource, limit }: SourcesListProps): JSX.Element {
   const { sources, isLoading, error } = useSources(notebookId)
 
   // Handle empty notebook case

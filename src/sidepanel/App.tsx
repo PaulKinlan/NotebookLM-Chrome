@@ -44,7 +44,7 @@ export function App(props: AppProps = {
   activeTab: 'add',
   fabHidden: true,
   onboardingHidden: true,
-}): Node {
+}): JSX.Element {
   const { activeTab: initialTab, fabHidden, onboardingHidden, onProvideCallbacks } = props
 
   // Use useState for tab management instead of imperative DOM manipulation

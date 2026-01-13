@@ -17,7 +17,7 @@ interface FaviconProps {
   fallback?: string
 }
 
-function Favicon({ src, fallback = '?' }: FaviconProps): Node {
+function Favicon({ src, fallback = '?' }: FaviconProps): JSX.Element {
   if (src) {
     return <img src={src} alt="" className="item-favicon" />
   }
@@ -35,13 +35,13 @@ interface PickerItemComponentProps {
   searchTerm: string
 }
 
-function PickerItemComponent({ item, selected, onToggle, searchTerm }: PickerItemComponentProps): Node {
+function PickerItemComponent({ item, selected, onToggle, searchTerm }: PickerItemComponentProps): JSX.Element {
   const handleChange = () => {
     onToggle(item.id)
   }
 
   // Highlight matching text
-  const highlightMatch = (text: string): Node => {
+  const highlightMatch = (text: string): JSX.Element => {
     if (!searchTerm) return <>{text}</>
 
     const index = text.toLowerCase().indexOf(searchTerm.toLowerCase())
@@ -83,7 +83,7 @@ export interface PickerModalProps {
   onClose?: () => void
 }
 
-export function PickerModal({ onAddSources, onClose }: PickerModalProps): Node | null {
+export function PickerModal({ onAddSources, onClose }: PickerModalProps): JSX.Element | null {
   const {
     items,
     selectedItems,

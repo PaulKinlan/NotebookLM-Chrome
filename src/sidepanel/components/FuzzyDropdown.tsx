@@ -40,7 +40,7 @@ export interface FuzzyDropdownProps extends Omit<UseFuzzyDropdownOptions, 'initi
  * }
  * ```
  */
-export function FuzzyDropdown(props: FuzzyDropdownProps): Node {
+export function FuzzyDropdown(props: FuzzyDropdownProps): JSX.Element {
   const { options, onSelect, onToggle, allowCustom, value, placeholder } = props
 
   const dropdown = useFuzzyDropdown({
@@ -180,7 +180,7 @@ interface RenderGroupedOptionsProps {
   onSelect: (option: FuzzyDropdownOption) => void
 }
 
-function RenderGroupedOptions({ grouped, highlightedIndex, inputValue, onSelect }: RenderGroupedOptionsProps): Node {
+function RenderGroupedOptions({ grouped, highlightedIndex, inputValue, onSelect }: RenderGroupedOptionsProps): JSX.Element {
   let globalIndex = 0
 
   return (

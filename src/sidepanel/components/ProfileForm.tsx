@@ -65,7 +65,7 @@ export function ProfileForm({
   onSave,
   onCancel,
   onTest,
-}: ProfileFormProps): Node {
+}: ProfileFormProps): JSX.Element {
   // Password visibility state
   const [showPassword, setShowPassword] = useState(false)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)

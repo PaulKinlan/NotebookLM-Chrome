@@ -4,6 +4,7 @@
 // Renders App component and initializes Chrome extension event listeners
 
 import { App, type AppCallbacks } from './App'
+import { render } from '../jsx-runtime'
 import { initChromeBridge, checkPendingActions, type ChromeBridgeCallbacks } from './chrome-bridge'
 import { createNotebook, saveNotebook, setActiveNotebookId, saveSource, createSource } from '../lib/storage'
 import { initTheme } from './hooks/useTheme.tsx'
@@ -48,16 +49,19 @@ const showNotification: AppCallbacks['showNotification'] = (message, type) => {
   getAppCallbacks().showNotification(message, type)
 }
 
-// Render the App component with dialog/notification callbacks
-const appElement = App({
-  activeTab: 'add',
-  fabHidden: true,
-  onboardingHidden: true,
-  onProvideCallbacks: (callbacks: AppCallbacks) => {
-    appCallbacks = callbacks
-  },
-})
-appContainer.appendChild(appElement)
+// Render the App component using the VNode-based render function
+// This ensures hooks work properly by setting up component context
+void render(
+  <App
+    activeTab="add"
+    fabHidden={true}
+    onboardingHidden={true}
+    onProvideCallbacks={(callbacks: AppCallbacks) => {
+      appCallbacks = callbacks
+    }}
+  />,
+  appContainer,
+)
 
 // ============================================================================
 // Chrome Event Bridge Setup

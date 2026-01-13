@@ -80,7 +80,7 @@ function TransformCardButton({ transform, disabled, onClick }: {
   transform: { type: TransformType, title: string, description: string, icon: string }
   disabled: boolean
   onClick: (type: TransformType) => void
-}): Node {
+}): JSX.Element {
   return (
     <button
       className="transform-card"
@@ -109,7 +109,7 @@ function TransformCardResult({ result, onCopy, onRemove }: {
   result: TransformCard
   onCopy: (id: string) => Promise<void>
   onRemove: (id: string) => void
-}): Node {
+}): JSX.Element {
   const containerRef = useRef<{ sandbox: SandboxRenderer | null }>({ sandbox: null })
 
   // Initialize/update sandbox when result changes
@@ -180,7 +180,7 @@ function TransformCardResult({ result, onCopy, onRemove }: {
 /**
  * TransformTabStateful Component
  */
-export function TransformTabStateful({ active }: TransformTabStatefulProps): Node {
+export function TransformTabStateful({ active }: TransformTabStatefulProps): JSX.Element {
   const { history, isGenerating, generate, removeResult, copyResult } = useTransform()
 
   function handleTransform(type: TransformType): void {

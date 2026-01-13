@@ -83,7 +83,7 @@ interface AutocompleteProps {
   onSelect: (command: SlashCommand, submit?: boolean) => void
 }
 
-function Autocomplete({ commands, selectedIndex, onSelect }: AutocompleteProps): Node {
+function Autocomplete({ commands, selectedIndex, onSelect }: AutocompleteProps): JSX.Element {
   const handleClick = (command: SlashCommand, index: number) => {
     if (index === selectedIndex) {
       onSelect(command, true)
@@ -115,7 +115,7 @@ function Autocomplete({ commands, selectedIndex, onSelect }: AutocompleteProps):
 /**
  * ChatInput Component
  */
-export function ChatInput({ notebookId, onQuery, slashCommands, isGenerating }: ChatInputProps): Node {
+export function ChatInput({ notebookId, onQuery, slashCommands, isGenerating }: ChatInputProps): JSX.Element {
   const [inputValue, setInputValue] = useState('')
   const [ghostText, setGhostText] = useState('')
   const [showAutocomplete, setShowAutocomplete] = useState(false)

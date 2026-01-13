@@ -11,7 +11,7 @@ import type { ApprovalScope } from '../../types/index.js'
 /**
  * ToolApprovalsStateful - Renders pending tool approval requests
  */
-export function ToolApprovalsStateful(): Node {
+export function ToolApprovalsStateful(): JSX.Element {
   const { pendingApprovals, approvalStatuses, handleApproval } = useToolApprovals()
 
   if (pendingApprovals.length === 0 && approvalStatuses.size === 0) {
@@ -24,7 +24,7 @@ export function ToolApprovalsStateful(): Node {
     ...approvalStatuses.keys(),
   ])
 
-  const approvalCards: Node[] = []
+  const approvalCards: JSX.Element[] = []
   for (const id of allIds) {
     const status = approvalStatuses.get(id)
     const pending = pendingApprovals.find(p => p.id === id)
@@ -66,10 +66,10 @@ interface ApprovalCardProps {
 /**
  * ApprovalCard - Renders a pending tool approval request
  */
-function ApprovalCard({ request, onAction }: ApprovalCardProps): Node {
+function ApprovalCard({ request, onAction }: ApprovalCardProps): JSX.Element {
   const { escapeHtml, formatArgValue } = toolApprovalsUtils
 
-  const argRows: Node[] = []
+  const argRows: JSX.Element[] = []
   for (const [key, value] of Object.entries(request.args)) {
     argRows.push(
       <div key={key} className="approval-arg-row">
@@ -134,7 +134,7 @@ function ApprovalCard({ request, onAction }: ApprovalCardProps): Node {
 /**
  * ApprovedCard - Shows approved state
  */
-function ApprovedCard(): Node {
+function ApprovedCard(): JSX.Element {
   return (
     <div className="chat-message approval-approved">
       <div className="chat-message-role">✓ Approved</div>
@@ -151,7 +151,7 @@ function ApprovedCard(): Node {
 /**
  * RejectedCard - Shows rejected state
  */
-function RejectedCard(): Node {
+function RejectedCard(): JSX.Element {
   return (
     <div className="chat-message approval-rejected">
       <div className="chat-message-role">✕ Approval Rejected</div>

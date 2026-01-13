@@ -31,7 +31,7 @@ interface AddTabStatefulProps {
 /**
  * AddTabStateful - Fully self-contained add sources component
  */
-export function AddTabStateful({ active }: AddTabStatefulProps): Node {
+export function AddTabStateful({ active }: AddTabStatefulProps): JSX.Element {
   // Notebook state
   const { currentNotebookId } = useNotebook()
 

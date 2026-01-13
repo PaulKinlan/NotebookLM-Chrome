@@ -18,7 +18,7 @@ export interface ProviderProfilesProps {
 /**
  * ProviderProfilesStateful - Main profiles management component
  */
-export function ProviderProfilesStateful({ onProfilesChanged }: ProviderProfilesProps): Node {
+export function ProviderProfilesStateful({ onProfilesChanged }: ProviderProfilesProps): JSX.Element {
   const {
     profiles,
     isLoading,
@@ -186,7 +186,7 @@ interface UsageStatsModalProps {
   onClose: () => void
 }
 
-function UsageStatsModal({ profileName, onClose }: UsageStatsModalProps): Node {
+function UsageStatsModal({ profileName, onClose }: UsageStatsModalProps): JSX.Element {
   // TODO: Implement actual usage stats fetching
   const stats = {
     totalTokens: 0,
