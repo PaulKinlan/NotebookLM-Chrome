@@ -172,21 +172,73 @@ async function ensureNotebookExists(
   });
 
   if (!hasNotebook) {
+    // Debug: Check if the button exists before clicking
+    const buttonCheck = await page.evaluate(() => {
+      const btn = document.getElementById('new-notebook-btn');
+      const header = document.querySelector('header');
+      const app = document.getElementById('app');
+      return {
+        buttonExists: !!btn,
+        buttonHasOnClick: btn ? ('onclick' in btn) : false,
+        headerExists: !!header,
+        headerHtml: header ? header.innerHTML.slice(0, 500) : 'No header',
+        appChildCount: app ? app.childElementCount : 0,
+        appChildren: app ? Array.from(app.children).map(c => c.tagName) : [],
+        allButtonsWithIds: Array.from(document.querySelectorAll('button[id]')).map(b => b.id),
+      };
+    });
+    console.log('[ensureNotebookExists] Button check:', buttonCheck);
+
     // Create a notebook by clicking the new notebook button
     await page.click('#new-notebook-btn');
 
-    // Wait for the dialog to appear
+    // Wait a bit for the click handler to execute
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Wait for the dialog to appear in DOM
     await page.waitForSelector('#notebook-name-input', { timeout: 3000 });
 
-    // Enter a notebook name and manually dispatch input event for controlled component
-    await page.evaluate(() => {
+    // Wait for the component to fully render and attach event listeners
+    // The dialog uses showModal() and our JSX runtime schedules updates via RAF
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Use a more robust method to type into the input:
+    // 1. Focus the input first
+    // 2. Use page.type() which simulates real keyboard events (keydown, input, keyup)
+    // 3. This ensures the onInput handler is called with the correct value
+    await page.focus('#notebook-name-input');
+    await page.type('#notebook-name-input', 'Test Notebook', { delay: 50 });
+
+    // Wait for the state to update (onInput handler updates inputValueRef)
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Verify the input value was set correctly
+    const inputValue = await page.evaluate(() => {
       const input = document.getElementById('notebook-name-input') as HTMLInputElement;
-      if (input) {
-        input.value = 'Test Notebook';
-        // Manually dispatch input event to trigger the controlled component's onInput handler
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      }
+      return input?.value || '';
     });
+    console.log('[ensureNotebookExists] Input value after typing:', inputValue);
+
+    // If typing didn't work (value is empty), fall back to manual dispatch
+    if (inputValue === '') {
+      console.log('[ensureNotebookExists] Typing did not set value, using fallback method');
+      await page.evaluate(() => {
+        const input = document.getElementById('notebook-name-input') as HTMLInputElement;
+        if (input) {
+          // Set the value directly
+          input.value = 'Test Notebook';
+          // Use InputEvent instead of generic Event for better compatibility
+          const event = new InputEvent('input', {
+            bubbles: true,
+            cancelable: true,
+            data: 'Test Notebook',
+            inputType: 'insertText',
+          });
+          input.dispatchEvent(event);
+        }
+      });
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
 
     // Click confirm button using page.evaluate to bypass modal backdrop blocking
     // When dialog is shown with showModal(), the top layer rendering can interfere with Puppeteer
@@ -196,6 +248,9 @@ async function ensureNotebookExists(
     });
 
     // Wait for notebook to be created and selected
+    // First, wait a bit for any pending RAF callbacks to execute
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     await page.waitForFunction(() => {
       const select = document.getElementById('notebook-select') as HTMLSelectElement;
       return select && select.value !== '';
@@ -215,14 +270,22 @@ export async function getSidepanelPage(browser: Browser): Promise<Page> {
   page.on('console', (msg) => {
     const text = msg.text();
     consoleMessages.push(`[${msg.type()}] ${text}`);
-    // Log to test output for visibility
-    if (msg.type() === 'error' || msg.type() === 'warn' || text.includes('[mountElement]') || text.includes('[applyProps]') || text.includes('[NotebookDialog]')) {
+    // Log to test output for visibility - include all relevant debug messages
+    if (msg.type() === 'error' || msg.type() === 'warn' ||
+        text.includes('[') ||
+        text.includes('[mountElement]') || text.includes('[applyProps]') ||
+        text.includes('[NotebookDialog]') || text.includes('[App') ||
+        text.includes('[updateComponent') || text.includes('[useState') ||
+        text.includes('[renderComponent') || text.includes('[render]') ||
+        text.includes('[mountComponent]') || text.includes('[useDialog') ||
+        text.includes('[ensureNotebookExists')) {
       console.log(`Browser Console [${msg.type()}]:`, text);
     }
   });
-  page.on('pageerror', (err) => {
-    consoleMessages.push(`Page error: ${err.message}`);
-    console.error('Browser Page Error:', (err as Error).message);
+  page.on('pageerror', (err: unknown) => {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    consoleMessages.push(`Page error: ${errMsg}`);
+    console.error('Browser Page Error:', errMsg);
   });
 
   // Navigate to the page
@@ -252,6 +315,10 @@ export async function getSidepanelPage(browser: Browser): Promise<Page> {
     console.error('Full HTML length:', html.length);
     throw e;
   }
+
+  // Wait for the App component to fully render and attach event listeners
+  // The custom JSX runtime renders asynchronously, so we need to wait
+  await new Promise(resolve => setTimeout(resolve, 1000));
 
   // Ensure a notebook exists for testing
   await ensureNotebookExists(page);
