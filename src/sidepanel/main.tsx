@@ -8,7 +8,6 @@ import { render } from '../jsx-runtime'
 import { initTheme } from './hooks/useTheme.tsx'
 import { initChromeBridge, checkPendingActions, type ChromeBridgeCallbacks } from './chrome-bridge'
 import { createNotebook, saveNotebook, setActiveNotebookId, saveSource, createSource } from '../lib/storage'
-import { initTheme } from './hooks/useTheme.tsx'
 import type { TabExtractContentResponse } from './chrome-bridge'
 
 // ============================================================================
