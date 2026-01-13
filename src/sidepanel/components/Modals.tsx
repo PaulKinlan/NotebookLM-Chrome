@@ -177,6 +177,8 @@ export function NotebookDialog(props: NotebookDialogProps) {
   }
 
   // Call showModal() when dialog becomes visible
+  // Only depend on 'visible' - onConfirm/onCancel are not used in this effect
+  // and including them causes infinite re-renders due to function reference changes
   useEffect(() => {
     const dialog = document.getElementById('notebook-dialog') as HTMLDialogElement
     if (!dialog) return
@@ -191,10 +193,6 @@ export function NotebookDialog(props: NotebookDialogProps) {
           console.error('Failed to show modal:', e)
         }
       }
-
-      // Debug: Check if form exists after dialog is visible
-      const form = dialog.querySelector('form') as HTMLFormElement
-      console.log('[NotebookDialog] Dialog visible, form exists:', !!form)
     }
     else {
       if (dialog.open) {
@@ -202,7 +200,7 @@ export function NotebookDialog(props: NotebookDialogProps) {
       }
       dialog.style.display = 'none'
     }
-  }, [visible, onCancel, onConfirm])
+  }, [visible])
 
   return (
     <dialog
@@ -211,7 +209,7 @@ export function NotebookDialog(props: NotebookDialogProps) {
       onClick={handleDialogClick}
     >
       <h3 id="notebook-dialog-title">{title}</h3>
-      <form onSubmit={handleSubmit} method="dialog">
+      <form onSubmit={handleSubmit}>
         <input
           type="text"
           id="notebook-name-input"
