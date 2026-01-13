@@ -21,6 +21,7 @@ interface SettingsTabStatefulProps {
 }
 
 export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
+  console.log(`[SettingsTabStateful] Render called with active=${active}`)
   const { permissions, ensurePermission } = usePermissions()
   const { showNotification } = useNotification()
   const { showConfirm } = useDialog()
