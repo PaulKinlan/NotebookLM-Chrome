@@ -1,7 +1,156 @@
 /* ============================================================================
-   CSS Variables - Dark Theme
+   CSS Variables - Theme System
    ============================================================================ */
 
+/* Shared variables (don't change with theme) */
+:root {
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --accent-primary: #2563eb;
+  --accent-hover: #1d4ed8;
+}
+
+/* ============================================================================
+   Light Theme
+   ============================================================================ */
+
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --bg-tertiary: #eaeef2;
+  --bg-hover: #d0d7de;
+
+  --border-color: #d0d7de;
+  --border-muted: #eaeef2;
+
+  --text-primary: #1f2328;
+  --text-secondary: #656d76;
+  --text-muted: #8c959f;
+
+  --accent-muted: rgba(37, 99, 235, 0.1);
+
+  --success: #1a7f37;
+  --success-hover: #15652c;
+  --warning: #9a6700;
+  --error: #cf222e;
+  --error-hover: #a71d24;
+
+  --icon-tabs: #0969da;
+  --icon-bookmarks: #bf3989;
+  --icon-history: #8250df;
+  --icon-tab-groups: #059669;
+
+  /* Tab group colors (light mode - slightly more saturated for visibility) */
+  --tab-group-grey: #6e7781;
+  --tab-group-blue: #0969da;
+  --tab-group-red: #cf222e;
+  --tab-group-yellow: #9a6700;
+  --tab-group-green: #1a7f37;
+  --tab-group-pink: #bf3989;
+  --tab-group-purple: #8250df;
+  --tab-group-cyan: #0891b2;
+  --tab-group-orange: #bc4c00;
+
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  /* Light mode specific - scrollbar styling */
+  --scrollbar-track: #f6f8fa;
+  --scrollbar-thumb: #d0d7de;
+  --scrollbar-thumb-hover: #afb8c1;
+
+  /* Input backgrounds */
+  --input-bg: #ffffff;
+  --input-border: #d0d7de;
+  --input-border-focus: #0969da;
+
+  /* Code/monospace backgrounds */
+  --code-bg: #f6f8fa;
+
+  /* Card hover */
+  --card-hover-bg: #f3f4f6;
+
+  /* Error backgrounds for buttons/cards */
+  --error-bg: #fef2f2;
+  --error-border: #fecaca;
+
+  /* Official/brand accent */
+  --brand-accent: #4f46e5;
+}
+
+/* ============================================================================
+   Dark Theme
+   ============================================================================ */
+
+[data-theme="dark"] {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-hover: #30363d;
+
+  --border-color: #30363d;
+  --border-muted: #21262d;
+
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+
+  --accent-muted: rgba(37, 99, 235, 0.2);
+
+  --success: #3fb950;
+  --success-hover: #2ea043;
+  --warning: #d29922;
+  --error: #f85149;
+  --error-hover: #da3633;
+
+  --icon-tabs: #58a6ff;
+  --icon-bookmarks: #f778ba;
+  --icon-history: #d2a8ff;
+  --icon-tab-groups: #34d399;
+
+  /* Tab group colors (matching Chrome's colors) */
+  --tab-group-grey: #5f6368;
+  --tab-group-blue: #8ab4f8;
+  --tab-group-red: #f28b82;
+  --tab-group-yellow: #fdd663;
+  --tab-group-green: #81c995;
+  --tab-group-pink: #ff8bcb;
+  --tab-group-purple: #c58af9;
+  --tab-group-cyan: #78d9ec;
+  --tab-group-orange: #fcad70;
+
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* Dark mode specific - scrollbar styling */
+  --scrollbar-track: #161b22;
+  --scrollbar-thumb: #30363d;
+  --scrollbar-thumb-hover: #484f58;
+
+  /* Input backgrounds */
+  --input-bg: #0d1117;
+  --input-border: #30363d;
+  --input-border-focus: #58a6ff;
+
+  /* Code/monospace backgrounds */
+  --code-bg: #161b22;
+
+  /* Card hover */
+  --card-hover-bg: #21262d;
+
+  /* Error backgrounds for buttons/cards */
+  --error-bg: rgba(248, 81, 73, 0.1);
+  --error-border: rgba(248, 81, 73, 0.3);
+
+  /* Official/brand accent */
+  --brand-accent: #6366f1;
+}
+
+/* ============================================================================
+   System Preference Detection (fallback when no data-theme is set)
+   ============================================================================ */
+
+/* Default to dark theme */
 :root {
   --bg-primary: #0d1117;
   --bg-secondary: #161b22;
@@ -15,19 +164,19 @@
   --text-secondary: #8b949e;
   --text-muted: #6e7681;
 
-  --accent-primary: #2563eb;
-  --accent-hover: #1d4ed8;
   --accent-muted: rgba(37, 99, 235, 0.2);
 
   --success: #3fb950;
+  --success-hover: #2ea043;
   --warning: #d29922;
   --error: #f85149;
+  --error-hover: #da3633;
 
   --icon-tabs: #58a6ff;
   --icon-bookmarks: #f778ba;
   --icon-history: #d2a8ff;
+  --icon-tab-groups: #34d399;
 
-  /* Tab group colors (matching Chrome's colors) */
   --tab-group-grey: #5f6368;
   --tab-group-blue: #8ab4f8;
   --tab-group-red: #f28b82;
@@ -38,11 +187,85 @@
   --tab-group-cyan: #78d9ec;
   --tab-group-orange: #fcad70;
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  --scrollbar-track: #161b22;
+  --scrollbar-thumb: #30363d;
+  --scrollbar-thumb-hover: #484f58;
+
+  --input-bg: #0d1117;
+  --input-border: #30363d;
+  --input-border-focus: #58a6ff;
+
+  --code-bg: #161b22;
+  --card-hover-bg: #21262d;
+
+  /* Error backgrounds for buttons/cards */
+  --error-bg: rgba(248, 81, 73, 0.1);
+  --error-border: rgba(248, 81, 73, 0.3);
+
+  /* Official/brand accent */
+  --brand-accent: #6366f1;
+}
+
+/* System preference: light mode */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --bg-tertiary: #eaeef2;
+    --bg-hover: #d0d7de;
+
+    --border-color: #d0d7de;
+    --border-muted: #eaeef2;
+
+    --text-primary: #1f2328;
+    --text-secondary: #656d76;
+    --text-muted: #8c959f;
+
+    --accent-muted: rgba(37, 99, 235, 0.1);
+
+    --success: #1a7f37;
+    --success-hover: #15652c;
+    --warning: #9a6700;
+    --error: #cf222e;
+    --error-hover: #a71d24;
+
+    --icon-tabs: #0969da;
+    --icon-bookmarks: #bf3989;
+    --icon-history: #8250df;
+    --icon-tab-groups: #059669;
+
+    --tab-group-grey: #6e7781;
+    --tab-group-blue: #0969da;
+    --tab-group-red: #cf222e;
+    --tab-group-yellow: #9a6700;
+    --tab-group-green: #1a7f37;
+    --tab-group-pink: #bf3989;
+    --tab-group-purple: #8250df;
+    --tab-group-cyan: #0891b2;
+    --tab-group-orange: #bc4c00;
+
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+    --scrollbar-track: #f6f8fa;
+    --scrollbar-thumb: #d0d7de;
+    --scrollbar-thumb-hover: #afb8c1;
+
+    --input-bg: #ffffff;
+    --input-border: #d0d7de;
+    --input-border-focus: #0969da;
+
+    --code-bg: #f6f8fa;
+    --card-hover-bg: #f3f4f6;
+
+    /* Error backgrounds for buttons/cards */
+    --error-bg: #fef2f2;
+    --error-border: #fecaca;
+
+    /* Official/brand accent */
+    --brand-accent: #4f46e5;
+  }
 }
 
 /* ============================================================================
@@ -726,19 +949,19 @@ input[type="text"]:focus {
 }
 
 .model-refresh-btn.refresh-success {
-  color: #10b981;
+  color: var(--success);
 }
 
 .model-refresh-btn.refresh-success:hover {
-  color: #059669;
+  color: var(--success-hover);
 }
 
 .model-refresh-btn.refresh-error {
-  color: #ef4444;
+  color: var(--error);
 }
 
 .model-refresh-btn.refresh-error:hover {
-  color: #dc2626;
+  color: var(--error-hover);
 }
 
 /* Show only down arrow when dropdown is closed, up arrow when open */
@@ -981,7 +1204,7 @@ input[type="text"]:focus {
 
 .tab-groups-icon {
   background: rgba(52, 211, 153, 0.15);
-  color: #34d399;
+  color: var(--icon-tab-groups);
 }
 
 .import-text {
@@ -1224,7 +1447,7 @@ details.summary-section[open] .summary-chevron {
 }
 
 .summary-error {
-  color: var(--error-color, #ef4444);
+  color: var(--error);
   font-size: 14px;
 }
 
@@ -1506,6 +1729,69 @@ details.suggested-links-section[open] .suggested-links-chevron {
   border-bottom: none;
 }
 
+/* Theme Selector */
+.theme-selector {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.theme-option {
+  flex: 1;
+  cursor: pointer;
+}
+
+.theme-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-option-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: var(--bg-tertiary);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+}
+
+.theme-option input[type="radio"]:checked + .theme-option-content {
+  border-color: var(--accent-primary);
+  background: var(--accent-muted);
+}
+
+.theme-option:hover .theme-option-content {
+  background: var(--bg-hover);
+}
+
+.theme-option input[type="radio"]:checked + .theme-option-content:hover {
+  background: var(--accent-muted);
+}
+
+.theme-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-secondary);
+}
+
+.theme-option input[type="radio"]:checked + .theme-option-content .theme-icon {
+  color: var(--accent-primary);
+}
+
+.theme-option-content span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.theme-option input[type="radio"]:checked + .theme-option-content span {
+  color: var(--accent-primary);
+}
+
 .api-key-link {
   display: inline-block;
   margin-top: 8px;
@@ -1590,7 +1876,7 @@ details.suggested-links-section[open] .suggested-links-chevron {
   background: rgba(210, 153, 34, 0.15);
   border-left: 3px solid var(--warning);
   border-radius: var(--radius-sm);
-  color: #f0b72e;
+  color: var(--warning);
 }
 
 /* Tool Permissions */
@@ -1646,22 +1932,22 @@ details.suggested-links-section[open] .suggested-links-chevron {
 
 .tool-permission-status.auto-approved {
   background: rgba(63, 185, 80, 0.15);
-  color: #3fb95c;
+  color: var(--success);
 }
 
 .tool-permission-status.session-approved {
-  background: rgba(105, 161, 255, 0.15);
-  color: #699fff;
+  background: var(--accent-muted);
+  color: var(--accent-primary);
 }
 
 .tool-permission-status.requires-approval {
   background: rgba(210, 153, 34, 0.15);
-  color: #d29922;
+  color: var(--warning);
 }
 
 .tool-permission-status.disabled {
   background: rgba(148, 163, 184, 0.15);
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .tool-permission-controls {
@@ -2172,8 +2458,8 @@ details.suggested-links-section[open] .suggested-links-chevron {
 }
 
 .btn-danger:hover {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: var(--error-hover);
+  border-color: var(--error-hover);
 }
 
 /* ============================================================================
@@ -3031,7 +3317,7 @@ details.suggested-links-section[open] .suggested-links-chevron {
   display: inline-block;
   padding: 2px 6px;
   margin-left: 6px;
-  background: #6366f1;
+  background: var(--brand-accent);
   color: white;
   font-size: 10px;
   font-weight: 600;
@@ -3041,7 +3327,7 @@ details.suggested-links-section[open] .suggested-links-chevron {
 }
 
 .provider-card.official {
-  border-left: 3px solid #6366f1;
+  border-left: 3px solid var(--brand-accent);
 }
 
 /* Disable delete button with visual feedback */
@@ -3182,12 +3468,12 @@ details.suggested-links-section[open] .suggested-links-chevron {
 }
 
 .config-btn.delete {
-  color: #ef4444;
-  border-color: var(--error-border, #fecaca);
+  color: var(--error);
+  border-color: var(--error-border);
 }
 
 .config-btn.delete:hover {
-  background: #fef2f2;
+  background: var(--error-bg);
 }
 
 .config-empty {

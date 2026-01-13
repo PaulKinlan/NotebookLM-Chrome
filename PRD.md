@@ -433,7 +433,7 @@ When multiple tabs are highlighted in the browser:
 
 **Design Assets:** See `/designs/` folder for visual mockups.
 
-**Theme:** Dark mode UI with blue accent colors.
+**Theme:** Light and dark mode UI with blue accent colors. Users can choose light, dark, or system preference.
 
 **Tech Stack:** Vanilla TypeScript (no React), CSS with variables.
 
@@ -502,6 +502,7 @@ Shared modal for tabs, bookmarks, history, and media selection:
 | Footer | Selected count + Cancel/Add Selected buttons |
 
 ### Settings Panel
+- **Appearance** - Theme selection (Light, Dark, System)
 - AI Provider selection (Anthropic, OpenAI, Google, Chrome Built-in)
 - Model selection dropdown (updates per provider)
 - API key input (hidden for Chrome Built-in)
@@ -716,7 +717,7 @@ async function getModel(): Promise<LanguageModel | null> {
 ### Completed (P0)
 - [x] Project setup (TypeScript, Vite, CRXJS)
 - [x] Manifest V3 with optional permissions
-- [x] Side panel UI with dark theme
+- [x] Side panel UI with light/dark theme support (user preference)
 - [x] Bottom tab navigation (Add, Chat, Transform, Library, Settings)
 - [x] IndexedDB storage with StorageAdapter
 - [x] Notebook CRUD operations

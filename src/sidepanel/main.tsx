@@ -5,6 +5,7 @@
 
 import { App } from './App'
 import { handlers, initControllers } from './index'
+import { initTheme } from './hooks/useTheme.tsx'
 
 // ============================================================================
 // Render
@@ -14,6 +15,11 @@ const appContainer = document.getElementById('app')
 if (!appContainer) {
   throw new Error('App container #app not found')
 }
+
+// Initialize theme BEFORE rendering to prevent flash of wrong theme
+// This is async but we don't await it - the CSS media queries provide
+// a reasonable default until storage is read
+void initTheme()
 
 // Render with handlers connected
 const appElement = App({

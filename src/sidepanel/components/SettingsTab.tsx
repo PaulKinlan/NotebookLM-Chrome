@@ -1,3 +1,6 @@
+import type { ThemePreference } from '../../types/index.ts'
+import { getPreference, setPreference, onThemeChange } from '../hooks/useTheme.tsx'
+
 type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history'
 
 interface SettingsTabProps {
@@ -8,9 +11,96 @@ interface SettingsTabProps {
 
 export function SettingsTab(props: SettingsTabProps) {
   const { active } = props
+  const currentPreference = getPreference()
+
+  // Handle theme change
+  const handleThemeChange = (newPreference: ThemePreference) => {
+    void setPreference(newPreference)
+  }
+
+  // Set up initial state and listeners after DOM is created
+  requestAnimationFrame(() => {
+    const lightRadio = document.querySelector<HTMLInputElement>('input[name="theme"][value="light"]')
+    const darkRadio = document.querySelector<HTMLInputElement>('input[name="theme"][value="dark"]')
+    const systemRadio = document.querySelector<HTMLInputElement>('input[name="theme"][value="system"]')
+
+    // Set initial checked state
+    const updateRadioState = (preference: ThemePreference) => {
+      if (lightRadio) lightRadio.checked = preference === 'light'
+      if (darkRadio) darkRadio.checked = preference === 'dark'
+      if (systemRadio) systemRadio.checked = preference === 'system'
+    }
+
+    updateRadioState(currentPreference)
+
+    // Listen for theme changes (from other sources)
+    onThemeChange((preference) => {
+      updateRadioState(preference)
+    })
+  })
+
   return (
     <section id="tab-settings" className={`tab-content ${active ? 'active' : ''}`}>
       <h2>Settings</h2>
+
+      <div className="settings-group">
+        <h3 className="section-title">Appearance</h3>
+        <div className="theme-selector">
+          <label className="theme-option">
+            <input
+              type="radio"
+              name="theme"
+              value="light"
+              onChange={() => handleThemeChange('light')}
+            />
+            <span className="theme-option-content">
+              <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+              <span>Light</span>
+            </span>
+          </label>
+          <label className="theme-option">
+            <input
+              type="radio"
+              name="theme"
+              value="dark"
+              onChange={() => handleThemeChange('dark')}
+            />
+            <span className="theme-option-content">
+              <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+              <span>Dark</span>
+            </span>
+          </label>
+          <label className="theme-option">
+            <input
+              type="radio"
+              name="theme"
+              value="system"
+              onChange={() => handleThemeChange('system')}
+            />
+            <span className="theme-option-content">
+              <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+              </svg>
+              <span>System</span>
+            </span>
+          </label>
+        </div>
+        <p className="setting-hint">Choose light, dark, or follow your system preference.</p>
+      </div>
 
       <div className="settings-group">
         <h3 className="section-title">
