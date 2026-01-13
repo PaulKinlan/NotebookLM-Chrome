@@ -5,6 +5,7 @@
 
 import { App, type AppCallbacks } from './App'
 import { render } from '../jsx-runtime'
+import { initTheme } from './hooks/useTheme.tsx'
 import { initChromeBridge, checkPendingActions, type ChromeBridgeCallbacks } from './chrome-bridge'
 import { createNotebook, saveNotebook, setActiveNotebookId, saveSource, createSource } from '../lib/storage'
 import { initTheme } from './hooks/useTheme.tsx'
@@ -29,6 +30,11 @@ function getAppCallbacks(): AppCallbacks {
 // ============================================================================
 // Render
 // ============================================================================
+
+// Initialize theme system
+initTheme().catch((error) => {
+  console.error('Failed to initialize theme:', error)
+})
 
 const appContainer = document.getElementById('app')
 if (!appContainer) {
