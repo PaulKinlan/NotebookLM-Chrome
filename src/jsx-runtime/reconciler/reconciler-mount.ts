@@ -29,6 +29,7 @@ export async function mount(
   vnode: VNode,
   component: ComponentInstance | undefined,
   reconcile: ReconcilerFn,
+  svgNamespace?: string,
 ): Promise<Node> {
   // Create a unique key for this mount operation
   const vnodeInfo = vnode.type === 'element'
@@ -51,7 +52,7 @@ export async function mount(
   }
 
   try {
-    return await mountInner(parent, vnode, component, reconcile)
+    return await mountInner(parent, vnode, component, reconcile, svgNamespace)
   }
   finally {
     activeMountStack.pop()
@@ -64,6 +65,7 @@ async function mountInner(
   vnode: VNode,
   component: ComponentInstance | undefined,
   reconcile: ReconcilerFn,
+  svgNamespace?: string,
 ): Promise<Node> {
   switch (vnode.type) {
     case 'text': {
@@ -74,15 +76,15 @@ async function mountInner(
     }
 
     case 'element': {
-      return mountElement(parent, vnode, reconcile)
+      return mountElement(parent, vnode, reconcile, svgNamespace)
     }
 
     case 'component': {
-      return mountComponent(parent, vnode, component, reconcile)
+      return mountComponent(parent, vnode, component, reconcile, svgNamespace)
     }
 
     case 'fragment': {
-      return mountFragment(parent, vnode, component, reconcile)
+      return mountFragment(parent, vnode, component, reconcile, svgNamespace)
     }
 
     default:
@@ -97,11 +99,13 @@ export function mountElement(
   parent: Node,
   vnode: Extract<VNode, { type: 'element' }>,
   reconcile: ReconcilerFn,
+  svgNamespace: string | null = null,
 ): Element {
   const { tag, props, children } = vnode
 
-  // Handle SVG namespace
-  const namespace = tag === 'svg' ? 'http://www.w3.org/2000/svg/svg' : null
+  // Handle SVG namespace - check if we're explicitly in SVG context or creating an svg element
+  const isInSvg = svgNamespace === 'http://www.w3.org/2000/svg'
+  const namespace = tag === 'svg' || isInSvg ? 'http://www.w3.org/2000/svg' : null
   const el = namespace ? document.createElementNS(namespace, tag) : document.createElement(tag)
 
   // Debug logging for select elements
@@ -119,8 +123,11 @@ export function mountElement(
   applyProps(el, props)
 
   // Recursively mount children
+  // Pass SVG namespace context to children
+  const childNamespace = namespace || undefined
   for (const child of children) {
-    void reconcile(el, null, child)
+    // Pass svgNamespace as 5th parameter to reconcile
+    void reconcile(el, null, child, undefined, childNamespace)
   }
 
   // Debug logging for select options after mounting children
@@ -142,6 +149,7 @@ export async function mountComponent(
   vnode: Extract<VNode, { type: 'component' }>,
   parentComponent: ComponentInstance | undefined,
   reconcile: ReconcilerFn,
+  svgNamespace?: string,
 ): Promise<Node> {
   const { fn, props } = vnode
   const compName = (fn as { name?: string }).name || 'Anonymous'
@@ -150,6 +158,9 @@ export async function mountComponent(
 
   // Create component instance
   const instance = componentModule.createComponentInstance(fn, props, parentComponent)
+
+  // Store SVG namespace for this component (persists across renders)
+  instance.svgNamespace = svgNamespace
 
   // Register this instance IMMEDIATELY and SYNCHRONOUSLY
   // This ensures the instance is available for lookup before any state updates are scheduled
@@ -186,10 +197,11 @@ export function mountFragment(
   vnode: Extract<VNode, { type: 'fragment' }>,
   component: ComponentInstance | undefined,
   reconcile: ReconcilerFn,
+  svgNamespace?: string,
 ): Node {
   // Mount all children
   for (const child of vnode.children) {
-    void reconcile(parent, null, child, component)
+    void reconcile(parent, null, child, component, svgNamespace)
   }
 
   // Fragments don't have a single DOM node, return parent for chaining
@@ -279,7 +291,7 @@ async function renderComponentInner(instance: ComponentInstance, reconcile: Reco
     }
 
     const parent = oldNode.parentNode
-    await reconcile(parent, oldVNode, newVNode, instance)
+    await reconcile(parent, oldVNode, newVNode, instance, instance.svgNamespace)
     return
   }
 
@@ -341,7 +353,7 @@ async function renderComponentInner(instance: ComponentInstance, reconcile: Reco
     const tempContainer = document.createDocumentFragment()
 
     // Mount the new vnode to temp container
-    await reconcile(tempContainer, oldVNode, newVNode, instance)
+    await reconcile(tempContainer, oldVNode, newVNode, instance, instance.svgNamespace)
 
     // Replace the placeholder with the new content
     parent.replaceChild(tempContainer, oldNode)
@@ -361,7 +373,7 @@ async function renderComponentInner(instance: ComponentInstance, reconcile: Reco
   }
   else {
     // Normal reconcile
-    await reconcile(parent, oldVNode, newVNode, instance)
+    await reconcile(parent, oldVNode, newVNode, instance, instance.svgNamespace)
 
     // Update mountedNodes in case the node reference changed
     if (instance.mountedNode) {

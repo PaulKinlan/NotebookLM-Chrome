@@ -61,6 +61,7 @@ export async function updateElement(
   oldVNode: Extract<VNode, { type: 'element' }>,
   newVNode: Extract<VNode, { type: 'element' }>,
   reconcile: ReconcilerFn,
+  svgNamespace?: string,
 ): Promise<Node> {
   // Find the DOM element that corresponds to oldVNode
   let el: Element | null = null
@@ -103,7 +104,7 @@ export async function updateElement(
     // Diff props
     diffProps(newEl, oldVNode.props, newVNode.props)
     // Diff children
-    await diffChildren(newEl, oldVNode.children, newVNode.children, undefined, reconcile)
+    await diffChildren(newEl, oldVNode.children, newVNode.children, undefined, reconcile, svgNamespace)
     // Update mounted node reference
     mountedNodes.set(newEl, { node: newEl, vdom: newVNode })
     return newEl
@@ -113,7 +114,7 @@ export async function updateElement(
   diffProps(el, oldVNode.props, newVNode.props)
 
   // Diff children
-  await diffChildren(el, oldVNode.children, newVNode.children, undefined, reconcile)
+  await diffChildren(el, oldVNode.children, newVNode.children, undefined, reconcile, svgNamespace)
 
   // Update mounted node reference
   mountedNodes.set(el, { node: el, vdom: newVNode })

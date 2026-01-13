@@ -36,6 +36,7 @@ export async function diffChildren(
   newChildren: VNode[],
   component: ComponentInstance | undefined,
   reconcile: ReconcilerFn,
+  svgNamespace?: string,
 ): Promise<void> {
   // Debug logging for select children
   if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
@@ -46,7 +47,7 @@ export async function diffChildren(
   // Edge case: no old children - mount all new children
   if (oldChildren.length === 0) {
     for (const newChild of newChildren) {
-      await reconcile(parent, null, newChild, component)
+      await reconcile(parent, null, newChild, component, svgNamespace)
     }
     return
   }
@@ -121,7 +122,7 @@ export async function diffChildren(
         diffProps(domNode, oldChildVNode.props, newChild.props)
 
         // Recursively diff children
-        await diffChildren(domNode, oldChildVNode.children, newChild.children, component, reconcile)
+        await diffChildren(domNode, oldChildVNode.children, newChild.children, component, reconcile, svgNamespace)
 
         // Update mounted node reference
         mountedNodes.set(domNode, { node: domNode, vdom: newChild })
@@ -129,7 +130,7 @@ export async function diffChildren(
       else {
         // For other node types, use standard reconcile
         const parentForReconcile = domNode.nodeType === Node.TEXT_NODE ? domNode : parent
-        await reconcile(parentForReconcile, oldChildVNode, newChild, component)
+        await reconcile(parentForReconcile, oldChildVNode, newChild, component, svgNamespace)
       }
 
       // Check if the node needs to be moved
@@ -153,7 +154,7 @@ export async function diffChildren(
       if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
         console.log(`[diffChildren] No match for key ${key}, creating new node`)
       }
-      const newNode = await reconcile(parent, null, newChild, component)
+      const newNode = await reconcile(parent, null, newChild, component, svgNamespace)
 
       if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
         console.log(`[diffChildren] Created new node:`, newNode)

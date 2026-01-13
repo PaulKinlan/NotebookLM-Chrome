@@ -38,15 +38,16 @@ async function reconcile(
   oldVNode: VNode | null,
   newVNode: VNode,
   component?: ComponentInstance,
+  svgNamespace?: string,
 ): Promise<Node> {
   // Case 1: No old node - initial mount
   if (!oldVNode) {
-    return mount(parent, newVNode, component, reconcile)
+    return mount(parent, newVNode, component, reconcile, svgNamespace)
   }
 
   // Case 2: Type changed - replace entirely
   if (oldVNode.type !== newVNode.type) {
-    const newNode = await mount(parent, newVNode, component, reconcile)
+    const newNode = await mount(parent, newVNode, component, reconcile, svgNamespace)
     const oldNode = parent.firstChild
     if (oldNode) {
       parent.replaceChild(newNode, oldNode)
@@ -67,10 +68,10 @@ async function reconcile(
 
   if (newVNode.type === 'element' && oldVNode.type === 'element') {
     if (parent instanceof Element) {
-      return updateElement(parent, oldVNode, newVNode, reconcile)
+      return updateElement(parent, oldVNode, newVNode, reconcile, svgNamespace)
     }
     // Parent is not an Element (e.g., DocumentFragment), mount new element
-    const newNode = await mount(parent, newVNode, component, reconcile)
+    const newNode = await mount(parent, newVNode, component, reconcile, svgNamespace)
     const oldNode = parent.firstChild
     if (oldNode) {
       parent.replaceChild(newNode, oldNode)

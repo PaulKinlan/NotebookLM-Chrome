@@ -14,6 +14,7 @@ export type ReconcilerFn = (
   oldVNode: VNode | null,
   newVNode: VNode,
   component?: ComponentInstance,
+  svgNamespace?: string,
 ) => Promise<Node>
 
 /**
@@ -24,12 +25,14 @@ export type MountFn = (
   vnode: VNode,
   component?: ComponentInstance,
   reconcile?: ReconcilerFn,
+  svgNamespace?: string,
 ) => Promise<Node>
 
 export type MountElementFn = (
   parent: Node,
   vnode: Extract<VNode, { type: 'element' }>,
   reconcile: ReconcilerFn,
+  svgNamespace?: string,
 ) => Element
 
 export type MountComponentFn = (
@@ -37,6 +40,7 @@ export type MountComponentFn = (
   vnode: Extract<VNode, { type: 'component' }>,
   parentComponent?: ComponentInstance,
   reconcile?: ReconcilerFn,
+  svgNamespace?: string,
 ) => Promise<Node>
 
 export type MountFragmentFn = (
@@ -44,6 +48,7 @@ export type MountFragmentFn = (
   vnode: Extract<VNode, { type: 'fragment' }>,
   component?: ComponentInstance,
   reconcile?: ReconcilerFn,
+  svgNamespace?: string,
 ) => Node
 
 /**
@@ -54,6 +59,7 @@ export type UpdateElementFn = (
   oldVNode: Extract<VNode, { type: 'element' }>,
   newVNode: Extract<VNode, { type: 'element' }>,
   reconcile: ReconcilerFn,
+  svgNamespace?: string,
 ) => Promise<Node>
 
 export type UpdateComponentFn = (

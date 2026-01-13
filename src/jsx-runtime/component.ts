@@ -62,6 +62,8 @@ export interface ComponentInstance {
   }
   /** Whether this component is currently being rendered (prevents re-entry) */
   isRendering?: boolean
+  /** SVG namespace for rendering SVG elements within this component */
+  svgNamespace?: string
 }
 
 /**
