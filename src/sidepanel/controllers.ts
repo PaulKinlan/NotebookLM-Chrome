@@ -279,6 +279,9 @@ const elements = {
   get activeSources(): HTMLDivElement {
     return getElementById<HTMLDivElement>('active-sources')!
   },
+  get refreshAllSourcesBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>('refresh-all-sources-btn')!
+  },
   get addPageBtn(): HTMLButtonElement {
     return getElementById<HTMLButtonElement>('add-page-btn')!
   },
@@ -621,6 +624,13 @@ async function init(): Promise<void> {
       void loadSources()
       void loadNotebooksList() // Refresh library page source counts
       showNotification('Source added')
+    }
+    else if (message.type === 'SOURCE_REFRESHED') {
+      // Clear suggested links cache so refreshed sources trigger a refresh
+      if (currentNotebookId) {
+        suggestedLinksCache.delete(currentNotebookId)
+      }
+      void loadSources()
     }
     else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_PAGE') {
       // Clear pending action to prevent duplicate processing
@@ -1084,6 +1094,11 @@ function setupEventListeners(): void {
       void handleRegenerateSummary()
     },
   )
+
+  // Refresh all sources
+  elements.refreshAllSourcesBtn?.addEventListener('click', () => {
+    void handleRefreshAllSources()
+  })
 
   // Suggested links
   elements.refreshLinksBtn?.addEventListener('click', () => {
@@ -1744,6 +1759,9 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
     const domain = new URL(source.url).hostname.replace('www.', '')
     const initial = source.title.charAt(0).toUpperCase()
 
+    // Check if source can be refreshed (has URL and is not manual/text type)
+    const canRefresh = source.type !== 'manual' && source.type !== 'text'
+
     div.innerHTML = `
       <div class="source-icon">${DOMPurify.sanitize(initial)}</div>
       <div class="source-info">
@@ -1756,6 +1774,17 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
               <line x1="10" y1="14" x2="21" y2="3"></line>
             </svg>
           </a>
+          ${
+            canRefresh
+              ? `<button class="source-refresh-btn" data-id="${DOMPurify.sanitize(source.id)}" title="Refresh content">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>`
+              : ''
+          }
         </div>
         <div class="source-url">${DOMPurify.sanitize(domain)}</div>
       </div>
@@ -1775,6 +1804,12 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
     removeBtn?.addEventListener('click', (e) => {
       e.stopPropagation()
       void handleRemoveSource(source.id)
+    })
+
+    const refreshBtn = div.querySelector('.source-refresh-btn')
+    refreshBtn?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      void handleRefreshSource(source.id, refreshBtn as HTMLButtonElement)
     })
 
     container.appendChild(div)
@@ -2313,6 +2348,71 @@ async function updateAddTabButton(): Promise<void> {
 async function handleRemoveSource(sourceId: string): Promise<void> {
   await deleteSource(sourceId)
   await loadSources()
+}
+
+async function handleRefreshSource(sourceId: string, button: HTMLButtonElement): Promise<void> {
+  // Add refreshing state
+  button.classList.add('refreshing')
+  button.disabled = true
+
+  try {
+    const result = await chrome.runtime.sendMessage<Message, { success: boolean, error?: string }>({
+      type: 'REFRESH_SOURCE',
+      payload: { sourceId },
+    })
+
+    if (result?.success) {
+      showNotification('Source refreshed')
+    }
+    else {
+      showNotification(result?.error || 'Failed to refresh source')
+    }
+  }
+  catch (error) {
+    console.error('Failed to refresh source:', error)
+    showNotification('Failed to refresh source')
+  }
+  finally {
+    button.classList.remove('refreshing')
+    button.disabled = false
+  }
+}
+
+async function handleRefreshAllSources(): Promise<void> {
+  if (!currentNotebookId) return
+
+  const btn = elements.refreshAllSourcesBtn
+  btn.classList.add('refreshing')
+  btn.disabled = true
+
+  try {
+    const result = await chrome.runtime.sendMessage<Message, { success: boolean, refreshedCount: number, errors: string[] }>({
+      type: 'REFRESH_ALL_SOURCES',
+      payload: { notebookId: currentNotebookId },
+    })
+
+    if (result?.success) {
+      if (result.refreshedCount > 0) {
+        showNotification(`Refreshed ${result.refreshedCount} source${result.refreshedCount > 1 ? 's' : ''}`)
+      }
+      else {
+        showNotification('No sources to refresh')
+      }
+      // Reload sources to show updated content
+      await loadSources()
+    }
+    else {
+      showNotification('Failed to refresh sources')
+    }
+  }
+  catch (error) {
+    console.error('Failed to refresh all sources:', error)
+    showNotification('Failed to refresh sources')
+  }
+  finally {
+    btn.classList.remove('refreshing')
+    btn.disabled = false
+  }
 }
 
 // ============================================================================

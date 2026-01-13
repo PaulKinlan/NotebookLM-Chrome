@@ -94,6 +94,29 @@ Uses **Turndown** library in a content script to convert HTML to clean markdown:
 - [x] Extraction works on pages loaded before extension install
 - [x] Failed extraction shows user-friendly error
 
+#### 1.4 Refresh Sources
+
+Sources can be refreshed to re-extract their content from the original URL. This is useful when web page content has been updated and users want to sync the latest version.
+
+**Individual Source Refresh:**
+- Small refresh button next to the "open in new tab" icon on each source
+- Spinning animation during refresh
+- Shows notification on success/failure
+- Only available for URL-based sources (not manual/text sources)
+
+**Batch Refresh All Sources:**
+- Button in the "Active Sources" header
+- Refreshes all URL-based sources in the current notebook sequentially
+- Shows count of successfully refreshed sources
+- Skips manual/text sources that cannot be refreshed
+
+**Acceptance Criteria:**
+- [x] Individual refresh button appears next to open-in-new-tab icon
+- [x] Batch refresh button appears in Active Sources header
+- [x] Refresh button shows spinning animation during operation
+- [x] Manual/text sources do not show refresh button
+- [x] User notification on refresh completion
+
 ### 2. AI Integration
 
 #### 2.1 Provider Support
@@ -742,6 +765,7 @@ async function getModel(): Promise<LanguageModel | null> {
 - [x] Offline caching of AI responses (fall back to cached responses when offline or API errors)
 - [x] Basic markdown rendering in chat responses
 - [x] Keyboard shortcuts for quick actions (Ctrl+Shift+F/S/N/E)
+- [x] Source refresh (individual and batch) to re-extract content from URLs
 
 ### Phase 2 - PDF Support (P1)
 - [ ] PDF.js integration for text extraction

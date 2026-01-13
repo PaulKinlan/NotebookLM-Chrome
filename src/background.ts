@@ -5,6 +5,8 @@ import {
   getNotebooks,
   getActiveNotebookId,
   setActiveNotebookId,
+  getSource,
+  getSourcesByNotebook,
 } from './lib/storage.ts'
 import { getLinksInSelection } from './lib/selection-links.ts'
 
@@ -648,6 +650,20 @@ async function handleMessage(message: Message): Promise<unknown> {
       }
       return null
     }
+    case 'REFRESH_SOURCE': {
+      const payload = message.payload
+      if (payload && typeof payload === 'object' && 'sourceId' in payload && typeof payload.sourceId === 'string') {
+        return handleRefreshSource(payload.sourceId)
+      }
+      return null
+    }
+    case 'REFRESH_ALL_SOURCES': {
+      const payload = message.payload
+      if (payload && typeof payload === 'object' && 'notebookId' in payload && typeof payload.notebookId === 'string') {
+        return handleRefreshAllSources(payload.notebookId)
+      }
+      return null
+    }
     default:
       return null
   }
@@ -728,6 +744,77 @@ async function extractContentFromUrl(
   catch (error) {
     console.error('Failed to extract content from URL:', error)
     return null
+  }
+}
+
+async function handleRefreshSource(sourceId: string): Promise<{ success: boolean, error?: string }> {
+  try {
+    const source = await getSource(sourceId)
+    if (!source) {
+      return { success: false, error: 'Source not found' }
+    }
+
+    // Re-extract content from the URL
+    const result = await extractContentFromUrl(source.url)
+    if (!result) {
+      return { success: false, error: 'Failed to extract content' }
+    }
+
+    // Update the source with new content while preserving metadata
+    const updatedSource = {
+      ...source,
+      title: result.title,
+      content: result.content,
+      links: result.links,
+      metadata: {
+        ...source.metadata,
+        wordCount: result.content.split(/\s+/).filter(Boolean).length,
+      },
+      updatedAt: Date.now(),
+    }
+
+    await saveSource(updatedSource)
+
+    // Notify that source was refreshed
+    chrome.runtime
+      .sendMessage({ type: 'SOURCE_REFRESHED', payload: updatedSource })
+      .catch(() => {})
+
+    return { success: true }
+  }
+  catch (error) {
+    console.error('Failed to refresh source:', error)
+    return { success: false, error: String(error) }
+  }
+}
+
+async function handleRefreshAllSources(notebookId: string): Promise<{ success: boolean, refreshedCount: number, errors: string[] }> {
+  const errors: string[] = []
+  let refreshedCount = 0
+
+  try {
+    const sources = await getSourcesByNotebook(notebookId)
+
+    for (const source of sources) {
+      // Skip manual/text sources that don't have URLs to refresh
+      if (source.type === 'manual' || source.type === 'text') {
+        continue
+      }
+
+      const result = await handleRefreshSource(source.id)
+      if (result.success) {
+        refreshedCount++
+      }
+      else if (result.error) {
+        errors.push(`${source.title}: ${result.error}`)
+      }
+    }
+
+    return { success: true, refreshedCount, errors }
+  }
+  catch (error) {
+    console.error('Failed to refresh all sources:', error)
+    return { success: false, refreshedCount, errors: [...errors, String(error)] }
   }
 }
 
