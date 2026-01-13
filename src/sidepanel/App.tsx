@@ -3,7 +3,7 @@
 // ============================================================================
 
 // Import all components
-import { useState, useEffect } from '../jsx-runtime/hooks/index.ts'
+import { useState, useEffect, useRef } from '../jsx-runtime/hooks/index.ts'
 import { HeaderStateful } from './components/Header'
 import { AddTabStateful } from './components/AddTabStateful'
 import { ChatTabStateful } from './components/ChatTabStateful'
@@ -44,11 +44,15 @@ export function App(props: AppProps = {
   activeTab: 'add',
   fabHidden: true,
   onboardingHidden: true,
-}): JSX.Element { // eslint-disable-line no-undef
+}) {
   const { activeTab: initialTab, fabHidden, onboardingHidden, onProvideCallbacks } = props
+
+  console.log('[App] Component function called, initialTab:', initialTab)
 
   // Use useState for tab management instead of imperative DOM manipulation
   const [activeTab, setActiveTab] = useState<TabName>(initialTab)
+
+  console.log('[App] After useState, activeTab:', activeTab)
 
   // Use useDialog hook for dialog state management
   const {
@@ -65,16 +69,30 @@ export function App(props: AppProps = {
   // Use useNotification hook for notification state
   const { showNotification } = useNotification()
 
+  // Store callbacks in refs to avoid triggering useEffect on every render
+  const showNotebookRef = useRef(showNotebook)
+  const showNotificationRef = useRef(showNotification)
+
+  // Keep refs in sync (but only when the functions actually change)
+  showNotebookRef.current = showNotebook
+  showNotificationRef.current = showNotification
+
   // Provide callbacks to main.tsx via the onProvideCallbacks prop
   // This allows main.tsx to trigger dialogs/notifications without global state
   useEffect(() => {
+    console.log('[App] useEffect running, calling onProvideCallbacks')
     if (onProvideCallbacks) {
-      onProvideCallbacks({ showNotebook, showNotification })
+      onProvideCallbacks({
+        showNotebook: (...args) => showNotebookRef.current(...args),
+        showNotification: (...args) => showNotificationRef.current(...args),
+      })
     }
-  }, [showNotebook, showNotification, onProvideCallbacks])
+  }, [onProvideCallbacks])
 
   const handleTabClick = (tab: TabName) => {
+    console.log('[App] handleTabClick called with tab:', tab, 'current activeTab:', activeTab)
     setActiveTab(tab)
+    console.log('[App] setActiveTab called, waiting for re-render...')
   }
 
   const handleFabClick = () => {
