@@ -22,6 +22,8 @@ export default [
         },
       },
       globals: {
+        // JSX namespace (for return type annotations in TSX)
+        JSX: 'readonly',
         // Chrome extension APIs
         chrome: 'readonly',
         browser: 'readonly',
