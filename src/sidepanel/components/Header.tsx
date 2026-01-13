@@ -6,6 +6,7 @@
  */
 
 import { useNotebook } from '../hooks/useNotebook.ts'
+import { useState } from '../../jsx-runtime/hooks/index.ts'
 
 interface HeaderStatefulProps {
   /** Optional callback when notebook changes (in addition to hook's selectNotebook) */
@@ -18,6 +19,7 @@ interface HeaderStatefulProps {
 
 export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: HeaderStatefulProps) {
   const { notebooks, currentNotebookId, selectNotebook, createNotebook } = useNotebook()
+  const [isAiModelDropdownOpen, setIsAiModelDropdownOpen] = useState(false)
 
   const handleNotebookChange = async (e: { target: HTMLSelectElement }) => {
     const notebookId = e.target.value || null
@@ -54,6 +56,10 @@ export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: 
     else {
       console.log('[handleNewNotebook] name was empty/null, not creating notebook')
     }
+  }
+
+  const handleAiModelButtonClick = () => {
+    setIsAiModelDropdownOpen(!isAiModelDropdownOpen)
   }
 
   return (
@@ -125,6 +131,7 @@ export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: 
             id="ai-model-btn"
             className="header-icon-btn"
             title="AI Model"
+            onClick={handleAiModelButtonClick}
           >
             <svg
               width="18"
@@ -140,7 +147,7 @@ export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: 
               <path d="M8.5 11V7a3.5 3.5 0 0 1 7 0v4"></path>
             </svg>
           </button>
-          <div id="ai-model-dropdown" className="ai-model-dropdown hidden">
+          <div id="ai-model-dropdown" className={`ai-model-dropdown${isAiModelDropdownOpen ? '' : ' hidden'}`}>
             <div className="ai-model-dropdown-content">
               <div className="ai-model-dropdown-header">Select AI Model</div>
               <div id="ai-model-list" className="ai-model-list"></div>
