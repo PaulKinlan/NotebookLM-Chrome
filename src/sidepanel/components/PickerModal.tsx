@@ -199,8 +199,10 @@ export function PickerModal({ onAddSources, onClose }: PickerModalProps): JSX.El
                   placeholder="Search..."
                   value={searchTerm}
                   onInput={(e: Event) => {
-                    const target = e.target as HTMLInputElement
-                    setSearchTerm(target.value)
+                    const target = e.currentTarget
+                    if (target instanceof HTMLInputElement) {
+                      setSearchTerm(target.value)
+                    }
                   }}
                 />
               </div>

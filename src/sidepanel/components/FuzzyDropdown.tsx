@@ -96,7 +96,12 @@ export function FuzzyDropdown(props: FuzzyDropdownProps): JSX.Element {
         autocomplete="off"
         aria-expanded={String(dropdown.isOpen)}
         onFocus={dropdown.open}
-        onInput={(e: InputEvent) => dropdown.handleInput((e.target as HTMLInputElement).value)}
+        onInput={(e: InputEvent) => {
+          const target = e.currentTarget
+          if (target instanceof HTMLInputElement) {
+            dropdown.handleInput(target.value)
+          }
+        }}
         onKeyDown={dropdown.handleKeyDown}
       />
       <button

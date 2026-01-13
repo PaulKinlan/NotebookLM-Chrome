@@ -133,7 +133,8 @@ export function ChatInput({ notebookId, onQuery, slashCommands, isGenerating }: 
    * Handle input changes
    */
   const handleInput = (e: Event) => {
-    const target = e.target as HTMLInputElement
+    const target = e.currentTarget
+    if (!(target instanceof HTMLInputElement)) return
     const value = target.value
     setInputValue(value)
 
@@ -258,8 +259,10 @@ export function ChatInput({ notebookId, onQuery, slashCommands, isGenerating }: 
 
     if (submit) {
       // Focus the input element
-      const inputEl = document.getElementById('query-input') as HTMLInputElement | null
-      inputEl?.focus()
+      const inputEl = document.getElementById('query-input')
+      if (inputEl instanceof HTMLInputElement) {
+        inputEl.focus()
+      }
     }
   }
 
