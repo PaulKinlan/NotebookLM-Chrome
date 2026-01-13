@@ -929,7 +929,10 @@ function injectContentScript(): void {
       ]
 
       for (const anchor of anchors) {
-        const href = (anchor as HTMLAnchorElement).href
+        // Type guard: ensure we have an HTMLAnchorElement
+        if (!(anchor instanceof HTMLAnchorElement)) continue
+
+        const href = anchor.href
         const text = (anchor.textContent || '').trim()
 
         if (!href || !text || text.length < 3) continue
