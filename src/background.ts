@@ -7,8 +7,6 @@ import {
   getNotebooks,
   getActiveNotebookId,
   setActiveNotebookId,
-  getSource,
-  getSourcesByNotebook,
 } from './lib/storage.ts'
 import { getLinksInSelection } from './lib/selection-links.ts'
 
