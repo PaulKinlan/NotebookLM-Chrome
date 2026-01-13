@@ -355,7 +355,6 @@ async function renderComponentInner(instance: ComponentInstance, reconcile: Reco
   componentModule.setCurrentComponent(null)
 
   // Reconcile the new tree
-  console.log(`[renderComponent] Reconcile: oldNode=${oldNode?.nodeName}, oldNode.nodeType=${oldNode?.nodeType}, oldNode.parentNode=${oldNode?.parentNode?.nodeName}`)
 
   // For Fragment-returning components, oldNode might be the parent container with no parentNode
   // In this case, use oldNode as the parent and find the first actual child element
@@ -405,22 +404,36 @@ async function renderComponentInner(instance: ComponentInstance, reconcile: Reco
 
   // If old node was a comment (component placeholder), we need to handle specially
   if (oldNode.nodeType === Node.COMMENT_NODE) {
-    // Create a fragment to hold the new content
-    const tempContainer = document.createDocumentFragment()
+    // Mount the new vnode - elements are appended directly to parent due to
+    // mountElement's special handling for DocumentFragments
+    await reconcile(parent, oldVNode, newVNode, instance, instance.svgNamespace)
 
-    // Mount the new vnode to temp container
-    await reconcile(tempContainer, oldVNode, newVNode, instance, instance.svgNamespace)
+    // Remove the comment placeholder
+    if (oldNode.parentNode === parent) {
+      parent.removeChild(oldNode)
+    }
 
-    // Replace the placeholder with the new content
-    parent.replaceChild(tempContainer, oldNode)
-
-    // CRITICAL: For Fragment-returning components, keep mountedNode pointing to parent
-    // instead of firstChild. This ensures we can find all children during reconciliation.
-    if (newVNode.type === 'fragment') {
+    // Find the newly mounted element by checking mountedNodes
+    // This is more reliable than relying on DOM position
+    if (newVNode.type === 'element') {
+      for (const child of parent.childNodes) {
+        const mounted = mountedNodes.get(child)
+        if (mounted && mounted.vdom === newVNode) {
+          instance.mountedNode = child
+          console.log(`[renderComponent] Found newly mounted element: ${child.nodeName}, id=${(child as HTMLElement).id || '(none)'}`)
+          break
+        }
+      }
+      // Fallback: use last child (newly appended) if not found
+      if (!instance.mountedNode || instance.mountedNode === oldNode) {
+        instance.mountedNode = parent.lastChild || parent.firstChild
+      }
+    }
+    else if (newVNode.type === 'fragment') {
       instance.mountedNode = parent
     }
     else {
-      instance.mountedNode = tempContainer.firstChild || parent.firstChild
+      instance.mountedNode = parent.lastChild || parent.firstChild
     }
 
     // CRITICAL: Update mountedNodes WeakMap with the new node
@@ -434,6 +447,8 @@ async function renderComponentInner(instance: ComponentInstance, reconcile: Reco
   }
   else {
     // Normal reconcile
+    const compName = instance.fn.name || 'Anonymous'
+    console.log(`[renderComponent] Taking NORMAL reconcile path for ${compName}, parent=${parent.nodeName}, oldVNode.type=${oldVNode?.type}, newVNode.type=${newVNode?.type}`)
     await reconcile(parent, oldVNode, newVNode, instance, instance.svgNamespace)
 
     // Update mountedNodes in case the node reference changed
