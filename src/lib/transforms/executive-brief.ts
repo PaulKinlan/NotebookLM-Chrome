@@ -1,51 +1,75 @@
 import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
+import type { ExecutiveBriefConfig } from '../../types/index.ts'
+import { DEFAULT_EXECUTIVEBRIEF_CONFIG } from '../transform-config.ts'
 
 export async function generateExecutiveBrief(
   sources: Source[],
+  config: Partial<ExecutiveBriefConfig> = {},
 ): Promise<string> {
-  const config = await getModelWithConfig()
-  if (!config) {
+  const modelConfig = await getModelWithConfig()
+  if (!modelConfig) {
     throw new Error(
       'AI provider not configured. Please add your API key in settings.',
     )
   }
 
+  // Merge with defaults
+  const c = { ...DEFAULT_EXECUTIVEBRIEF_CONFIG, ...config }
+
+  // Length descriptions
+  const lengthDesc: Record<typeof c.length, string> = {
+    'half-page': 'very concise half-page brief',
+    'one-page': 'comprehensive one-page summary',
+    'two-pages': 'detailed two-page executive summary',
+  }
+
+  // Section labels
+  const sectionLabels: Record<string, { heading: string, description: string }> = {
+    'overview': { heading: 'Situation', description: 'Brief context (2-3 sentences)' },
+    'key-findings': { heading: 'Key Findings', description: 'Main insights and discoveries' },
+    'implications': { heading: 'Implications', description: 'What this means for stakeholders' },
+    'recommendations': { heading: 'Recommendations', description: 'Suggested actions and decisions' },
+    'next-steps': { heading: 'Next Steps', description: 'Immediate action items' },
+  }
+
+  const sectionsFormat = c.sections
+    .map((s) => {
+      const section = sectionLabels[s]
+      return section ? `### ${section.heading}\n${section.description}` : ''
+    })
+    .filter(Boolean)
+    .join('\n\n')
+
+  const focusNote = c.focusArea ? `\nFocus particularly on: ${c.focusArea}` : ''
+
+  const systemPrompt = `You are a helpful AI assistant that creates executive briefs.
+Write a ${lengthDesc[c.length]} for busy decision-makers.
+Focus on key insights, implications, and actionable information.${focusNote}${
+  c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
+}`
+
   const result = await generateText({
-    model: config.model,
-    system: `You are a helpful AI assistant that creates executive briefs.
-Write a concise one-page summary for busy decision-makers.
-Focus on key insights, implications, and recommended actions.`,
-    prompt: `Create an executive brief (one-page summary) based on these sources:
+    model: modelConfig.model,
+    system: systemPrompt,
+    prompt: `Create an executive brief based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
 Format as:
 ## Executive Brief
 
-### Situation
-Brief context (2-3 sentences)
+${sectionsFormat}
 
-### Key Findings
-- Finding 1
-- Finding 2
-- Finding 3
-
-### Implications
-What this means for the reader
-
-### Recommendations
-Suggested next steps
-
-Keep it concise and actionable.`,
+Keep it ${c.length === 'half-page' ? 'very concise' : c.length === 'two-pages' ? 'comprehensive but organized' : 'concise'} and actionable.`,
   })
 
   // Track usage
   if (result.usage) {
     trackUsage({
-      modelConfigId: config.modelConfigId,
-      providerId: config.providerId,
-      model: config.modelId,
+      modelConfigId: modelConfig.modelConfigId,
+      providerId: modelConfig.providerId,
+      model: modelConfig.modelId,
       inputTokens: result.usage.inputTokens ?? 0,
       outputTokens: result.usage.outputTokens ?? 0,
       operation: 'transform',

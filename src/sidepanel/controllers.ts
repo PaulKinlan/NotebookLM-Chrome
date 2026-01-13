@@ -96,6 +96,8 @@ import {
   initApprovalUI,
   checkAndShowPendingApprovals,
 } from './approval-ui.ts'
+import { getTransformConfig } from '../lib/transform-config.ts'
+import { initTransformConfigButtons } from './components/TransformConfigPopover.tsx'
 
 // ============================================================================
 // Chrome Message Response Types
@@ -578,6 +580,9 @@ async function init(): Promise<void> {
 
   // Initialize provider config UI
   await initProviderConfigUI()
+
+  // Initialize transform config buttons (cog icons)
+  initTransformConfigButtons()
 
   // Listen for AI profile changes to update the AI config select
   window.addEventListener(AI_PROFILES_CHANGED_EVENT, () => {
@@ -4256,61 +4261,61 @@ async function handleTransform(type: TransformType): Promise<void> {
 
     switch (type) {
       case 'podcast':
-        result = await generatePodcastScript(sources, 5)
+        result = await generatePodcastScript(sources, await getTransformConfig('podcast'))
         break
       case 'quiz':
-        result = await generateQuiz(sources, 5)
+        result = await generateQuiz(sources, await getTransformConfig('quiz'))
         break
       case 'takeaways':
-        result = await generateKeyTakeaways(sources)
+        result = await generateKeyTakeaways(sources, await getTransformConfig('takeaways'))
         break
       case 'email':
-        result = await generateEmailSummary(sources)
+        result = await generateEmailSummary(sources, await getTransformConfig('email'))
         break
       case 'slidedeck':
-        result = await generateSlideDeck(sources)
+        result = await generateSlideDeck(sources, await getTransformConfig('slidedeck'))
         break
       case 'report':
-        result = await generateReport(sources)
+        result = await generateReport(sources, await getTransformConfig('report'))
         break
       case 'datatable':
-        result = await generateDataTable(sources)
+        result = await generateDataTable(sources, await getTransformConfig('datatable'))
         break
       case 'mindmap':
-        result = await generateMindMap(sources)
+        result = await generateMindMap(sources, await getTransformConfig('mindmap'))
         break
       case 'flashcards':
-        result = await generateFlashcards(sources, 10)
+        result = await generateFlashcards(sources, await getTransformConfig('flashcards'))
         break
       case 'timeline':
-        result = await generateTimeline(sources)
+        result = await generateTimeline(sources, await getTransformConfig('timeline'))
         break
       case 'glossary':
-        result = await generateGlossary(sources)
+        result = await generateGlossary(sources, await getTransformConfig('glossary'))
         break
       case 'comparison':
-        result = await generateComparison(sources)
+        result = await generateComparison(sources, await getTransformConfig('comparison'))
         break
       case 'faq':
-        result = await generateFAQ(sources, 10)
+        result = await generateFAQ(sources, await getTransformConfig('faq'))
         break
       case 'actionitems':
-        result = await generateActionItems(sources)
+        result = await generateActionItems(sources, await getTransformConfig('actionitems'))
         break
       case 'executivebrief':
-        result = await generateExecutiveBrief(sources)
+        result = await generateExecutiveBrief(sources, await getTransformConfig('executivebrief'))
         break
       case 'studyguide':
-        result = await generateStudyGuide(sources)
+        result = await generateStudyGuide(sources, await getTransformConfig('studyguide'))
         break
       case 'proscons':
-        result = await generateProsCons(sources)
+        result = await generateProsCons(sources, await getTransformConfig('proscons'))
         break
       case 'citations':
-        result = await generateCitationList(sources)
+        result = await generateCitationList(sources, await getTransformConfig('citations'))
         break
       case 'outline':
-        result = await generateOutline(sources)
+        result = await generateOutline(sources, await getTransformConfig('outline'))
         break
     }
 

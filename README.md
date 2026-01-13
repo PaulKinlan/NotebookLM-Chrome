@@ -17,6 +17,12 @@ A browser extension that helps you collect sources from tabs, bookmarks, and his
   - **Analytical**: Report, Timeline, Comparison, Data Table, Mind Map
   - **Reference**: Glossary, FAQ, Outline, Citations
   - **Business**: Action Items, Executive Brief, Key Takeaways, Pros/Cons
+- **Configurable Transformations**: Each transformation type has customizable settings:
+  - Click the cog icon on any transformation card to open configuration
+  - Type-specific options (e.g., quiz difficulty, report format, podcast tone)
+  - Custom Instructions field to add your own prompt additions
+  - Advanced section shows how the AI prompt is structured
+  - Settings persist across sessions in chrome.storage.local
 
 ## Installation
 
@@ -125,6 +131,9 @@ src/
 │   ├── sandbox-renderer.ts   # Secure iframe rendering
 │   ├── settings.ts      # AI settings persistence
 │   ├── storage.ts       # Storage adapter implementation
+│   ├── transform-config.ts   # Transform config storage and UI metadata
+│   ├── transforms/      # 19 transformation generation functions
+│   │   └── *.ts         # podcast-script.ts, quiz.ts, etc.
 │   └── usage.ts         # Usage tracking and cost calculation
 ├── sandbox/             # Sandboxed iframe for AI content
 │   ├── sandbox.html
@@ -132,8 +141,11 @@ src/
 ├── sidepanel/           # Main UI
 │   ├── index.html
 │   ├── index.ts         # Tabs, chat, transforms, library, settings
+│   ├── controllers.ts   # Tab controllers and event handlers
 │   ├── dropdown.ts      # Reusable dropdown component
 │   ├── provider-config-ui.ts  # Provider and model configuration UI
+│   ├── components/      # UI components
+│   │   └── TransformConfigPopover.tsx  # Transform settings popover
 │   └── styles.css       # UI styling
 └── types/               # TypeScript interfaces
     └── index.ts         # Notebook, Source, ChatMessage, Credential, ModelConfig, etc.
@@ -179,6 +191,15 @@ Unified AI provider interface using Vercel AI SDK:
 - **Chat**: Streaming responses with citation parsing
 - **Transformations**: 19 specialized generation functions
 - **Custom Endpoints**: Supports custom `baseURL` for enterprise/local deployments
+
+#### Transform Configuration (`src/lib/transform-config.ts`)
+
+Customizable settings for each transformation type:
+- **Default Configs**: Each transformation has sensible default options
+- **CONFIG_LABELS**: UI metadata (field types, labels, options) for dynamic form generation
+- **PROMPT_INFO**: Descriptions of how each transformation's AI prompt works
+- **Storage**: Configurations saved/loaded from `chrome.storage.local`
+- **TransformConfigPopover**: Component using HTML Popover API for settings UI
 
 #### Credential Management (`src/lib/credentials.ts`)
 
