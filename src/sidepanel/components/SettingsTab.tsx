@@ -1,5 +1,5 @@
 import type { ThemePreference } from '../../types/index.ts'
-import { getPreference, setPreference, onThemeChange } from '../hooks/useTheme.tsx'
+import { getPreference, setPreference, onThemeChange, onThemeInitialized } from '../hooks/useTheme.tsx'
 
 type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history'
 
@@ -9,9 +9,13 @@ interface SettingsTabProps {
   onClearAllData: () => void
 }
 
+// Store cleanup functions for event listeners
+// Note: This component persists for the app's lifetime, so cleanup
+// is only needed if the component is ever unmounted (currently it isn't)
+const cleanupFunctions: Array<() => void> = []
+
 export function SettingsTab(props: SettingsTabProps) {
   const { active } = props
-  const currentPreference = getPreference()
 
   // Handle theme change
   const handleThemeChange = (newPreference: ThemePreference) => {
@@ -24,19 +28,28 @@ export function SettingsTab(props: SettingsTabProps) {
     const darkRadio = document.querySelector<HTMLInputElement>('input[name="theme"][value="dark"]')
     const systemRadio = document.querySelector<HTMLInputElement>('input[name="theme"][value="system"]')
 
-    // Set initial checked state
+    // Helper to update radio button states
     const updateRadioState = (preference: ThemePreference) => {
       if (lightRadio) lightRadio.checked = preference === 'light'
       if (darkRadio) darkRadio.checked = preference === 'dark'
       if (systemRadio) systemRadio.checked = preference === 'system'
     }
 
-    updateRadioState(currentPreference)
-
-    // Listen for theme changes (from other sources)
-    onThemeChange((preference) => {
+    // Handle async initialization - this fixes the race condition where
+    // the component renders before initTheme() completes
+    const cleanupInit = onThemeInitialized((preference) => {
       updateRadioState(preference)
     })
+    cleanupFunctions.push(cleanupInit)
+
+    // Also update on preference (in case already initialized)
+    updateRadioState(getPreference())
+
+    // Listen for theme changes (from other sources or system preference changes)
+    const cleanupChange = onThemeChange((preference) => {
+      updateRadioState(preference)
+    })
+    cleanupFunctions.push(cleanupChange)
   })
 
   return (
@@ -45,16 +58,17 @@ export function SettingsTab(props: SettingsTabProps) {
 
       <div className="settings-group">
         <h3 className="section-title">Appearance</h3>
-        <div className="theme-selector">
+        <div className="theme-selector" role="radiogroup" aria-label="Theme preference">
           <label className="theme-option">
             <input
               type="radio"
               name="theme"
               value="light"
+              aria-label="Light theme"
               onChange={() => handleThemeChange('light')}
             />
             <span className="theme-option-content">
-              <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <circle cx="12" cy="12" r="5" />
                 <line x1="12" y1="1" x2="12" y2="3" />
                 <line x1="12" y1="21" x2="12" y2="23" />
@@ -73,10 +87,11 @@ export function SettingsTab(props: SettingsTabProps) {
               type="radio"
               name="theme"
               value="dark"
+              aria-label="Dark theme"
               onChange={() => handleThemeChange('dark')}
             />
             <span className="theme-option-content">
-              <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
               </svg>
               <span>Dark</span>
@@ -87,10 +102,11 @@ export function SettingsTab(props: SettingsTabProps) {
               type="radio"
               name="theme"
               value="system"
+              aria-label="Use system theme preference"
               onChange={() => handleThemeChange('system')}
             />
             <span className="theme-option-content">
-              <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg className="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
                 <line x1="8" y1="21" x2="16" y2="21" />
                 <line x1="12" y1="17" x2="12" y2="21" />

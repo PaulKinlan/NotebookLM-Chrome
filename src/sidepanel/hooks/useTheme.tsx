@@ -17,6 +17,7 @@ let currentPreference: ThemePreference = 'system'
 let currentResolvedTheme: ResolvedTheme = 'dark'
 let initialized = false
 const listeners: Set<(preference: ThemePreference, resolved: ResolvedTheme) => void> = new Set()
+const initCallbacks: Set<(preference: ThemePreference) => void> = new Set()
 
 /**
  * Initialize the theme system
@@ -45,6 +46,32 @@ export async function initTheme(): Promise<void> {
   })
 
   initialized = true
+
+  // Notify any components waiting for initialization
+  initCallbacks.forEach(callback => callback(currentPreference))
+  initCallbacks.clear()
+}
+
+/**
+ * Check if the theme system is initialized
+ */
+export function isInitialized(): boolean {
+  return initialized
+}
+
+/**
+ * Register a callback to be called when theme initialization completes
+ * If already initialized, the callback is called immediately
+ * @returns Cleanup function
+ */
+export function onThemeInitialized(callback: (preference: ThemePreference) => void): () => void {
+  if (initialized) {
+    // Already initialized, call immediately
+    callback(currentPreference)
+    return () => {} // No-op cleanup
+  }
+  initCallbacks.add(callback)
+  return () => initCallbacks.delete(callback)
 }
 
 /**

@@ -13,36 +13,116 @@
 }
 
 /* ============================================================================
-   Light Theme
+   Default Theme (Dark) - Applied to :root
+   This serves as both the default and the dark theme base.
+   ============================================================================ */
+
+:root {
+  /* Background Colors */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-hover: #30363d;
+
+  /* Border Colors */
+  --border-color: #30363d;
+  --border-muted: #21262d;
+
+  /* Text Colors */
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+
+  /* Accent */
+  --accent-muted: rgba(37, 99, 235, 0.2);
+
+  /* Status Colors */
+  --success: #3fb950;
+  --success-hover: #2ea043;
+  --warning: #d29922;
+  --error: #f85149;
+  --error-hover: #da3633;
+
+  /* Icon Colors */
+  --icon-tabs: #58a6ff;
+  --icon-bookmarks: #f778ba;
+  --icon-history: #d2a8ff;
+  --icon-tab-groups: #34d399;
+
+  /* Tab Group Colors (Chrome-matching) */
+  --tab-group-grey: #5f6368;
+  --tab-group-blue: #8ab4f8;
+  --tab-group-red: #f28b82;
+  --tab-group-yellow: #fdd663;
+  --tab-group-green: #81c995;
+  --tab-group-pink: #ff8bcb;
+  --tab-group-purple: #c58af9;
+  --tab-group-cyan: #78d9ec;
+  --tab-group-orange: #fcad70;
+
+  /* Shadow */
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* Scrollbar */
+  --scrollbar-track: #161b22;
+  --scrollbar-thumb: #30363d;
+  --scrollbar-thumb-hover: #484f58;
+
+  /* Input */
+  --input-bg: #0d1117;
+  --input-border: #30363d;
+  --input-border-focus: #58a6ff;
+
+  /* Code/Cards */
+  --code-bg: #161b22;
+  --card-hover-bg: #21262d;
+
+  /* Error Backgrounds */
+  --error-bg: rgba(248, 81, 73, 0.1);
+  --error-border: rgba(248, 81, 73, 0.3);
+
+  /* Brand */
+  --brand-accent: #6366f1;
+}
+
+/* ============================================================================
+   Light Theme - Explicit Override
+   Applied when data-theme="light" is set on documentElement
    ============================================================================ */
 
 [data-theme="light"] {
+  /* Background Colors */
   --bg-primary: #ffffff;
   --bg-secondary: #f6f8fa;
   --bg-tertiary: #eaeef2;
   --bg-hover: #d0d7de;
 
+  /* Border Colors */
   --border-color: #d0d7de;
   --border-muted: #eaeef2;
 
+  /* Text Colors */
   --text-primary: #1f2328;
   --text-secondary: #656d76;
   --text-muted: #8c959f;
 
+  /* Accent */
   --accent-muted: rgba(37, 99, 235, 0.1);
 
+  /* Status Colors */
   --success: #1a7f37;
   --success-hover: #15652c;
   --warning: #9a6700;
   --error: #cf222e;
   --error-hover: #a71d24;
 
+  /* Icon Colors */
   --icon-tabs: #0969da;
   --icon-bookmarks: #bf3989;
   --icon-history: #8250df;
   --icon-tab-groups: #059669;
 
-  /* Tab group colors (light mode - slightly more saturated for visibility) */
+  /* Tab Group Colors (more saturated for light backgrounds) */
   --tab-group-grey: #6e7781;
   --tab-group-blue: #0969da;
   --tab-group-red: #cf222e;
@@ -53,189 +133,73 @@
   --tab-group-cyan: #0891b2;
   --tab-group-orange: #bc4c00;
 
+  /* Shadow */
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 
-  /* Light mode specific - scrollbar styling */
+  /* Scrollbar */
   --scrollbar-track: #f6f8fa;
   --scrollbar-thumb: #d0d7de;
   --scrollbar-thumb-hover: #afb8c1;
 
-  /* Input backgrounds */
+  /* Input */
   --input-bg: #ffffff;
   --input-border: #d0d7de;
   --input-border-focus: #0969da;
 
-  /* Code/monospace backgrounds */
+  /* Code/Cards */
   --code-bg: #f6f8fa;
-
-  /* Card hover */
   --card-hover-bg: #f3f4f6;
 
-  /* Error backgrounds for buttons/cards */
+  /* Error Backgrounds */
   --error-bg: #fef2f2;
   --error-border: #fecaca;
 
-  /* Official/brand accent */
+  /* Brand */
   --brand-accent: #4f46e5;
 }
 
 /* ============================================================================
-   Dark Theme
+   System Preference - Light Mode Override
+   Applied when user's OS is set to light mode AND no explicit theme is set.
+   Note: This duplicates [data-theme="light"] intentionally - CSS has no way
+   to reference another selector's values. The duplication ensures system
+   preference detection works correctly via media queries.
    ============================================================================ */
 
-[data-theme="dark"] {
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #21262d;
-  --bg-hover: #30363d;
-
-  --border-color: #30363d;
-  --border-muted: #21262d;
-
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-muted: #6e7681;
-
-  --accent-muted: rgba(37, 99, 235, 0.2);
-
-  --success: #3fb950;
-  --success-hover: #2ea043;
-  --warning: #d29922;
-  --error: #f85149;
-  --error-hover: #da3633;
-
-  --icon-tabs: #58a6ff;
-  --icon-bookmarks: #f778ba;
-  --icon-history: #d2a8ff;
-  --icon-tab-groups: #34d399;
-
-  /* Tab group colors (matching Chrome's colors) */
-  --tab-group-grey: #5f6368;
-  --tab-group-blue: #8ab4f8;
-  --tab-group-red: #f28b82;
-  --tab-group-yellow: #fdd663;
-  --tab-group-green: #81c995;
-  --tab-group-pink: #ff8bcb;
-  --tab-group-purple: #c58af9;
-  --tab-group-cyan: #78d9ec;
-  --tab-group-orange: #fcad70;
-
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-
-  /* Dark mode specific - scrollbar styling */
-  --scrollbar-track: #161b22;
-  --scrollbar-thumb: #30363d;
-  --scrollbar-thumb-hover: #484f58;
-
-  /* Input backgrounds */
-  --input-bg: #0d1117;
-  --input-border: #30363d;
-  --input-border-focus: #58a6ff;
-
-  /* Code/monospace backgrounds */
-  --code-bg: #161b22;
-
-  /* Card hover */
-  --card-hover-bg: #21262d;
-
-  /* Error backgrounds for buttons/cards */
-  --error-bg: rgba(248, 81, 73, 0.1);
-  --error-border: rgba(248, 81, 73, 0.3);
-
-  /* Official/brand accent */
-  --brand-accent: #6366f1;
-}
-
-/* ============================================================================
-   System Preference Detection (fallback when no data-theme is set)
-   ============================================================================ */
-
-/* Default to dark theme */
-:root {
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-tertiary: #21262d;
-  --bg-hover: #30363d;
-
-  --border-color: #30363d;
-  --border-muted: #21262d;
-
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-muted: #6e7681;
-
-  --accent-muted: rgba(37, 99, 235, 0.2);
-
-  --success: #3fb950;
-  --success-hover: #2ea043;
-  --warning: #d29922;
-  --error: #f85149;
-  --error-hover: #da3633;
-
-  --icon-tabs: #58a6ff;
-  --icon-bookmarks: #f778ba;
-  --icon-history: #d2a8ff;
-  --icon-tab-groups: #34d399;
-
-  --tab-group-grey: #5f6368;
-  --tab-group-blue: #8ab4f8;
-  --tab-group-red: #f28b82;
-  --tab-group-yellow: #fdd663;
-  --tab-group-green: #81c995;
-  --tab-group-pink: #ff8bcb;
-  --tab-group-purple: #c58af9;
-  --tab-group-cyan: #78d9ec;
-  --tab-group-orange: #fcad70;
-
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-
-  --scrollbar-track: #161b22;
-  --scrollbar-thumb: #30363d;
-  --scrollbar-thumb-hover: #484f58;
-
-  --input-bg: #0d1117;
-  --input-border: #30363d;
-  --input-border-focus: #58a6ff;
-
-  --code-bg: #161b22;
-  --card-hover-bg: #21262d;
-
-  /* Error backgrounds for buttons/cards */
-  --error-bg: rgba(248, 81, 73, 0.1);
-  --error-border: rgba(248, 81, 73, 0.3);
-
-  /* Official/brand accent */
-  --brand-accent: #6366f1;
-}
-
-/* System preference: light mode */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
+    /* Background Colors */
     --bg-primary: #ffffff;
     --bg-secondary: #f6f8fa;
     --bg-tertiary: #eaeef2;
     --bg-hover: #d0d7de;
 
+    /* Border Colors */
     --border-color: #d0d7de;
     --border-muted: #eaeef2;
 
+    /* Text Colors */
     --text-primary: #1f2328;
     --text-secondary: #656d76;
     --text-muted: #8c959f;
 
+    /* Accent */
     --accent-muted: rgba(37, 99, 235, 0.1);
 
+    /* Status Colors */
     --success: #1a7f37;
     --success-hover: #15652c;
     --warning: #9a6700;
     --error: #cf222e;
     --error-hover: #a71d24;
 
+    /* Icon Colors */
     --icon-tabs: #0969da;
     --icon-bookmarks: #bf3989;
     --icon-history: #8250df;
     --icon-tab-groups: #059669;
 
+    /* Tab Group Colors */
     --tab-group-grey: #6e7781;
     --tab-group-blue: #0969da;
     --tab-group-red: #cf222e;
@@ -246,24 +210,28 @@
     --tab-group-cyan: #0891b2;
     --tab-group-orange: #bc4c00;
 
+    /* Shadow */
     --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 
+    /* Scrollbar */
     --scrollbar-track: #f6f8fa;
     --scrollbar-thumb: #d0d7de;
     --scrollbar-thumb-hover: #afb8c1;
 
+    /* Input */
     --input-bg: #ffffff;
     --input-border: #d0d7de;
     --input-border-focus: #0969da;
 
+    /* Code/Cards */
     --code-bg: #f6f8fa;
     --card-hover-bg: #f3f4f6;
 
-    /* Error backgrounds for buttons/cards */
+    /* Error Backgrounds */
     --error-bg: #fef2f2;
     --error-border: #fecaca;
 
-    /* Official/brand accent */
+    /* Brand */
     --brand-accent: #4f46e5;
   }
 }
@@ -1770,6 +1738,12 @@ details.suggested-links-section[open] .suggested-links-chevron {
 
 .theme-option input[type="radio"]:checked + .theme-option-content:hover {
   background: var(--accent-muted);
+}
+
+/* Focus styles for keyboard navigation */
+.theme-option input[type="radio"]:focus-visible + .theme-option-content {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .theme-icon {
