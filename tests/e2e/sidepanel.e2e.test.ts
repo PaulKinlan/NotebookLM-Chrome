@@ -55,23 +55,104 @@ describe('Sidepanel', () => {
     });
   });
 
-  describe('Settings Access', () => {
-    it('should display settings button', async () => {
+  describe('Bottom Navigation', () => {
+    it('should navigate to Add tab when Add button is clicked', async () => {
       const page = await getSidepanelPage(browser);
-      await waitForElement(page, '#header-settings-btn');
-      const settingsBtn = await page.$('#header-settings-btn');
-      expect(settingsBtn).toBeTruthy();
+
+      // Click the Add button in bottom nav
+      await page.click('[data-tab="add"]');
+
+      // Wait for the add tab to become active
+      await page.waitForFunction(
+        () => {
+          const addTab = document.getElementById('tab-add');
+          return addTab && addTab.classList.contains('active');
+        },
+        { timeout: 5000 }
+      );
+
+      // Verify the nav item has active class
+      const isActive = await page.$eval('[data-tab="add"]',
+        (el) => el.classList.contains('active')
+      );
+      expect(isActive).toBe(true);
     });
 
-    it('should navigate to settings when button is clicked', async () => {
+    it('should navigate to Chat tab when Chat button is clicked', async () => {
       const page = await getSidepanelPage(browser);
 
-      // Wait for initialization to complete (check for an element that's rendered after init)
-      await waitForElement(page, '#tab-add');
+      // Click the Chat button in bottom nav
+      await page.click('[data-tab="chat"]');
 
+      // Wait for the chat tab to become active
+      await page.waitForFunction(
+        () => {
+          const chatTab = document.getElementById('tab-chat');
+          return chatTab && chatTab.classList.contains('active');
+        },
+        { timeout: 5000 }
+      );
+
+      // Verify the nav item has active class
+      const isActive = await page.$eval('[data-tab="chat"]',
+        (el) => el.classList.contains('active')
+      );
+      expect(isActive).toBe(true);
+    });
+
+    it('should navigate to Transform tab when Transform button is clicked', async () => {
+      const page = await getSidepanelPage(browser);
+
+      // Click the Transform button in bottom nav
+      await page.click('[data-tab="transform"]');
+
+      // Wait for the transform tab to become active
+      await page.waitForFunction(
+        () => {
+          const transformTab = document.getElementById('tab-transform');
+          return transformTab && transformTab.classList.contains('active');
+        },
+        { timeout: 5000 }
+      );
+
+      // Verify the nav item has active class
+      const isActive = await page.$eval('[data-tab="transform"]',
+        (el) => el.classList.contains('active')
+      );
+      expect(isActive).toBe(true);
+    });
+  });
+
+  describe('Header Navigation', () => {
+    it('should navigate to Library tab when Library button is clicked', async () => {
+      const page = await getSidepanelPage(browser);
+
+      // Click the Library button in header
+      await page.click('#header-library-btn');
+
+      // Wait for the library tab to become active
+      await page.waitForFunction(
+        () => {
+          const libraryTab = document.getElementById('tab-library');
+          return libraryTab && libraryTab.classList.contains('active');
+        },
+        { timeout: 5000 }
+      );
+
+      // Verify the library tab is visible
+      const isVisible = await page.$eval('#tab-library',
+        (el) => window.getComputedStyle(el).display === 'block'
+      );
+      expect(isVisible).toBe(true);
+    });
+
+    it('should navigate to Settings tab when Settings button is clicked', async () => {
+      const page = await getSidepanelPage(browser);
+
+      // Click the Settings button in header
       await page.click('#header-settings-btn');
 
-      // Wait for settings tab to become visible (active class added)
+      // Wait for the settings tab to become active
       await page.waitForFunction(
         () => {
           const settingsTab = document.getElementById('tab-settings');
@@ -80,7 +161,7 @@ describe('Sidepanel', () => {
         { timeout: 5000 }
       );
 
-      // Verify it's visible
+      // Verify the settings tab is visible
       const isVisible = await page.$eval('#tab-settings',
         (el) => window.getComputedStyle(el).display === 'block'
       );
