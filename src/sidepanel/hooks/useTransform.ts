@@ -144,10 +144,10 @@ export function useTransform() {
 
       switch (type) {
         case 'podcast':
-          result = await generatePodcastScript(sources, 5)
+          result = await generatePodcastScript(sources, {})
           break
         case 'quiz':
-          result = await generateQuiz(sources, 5)
+          result = await generateQuiz(sources, {})
           break
         case 'takeaways':
           result = await generateKeyTakeaways(sources)
@@ -168,7 +168,7 @@ export function useTransform() {
           result = await generateMindMap(sources)
           break
         case 'flashcards':
-          result = await generateFlashcards(sources, 10)
+          result = await generateFlashcards(sources, {})
           break
         case 'timeline':
           result = await generateTimeline(sources)
@@ -180,7 +180,7 @@ export function useTransform() {
           result = await generateComparison(sources)
           break
         case 'faq':
-          result = await generateFAQ(sources, 10)
+          result = await generateFAQ(sources, {})
           break
         case 'actionitems':
           result = await generateActionItems(sources)
