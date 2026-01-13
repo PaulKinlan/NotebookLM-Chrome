@@ -18,14 +18,21 @@ const updateQueue: Set<ComponentInstance> = new Set()
 let updateScheduled = false
 
 /**
- * Render callback - set by the reconciler
+ * Promise that resolves when the current flush completes
+ * Used to track async flush operations
  */
-let renderCallback: ((component: ComponentInstance) => void) | null = null
+let currentFlushPromise: Promise<void> | null = null
+
+/**
+ * Render callback - set by the reconciler
+ * Must return a Promise to allow proper async tracking
+ */
+let renderCallback: ((component: ComponentInstance) => Promise<void>) | null = null
 
 /**
  * Set the render callback (called by reconciler on init)
  */
-export function setRenderCallback(callback: (component: ComponentInstance) => void): void {
+export function setRenderCallback(callback: (component: ComponentInstance) => Promise<void>): void {
   renderCallback = callback
 }
 
@@ -45,70 +52,54 @@ export function scheduleUpdate(component: ComponentInstance): void {
 
     // Use requestAnimationFrame for batching updates
     requestAnimationFrame(() => {
-      flushUpdates()
+      // Store the flush promise so getUpdatePromise can wait for it
+      currentFlushPromise = flushUpdates()
     })
   }
 }
 
 /**
  * Flush all pending updates
+ * Returns a promise that resolves when all updates are complete
  */
-function flushUpdates(): void {
+async function flushUpdates(): Promise<void> {
   const updates = Array.from(updateQueue)
   updateQueue.clear()
   updateScheduled = false
 
   if (!renderCallback) {
     console.warn('Scheduler: renderCallback not set, updates will be ignored')
+    currentFlushPromise = null
     return
   }
 
+  // Await all component renders to ensure DOM updates complete
   for (const comp of updates) {
     if (!comp.isUnmounted && comp.mountedNode) {
-      renderCallback(comp)
+      await renderCallback(comp)
     }
   }
 
-  // Notify any waiting promises that updates are complete
-  if (updateResolveCallback) {
-    updateResolveCallback()
-    updateResolveCallback = null
-    updatePromise = null
-  }
+  // Clear the flush promise when done
+  currentFlushPromise = null
 }
-
-/**
- * Callback to notify waiting promises
- */
-let updateResolveCallback: (() => void) | null = null
 
 /**
  * Get a promise that resolves after all pending updates
  * Useful for testing
  */
-let updatePromise: Promise<void> | null = null
-
 export function getUpdatePromise(): Promise<void> {
-  // In test environment, flush the RAF callback BEFORE creating the promise
-  // This ensures any scheduled updates run synchronously
+  // In test environment, flush the RAF callback to trigger updates
   const flushRAF = (globalThis as { _flushRAF?: () => void })._flushRAF
   if (flushRAF) {
     flushRAF()
   }
 
-  if (!updatePromise) {
-    updatePromise = new Promise((resolve) => {
-      // After flushing, check if there are still updates
-      if (updateQueue.size === 0 && !updateScheduled) {
-        resolve()
-        updatePromise = null
-        return
-      }
-
-      // Store the resolve callback to be called after flushUpdates
-      updateResolveCallback = resolve
-    })
+  // If there's a flush in progress, wait for it to complete
+  if (currentFlushPromise) {
+    return currentFlushPromise
   }
 
-  return updatePromise
+  // No pending updates
+  return Promise.resolve()
 }

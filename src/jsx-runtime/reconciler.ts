@@ -17,8 +17,9 @@ import * as componentModule from './component.ts'
 export const mountedNodes = new WeakMap<Node, MountedNode>()
 
 // Initialize the render callback for the scheduler
+// Must return the Promise to allow scheduler to await updates
 setRenderCallback((component) => {
-  void renderComponent(component)
+  return renderComponent(component)
 })
 
 /**
@@ -188,11 +189,11 @@ function mountFragment(
 /**
  * Update an element VNode (diff props and children)
  */
-function updateElement(
+async function updateElement(
   parent: Element,
   oldVNode: Extract<VNode, { type: 'element' }>,
   newVNode: Extract<VNode, { type: 'element' }>,
-): Node {
+): Promise<Node> {
   // Find the DOM element that corresponds to oldVNode
   let el: Element | null = null
 
@@ -226,8 +227,8 @@ function updateElement(
   // Diff props
   diffProps(el, oldVNode.props, newVNode.props)
 
-  // Diff children
-  void diffChildren(el, oldVNode.children, newVNode.children)
+  // Diff children - MUST await to ensure DOM updates complete before returning
+  await diffChildren(el, oldVNode.children, newVNode.children)
 
   // Update mounted node reference
   mountedNodes.set(el, { node: el, vdom: newVNode })
@@ -649,25 +650,25 @@ async function diffChildren(
   }
 
   // Remove unmatched old children
-  for (const key of oldByKey.keys()) {
-    if (!matched.has(key)) {
-      const entry = oldByKey.get(key)
-      if (entry) {
-        const { domNode } = entry
-        if (domNode.parentNode === parent) {
-          const mounted = mountedNodes.get(domNode)
-          if (mounted?.component) {
-            componentModule.unmountComponent(mounted.component)
-          }
-          try {
-            parent.removeChild(domNode)
-          }
-          catch (e) {
-            if ((e as DOMException).name !== 'NotFoundError') {
-              throw e
-            }
-          }
+  // Get array of keys first to avoid issues with iterator modification
+  const unmatchedKeys = Array.from(oldByKey.keys()).filter(key => !matched.has(key))
+
+  for (const key of unmatchedKeys) {
+    const entry = oldByKey.get(key)
+    if (entry) {
+      const { domNode } = entry
+      // Verify the node is still valid and a child of parent before removing
+      if (
+        domNode
+        && 'nodeType' in domNode
+        && domNode.nodeType === Node.ELEMENT_NODE
+        && domNode.parentNode === parent
+      ) {
+        const mounted = mountedNodes.get(domNode)
+        if (mounted?.component) {
+          componentModule.unmountComponent(mounted.component)
         }
+        parent.removeChild(domNode)
       }
     }
   }

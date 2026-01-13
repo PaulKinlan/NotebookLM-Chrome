@@ -51,14 +51,21 @@ beforeEach(() => {
   }
 
   // Patch removeChild to suppress NotFoundError during cleanup
-  const originalRemoveChild = jsdom.window.Node.prototype.removeChild.bind(jsdom.window.Node.prototype)
-  // @ts-expect-error - Intentionally overriding DOM API
-  jsdom.window.Node.prototype.removeChild = function (this: Node, child: Node): Node {
-    if (child.parentNode !== this) {
-      return child // Already removed, skip
-    }
-    return originalRemoveChild(child)
-  }
+  const removeChildDescriptor = Object.getOwnPropertyDescriptor(
+    jsdom.window.Node.prototype,
+    'removeChild',
+  )!
+  const originalRemoveChild = removeChildDescriptor.value as (child: Node) => Node
+
+  Object.defineProperty(jsdom.window.Node.prototype, 'removeChild', {
+    ...removeChildDescriptor,
+    value: function (this: Node, child: Node): Node {
+      if (child.parentNode !== this) {
+        return child // Already removed, skip
+      }
+      return originalRemoveChild.call(this, child)
+    },
+  })
 })
 
 afterEach(async () => {
@@ -122,10 +129,13 @@ export function elementVNode(
   props: Record<string, unknown> = {},
   children: Array<VNode | string> = [],
 ): VNode {
+  // Extract key from props - it's a special VNode property, not a DOM prop
+  const { key, ...domProps } = props
   return {
     type: 'element',
     tag,
-    props,
+    key: key as string | undefined,
+    props: domProps,
     children: children.map(child =>
       typeof child === 'string' ? textVNode(child) : child,
     ),
