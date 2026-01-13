@@ -226,46 +226,92 @@ AI-powered link discovery that analyzes links within source content and suggests
 
 ### 4. Transformations
 
-Four transformation types accessible from the Transform tab:
+19 transformation types accessible from the Transform tab, each with configurable options:
 
 #### 4.1 Podcast Script
-- Generate conversational dialogue between two hosts
+- Generate conversational dialogue between configurable number of speakers
 - Hosts discuss and explain the source content
-- Configurable length (default: 5 minutes)
+- Configurable: length (1-30 min), tone, speaker count (2-3), speaker names, focus area
 
 **Acceptance Criteria:**
-- [x] Generated script has two distinct host voices
+- [x] Generated script has distinct host voices
 - [x] Content accurately reflects sources
 - [x] User can copy the generated script
+- [x] User can configure transformation settings
 
 #### 4.2 Study Quiz
-- Multiple choice questions (default: 5 questions)
-- Questions with 4 options each
-- Answer and explanation provided
+- Multiple choice and true/false questions
+- Questions with options and explanations
+- Configurable: question count (1-20), difficulty, question types, explanations toggle
 
 **Acceptance Criteria:**
 - [x] Questions are relevant to source content
-- [x] Each question has exactly 4 options
+- [x] Supports multiple question types
 - [x] Correct answer and explanation are provided
+- [x] User can configure difficulty and count
 
 #### 4.3 Key Takeaways
 - Extract the most important bullet points
 - Formatted as a clear, actionable list
+- Configurable: point count (3-15), format (bullets/numbered/paragraphs), include details toggle
 
 **Acceptance Criteria:**
 - [x] Takeaways capture main points from sources
-- [x] Formatted as scannable bullet list
+- [x] Formatted as scannable list
 - [x] User can copy takeaways
+- [x] User can configure format and count
 
 #### 4.4 Email Summary
 - Professional email summary for sharing
 - Includes key findings and structure
-- Copy-ready format
+- Configurable: tone (formal/casual/professional), length, call-to-action toggle, recipient context
 
 **Acceptance Criteria:**
 - [x] Summary is professional and well-structured
 - [x] Includes subject line suggestion
 - [x] User can copy to clipboard
+- [x] User can configure tone and length
+
+#### 4.5 Additional Transformations
+15 more transformation types with custom configurations:
+
+| Type | Description | Key Config Options |
+|------|-------------|-------------------|
+| Slide Deck | Presentation slides with speaker notes | Slide count, style, speaker notes toggle |
+| Report | Structured report in various formats | Format (academic/business/technical), sections, length |
+| Data Table | Tabular data extraction | Max columns/rows, summary row toggle |
+| Mind Map | Hierarchical concept mapping | Max depth, nodes per branch, layout |
+| Flashcards | Study cards with Q&A format | Card count, difficulty, card style, hints toggle |
+| Timeline | Chronological event listing | Layout, max events, descriptions toggle |
+| Glossary | Term definitions with examples | Definition length, examples toggle, sort order |
+| Comparison | Side-by-side comparison analysis | Max items, format, recommendation toggle |
+| FAQ | Frequently asked questions | Question count, answer length, grouping |
+| Action Items | Extracted tasks and to-dos | Priority format, timeframes, category grouping |
+| Executive Brief | Concise decision-maker summary | Length, sections, focus area |
+| Study Guide | Interactive HTML study material | Depth, sections, audience level |
+| Pros & Cons | Balanced advantage/disadvantage analysis | Format, neutral points toggle, assessment |
+| Citations | Formatted source citations | Citation styles (APA/MLA/Chicago/etc), annotations |
+| Outline | Hierarchical document outline | Max depth, numbering style, descriptions |
+
+#### 4.6 Transformation Configuration System
+
+Each transformation supports custom configuration through a settings popover:
+
+**Configuration Features:**
+- Cog icon on each transformation card opens configuration popover
+- Form fields dynamically generated based on transformation type
+- Custom Instructions text area for user-defined prompt additions
+- "Advanced" collapsible section shows prompt structure information
+- Reset to Defaults button restores original settings
+- Settings persist in chrome.storage.local per transformation type
+
+**Acceptance Criteria:**
+- [x] Each transformation has a config button (cog icon)
+- [x] Config popover uses HTML Popover API
+- [x] Settings are saved and loaded from storage
+- [x] Custom instructions are injected into AI prompts
+- [x] Advanced section shows prompt structure details
+- [x] Reset restores default configuration
 
 ### 5. Multimodal Sources
 
@@ -645,10 +691,16 @@ interface CachedResponse {
 
 interface Transformation extends SyncableEntity {
   notebookId: string;
-  type: 'podcast' | 'quiz' | 'takeaways' | 'email';
+  type: TransformationType; // 19 types: podcast, quiz, takeaways, email, slidedeck, report, datatable, mindmap, flashcards, timeline, glossary, comparison, faq, actionitems, executivebrief, studyguide, proscons, citations, outline
   title: string;
   content: string;
   sourceIds: string[];
+}
+
+// Configuration stored per transformation type
+interface TransformConfig {
+  customInstructions?: string; // User-defined prompt additions
+  // Type-specific options vary per transformation
 }
 
 interface AISettings {

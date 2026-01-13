@@ -1,23 +1,46 @@
 import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
+import type { SlideDeckConfig } from '../../types/index.ts'
+import { DEFAULT_SLIDEDECK_CONFIG } from '../transform-config.ts'
 
-export async function generateSlideDeck(sources: Source[]): Promise<string> {
-  const config = await getModelWithConfig()
-  if (!config) {
+export async function generateSlideDeck(
+  sources: Source[],
+  config: Partial<SlideDeckConfig> = {},
+): Promise<string> {
+  const modelConfig = await getModelWithConfig()
+  if (!modelConfig) {
     throw new Error(
       'AI provider not configured. Please add your API key in settings.',
     )
   }
 
-  const result = await generateText({
-    model: config.model,
-    system: `You are a helpful AI assistant that creates interactive slide deck presentations as self-contained HTML/CSS/JS.
-Create a professional presentation with navigable slides that look like a real slideshow.
-Each slide should have a clear title and 3-5 key points with visual hierarchy.
+  // Merge with defaults
+  const c = { ...DEFAULT_SLIDEDECK_CONFIG, ...config }
+
+  // Style descriptions
+  const styleDesc: Record<typeof c.style, string> = {
+    minimal: 'minimalist design with few words per slide, focusing on visuals and key phrases',
+    detailed: 'comprehensive slides with bullet points and supporting information',
+    visual: 'emphasis on visual hierarchy, icons, and graphical elements',
+  }
+
+  const speakerNotesNote = c.includeSpeakerNotes
+    ? '\nInclude speaker notes for each slide as HTML comments that can be shown/hidden.'
+    : ''
+
+  const systemPrompt = `You are a helpful AI assistant that creates interactive slide deck presentations as self-contained HTML/CSS/JS.
+Create a professional presentation with approximately ${c.slideCount} slides using a ${styleDesc[c.style]} approach.
+Each slide should have a clear title and well-structured content.${speakerNotesNote}
 
 IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No markdown.
-Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.`,
-    prompt: `Create an interactive slide deck presentation based on these sources:
+Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.${
+  c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
+}`
+
+  const result = await generateText({
+    model: modelConfig.model,
+    system: systemPrompt,
+    prompt: `Create an interactive slide deck presentation with approximately ${c.slideCount} slides based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -26,12 +49,12 @@ Generate a self-contained HTML slide deck with:
 2. Keyboard navigation (arrow keys) and clickable prev/next buttons
 3. Slide counter showing current slide / total slides
 4. Progress bar at the top
-5. Clean, presentation-style design with large readable text
+5. Clean, ${c.style === 'minimal' ? 'minimalist' : c.style === 'visual' ? 'visually rich' : 'detailed'} presentation design
 6. Title slide with main topic
-7. Content slides with bullet points that have good visual hierarchy
+7. Content slides with ${c.style === 'minimal' ? 'key phrases' : c.style === 'visual' ? 'visual hierarchy and icons' : 'bullet points'}
 8. Conclusion slide with key takeaways
 9. Smooth slide transition animations
-10. Subtle background color or gradient
+${c.includeSpeakerNotes ? '10. Hidden speaker notes that can be toggled with a keyboard shortcut (n)' : ''}
 
 Structure your response as:
 <div class="slides-container">
@@ -48,9 +71,9 @@ Structure your response as:
   // Track usage
   if (result.usage) {
     trackUsage({
-      modelConfigId: config.modelConfigId,
-      providerId: config.providerId,
-      model: config.modelId,
+      modelConfigId: modelConfig.modelConfigId,
+      providerId: modelConfig.providerId,
+      model: modelConfig.modelId,
       inputTokens: result.usage.inputTokens ?? 0,
       outputTokens: result.usage.outputTokens ?? 0,
       operation: 'transform',

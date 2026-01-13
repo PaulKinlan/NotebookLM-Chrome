@@ -1772,6 +1772,48 @@ details.suggested-links-section[open] .suggested-links-chevron {
   border-radius: var(--radius-md);
   background: var(--accent-muted);
   color: var(--accent-primary);
+  position: relative;
+}
+
+/* Config button on transform cards */
+.transform-config-btn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s, color 0.2s;
+  padding: 0;
+}
+
+.transform-card:hover .transform-config-btn {
+  opacity: 1;
+}
+
+.transform-config-btn:hover {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+.transform-config-btn:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.transform-config-btn svg {
+  width: 12px;
+  height: 12px;
 }
 
 .transform-icon.podcast-icon {
@@ -3634,5 +3676,291 @@ details.suggested-links-section[open] .suggested-links-chevron {
 
 .onboarding-actions .btn {
   min-width: 100px;
+}
+
+/* ============================================================================
+   Transform Config Popover
+   ============================================================================ */
+
+.transform-config-popover {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 0;
+  margin: auto;
+  max-width: 380px;
+  min-width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.transform-config-popover::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.config-popover-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary);
+  z-index: 1;
+}
+
+.config-popover-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.config-popover-form {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-field > label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.config-field input[type="number"],
+.config-field input[type="text"],
+.config-field select,
+.config-field textarea {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.config-field input[type="number"]:focus,
+.config-field input[type="text"]:focus,
+.config-field select:focus,
+.config-field textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.config-field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.config-field select {
+  cursor: pointer;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-container input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.checkbox-container label {
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.multiselect-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+
+.multiselect-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.multiselect-item input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.multiselect-item label {
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.config-field-full {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Advanced prompt info section */
+.config-advanced-section {
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+}
+
+.config-advanced-section summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.config-advanced-section summary::before {
+  content: '▶';
+  font-size: 8px;
+  transition: transform 0.2s;
+}
+
+.config-advanced-section[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.config-advanced-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.config-advanced-content {
+  margin-top: 12px;
+  padding-left: 14px;
+  border-left: 2px solid var(--border-color);
+}
+
+.config-advanced-desc {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.config-advanced-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.config-advanced-structure {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.config-popover-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-secondary);
+}
+
+.config-popover-footer .btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.config-popover-footer .btn-secondary:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.config-popover-footer .btn-primary {
+  background: var(--accent-primary);
+  border: none;
+  color: white;
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.config-popover-footer .btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* Save confirmation toast */
+.config-save-toast {
+  background: var(--success);
+  color: white;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 10000;
+  pointer-events: none;
+  animation: toast-in 0.2s ease-out;
+}
+
+.config-save-toast.fade-out {
+  animation: toast-out 0.3s ease-out forwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
