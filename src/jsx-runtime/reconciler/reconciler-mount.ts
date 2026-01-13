@@ -212,7 +212,8 @@ export async function renderComponent(instance: ComponentInstance, reconcile: Re
     }
 
     // No error boundary found - log error and render empty
-    console.error('Error rendering component (no error boundary):', errorObj)
+    const componentName = instance.fn.name || 'Anonymous'
+    console.error(`Error rendering component "${componentName}" (no error boundary):`, errorObj.message, errorObj.stack)
     newVNode = { type: 'text', value: '' }
   }
 
@@ -243,10 +244,29 @@ export async function renderComponent(instance: ComponentInstance, reconcile: Re
 
     // Update instance's mounted node to point to the first real child
     instance.mountedNode = tempContainer.firstChild || parent.firstChild
+
+    // CRITICAL: Update mountedNodes WeakMap with the new node
+    // The old comment node is gone, so we need to map the new node to the instance
+    if (instance.mountedNode) {
+      mountedNodes.set(instance.mountedNode, {
+        node: instance.mountedNode,
+        vdom: newVNode,
+        component: instance,
+      })
+    }
   }
   else {
     // Normal reconcile
     await reconcile(parent, oldVNode, newVNode, instance)
+
+    // Update mountedNodes in case the node reference changed
+    if (instance.mountedNode) {
+      mountedNodes.set(instance.mountedNode, {
+        node: instance.mountedNode,
+        vdom: newVNode,
+        component: instance,
+      })
+    }
   }
 }
 
