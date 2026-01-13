@@ -60,6 +60,12 @@ export function mountElement(
   const namespace = tag === 'svg' ? 'http://www.w3.org/2000/svg/svg' : null
   const el = namespace ? document.createElementNS(namespace, tag) : document.createElement(tag)
 
+  // Debug logging for form elements
+  if (tag === 'form') {
+    console.log('[mountElement] Creating form element with props:', props)
+    console.log('[mountElement] Form has onSubmit?', typeof props.onSubmit === 'function')
+  }
+
   // Apply props (attributes, event listeners, style)
   applyProps(el, props)
 

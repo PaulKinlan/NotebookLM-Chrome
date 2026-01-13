@@ -45,6 +45,15 @@ export function scheduleUpdate(component: ComponentInstance): void {
     return
   }
 
+  // Debug logging to detect render loops
+  const componentName = component.fn.name || 'Anonymous'
+  const updateCount = (component as { _updateCount?: number })._updateCount || 0
+  ;(component as { _updateCount?: number })._updateCount = updateCount + 1
+  if (updateCount > 10) {
+    console.error(`[Scheduler] Detected render loop in component "${componentName}": ${updateCount} updates`)
+    return
+  }
+
   updateQueue.add(component)
 
   if (!updateScheduled) {

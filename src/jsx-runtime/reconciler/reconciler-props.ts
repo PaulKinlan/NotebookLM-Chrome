@@ -16,6 +16,14 @@ export function applyProps(el: Element, props: Record<string, unknown>): void {
     if (key.startsWith('on')) {
       const eventType = key.slice(2).toLowerCase()
       if (typeof value === 'function') {
+        // Debug logging for form submit events
+        if (eventType === 'submit' && el.tagName === 'FORM') {
+          console.log('[applyProps] Attaching submit listener to form:', el)
+        }
+        // Debug logging for input events
+        if (eventType === 'input' && el.tagName === 'INPUT') {
+          console.log('[applyProps] Attaching input listener to input:', el, 'id:', (el as HTMLInputElement).id)
+        }
         el.addEventListener(eventType, value as EventListener)
       }
       continue
@@ -104,6 +112,10 @@ export function diffProps(el: Element, oldProps: Record<string, unknown>, newPro
         }
         // Add new listener
         if (typeof value === 'function') {
+          // Debug logging for form submit events
+          if (eventType === 'submit' && el.tagName === 'FORM') {
+            console.log('[diffProps] Updating submit listener on form:', el)
+          }
           el.addEventListener(eventType, value as EventListener)
         }
       }

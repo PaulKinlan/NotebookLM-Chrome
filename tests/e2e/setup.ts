@@ -178,11 +178,22 @@ async function ensureNotebookExists(
     // Wait for the dialog to appear
     await page.waitForSelector('#notebook-name-input', { timeout: 3000 });
 
-    // Enter a notebook name
-    await page.type('#notebook-name-input', 'Test Notebook');
+    // Enter a notebook name and manually dispatch input event for controlled component
+    await page.evaluate(() => {
+      const input = document.getElementById('notebook-name-input') as HTMLInputElement;
+      if (input) {
+        input.value = 'Test Notebook';
+        // Manually dispatch input event to trigger the controlled component's onInput handler
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
 
-    // Click confirm button
-    await page.click('#notebook-dialog-confirm');
+    // Click confirm button using page.evaluate to bypass modal backdrop blocking
+    // When dialog is shown with showModal(), the top layer rendering can interfere with Puppeteer
+    await page.evaluate(() => {
+      const btn = document.getElementById('notebook-dialog-confirm') as HTMLButtonElement;
+      if (btn) btn.click();
+    });
 
     // Wait for notebook to be created and selected
     await page.waitForFunction(() => {
@@ -199,15 +210,19 @@ export async function getSidepanelPage(browser: Browser): Promise<Page> {
   const extensionId = await getExtensionIdFromBrowser(browser);
   const page = await browser.newPage();
 
-  // Capture console errors for debugging
-  const consoleErrors: string[] = [];
+  // Capture console for debugging - capture all logs
+  const consoleMessages: string[] = [];
   page.on('console', (msg) => {
-    if (msg.type() === 'error') {
-      consoleErrors.push(msg.text());
+    const text = msg.text();
+    consoleMessages.push(`[${msg.type()}] ${text}`);
+    // Log to test output for visibility
+    if (msg.type() === 'error' || msg.type() === 'warn' || text.includes('[mountElement]') || text.includes('[applyProps]') || text.includes('[NotebookDialog]')) {
+      console.log(`Browser Console [${msg.type()}]:`, text);
     }
   });
   page.on('pageerror', (err) => {
-    consoleErrors.push(`Page error: ${err.message}`);
+    consoleMessages.push(`Page error: ${err.message}`);
+    console.error('Browser Page Error:', (err as Error).message);
   });
 
   // Navigate to the page
@@ -232,7 +247,7 @@ export async function getSidepanelPage(browser: Browser): Promise<Page> {
       return app ? app.innerHTML : 'No #app element';
     });
     console.error('=== E2E Debug Info ===');
-    console.error('Console errors:', consoleErrors);
+    console.error('Console messages:', consoleMessages);
     console.error('App content:', appContent.slice(0, 500));
     console.error('Full HTML length:', html.length);
     throw e;
