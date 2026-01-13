@@ -10,8 +10,48 @@ import type { ReconcilerFn } from './reconciler-types.ts'
 import { mountedNodes } from '../reconciler.ts'
 import { diffProps } from './reconciler-props.ts'
 import { diffChildren } from './reconciler-children.ts'
-import { mountComponent, renderComponent } from './reconciler-mount.ts'
+import { mountComponent } from './reconciler-mount.ts'
 import * as componentModule from '../component.ts'
+import { currentlyRendering } from '../scheduler.ts'
+import { renderComponent } from './reconciler-mount.ts'
+
+/**
+ * Map component functions to their instances.
+ * This provides a reliable way to look up component instances
+ * independent of DOM structure (which can change when placeholders are replaced).
+ *
+ * Key: The component function (reference equality)
+ * Value: The component instance (for singletons like App) or an array of instances
+ */
+const componentInstances = new WeakMap<object, ComponentInstance[]>()
+
+/**
+ * Register a component instance when it's mounted
+ */
+export function registerComponentInstance(fn: ComponentInstance['fn'], instance: ComponentInstance): void {
+  let instances = componentInstances.get(fn as object)
+  if (!instances) {
+    instances = []
+    componentInstances.set(fn as object, instances)
+  }
+  instances.push(instance)
+}
+
+/**
+ * Unregister a component instance when it's unmounted
+ */
+export function unregisterComponentInstance(fn: ComponentInstance['fn'], instance: ComponentInstance): void {
+  const instances = componentInstances.get(fn)
+  if (instances) {
+    const index = instances.indexOf(instance)
+    if (index !== -1) {
+      instances.splice(index, 1)
+    }
+    if (instances.length === 0) {
+      componentInstances.delete(fn)
+    }
+  }
+}
 
 /**
  * Update an element VNode (diff props and children)
@@ -73,8 +113,14 @@ export async function updateComponent(
   newVNode: Extract<VNode, { type: 'component' }>,
   reconcile: ReconcilerFn,
 ): Promise<Node> {
+  const compName = (newVNode.fn as { name?: string }).name || 'Anonymous'
+
+  // Debug logging
+  console.log(`[updateComponent] Called for "${compName}", parent.childNodes.length=${parent.childNodes.length}`)
+
   // Check if it's the same component function
   if (oldVNode.fn !== newVNode.fn) {
+    console.log(`[updateComponent] Different component function, replacing`)
     // Different component - replace entirely
     const newNode = await mountComponent(parent, newVNode, undefined, reconcile)
     const oldNode = parent.firstChild
@@ -89,14 +135,31 @@ export async function updateComponent(
     return newNode
   }
 
-  // Same component - check if we have an instance
-  const instance = mountedNodes.get(parent.firstChild!)?.component
+  // Same component - look up the instance using our function-based map
+  // This is more reliable than DOM-based lookups because the DOM structure
+  // changes when component placeholders are replaced with actual content
+  const instances = componentInstances.get(newVNode.fn as object)
+  const instance = instances?.[0] // For now, assume first instance (works for singletons like App)
+
   if (!instance) {
+    console.log(`[updateComponent] "${compName}" No instance found in componentInstances map, creating new`)
     // No instance - create new
     return mountComponent(parent, newVNode, undefined, reconcile)
   }
+  console.log(`[updateComponent] "${compName}" Reusing existing instance with ${instance.hooks.length} hooks`)
 
-  // Update props and re-render
+  // RE-ENTRY PROTECTION: If this component is currently rendering,
+  // just update props and return. The current render will complete with the new props.
+  // This prevents infinite loops when setState is called during render.
+  if (currentlyRendering.has(instance)) {
+    instance.props = newVNode.props
+    return instance.mountedNode!
+  }
+
+  // Update props and re-render synchronously
+  // We call renderComponent directly instead of scheduleUpdate because
+  // reconciliation expects synchronous DOM updates.
+  // The re-entry protection above prevents infinite loops.
   instance.props = newVNode.props
   await renderComponent(instance, reconcile)
 

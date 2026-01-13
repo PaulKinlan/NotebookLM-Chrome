@@ -11,11 +11,55 @@ import type { ReconcilerFn } from './reconciler-types.ts'
 import { mountedNodes } from '../reconciler.ts'
 import { applyProps } from './reconciler-props.ts'
 import * as componentModule from '../component.ts'
+import { markRendering, markRenderComplete } from '../scheduler.ts'
+import { registerComponentInstance } from './reconciler-update.ts'
+
+// Track mount depth to detect infinite loops
+let mountDepth = 0
+const MAX_MOUNT_DEPTH = 1000 // Increased for very complex UI trees with nested components
+
+// Track active mount operations to detect cycles
+const activeMountStack: string[] = []
 
 /**
  * Mount a new VNode to the DOM
  */
 export async function mount(
+  parent: Node,
+  vnode: VNode,
+  component: ComponentInstance | undefined,
+  reconcile: ReconcilerFn,
+): Promise<Node> {
+  // Create a unique key for this mount operation
+  const vnodeInfo = vnode.type === 'element'
+    ? `<${vnode.tag}>`
+    : vnode.type === 'component'
+      ? `Component(${(vnode.fn as { name?: string }).name || 'Anonymous'})`
+      : vnode.type === 'text'
+        ? `Text("${String(vnode.value ?? '').slice(0, 20)}")`
+        : vnode.type
+
+  mountDepth++
+  activeMountStack.push(vnodeInfo)
+
+  if (mountDepth > MAX_MOUNT_DEPTH) {
+    console.error('[mount] Maximum mount depth exceeded!')
+    console.error('[mount] Stack trace:', activeMountStack.join(' → '))
+    mountDepth = 0
+    activeMountStack.length = 0
+    return parent.appendChild(document.createTextNode(''))
+  }
+
+  try {
+    return await mountInner(parent, vnode, component, reconcile)
+  }
+  finally {
+    activeMountStack.pop()
+    mountDepth--
+  }
+}
+
+async function mountInner(
   parent: Node,
   vnode: VNode,
   component: ComponentInstance | undefined,
@@ -49,16 +93,21 @@ export async function mount(
 /**
  * Mount an element VNode
  */
-export function mountElement(
+export async function mountElement(
   parent: Node,
   vnode: Extract<VNode, { type: 'element' }>,
   reconcile: ReconcilerFn,
-): Element {
+): Promise<Element> {
   const { tag, props, children } = vnode
 
   // Handle SVG namespace
   const namespace = tag === 'svg' ? 'http://www.w3.org/2000/svg/svg' : null
   const el = namespace ? document.createElementNS(namespace, tag) : document.createElement(tag)
+
+  // Debug logging for select elements
+  if (tag === 'select' && (props as { id?: string }).id === 'notebook-select') {
+    console.log(`[mountElement] Creating notebook-select, children count: ${children.length}`)
+  }
 
   // Debug logging for form elements
   if (tag === 'form') {
@@ -69,9 +118,15 @@ export function mountElement(
   // Apply props (attributes, event listeners, style)
   applyProps(el, props)
 
-  // Recursively mount children
+  // Recursively mount children - MUST await to ensure all children are mounted
+  // before this element is added to the DOM
   for (const child of children) {
-    void reconcile(el, null, child)
+    await reconcile(el, null, child)
+  }
+
+  // Debug logging for select options after mounting children
+  if (tag === 'select' && (props as { id?: string }).id === 'notebook-select') {
+    console.log(`[mountElement] After mounting children, notebook-select options count: ${(el as HTMLSelectElement).options.length}`)
   }
 
   parent.appendChild(el)
@@ -90,9 +145,16 @@ export async function mountComponent(
   reconcile: ReconcilerFn,
 ): Promise<Node> {
   const { fn, props } = vnode
+  const compName = (fn as { name?: string }).name || 'Anonymous'
+
+  console.log(`[mountComponent] Creating NEW instance for "${compName}"`)
 
   // Create component instance
   const instance = componentModule.createComponentInstance(fn, props, parentComponent)
+
+  // Register this instance in the function-based map for reliable lookups
+  // Use microtask to avoid blocking mount but ensure registration happens soon
+  void Promise.resolve().then(() => registerComponentInstance(fn, instance))
 
   // Check if this is an ErrorBoundary component
   if ((fn as { __isErrorBoundary?: boolean }).__isErrorBoundary) {
@@ -120,18 +182,32 @@ export async function mountComponent(
 /**
  * Mount a fragment VNode
  */
-export function mountFragment(
+export async function mountFragment(
   parent: Node,
   vnode: Extract<VNode, { type: 'fragment' }>,
   component: ComponentInstance | undefined,
   reconcile: ReconcilerFn,
-): Node {
+): Promise<Node> {
+  // Mount all children, awaiting each to ensure complete rendering
   for (const child of vnode.children) {
-    void reconcile(parent, null, child, component)
+    await reconcile(parent, null, child, component)
   }
 
   // Fragments don't have a single DOM node, return parent for chaining
   return parent
+}
+
+// Track render depth to detect infinite loops
+let renderDepth = 0
+const MAX_RENDER_DEPTH = 1000 // Increased for very complex UI trees with nested components
+
+/**
+ * Reset the render depth counter
+ * Called by the scheduler at the start of each flush to prevent depth
+ * from accumulating across multiple RAF cycles.
+ */
+export function resetRenderDepth(): void {
+  renderDepth = 0
 }
 
 /**
@@ -143,6 +219,29 @@ export async function renderComponent(instance: ComponentInstance, reconcile: Re
     return
   }
 
+  // Mark this component as currently rendering to prevent re-entry
+  markRendering(instance)
+
+  const compName = instance.fn.name || 'Anonymous'
+  renderDepth++
+
+  if (renderDepth > MAX_RENDER_DEPTH) {
+    console.error('[renderComponent] Maximum render depth exceeded! Component:', compName, 'Stack:', new Error().stack)
+    renderDepth = 0
+    markRenderComplete(instance)
+    return
+  }
+
+  try {
+    await renderComponentInner(instance, reconcile)
+  }
+  finally {
+    renderDepth--
+    markRenderComplete(instance)
+  }
+}
+
+async function renderComponentInner(instance: ComponentInstance, reconcile: ReconcilerFn): Promise<void> {
   // Handle error boundary state - if there's an error, render fallback
   if (instance.isErrorBoundary && instance.errorState) {
     const error = instance.errorState

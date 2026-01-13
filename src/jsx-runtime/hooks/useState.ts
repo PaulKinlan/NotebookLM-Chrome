@@ -29,6 +29,12 @@ export function useState<T>(
 
   const index = component.hookIndex++
 
+  // Debug logging for App component activeTab state (hook index 0)
+  const compName = component.fn.name || 'Anonymous'
+  if (compName === 'App' && index === 0) {
+    console.log(`[useState] App activeTab (hook index 0): current=`, component.hooks[index]?.value, `hookIndex=`, index, `hooks.length=`, component.hooks.length)
+  }
+
   // Initialize hook if first render
   if (index >= component.hooks.length) {
     const value = typeof initialValue === 'function'
@@ -42,6 +48,12 @@ export function useState<T>(
   }
 
   const hook = component.hooks[index]
+
+  // Debug logging for HeaderStateful notebooks state
+  if (compName === 'HeaderStateful' && index === 1) {
+    const notebooksArr = hook.value as Array<{ id: string, name: string } | undefined>
+    console.log(`[useState] HeaderStateful notebooks (hook index 1): length=${notebooksArr?.length ?? 0}, items:`, notebooksArr?.map(n => ({ id: n?.id ?? '', name: n?.name ?? '' })))
+  }
 
   // Defensive check - should never happen if hooks are used correctly
   if (!hook) {
@@ -59,10 +71,20 @@ export function useState<T>(
       ? (newValue as (prev: T) => T)(hookValue)
       : newValue
 
+    // Debug logging for tab state changes
+    const compName = component.fn.name || 'Anonymous'
+    console.log(`[useState] setState called for component "${compName}", hook index: ${index}, current: ${String(hookValue)}, next: ${String(nextValue)}`)
+
     // Only trigger update if value actually changed
     if (hookValue !== nextValue) {
       hook.value = nextValue
+      console.log(`[useState] Value changed, scheduling update for component "${compName}"`)
+      // The scheduler will check if this component is currently rendering
+      // and prevent re-entry, which avoids infinite render loops
       scheduleUpdate(component)
+    }
+    else {
+      console.log(`[useState] Value unchanged, skipping update for component "${compName}"`)
     }
   }
 

@@ -37,6 +37,12 @@ export async function diffChildren(
   component: ComponentInstance | undefined,
   reconcile: ReconcilerFn,
 ): Promise<void> {
+  // Debug logging for select children
+  if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
+    console.log(`[diffChildren] notebook-select: oldChildren=${oldChildren.length}, newChildren=${newChildren.length}`)
+    console.log(`[diffChildren] newChildren types:`, newChildren.map(c => c.type === 'element' ? (c).tag : c.type))
+  }
+
   // Edge case: no old children - mount all new children
   if (oldChildren.length === 0) {
     for (const newChild of newChildren) {
@@ -90,11 +96,24 @@ export async function diffChildren(
     const key = getVNodeKey(newChild, newIdx)
     const match = oldByKey.get(key)
 
+    if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
+      const childTag = newChild.type === 'element' ? (newChild).tag : newChild.type
+      const childValue = newChild.type === 'element' ? (newChild).props?.value : undefined
+      const childValueStr = (childValue === undefined || typeof childValue === 'string' || typeof childValue === 'number')
+        ? String(childValue ?? 'N/A')
+        : '[object]'
+      console.log(`[diffChildren] Processing new child ${newIdx}: key=${key}, type=${newChild.type}, tag=${String(childTag)}, value=${childValueStr}`)
+    }
+
     if (match && !matched.has(key)) {
       // Found a matching old child - reconcile and reuse it
       matched.add(key)
 
       const { vnode: oldChildVNode, domNode } = match
+
+      if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
+        console.log(`[diffChildren] Found match for key ${key}, reusing DOM node`)
+      }
 
       // Reconcile the existing node (update its props/children)
       if (domNode instanceof Element && newChild.type === 'element' && oldChildVNode.type === 'element') {
@@ -131,7 +150,15 @@ export async function diffChildren(
     }
     else {
       // No match (or duplicate key) - create a new node
+      if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
+        console.log(`[diffChildren] No match for key ${key}, creating new node`)
+      }
       const newNode = await reconcile(parent, null, newChild, component)
+
+      if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
+        console.log(`[diffChildren] Created new node:`, newNode)
+        console.log(`[diffChildren] Select now has ${parent.options.length} options`)
+      }
 
       // Insert after the last placed node
       const targetBeforeNode = lastPlacedNode?.nextSibling ?? null

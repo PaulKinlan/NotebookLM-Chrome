@@ -7,6 +7,7 @@
 
 import type { VNode } from './vnode.ts'
 import { scheduleUpdate } from './scheduler.ts'
+import { unregisterComponentInstance } from './reconciler/reconciler-update.ts'
 
 // Re-export scheduler functions for convenience
 export { scheduleUpdate, getUpdatePromise } from './scheduler.ts'
@@ -59,6 +60,8 @@ export interface ComponentInstance {
     fallback?: (error: Error) => VNode | Node
     onError?: (error: Error, errorInfo: { componentStack?: string }) => void
   }
+  /** Whether this component is currently being rendered (prevents re-entry) */
+  isRendering?: boolean
 }
 
 /**
@@ -133,6 +136,9 @@ export function unmountComponent(component: ComponentInstance): void {
       hook.cleanup = undefined
     }
   }
+
+  // Unregister this instance from the function-based map
+  unregisterComponentInstance(component.fn, component)
 
   // External store cleanup is called by the reconciler to avoid circular dep
 }

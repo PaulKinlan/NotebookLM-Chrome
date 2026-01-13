@@ -16,6 +16,27 @@ export function applyProps(el: Element, props: Record<string, unknown>): void {
     if (key.startsWith('on')) {
       const eventType = key.slice(2).toLowerCase()
       if (typeof value === 'function') {
+        // Debug logging for ALL click events
+        if (eventType === 'click' && el.tagName === 'BUTTON') {
+          const dataTab = (el as HTMLElement).getAttribute('data-tab')
+          const id = (el as HTMLElement).id
+          console.log(`[applyProps] Attaching click listener to button${id ? ' id="' + id + '"' : ''}${dataTab ? ' data-tab="' + dataTab + '"' : ''}:`, el)
+          // Wrap the handler to log when it's actually called and set a data attribute for testing
+          el.addEventListener(eventType, function (this: HTMLElement, e: Event) {
+            console.log(`[applyProps] CLICK EVENT FIRED on button${id ? ' id="' + id + '"' : ''}${dataTab ? ' data-tab="' + dataTab + '"' : ''}`)
+            // Set a data attribute that tests can check
+            el.setAttribute('data-click-fired', 'true')
+            // Also set a window property for easier testing
+            if (dataTab) {
+              ;(window as { __lastClickTab?: string }).__lastClickTab = dataTab
+            }
+            else if (id) {
+              ;(window as { __lastClickId?: string }).__lastClickId = id
+            }
+            return (value as EventListener).call(this, e)
+          })
+          continue
+        }
         // Debug logging for form submit events
         if (eventType === 'submit' && el.tagName === 'FORM') {
           console.log('[applyProps] Attaching submit listener to form:', el)
@@ -23,6 +44,13 @@ export function applyProps(el: Element, props: Record<string, unknown>): void {
         // Debug logging for input events
         if (eventType === 'input' && el.tagName === 'INPUT') {
           console.log('[applyProps] Attaching input listener to input:', el, 'id:', (el as HTMLInputElement).id)
+          // Wrap the handler to log when it's actually called
+          const inputId = (el as HTMLInputElement).id
+          el.addEventListener(eventType, function (this: HTMLElement, e: Event) {
+            console.log('[applyProps] INPUT EVENT FIRED on element with id:', inputId, 'value:', (e.target as HTMLInputElement).value)
+            return (value as EventListener).call(this, e)
+          })
+          continue
         }
         el.addEventListener(eventType, value as EventListener)
       }
@@ -130,11 +158,27 @@ export function diffProps(el: Element, oldProps: Record<string, unknown>, newPro
       }
       // Form element properties - must be set as properties, not attributes
       else if (key === 'value' && 'value' in el) {
+        // Debug logging for select value changes
+        if (el.tagName === 'SELECT' && (el as HTMLSelectElement).id === 'notebook-select') {
+          const selectEl = el as HTMLSelectElement
+          const options = Array.from(selectEl.options).map(o => ({ value: o.value, text: o.text }))
+          const valueStr = (value === null || value === undefined)
+            ? ''
+            : typeof value === 'string' || typeof value === 'number'
+              ? String(value)
+              : '[object]'
+          console.log(`[diffProps] VALUE: Updating notebook-select value from "${selectEl.value}" to "${valueStr}", options:`, JSON.stringify(options))
+          const hasOptionWithValue = Array.from(selectEl.options).some(o => o.value === valueStr)
+          console.log(`[diffProps] Has option with value "${valueStr}": ${hasOptionWithValue}`)
+        }
         if (value === null || value === undefined) {
           ;(el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = ''
         }
         else if (typeof value === 'string' || typeof value === 'number') {
           ;(el as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement).value = String(value)
+        }
+        if (el.tagName === 'SELECT' && (el as HTMLSelectElement).id === 'notebook-select') {
+          console.log(`[diffProps] notebook-select value is now "${(el as HTMLSelectElement).value}"`)
         }
       }
       else if (key === 'checked' && 'checked' in el) {

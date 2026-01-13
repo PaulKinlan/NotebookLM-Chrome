@@ -7,7 +7,8 @@
 
 import type { VNode, MountedNode } from './vnode.ts'
 import type { ComponentInstance } from './component.ts'
-import { setRenderCallback } from './scheduler.ts'
+import { setRenderCallback, setResetRenderDepthCallback } from './scheduler.ts'
+import { resetRenderDepth } from './reconciler/reconciler-mount.ts'
 
 // Import from reconciler modules
 import {
@@ -86,3 +87,6 @@ export { reconcile }
 setRenderCallback((component) => {
   return renderComponent(component, reconcile)
 })
+
+// Initialize the reset render depth callback
+setResetRenderDepthCallback(resetRenderDepth)
