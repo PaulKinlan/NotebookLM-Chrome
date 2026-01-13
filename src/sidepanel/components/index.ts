@@ -32,11 +32,11 @@ export type { ProfileFormProps } from './ProfileForm.tsx'
 export { ToolApprovalsStateful } from './ToolApprovalsStateful.tsx'
 
 // Dialog Components
-export { PickerModal, NotebookDialog, ConfirmDialog } from './Modals.tsx'
+export { NotebookDialog, ConfirmDialog } from './Modals.tsx'
 export type { NotebookDialogProps, ConfirmDialogProps } from './Modals.tsx'
 
-// Legacy PickerModal (from PickerModal.tsx - may be deprecated)
-export { PickerModal as PickerModalLegacy } from './PickerModal.tsx'
+// PickerModal (stateful implementation)
+export { PickerModal } from './PickerModal.tsx'
 export type { PickerModalProps } from './PickerModal.tsx'
 
 // Types

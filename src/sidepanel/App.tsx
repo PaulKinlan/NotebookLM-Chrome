@@ -12,7 +12,7 @@ import { LibraryTabStateful } from './components/LibraryTabStateful'
 import { SettingsTabStateful } from './components/SettingsTabStateful'
 import { BottomNav } from './components/BottomNav'
 import { Fab } from './components/Fab'
-import { PickerModal, NotebookDialog, ConfirmDialog } from './components/Modals'
+import { NotebookDialog, ConfirmDialog } from './components/Modals'
 import { NotificationStateful } from './components/NotificationStateful'
 import { Onboarding } from './components/Onboarding'
 import { useDialog } from './hooks/useDialog.ts'
@@ -119,7 +119,6 @@ export function App(props: AppProps = {
 
       <Fab hidden={fabHidden} onClick={handleFabClick} />
 
-      <PickerModal />
       <NotebookDialog
         visible={notebookDialog.visible}
         title={notebookDialog.title}
