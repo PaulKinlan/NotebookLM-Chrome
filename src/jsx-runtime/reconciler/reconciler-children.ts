@@ -64,7 +64,7 @@ export async function diffChildren(
           parent.removeChild(childNode)
         }
         catch (e) {
-          if ((e as DOMException).name !== 'NotFoundError') {
+          if (!(e instanceof DOMException) || e.name !== 'NotFoundError') {
             throw e
           }
         }
@@ -166,7 +166,7 @@ export async function diffChildren(
         parent.insertBefore(newNode, targetBeforeNode)
       }
       catch (e) {
-        if ((e as DOMException).name !== 'NotFoundError') {
+        if (!(e instanceof DOMException) || e.name !== 'NotFoundError') {
           throw e
         }
       }
