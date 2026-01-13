@@ -66,7 +66,16 @@ async function reconcile(
   }
 
   if (newVNode.type === 'element' && oldVNode.type === 'element') {
-    return updateElement(parent as Element, oldVNode, newVNode, reconcile)
+    if (parent instanceof Element) {
+      return updateElement(parent, oldVNode, newVNode, reconcile)
+    }
+    // Parent is not an Element (e.g., DocumentFragment), mount new element
+    const newNode = await mount(parent, newVNode, component, reconcile)
+    const oldNode = parent.firstChild
+    if (oldNode) {
+      parent.replaceChild(newNode, oldNode)
+    }
+    return newNode
   }
 
   if (newVNode.type === 'component' && oldVNode.type === 'component') {
