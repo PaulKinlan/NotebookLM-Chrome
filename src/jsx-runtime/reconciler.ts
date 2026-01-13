@@ -56,6 +56,7 @@ export async function reconcile(
 
   // Case 3: Same type - update in place (both old and new have same type)
   if (newVNode.type === 'text' && oldVNode.type === 'text') {
+    console.log('[reconcile text] old:', oldVNode.value, 'new:', newVNode.value, 'parent.tagName:', (parent as Element).tagName, 'parent.textContent:', parent.textContent)
     if (oldVNode.value !== newVNode.value) {
       parent.textContent = newVNode.value
     }
@@ -194,12 +195,15 @@ function updateElement(
   newVNode: Extract<VNode, { type: 'element' }>,
 ): Node {
   const el = parent.firstChild as Element
+  console.log('[updateElement] tag:', newVNode.tag, 'parent tagName:', parent.tagName, 'el.tagName:', el.tagName, 'parent.textContent:', parent.textContent)
 
   // Diff props
   diffProps(el, oldVNode.props, newVNode.props)
 
   // Diff children
   void diffChildren(el, oldVNode.children, newVNode.children)
+
+  console.log('[updateElement] after diffChildren, parent.textContent:', parent.textContent)
 
   // Update mounted node reference
   mountedNodes.set(el, { node: el, vdom: newVNode })
@@ -539,120 +543,89 @@ async function diffChildren(
   }
 
   // Build a map of old children by key for O(1) lookup
-  const oldByKey = new Map<string, { vnode: VNode, domIndex: number }>()
+  const oldByKey = new Map<string, { vnode: VNode, domNode: Node }>()
+  const domChildren = Array.from(parent.childNodes)
   for (let i = 0; i < oldChildren.length; i++) {
     const key = getVNodeKey(oldChildren[i], i)
-    oldByKey.set(key, { vnode: oldChildren[i], domIndex: i })
+    if (i < domChildren.length) {
+      oldByKey.set(key, { vnode: oldChildren[i], domNode: domChildren[i] })
+      console.log('[diffChildren] Mapping key:', key, 'to DOM node:', domChildren[i].textContent)
+    }
   }
+  console.log('[diffChildren] Initial DOM textContent:', parent.textContent)
+  console.log('[diffChildren] oldChildren:', oldChildren.map(c => getVNodeKey(c, oldChildren.indexOf(c))))
+  console.log('[diffChildren] newChildren:', newChildren.map(c => getVNodeKey(c, newChildren.indexOf(c))))
 
   // Track which old children have been matched
   const matched = new Set<string>()
 
-  // Get current DOM children for reference
-  const domChildren = Array.from(parent.childNodes)
+  // Track the last placed DOM node to know where to insert the next one
+  let lastPlacedNode: Node | null = null
 
-  // Process each new child
+  // Process each new child in order
   for (let newIdx = 0; newIdx < newChildren.length; newIdx++) {
     const newChild = newChildren[newIdx]
     const key = getVNodeKey(newChild, newIdx)
     const match = oldByKey.get(key)
 
     if (match && !matched.has(key)) {
-      // Found a matching old child - reconcile it
+      // Found a matching old child - reconcile and reuse it
       matched.add(key)
 
-      // Find the corresponding DOM node
-      const oldDomNode = domChildren[match.domIndex]
+      const { domNode } = match
 
-      if (oldDomNode && oldDomNode.parentNode === parent) {
-        // Reconcile the existing node
-        await reconcile(oldDomNode, match.vnode, newChild, component)
+      // Reconcile the existing node (update its props/children)
+      await reconcile(domNode, match.vnode, newChild, component)
 
-        // Check if we need to move this node
-        // Find the position where this node should be
-        let targetBefore: Node | null = null
-        for (let i = 0; i < newIdx; i++) {
-          const prevKey = getVNodeKey(newChildren[i], i)
-          const prevMatch = oldByKey.get(prevKey)
-          if (prevMatch && matched.has(prevKey)) {
-            const prevDomNode = domChildren[prevMatch.domIndex]
-            if (prevDomNode && prevDomNode.parentNode === parent) {
-              targetBefore = prevDomNode.nextSibling
-              break
-            }
-          }
+      // Check if the node needs to be moved
+      // The node should be immediately after lastPlacedNode (or at the beginning if lastPlacedNode is null)
+      let needsMove = false
+      if (lastPlacedNode === null) {
+        // First node should be at the beginning
+        needsMove = domNode !== parent.firstChild
+        console.log('[diffChildren] First node check - key:', key, 'domNode:', domNode.textContent, 'firstChild:', parent.firstChild?.textContent, 'needsMove:', needsMove)
+      }
+      else {
+        // Node should be immediately after the last placed node
+        needsMove = lastPlacedNode.nextSibling !== domNode
+        console.log('[diffChildren] Subsequent node check - key:', key, 'domNode:', domNode.textContent, 'lastPlacedNode.nextSibling:', lastPlacedNode.nextSibling?.textContent, 'needsMove:', needsMove)
+      }
+
+      if (needsMove) {
+        // Move the node to the correct position (after lastPlacedNode)
+        const targetBeforeNode = lastPlacedNode?.nextSibling ?? null
+        console.log('[diffChildren] Moving key:', key, 'before:', targetBeforeNode?.textContent ?? 'null', 'DOM before:', parent.textContent)
+        try {
+          parent.insertBefore(domNode, targetBeforeNode)
+          console.log('[diffChildren] DOM after move:', parent.textContent)
         }
-
-        // Move the node if it's not in the right position
-        const nextSibling = oldDomNode.nextSibling
-        if (targetBefore !== nextSibling && targetBefore !== oldDomNode) {
-          try {
-            parent.insertBefore(oldDomNode, targetBefore)
-          }
-          catch (e) {
-            // Node may have been removed or invalid
-            if ((e as DOMException).name !== 'NotFoundError') {
-              throw e
-            }
+        catch (e) {
+          if ((e as DOMException).name !== 'NotFoundError') {
+            throw e
           }
         }
       }
+
+      // Update last placed node
+      lastPlacedNode = domNode
     }
-    else if (match && matched.has(key)) {
-      // Duplicate key - this is an error, but we'll handle it by creating a new node
+    else {
+      // No match (or duplicate key) - create a new node
       const newNode = await reconcile(parent, null, newChild, component)
-      // Insert at correct position
-      const nextSibling = domChildren[newIdx]?.nextSibling ?? null
+
+      // Insert after the last placed node
+      const targetBeforeNode = lastPlacedNode?.nextSibling ?? null
       try {
-        parent.insertBefore(newNode, nextSibling)
+        parent.insertBefore(newNode, targetBeforeNode)
       }
       catch (e) {
         if ((e as DOMException).name !== 'NotFoundError') {
           throw e
         }
       }
-    }
-    else {
-      // No match - this is a new child, mount it
-      const newNode = await reconcile(parent, null, newChild, component)
 
-      // Find the correct position to insert
-      // Look for the next sibling in the new children that's already in the DOM
-      let insertBeforeNode: Node | null = null
-      for (let i = newIdx + 1; i < newChildren.length; i++) {
-        const searchKey = getVNodeKey(newChildren[i], i)
-        const searchMatch = oldByKey.get(searchKey)
-        if (searchMatch && matched.has(searchKey)) {
-          const domNode = domChildren[searchMatch.domIndex]
-          if (domNode && domNode.parentNode === parent) {
-            insertBeforeNode = domNode
-            break
-          }
-        }
-      }
-
-      // Insert the new node at the correct position
-      if (insertBeforeNode) {
-        try {
-          parent.insertBefore(newNode, insertBeforeNode)
-        }
-        catch (e) {
-          if ((e as DOMException).name !== 'NotFoundError') {
-            throw e
-          }
-        }
-      }
-      else {
-        // Append to end
-        try {
-          parent.appendChild(newNode)
-        }
-        catch (e) {
-          if ((e as DOMException).name !== 'NotFoundError') {
-            throw e
-          }
-        }
-      }
+      // Update last placed node
+      lastPlacedNode = newNode
     }
   }
 
@@ -660,18 +633,21 @@ async function diffChildren(
   for (let i = 0; i < oldChildren.length; i++) {
     const key = getVNodeKey(oldChildren[i], i)
     if (!matched.has(key)) {
-      const domNode = domChildren[i]
-      if (domNode && domNode.parentNode === parent) {
-        const mounted = mountedNodes.get(domNode)
-        if (mounted?.component) {
-          componentModule.unmountComponent(mounted.component)
-        }
-        try {
-          parent.removeChild(domNode)
-        }
-        catch (e) {
-          if ((e as DOMException).name !== 'NotFoundError') {
-            throw e
+      const entry = oldByKey.get(key)
+      if (entry) {
+        const { domNode } = entry
+        if (domNode.parentNode === parent) {
+          const mounted = mountedNodes.get(domNode)
+          if (mounted?.component) {
+            componentModule.unmountComponent(mounted.component)
+          }
+          try {
+            parent.removeChild(domNode)
+          }
+          catch (e) {
+            if ((e as DOMException).name !== 'NotFoundError') {
+              throw e
+            }
           }
         }
       }

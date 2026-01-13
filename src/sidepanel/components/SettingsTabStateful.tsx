@@ -12,6 +12,7 @@ import { useDialog } from '../hooks/useDialog.ts'
 import { useToolPermissions } from '../hooks/useToolPermissions.ts'
 import { getAISettings, setContextMode, getContextMode } from '../../lib/settings.ts'
 import { clearAllData } from '../../lib/storage.ts'
+import { ProviderProfilesStateful } from './ProviderProfilesStateful.tsx'
 
 type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history'
 
@@ -114,11 +115,8 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
       <div className="settings-group">
         <h3 className="section-title">
           AI Profiles
-          <button id="add-profile-btn" className="btn btn-small btn-outline">
-            + Add
-          </button>
         </h3>
-        <div id="profiles-list" className="profiles-list"></div>
+        <ProviderProfilesStateful />
       </div>
 
       <div className="settings-group" id="notebook-settings-group" style={{ display: 'none' }}>
