@@ -46,10 +46,32 @@ function normalizeChild(child: VNodeChild): VNode[] {
  * Normalize children from props to an array of VNodes
  */
 function normalizeChildren(children: VNodeChild | VNodeChild[]): VNode[] {
-  if (Array.isArray(children)) {
-    return children.flatMap(normalizeChild)
+  const result = Array.isArray(children)
+    ? children.flatMap(normalizeChild)
+    : normalizeChild(children)
+
+  // Debug logging for select children
+  const hasArrayChildren = Array.isArray(children) && children.some(c => Array.isArray(c))
+  if (hasArrayChildren) {
+    console.log('[normalizeChildren] Input had nested arrays, result length:', result.length)
+    console.log('[normalizeChildren] Input:', JSON.stringify(children.map((c: unknown) => {
+      if (Array.isArray(c)) return `[array with ${c.length} items]`
+      if (c && typeof c === 'object' && 'type' in c) {
+        const vnode = c as { type: string, tag?: string }
+        return `${vnode.type}${vnode.tag ? `(${vnode.tag})` : ''}`
+      }
+      return String(c)
+    })))
+    console.log('[normalizeChildren] Result:', JSON.stringify(result.map((c: unknown) => {
+      if (c && typeof c === 'object' && 'type' in c) {
+        const vnode = c as { type: string, tag?: string }
+        return `${vnode.type}${vnode.tag ? `(${vnode.tag})` : ''}`
+      }
+      return String(c)
+    })))
   }
-  return normalizeChild(children)
+
+  return result
 }
 
 // ============================================================================
@@ -83,6 +105,36 @@ export function jsx(
   props: Record<string, unknown> & { key?: string | number | null },
   key?: string | number | null,
 ): VNode {
+  // Debug logging for select element
+  if (typeof tag === 'string' && tag === 'select' && (props as { id?: string }).id === 'notebook-select') {
+    console.log('[jsx] Creating select element, children:', JSON.stringify(props.children))
+    console.log('[jsx] children type:', Array.isArray(props.children) ? 'array' : typeof props.children)
+    if (Array.isArray(props.children)) {
+      console.log('[jsx] children length:', props.children.length)
+      props.children.forEach((child: unknown, i: number) => {
+        if (child && typeof child === 'object' && 'type' in child) {
+          const childVNode = child as { type: string, tag?: string }
+          console.log(`[jsx] child ${i}: type=${childVNode.type}${childVNode.type === 'element' && childVNode.tag ? `, tag=${childVNode.tag}` : ''}`)
+        }
+        else {
+          console.log(`[jsx] child ${i}:`, child)
+        }
+      })
+    }
+  }
+
+  // SPECIAL CASE: Fragment - call it directly to get the fragment VNode
+  // instead of wrapping it in a component VNode
+  // This is needed because esbuild's JSX transform calls jsx(Fragment, { children: [...] })
+  if (typeof tag === 'function' && tag.name === 'Fragment') {
+    const result = tag(props)
+    // Fragment always returns a VNode, but we need to handle the Node case for type safety
+    if (result instanceof Node) {
+      return { type: 'text', value: result.textContent || '' }
+    }
+    return result
+  }
+
   // Handle component functions
   if (typeof tag === 'function') {
     return {
@@ -97,11 +149,24 @@ export function jsx(
   const { children, key: propsKey, ...restProps } = props
   const effectiveKey = key ?? propsKey
 
+  const normalizedChildren = children !== undefined ? normalizeChildren(children as VNodeChild | VNodeChild[]) : []
+
+  // Debug logging for select element
+  if (tag === 'select' && (props as { id?: string }).id === 'notebook-select') {
+    console.log(`[jsx] Creating select VNode with ${normalizedChildren.length} children`)
+    normalizedChildren.forEach((child: unknown, i: number) => {
+      if (child && typeof child === 'object' && 'type' in child) {
+        const childVNode = child as { type: string, tag?: string }
+        console.log(`[jsx]   child ${i}: type=${childVNode.type}${childVNode.type === 'element' && childVNode.tag ? `, tag=${childVNode.tag}` : ''}`)
+      }
+    })
+  }
+
   return {
     type: 'element',
     tag,
     props: restProps,
-    children: children !== undefined ? normalizeChildren(children as VNodeChild | VNodeChild[]) : [],
+    children: normalizedChildren,
     key: effectiveKey !== undefined && effectiveKey !== null ? String(effectiveKey) : undefined,
   }
 }
