@@ -52,6 +52,12 @@ let resetRenderDepthCallback: (() => void) | null = null
 let isBetweenFlushes = true
 
 /**
+ * Track components that were updated in the most recent flush
+ * Used to reset their _flushUpdateCount after the flush completes
+ */
+const flushedComponents = new Set<ComponentInstance>()
+
+/**
  * Set the render callback (called by reconciler on init)
  */
 export function setRenderCallback(callback: (component: ComponentInstance) => Promise<void>): void {
@@ -106,12 +112,13 @@ export function scheduleUpdate(component: ComponentInstance): void {
   // in the next RAF cycle after the previous flush completes.
   if (isBetweenFlushes) {
     isBetweenFlushes = false
-    // Clear all per-flush counters to allow components to update again
-    for (const comp of updateQueue) {
+    // Clear all per-flush counters for components that were flushed in the previous RAF
+    console.log(`[scheduleUpdate] Starting new batch, clearing _flushUpdateCount for ${flushedComponents.size} flushed components`)
+    for (const comp of flushedComponents) {
       delete (comp as { _flushUpdateCount?: number })._flushUpdateCount
     }
-    // Also clear the batch tracker - if we're between flushes and a new update is
-    // being scheduled, it means the previous RAF completed and we can start a new batch
+    flushedComponents.clear()
+    // Also clear the batch tracker
     console.log(`[scheduleUpdate] Starting new batch, clearing scheduledThisBatch (size: ${scheduledThisBatch.size})`)
     scheduledThisBatch.clear()
   }
@@ -185,6 +192,9 @@ async function flushUpdates(): Promise<void> {
   // Clear the batch tracker - new setState calls can now schedule for the NEXT batch
   scheduledThisBatch.clear()
 
+  // Clear the previous flush components set and populate with current batch
+  flushedComponents.clear()
+
   // Reset global render depth at the start of each flush
   // This prevents depth from accumulating across multiple RAF cycles
   if (resetRenderDepthCallback) {
@@ -213,6 +223,8 @@ async function flushUpdates(): Promise<void> {
       try {
         await renderCallback(comp)
         console.log(`[flushUpdates] Completed rendering component "${compName}"`)
+        // Track that this component was flushed - its _flushUpdateCount will be cleared in next batch
+        flushedComponents.add(comp)
       }
       finally {
         markRenderComplete(comp)
