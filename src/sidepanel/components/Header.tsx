@@ -6,18 +6,18 @@
  */
 
 import { useNotebook } from '../hooks/useNotebook.ts'
-import { useDialog } from '../hooks/useDialog.ts'
 import { useNavigation } from '../hooks/useNavigation.ts'
-import { createNotebook } from '../../lib/storage.ts'
+import { createNotebook, saveNotebook } from '../../lib/storage.ts'
 
 interface HeaderStatefulProps {
   /** Optional callback when notebook changes (in addition to hook's selectNotebook) */
   onNotebookChange?: (id: string) => void
+  /** showNotebook function from App's useDialog hook - passed down to share dialog state */
+  showNotebook: (options?: { title?: string, placeholder?: string, confirmText?: string }) => Promise<string | null>
 }
 
-export function HeaderStateful({ onNotebookChange }: HeaderStatefulProps) {
+export function HeaderStateful({ onNotebookChange, showNotebook }: HeaderStatefulProps) {
   const { notebooks, currentNotebookId, selectNotebook } = useNotebook()
-  const { showNotebook } = useDialog()
   const { switchTab } = useNavigation()
 
   const handleNotebookChange = async (e: { target: HTMLSelectElement }) => {
@@ -38,6 +38,7 @@ export function HeaderStateful({ onNotebookChange }: HeaderStatefulProps) {
     })
     if (name) {
       const nb = createNotebook(name)
+      await saveNotebook(nb)
       await selectNotebook(nb.id)
     }
   }

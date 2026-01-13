@@ -44,7 +44,7 @@ export function App(props: AppProps = {
   activeTab: 'add',
   fabHidden: true,
   onboardingHidden: true,
-}): JSX.Element {
+}): JSX.Element { // eslint-disable-line no-undef
   const { activeTab: initialTab, fabHidden, onboardingHidden, onProvideCallbacks } = props
 
   // Use useState for tab management instead of imperative DOM manipulation
@@ -83,7 +83,7 @@ export function App(props: AppProps = {
 
   return (
     <>
-      <HeaderStateful />
+      <HeaderStateful showNotebook={showNotebook} />
 
       <main className="content">
         <AddTabStateful active={activeTab === 'add'} />
