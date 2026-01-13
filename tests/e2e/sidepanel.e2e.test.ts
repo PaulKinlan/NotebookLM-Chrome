@@ -15,9 +15,12 @@ import {
 
 describe('Sidepanel', () => {
   let browser: Awaited<ReturnType<typeof launchWithExtension>>;
+  let page: Awaited<ReturnType<typeof getSidepanelPage>>;
 
   beforeAll(async () => {
     browser = await launchWithExtension();
+    // Create a single shared page for all tests to avoid race conditions
+    page = await getSidepanelPage(browser);
   });
 
   afterAll(async () => {
@@ -26,21 +29,17 @@ describe('Sidepanel', () => {
 
   describe('Page Loading', () => {
     it('should load the sidepanel page', async () => {
-      const page = await getSidepanelPage(browser);
       const title = await page.title();
       expect(title).toBeTruthy();
     });
 
     it('should display bottom navigation', async () => {
-      const page = await getSidepanelPage(browser);
       await waitForElement(page, '.bottom-nav');
       const nav = await page.$('.bottom-nav');
       expect(nav).toBeTruthy();
     });
 
     it('should display tab buttons', async () => {
-      const page = await getSidepanelPage(browser);
-
       await waitForElement(page, '[data-tab="add"]');
       await waitForElement(page, '[data-tab="chat"]');
       await waitForElement(page, '[data-tab="transform"]');
@@ -57,8 +56,6 @@ describe('Sidepanel', () => {
 
   describe('Bottom Navigation', () => {
     it('should navigate to Add tab when Add button is clicked', async () => {
-      const page = await getSidepanelPage(browser);
-
       // Click the Add button in bottom nav
       await page.click('[data-tab="add"]');
 
@@ -79,8 +76,6 @@ describe('Sidepanel', () => {
     });
 
     it('should navigate to Chat tab when Chat button is clicked', async () => {
-      const page = await getSidepanelPage(browser);
-
       // Click the Chat button in bottom nav
       await page.click('[data-tab="chat"]');
 
@@ -101,8 +96,6 @@ describe('Sidepanel', () => {
     });
 
     it('should navigate to Transform tab when Transform button is clicked', async () => {
-      const page = await getSidepanelPage(browser);
-
       // Click the Transform button in bottom nav
       await page.click('[data-tab="transform"]');
 
@@ -125,8 +118,6 @@ describe('Sidepanel', () => {
 
   describe('Header Navigation', () => {
     it('should navigate to Library tab when Library button is clicked', async () => {
-      const page = await getSidepanelPage(browser);
-
       // Click the Library button in header
       await page.click('#header-library-btn');
 
@@ -147,8 +138,6 @@ describe('Sidepanel', () => {
     });
 
     it('should navigate to Settings tab when Settings button is clicked', async () => {
-      const page = await getSidepanelPage(browser);
-
       // Click the Settings button in header
       await page.click('#header-settings-btn');
 
@@ -169,8 +158,6 @@ describe('Sidepanel', () => {
     });
 
     it('should open AI model dropdown when AI Model button is clicked', async () => {
-      const page = await getSidepanelPage(browser);
-
       // Click the AI Model button in header
       await page.click('#ai-model-btn');
 
@@ -194,8 +181,6 @@ describe('Sidepanel', () => {
     });
 
     it('should open new notebook dialog when New Notebook button is clicked', async () => {
-      const page = await getSidepanelPage(browser);
-
       // Click the New Notebook button in header
       await page.click('#new-notebook-btn');
 
@@ -211,6 +196,26 @@ describe('Sidepanel', () => {
       if (cancelBtn) {
         await page.evaluate((btn) => (btn as HTMLButtonElement).click(), cancelBtn);
       }
+    });
+
+    it('should display notebook dropdown with options', async () => {
+      // Wait for the notebook select to be present
+      await waitForElement(page, '#notebook-select');
+
+      // Verify the dropdown exists and has options
+      const optionCount = await page.$eval('#notebook-select', (el) => {
+        const select = el as HTMLSelectElement;
+        return {
+          optionCount: select.options.length,
+          selectedValue: select.value,
+          firstOptionText: select.options[0]?.text || '',
+        };
+      });
+
+      // Should have at least the placeholder plus the created notebook
+      expect(optionCount.optionCount).toBeGreaterThan(1);
+      expect(optionCount.selectedValue).toBeTruthy();
+      expect(optionCount.firstOptionText).toBe('Select a folio...');
     });
   });
 });

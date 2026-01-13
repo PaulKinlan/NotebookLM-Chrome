@@ -255,6 +255,17 @@ async function ensureNotebookExists(
       const select = document.getElementById('notebook-select') as HTMLSelectElement;
       return select && select.value !== '';
     }, { timeout: 5000 });
+
+    // Debug: Check the value after waitForFunction completes
+    const finalValue = await page.evaluate(() => {
+      const select = document.getElementById('notebook-select') as HTMLSelectElement;
+      return {
+        value: select?.value || '',
+        optionsCount: select?.options.length || 0,
+        options: Array.from(select?.options || []).map(o => ({ value: o.value, text: o.text }))
+      };
+    });
+    console.log('[ensureNotebookExists] After waitForFunction, value:', finalValue.value, 'options:', finalValue.optionsCount);
   }
 }
 
