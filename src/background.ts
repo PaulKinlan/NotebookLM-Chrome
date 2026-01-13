@@ -2,6 +2,8 @@ import type { Message, ContentExtractionResult, ExtractedLink } from './types/in
 import {
   createSource,
   saveSource,
+  getSource,
+  getSourcesByNotebook,
   getNotebooks,
   getActiveNotebookId,
   setActiveNotebookId,
