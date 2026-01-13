@@ -104,13 +104,13 @@ export function App(props: AppProps = {
       <HeaderStateful showNotebook={showNotebook} onTabChange={handleTabClick} />
 
       <main className="content">
-        <AddTabStateful active={activeTab === 'add'} />
+        <AddTabStateful active={activeTab === 'add'} onTabChange={handleTabClick} />
 
         <ChatTabStateful active={activeTab === 'chat'} />
 
         <TransformTabStateful active={activeTab === 'transform'} />
 
-        <LibraryTabStateful active={activeTab === 'library'} />
+        <LibraryTabStateful active={activeTab === 'library'} onTabChange={handleTabClick} />
 
         <SettingsTabStateful active={activeTab === 'settings'} />
       </main>

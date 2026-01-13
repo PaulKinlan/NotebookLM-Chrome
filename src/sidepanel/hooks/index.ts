@@ -19,5 +19,5 @@ export { useDialog, type ConfirmDialogState, type NotebookDialogState } from './
 export { useToolPermissions, type ToolPermissionItem } from './useToolPermissions.ts'
 export { useTransform, type TransformType, type TransformResult } from './useTransform.ts'
 export { useFuzzyDropdown, type FuzzyDropdownOption, type UseFuzzyDropdownOptions, type UseFuzzyDropdownReturn } from './useFuzzyDropdown.ts'
-export { useProviderProfiles, type AIProfile, type ProfileFormState, type UsageStats, type UseProviderProfilesReturn } from './useProviderProfiles.ts'
+export { useProviderProfiles, type AIProfile, type ProfileFormState, type UseProviderProfilesReturn } from './useProviderProfiles.ts'
 export { useToolApprovals, type UseToolApprovalsReturn } from './useToolApprovals.ts'

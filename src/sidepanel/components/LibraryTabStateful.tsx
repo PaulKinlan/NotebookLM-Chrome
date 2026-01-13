@@ -9,23 +9,23 @@ import { useEffect, useState } from '../../jsx-runtime/hooks/index.ts'
 import { useNotebook } from '../hooks/useNotebook.ts'
 import { useNotification } from '../hooks/useNotification.ts'
 import { useDialog } from '../hooks/useDialog.ts'
-import { useNavigation } from '../hooks/useNavigation.ts'
 import { getSourcesByNotebook } from '../../lib/storage.ts'
 import type { Notebook } from '../../types/index.ts'
 
 interface LibraryTabStatefulProps {
   active: boolean
+  /** Callback to switch tabs - passed down from App */
+  onTabChange?: (tab: 'library' | 'chat' | 'transform' | 'add' | 'settings') => void
 }
 
 interface NotebookWithSourceCount extends Notebook {
   sourceCount: number
 }
 
-export function LibraryTabStateful({ active }: LibraryTabStatefulProps) {
+export function LibraryTabStateful({ active, onTabChange }: LibraryTabStatefulProps) {
   const { notebooks, currentNotebookId, selectNotebook, deleteNotebook, reloadNotebooks } = useNotebook()
   const { showNotification } = useNotification()
   const { showConfirm } = useDialog()
-  const { switchTab } = useNavigation()
 
   // Track source counts for each notebook
   const [notebooksWithCounts, setNotebooksWithCounts] = useState<NotebookWithSourceCount[]>([])
@@ -48,7 +48,7 @@ export function LibraryTabStateful({ active }: LibraryTabStatefulProps) {
   // Handle clicking on a notebook to select it
   const handleNotebookClick = async (notebookId: string) => {
     await selectNotebook(notebookId)
-    switchTab('chat')
+    onTabChange?.('chat')
     showNotification('Notebook selected', 'success')
   }
 

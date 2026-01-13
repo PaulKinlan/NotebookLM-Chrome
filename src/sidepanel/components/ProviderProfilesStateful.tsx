@@ -5,10 +5,11 @@
  * Replaces imperative provider-config-ui.ts with hooks-based architecture.
  */
 
-import { useState } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
 import { useProviderProfiles, type ProfileFormState } from '../hooks/useProviderProfiles.ts'
 import { ProfileCard } from './ProfileCard.tsx'
 import { ProfileForm } from './ProfileForm.tsx'
+import { getUsageStats } from '../../lib/usage.ts'
 
 export interface ProviderProfilesProps {
   /** Callback when profiles change */
@@ -186,14 +187,47 @@ interface UsageStatsModalProps {
   onClose: () => void
 }
 
-function UsageStatsModal({ profileName, onClose }: UsageStatsModalProps): JSX.Element {
-  // TODO: Implement actual usage stats fetching
-  const stats = {
+function UsageStatsModal({ profileId, profileName, onClose }: UsageStatsModalProps): JSX.Element {
+  const [stats, setStats] = useState<{ totalTokens: number, totalCost: number, requestCount: number, loading: boolean }>({
     totalTokens: 0,
     totalCost: 0,
     requestCount: 0,
-    timeRange: 'All time',
-    dataPoints: [],
+    loading: true,
+  })
+
+  useEffect(() => {
+    async function loadStats() {
+      const usageStats = await getUsageStats(profileId, 'month')
+      setStats({
+        totalTokens: usageStats.totalTokens,
+        totalCost: usageStats.totalCost,
+        requestCount: usageStats.requestCount,
+        loading: false,
+      })
+    }
+    void loadStats()
+  }, [profileId])
+
+  if (stats.loading) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal usage-stats-modal" onClick={(e: MouseEvent) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>Usage Statistics</h3>
+            <button type="button" className="modal-close" onClick={onClose}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div className="modal-body">
+            <p className="usage-profile-name">{profileName}</p>
+            <p>Loading...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -227,7 +261,7 @@ function UsageStatsModal({ profileName, onClose }: UsageStatsModalProps): JSX.El
               </span>
             </div>
           </div>
-          {stats.dataPoints.length === 0 && (
+          {stats.requestCount === 0 && (
             <p className="usage-empty-message">No usage data available yet.</p>
           )}
         </div>

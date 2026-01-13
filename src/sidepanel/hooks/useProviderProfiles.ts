@@ -5,7 +5,7 @@
  * Converts imperative provider-config-ui.ts to hooks-based approach.
  */
 
-import type { Credential, ModelConfig } from '../../types/index.ts'
+import type { Credential, ModelConfig, UsageStats } from '../../types/index.ts'
 import {
   getCredentials,
   createCredential,
@@ -27,6 +27,7 @@ import {
   fetchProviderSelectableModels,
 } from '../../lib/provider-registry.ts'
 import { testConnectionWithConfig } from '../../lib/ai.ts'
+import { getUsageStats } from '../../lib/usage.ts'
 import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
 
 /**
@@ -52,17 +53,6 @@ export interface ProfileFormState {
   maxTokens: number | undefined
   compressionMode: 'two-pass' | 'single-pass' | undefined
   isDefault: boolean
-}
-
-/**
- * Usage statistics data
- */
-export interface UsageStats {
-  totalTokens: number
-  totalCost: number
-  requestCount: number
-  timeRange: string
-  dataPoints: Array<{ date: string, tokens: number, cost: number }>
 }
 
 /**
@@ -160,7 +150,7 @@ export interface UseProviderProfilesReturn {
   setDefaultProfile: (profileId: string) => Promise<boolean>
   testConnection: () => Promise<boolean>
   fetchModels: (providerId: string, apiKey: string) => Promise<SelectableModel[]>
-  showUsageStats: (profileId: string) => UsageStats | null
+  showUsageStats: (profileId: string, timeRange?: 'day' | 'week' | 'month' | 'quarter' | 'year') => Promise<UsageStats | null>
 }
 
 /**
@@ -485,20 +475,16 @@ export function useProviderProfiles(): UseProviderProfilesReturn {
 
   /**
    * Get usage stats for a profile
-   * Note: This is a placeholder - actual implementation would query usage data
+   * Queries actual usage data from storage
    */
-  function showUsageStats(profileId: string): UsageStats | null {
+  async function showUsageStats(
+    profileId: string,
+    timeRange: 'day' | 'week' | 'month' | 'quarter' | 'year' = 'month',
+  ): Promise<UsageStats | null> {
     const profile = profiles.find(p => p.modelConfig.id === profileId)
     if (!profile) return null
 
-    // TODO: Implement actual usage stats retrieval
-    return {
-      totalTokens: 0,
-      totalCost: 0,
-      requestCount: 0,
-      timeRange: 'All time',
-      dataPoints: [],
-    }
+    return getUsageStats(profileId, timeRange)
   }
 
   // Load profiles on mount

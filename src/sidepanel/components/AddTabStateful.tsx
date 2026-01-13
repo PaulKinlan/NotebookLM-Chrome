@@ -10,7 +10,6 @@ import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
 import { useNotebook } from '../hooks/useNotebook.ts'
 import { useSources } from '../hooks/useSources.ts'
 import { usePermissions } from '../hooks/usePermissions.ts'
-import { useNavigation } from '../hooks/useNavigation.ts'
 import { useDialog } from '../hooks/useDialog.ts'
 import { SourcesList } from './SourcesList.tsx'
 import { PickerModal } from './PickerModal.tsx'
@@ -26,12 +25,14 @@ import type { PickerItem } from '../services/sources.ts'
 
 interface AddTabStatefulProps {
   active: boolean
+  /** Callback to switch tabs - passed down from App */
+  onTabChange?: (tab: 'library' | 'chat' | 'transform' | 'add' | 'settings') => void
 }
 
 /**
  * AddTabStateful - Fully self-contained add sources component
  */
-export function AddTabStateful({ active }: AddTabStatefulProps): JSX.Element {
+export function AddTabStateful({ active, onTabChange }: AddTabStatefulProps): JSX.Element {
   // Notebook state
   const { currentNotebookId } = useNotebook()
 
@@ -40,9 +41,6 @@ export function AddTabStateful({ active }: AddTabStatefulProps): JSX.Element {
 
   // Permissions state
   const { permissions } = usePermissions()
-
-  // Navigation
-  const { switchTab } = useNavigation()
 
   // Dialog state
   const { showNotebook } = useDialog()
@@ -374,7 +372,7 @@ export function AddTabStateful({ active }: AddTabStatefulProps): JSX.Element {
           className="link"
           onClick={(e: Event): void => {
             e.preventDefault()
-            switchTab('library')
+            onTabChange?.('library')
           }}
         >
           View All
