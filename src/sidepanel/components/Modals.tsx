@@ -9,6 +9,7 @@
  * fully stateful component integrated with AddTabStateful.
  */
 
+import { useEffect, useRef } from '../../jsx-runtime/hooks/index.ts'
 import type { ConfirmDialogState, NotebookDialogState } from '../hooks/useDialog.ts'
 
 // ============================================================================
@@ -23,6 +24,9 @@ export interface NotebookDialogProps extends NotebookDialogState {
 
 export function NotebookDialog(props: NotebookDialogProps) {
   const { visible, title, placeholder, confirmText, inputValue, onConfirm, onCancel, onInput } = props
+  const dialogRef = useRef<HTMLDialogElement | null>(null)
+
+  console.log('[NotebookDialog] Render called with visible:', visible, 'dialogRef.current:', dialogRef.current)
 
   const handleSubmit = (e: { preventDefault: () => void }) => {
     e.preventDefault()
@@ -40,15 +44,39 @@ export function NotebookDialog(props: NotebookDialogProps) {
     }
   }
 
-  // Note: Use style.display for visibility to avoid re-render loops
-  // The template string className changes on every render and causes issues
-  const dialogStyle = visible ? {} : { display: 'none' }
+  // Use the native <dialog> element's showModal() and close() methods
+  // This is required for proper <dialog> behavior
+  useEffect(() => {
+    console.log('[NotebookDialog] useEffect called, visible:', visible, 'dialogRef.current:', dialogRef.current)
+    const dialog = dialogRef.current
+    if (!dialog) {
+      console.log('[NotebookDialog] useEffect: dialog ref is null, exiting')
+      return
+    }
+
+    console.log('[NotebookDialog] useEffect: dialog.open:', dialog.open)
+
+    if (visible && !dialog.open) {
+      console.log('[NotebookDialog] Calling showModal()')
+      dialog.showModal()
+    }
+    else if (!visible && dialog.open) {
+      console.log('[NotebookDialog] Calling close()')
+      dialog.close()
+    }
+  }, [visible])
+
+  if (!visible) {
+    // Don't render the dialog when not visible (optional, saves DOM nodes)
+    // But we need to keep it mounted for the ref to work
+    // So we render it but the dialog will be closed
+  }
 
   return (
     <dialog
+      ref={dialogRef}
       id="notebook-dialog"
       className="dialog"
-      style={dialogStyle}
       onClick={handleDialogClick}
     >
       <h3 id="notebook-dialog-title">{title}</h3>

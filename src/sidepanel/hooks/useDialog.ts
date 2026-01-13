@@ -168,9 +168,12 @@ export function useDialog(): UseDialogReturn {
   }
 
   const showNotebook: DialogHandlers['showNotebook'] = (options = {}) => {
+    console.log('[useDialog] showNotebook called with options:', options)
     return new Promise<string | null>((resolve) => {
+      console.log('[useDialog] Creating promise for notebook dialog, setting visible to true')
       notebookResolveRef.current = resolve
       inputValueRef.current = '' // Reset ref when showing dialog
+      console.log('[useDialog] About to call setNotebookDialog with visible=true')
       setNotebookDialog({
         visible: true,
         title: options.title || 'New Notebook',
@@ -178,6 +181,7 @@ export function useDialog(): UseDialogReturn {
         confirmText: options.confirmText || 'Create',
         inputValue: '',
       })
+      console.log('[useDialog] setNotebookDialog called, waiting for state update...')
     })
   }
 
