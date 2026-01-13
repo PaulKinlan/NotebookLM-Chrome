@@ -200,6 +200,17 @@ export async function getSidepanelPage(browser: Browser): Promise<Page> {
   const extensionId = await getExtensionIdFromBrowser(browser);
   const page = await browser.newPage();
 
+  // Capture console errors for debugging
+  const consoleErrors: string[] = [];
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') {
+      consoleErrors.push(msg.text());
+    }
+  });
+  page.on('pageerror', (err) => {
+    consoleErrors.push(`Page error: ${err.message}`);
+  });
+
   // Navigate to the page
   await page.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html`);
   await page.waitForSelector('body', { timeout: 5000 });
@@ -212,7 +223,21 @@ export async function getSidepanelPage(browser: Browser): Promise<Page> {
 
   // Wait for initialization to complete by checking for an element
   // that's rendered after init() finishes (e.g., the add tab content)
-  await page.waitForSelector('#tab-add', { timeout: 5000 });
+  try {
+    await page.waitForSelector('#tab-add', { timeout: 5000 });
+  } catch (e) {
+    // Capture page state for debugging
+    const html = await page.content();
+    const appContent = await page.evaluate(() => {
+      const app = document.getElementById('app');
+      return app ? app.innerHTML : 'No #app element';
+    });
+    console.error('=== E2E Debug Info ===');
+    console.error('Console errors:', consoleErrors);
+    console.error('App content:', appContent.slice(0, 500));
+    console.error('Full HTML length:', html.length);
+    throw e;
+  }
 
   // Ensure a notebook exists for testing
   await ensureNotebookExists(page);
