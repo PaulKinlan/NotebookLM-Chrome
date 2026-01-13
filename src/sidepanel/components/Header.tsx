@@ -106,11 +106,19 @@ export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: 
           onChange={handleNotebookChange}
         >
           <option value="">Select a folio...</option>
-          {notebooks.map(notebook => (
-            <option key={notebook.id} value={notebook.id}>
-              {notebook.name}
-            </option>
-          ))}
+          {(() => {
+            console.log('[Header] Rendering notebooks:', notebooks.length, 'notebooks:', notebooks.map(n => ({ id: n.id, name: n.name })))
+            const mapped = notebooks.map((notebook) => {
+              console.log('[Header] Creating option for notebook:', notebook.id, notebook.name)
+              return (
+                <option key={notebook.id} value={notebook.id}>
+                  {notebook.name}
+                </option>
+              )
+            })
+            console.log('[Header] Mapped options count:', mapped.length)
+            return mapped
+          })()}
         </select>
         <div className="ai-model-picker">
           <button

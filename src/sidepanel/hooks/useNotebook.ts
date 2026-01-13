@@ -5,7 +5,7 @@
  * Reduces duplicate notebook management code in controllers.ts.
  */
 
-import { useState, useCallback, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useCallback, useEffect, useRef } from '../../jsx-runtime/hooks/index.ts'
 import type { Notebook } from '../../types/index.ts'
 import {
   getNotebooks,
@@ -58,6 +58,9 @@ export function useNotebook(): UseNotebookReturn {
   const [notebooks, setNotebooks] = useState<Notebook[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
+  // Track if we've loaded from storage to prevent overwriting manually set state
+  const loadedFromStorage = useRef(false)
+
   // Load notebooks on mount
   useEffect(() => {
     void loadNotebooks()
@@ -76,8 +79,15 @@ export function useNotebook(): UseNotebookReturn {
   }, [])
 
   const loadActiveNotebook = useCallback(async () => {
-    const activeId = await getActiveNotebookId()
-    setCurrentNotebookId(activeId)
+    // Only load from storage if we haven't manually set a notebook ID yet
+    // This prevents overwriting a newly created/selected notebook with stale storage data
+    if (!loadedFromStorage.current) {
+      const activeId = await getActiveNotebookId()
+      if (activeId) {
+        setCurrentNotebookId(activeId)
+      }
+      loadedFromStorage.current = true
+    }
   }, [])
 
   const selectNotebook = async (id: string): Promise<void> => {
