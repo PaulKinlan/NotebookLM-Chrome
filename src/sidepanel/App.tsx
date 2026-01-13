@@ -101,7 +101,7 @@ export function App(props: AppProps = {
 
   return (
     <>
-      <HeaderStateful showNotebook={showNotebook} />
+      <HeaderStateful showNotebook={showNotebook} onTabChange={handleTabClick} />
 
       <main className="content">
         <AddTabStateful active={activeTab === 'add'} />

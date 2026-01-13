@@ -6,18 +6,18 @@
  */
 
 import { useNotebook } from '../hooks/useNotebook.ts'
-import { useNavigation } from '../hooks/useNavigation.ts'
 
 interface HeaderStatefulProps {
   /** Optional callback when notebook changes (in addition to hook's selectNotebook) */
   onNotebookChange?: (id: string) => void
   /** showNotebook function from App's useDialog hook - passed down to share dialog state */
   showNotebook: (options?: { title?: string, placeholder?: string, confirmText?: string }) => Promise<string | null>
+  /** Callback to switch tabs - passed down from App */
+  onTabChange?: (tab: 'library' | 'settings') => void
 }
 
-export function HeaderStateful({ onNotebookChange, showNotebook }: HeaderStatefulProps) {
+export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: HeaderStatefulProps) {
   const { notebooks, currentNotebookId, selectNotebook, createNotebook } = useNotebook()
-  const { switchTab } = useNavigation()
 
   const handleNotebookChange = async (e: { target: HTMLSelectElement }) => {
     const notebookId = e.target.value || null
@@ -65,7 +65,7 @@ export function HeaderStateful({ onNotebookChange, showNotebook }: HeaderStatefu
           id="header-library-btn"
           className="header-icon-btn"
           title="Library"
-          onClick={() => switchTab('library')}
+          onClick={() => onTabChange?.('library')}
         >
           <svg
             width="18"
@@ -83,7 +83,7 @@ export function HeaderStateful({ onNotebookChange, showNotebook }: HeaderStatefu
           id="header-settings-btn"
           className="header-icon-btn"
           title="Settings"
-          onClick={() => switchTab('settings')}
+          onClick={() => onTabChange?.('settings')}
         >
           <svg
             width="18"
