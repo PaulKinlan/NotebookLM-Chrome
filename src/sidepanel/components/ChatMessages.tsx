@@ -6,7 +6,7 @@
  */
 
 import type { ChatEvent, Source, Citation } from '../../types/index.ts'
-import { formatMarkdown } from '../dom-utils.ts'
+import { formatMarkdown, escapeHtml } from '../dom-utils.ts'
 import { ToolApprovalsStateful } from './ToolApprovalsStateful.tsx'
 
 interface ChatMessagesProps {
@@ -20,15 +20,6 @@ interface ChatMessagesProps {
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text: string): string {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
-}
 
 /**
  * Format timestamp as relative time

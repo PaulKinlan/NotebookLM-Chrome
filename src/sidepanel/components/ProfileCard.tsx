@@ -8,6 +8,7 @@
 import type { AIProfile } from '../hooks/useProviderProfiles.ts'
 import { maskApiKey } from '../profile-ui-utils.ts'
 import { NO_API_KEY_PLACEHOLDER } from '../../lib/model-configs.ts'
+import { escapeHtml } from '../dom-utils.ts'
 
 export interface ProfileCardProps {
   profile: AIProfile
@@ -114,13 +115,4 @@ export function ProfileCard({
       </div>
     </div>
   )
-}
-
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text: string): string {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
 }

@@ -1,33 +1,8 @@
 import DOMPurify, { Config } from 'dompurify'
 
-/**
- * Get element by query selector, throwing if not found (for required elements)
- */
-export function getRequiredQuerySelector<T extends HTMLElement>(
-  selector: string,
-  expectedType: { new (): T, prototype: HTMLElement },
-  parent: ParentNode = document,
-): T {
-  const element = parent.querySelector(selector)
-  if (element instanceof expectedType) {
-    return element as T
-  }
-  throw new Error(`Required element "${selector}" not found or is not ${expectedType.name}`)
-}
-
-/**
- * Get element by ID, throwing if not found (for required elements)
- */
-export function getRequiredElementById<T extends HTMLElement>(
-  id: string,
-  expectedType: { new (): T, prototype: HTMLElement },
-): T {
-  const element = document.getElementById(id)
-  if (element instanceof expectedType) {
-    return element as T
-  }
-  throw new Error(`Required element #${id} not found or is not ${expectedType.name}`)
-}
+// ============================================================================
+// DOMPurify Configuration
+// ============================================================================
 
 // Configure DOMPurify with strict settings for AI-generated content
 const DOMPURIFY_CONFIG: Config = {

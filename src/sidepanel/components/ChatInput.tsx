@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { escapeHtml } from '../dom-utils.ts'
 
 /**
  * Slash command definition
@@ -21,15 +22,6 @@ interface ChatInputProps {
   onQuery: (query: string) => void
   slashCommands: SlashCommand[]
   isGenerating: boolean
-}
-
-/**
- * Escape HTML to prevent XSS
- */
-function escapeHtml(text: string): string {
-  const div = document.createElement('div')
-  div.textContent = text
-  return div.innerHTML
 }
 
 /**
