@@ -1081,6 +1081,73 @@ input[type="text"]:focus {
   display: block;
 }
 
+.source-refresh-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--text-muted);
+  opacity: 0.7;
+  transition: opacity 0.15s ease, color 0.15s ease, transform 0.3s ease;
+  border-radius: 4px;
+}
+
+.source-refresh-btn:hover {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
+.source-refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.source-refresh-btn.refreshing svg {
+  animation: spin 1s linear infinite;
+}
+
+.source-refresh-btn svg {
+  display: block;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sources-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.sources-header .section-title {
+  margin-bottom: 0;
+}
+
+.sources-header .btn-small {
+  padding: 4px 8px;
+}
+
+#refresh-all-sources-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#refresh-all-sources-btn.refreshing svg {
+  animation: spin 1s linear infinite;
+}
+
 .source-url {
   font-size: 12px;
   color: var(--text-muted);
