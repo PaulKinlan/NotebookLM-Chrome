@@ -114,8 +114,8 @@ function TransformCardResult({ result, onCopy, onRemove }: {
 
   // Initialize/update sandbox when result changes
   useEffect(() => {
-    const container = document.querySelector(`[data-result-id="${result.id}"] .transform-content`) as HTMLElement
-    if (!container) return
+    const container = document.querySelector(`[data-result-id="${result.id}"] .transform-content`)
+    if (!(container instanceof HTMLElement)) return
 
     // Clean up existing sandbox
     if (containerRef.current.sandbox) {
