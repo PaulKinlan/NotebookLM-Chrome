@@ -35,8 +35,9 @@ export async function getThemePreference(): Promise<ThemePreference> {
  */
 export async function setThemePreference(preference: ThemePreference): Promise<void> {
   const settings = await getUISettings()
-  settings.themePreference = preference
-  await saveUISettings(settings)
+  // Create a new object to avoid mutating DEFAULT_UI_SETTINGS
+  const newSettings = { ...settings, themePreference: preference }
+  await saveUISettings(newSettings)
 }
 
 /**

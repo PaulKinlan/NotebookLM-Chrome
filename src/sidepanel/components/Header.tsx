@@ -1,16 +1,60 @@
 /**
- * Header component - Top navigation bar with logo, library/settings buttons, notebook selector, and AI model picker
+ * HeaderStateful Component
+ *
+ * Top navigation bar with logo, library/settings buttons, notebook selector, and AI model picker.
+ * Uses useNotebook hook to populate and manage the notebook select dropdown.
  */
 
-interface HeaderProps {
-  onLibraryClick: () => void
-  onSettingsClick: () => void
-  onNotebookChange: (id: string) => void
-  onNewNotebook: () => void
+import { useNotebook } from '../hooks/useNotebook.ts'
+import { useNavigation } from '../hooks/useNavigation.ts'
+
+interface HeaderStatefulProps {
+  /** Optional callback when notebook changes (in addition to hook's selectNotebook) */
+  onNotebookChange?: (id: string) => void
+  /** showNotebook function from App's useDialog hook - passed down to share dialog state */
+  showNotebook: (options?: { title?: string, placeholder?: string, confirmText?: string }) => Promise<string | null>
 }
 
-export function Header(props: HeaderProps) {
-  const { onLibraryClick, onSettingsClick, onNotebookChange, onNewNotebook } = props
+export function HeaderStateful({ onNotebookChange, showNotebook }: HeaderStatefulProps) {
+  const { notebooks, currentNotebookId, selectNotebook, createNotebook } = useNotebook()
+  const { switchTab } = useNavigation()
+
+  const handleNotebookChange = async (e: { target: HTMLSelectElement }) => {
+    const notebookId = e.target.value || null
+    if (notebookId) {
+      await selectNotebook(notebookId)
+      if (onNotebookChange) {
+        onNotebookChange(notebookId)
+      }
+    }
+  }
+
+  const handleNewNotebook = async () => {
+    console.log('[handleNewNotebook] Starting notebook creation flow')
+    const name = await showNotebook({
+      title: 'New Folio',
+      placeholder: 'Enter folio name...',
+      confirmText: 'Create',
+    })
+    console.log('[handleNewNotebook] showNotebook returned:', name)
+    if (name) {
+      // Use the hook's createNotebook which handles saving and state updates
+      console.log('[handleNewNotebook] Calling createNotebook with:', name)
+      const nb = await createNotebook(name)
+      console.log('[handleNewNotebook] createNotebook returned:', nb)
+      if (nb) {
+        console.log('[handleNewNotebook] Calling selectNotebook with id:', nb.id)
+        await selectNotebook(nb.id)
+        console.log('[handleNewNotebook] selectNotebook completed')
+      }
+      else {
+        console.log('[handleNewNotebook] createNotebook returned null')
+      }
+    }
+    else {
+      console.log('[handleNewNotebook] name was empty/null, not creating notebook')
+    }
+  }
 
   return (
     <header className="header">
@@ -21,7 +65,7 @@ export function Header(props: HeaderProps) {
           id="header-library-btn"
           className="header-icon-btn"
           title="Library"
-          onClick={onLibraryClick}
+          onClick={() => switchTab('library')}
         >
           <svg
             width="18"
@@ -39,7 +83,7 @@ export function Header(props: HeaderProps) {
           id="header-settings-btn"
           className="header-icon-btn"
           title="Settings"
-          onClick={onSettingsClick}
+          onClick={() => switchTab('settings')}
         >
           <svg
             width="18"
@@ -58,9 +102,15 @@ export function Header(props: HeaderProps) {
         <select
           id="notebook-select"
           className="header-notebook-select"
-          onChange={(e: Event) => onNotebookChange((e.target as HTMLSelectElement).value)}
+          value={currentNotebookId ?? ''}
+          onChange={handleNotebookChange}
         >
           <option value="">Select a folio...</option>
+          {notebooks.map(notebook => (
+            <option key={notebook.id} value={notebook.id}>
+              {notebook.name}
+            </option>
+          ))}
         </select>
         <div className="ai-model-picker">
           <button
@@ -93,7 +143,7 @@ export function Header(props: HeaderProps) {
           id="new-notebook-btn"
           className="header-icon-btn"
           title="New Folio"
-          onClick={onNewNotebook}
+          onClick={handleNewNotebook}
         >
           <svg
             width="18"

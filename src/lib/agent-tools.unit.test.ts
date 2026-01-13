@@ -150,6 +150,7 @@ describe('agent-tools', () => {
     (globalThis as Record<string, unknown>).__mockSources = [...mockSources]
 
     // Dynamic import to get fresh module with mocks applied
+    // eslint-disable-next-line foliolm/no-dynamic-import -- Intentional: reload module with fresh mocks
     agentTools = await import('./agent-tools.ts')
   })
 
@@ -211,6 +212,7 @@ describe('agent-tools', () => {
       (globalThis as Record<string, unknown>).__mockSources = [...mockSources, sourceWithoutMetadata]
 
       // Re-import to pick up new source
+      // eslint-disable-next-line foliolm/no-dynamic-import -- Intentional: reload module with fresh mocks
       agentTools = await import('./agent-tools.ts')
 
       const tool = agentTools.listSources

@@ -149,7 +149,10 @@ function extractLinksFromHtml(htmlContent: string, pageUrl: string): ExtractedLi
   const links: ExtractedLink[] = []
 
   for (const anchor of anchors) {
-    const href = (anchor as HTMLAnchorElement).href
+    // Type guard: ensure we have an HTMLAnchorElement
+    if (!(anchor instanceof HTMLAnchorElement)) continue
+
+    const href = anchor.href
     const text = (anchor.textContent || '').trim()
 
     // Skip empty links, non-http links, self-references, and duplicates
@@ -169,7 +172,7 @@ function extractLinksFromHtml(htmlContent: string, pageUrl: string): ExtractedLi
     links.push({
       url: href,
       text,
-      context: getSurroundingContext(anchor as HTMLAnchorElement),
+      context: getSurroundingContext(anchor),
     })
   }
 

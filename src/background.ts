@@ -2,11 +2,11 @@ import type { Message, ContentExtractionResult, ExtractedLink } from './types/in
 import {
   createSource,
   saveSource,
+  getSource,
+  getSourcesByNotebook,
   getNotebooks,
   getActiveNotebookId,
   setActiveNotebookId,
-  getSource,
-  getSourcesByNotebook,
 } from './lib/storage.ts'
 import { getLinksInSelection } from './lib/selection-links.ts'
 
@@ -929,7 +929,10 @@ function injectContentScript(): void {
       ]
 
       for (const anchor of anchors) {
-        const href = (anchor as HTMLAnchorElement).href
+        // Type guard: ensure we have an HTMLAnchorElement
+        if (!(anchor instanceof HTMLAnchorElement)) continue
+
+        const href = anchor.href
         const text = (anchor.textContent || '').trim()
 
         if (!href || !text || text.length < 3) continue

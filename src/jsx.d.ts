@@ -1,3 +1,4 @@
+import type { VNode } from './jsx-runtime/vnode'
 import { jsx, Fragment } from './jsx-runtime'
 
 declare global {
@@ -9,7 +10,9 @@ declare global {
       }
     }
 
-    type Element = Node
+    // JSX expressions now return VNode, not Node
+    // This enables the VNode-based reconciler with hooks support
+    type Element = VNode
     interface ElementChildrenAttribute {
       children: unknown
     }

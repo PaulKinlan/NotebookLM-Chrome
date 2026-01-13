@@ -12,6 +12,7 @@
 import { tool, type Tool } from 'ai'
 import { z } from 'zod'
 import { checkPermissions } from './permissions.ts'
+import { getCachedToolResult, setCachedToolResult } from './agent-tools.ts'
 
 // ============================================================================
 // Types
@@ -230,11 +231,6 @@ function wrapToolWithCache(
   return {
     ...coreTool,
     execute: async (input, options) => {
-      // Import here to avoid circular dependency
-      const { getCachedToolResult, setCachedToolResult } = await import(
-        './agent-tools.ts',
-      )
-
       // Check cache first - use type assertion since we control what gets cached
       const cached = await getCachedToolResult<unknown, unknown>(
         toolName,

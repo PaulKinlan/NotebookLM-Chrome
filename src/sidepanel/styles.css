@@ -4006,6 +4006,47 @@ details.suggested-links-section[open] .suggested-links-chevron {
 }
 
 /* ============================================================================
+   Inline Approval Cards
+   ============================================================================ */
+
+.chat-message.approval-pending {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.1));
+  border-left: 3px solid #ffc107;
+  animation: slideIn 0.3s ease-out;
+}
+
+.chat-message.approval-approved {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
+  border-left: 3px solid var(--success);
+}
+
+.chat-message.approval-rejected {
+  background: linear-gradient(135deg, rgba(248, 81, 73, 0.1), rgba(248, 81, 73, 0.05));
+  border-left: 3px solid var(--error);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.approval-actions .btn[data-action="reject"] {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.approval-actions .btn[data-action="reject"]:hover {
+  background: var(--error);
+  color: white;
+}
+
+/* ============================================================================
    Transform Config Popover
    ============================================================================ */
 
@@ -4290,4 +4331,3 @@ details.suggested-links-section[open] .suggested-links-chevron {
     opacity: 0;
   }
 }
-

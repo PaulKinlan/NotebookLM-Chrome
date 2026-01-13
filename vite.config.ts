@@ -13,6 +13,8 @@ export default defineConfig({
   esbuild: {
     jsx: 'automatic',
     jsxImportSource: 'jsx-runtime',
+    // Keep function names for better debugging in production builds
+    keepNames: true,
   },
   build: {
     outDir: 'dist',

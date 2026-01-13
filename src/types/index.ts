@@ -294,11 +294,12 @@ export interface ToolResult {
 
 /**
  * Stream event type - yielded by streamChat
- * Can be text delta, tool call, or tool result
+ * Can be text delta, tool call, pending tool call (awaiting approval), or tool result
  */
 export type StreamEvent
   = | { type: 'text', content: string }
     | { type: 'tool-call', toolName: string, args: Record<string, unknown>, toolCallId: string }
+    | { type: 'tool-call-pending', toolName: string, args: Record<string, unknown>, toolCallId: string, approvalRequestId: string, reason: string }
     | { type: 'tool-result', toolName: string, result: JSONValue, toolCallId: string }
 
 /**

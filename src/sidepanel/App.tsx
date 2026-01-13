@@ -3,98 +3,37 @@
 // ============================================================================
 
 // Import all components
-import { Header } from './components/Header'
-import { AddTab } from './components/AddTab'
-import { ChatTab } from './components/ChatTab'
-import { TransformTab } from './components/TransformTab'
-import { LibraryTab } from './components/LibraryTab'
-import { SettingsTab } from './components/SettingsTab'
+import { useState, useEffect, useRef } from '../jsx-runtime/hooks/index.ts'
+import { HeaderStateful } from './components/Header'
+import { AddTabStateful } from './components/AddTabStateful'
+import { ChatTabStateful } from './components/ChatTabStateful'
+import { TransformTabStateful } from './components/TransformTabStateful'
+import { LibraryTabStateful } from './components/LibraryTabStateful'
+import { SettingsTabStateful } from './components/SettingsTabStateful'
 import { BottomNav } from './components/BottomNav'
 import { Fab } from './components/Fab'
 import { PickerModal, NotebookDialog, ConfirmDialog } from './components/Modals'
-import { Notification } from './components/Notification'
+import { NotificationStateful } from './components/NotificationStateful'
 import { Onboarding } from './components/Onboarding'
+import { useDialog } from './hooks/useDialog.ts'
+import { useNotification } from './hooks/useNotification.ts'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings'
-type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history'
 
-type BusinessHandlers = typeof import('./index')['handlers']
+export interface AppCallbacks {
+  showNotebook: (options?: { title?: string, placeholder?: string, confirmText?: string }) => Promise<string | null>
+  showNotification: (message: string, type?: 'success' | 'error' | 'info') => void
+}
 
 interface AppProps {
   activeTab: TabName
   fabHidden: boolean
   onboardingHidden: boolean
-  businessHandlers: BusinessHandlers | null
-}
-
-interface AppHandlers {
-  handleTabClick: (tab: TabName) => void
-  handleHeaderLibraryClick: () => void
-  handleHeaderSettingsClick: () => void
-  handleFabClick: () => void
-  handleTransform: (type: string) => void
-}
-
-// ============================================================================
-// Handlers (will be connected to business logic later)
-// ============================================================================
-
-function createHandlers(state: { activeTab: TabName }, businessHandlers: BusinessHandlers | null): AppHandlers {
-  function updateTabVisibility(): void {
-    const navItems = document.querySelectorAll('.nav-item')
-    const tabContents = document.querySelectorAll('.tab-content')
-
-    navItems.forEach((item) => {
-      const tabName = item.getAttribute('data-tab')
-      if (tabName === state.activeTab) {
-        item.classList.add('active')
-      }
-      else {
-        item.classList.remove('active')
-      }
-    })
-
-    tabContents.forEach((content) => {
-      const tabId = content.id
-      if (tabId === `tab-${state.activeTab}`) {
-        content.classList.add('active')
-      }
-      else {
-        content.classList.remove('active')
-      }
-    })
-  }
-
-  return {
-    handleTabClick: (tab: TabName) => {
-      state.activeTab = tab
-      updateTabVisibility()
-      businessHandlers?.switchTab(tab)
-    },
-
-    handleHeaderLibraryClick: () => {
-      state.activeTab = 'library'
-      updateTabVisibility()
-    },
-
-    handleHeaderSettingsClick: () => {
-      state.activeTab = 'settings'
-      updateTabVisibility()
-    },
-
-    handleFabClick: () => {
-      state.activeTab = 'add'
-      updateTabVisibility()
-    },
-
-    handleTransform: (type: string) => {
-      void businessHandlers?.handleTransform(type as unknown as 'podcast' | 'quiz' | 'takeaways' | 'email' | 'slidedeck' | 'report' | 'datatable' | 'mindmap' | 'flashcards' | 'timeline' | 'glossary' | 'comparison' | 'faq' | 'actionitems' | 'executivebrief' | 'studyguide' | 'proscons' | 'citations' | 'outline')
-    },
-  }
+  onProvideCallbacks?: (callbacks: AppCallbacks) => void
 }
 
 // ============================================================================
@@ -105,85 +44,103 @@ export function App(props: AppProps = {
   activeTab: 'add',
   fabHidden: true,
   onboardingHidden: true,
-  businessHandlers: null,
-}): Node {
-  const { activeTab, fabHidden, onboardingHidden, businessHandlers } = props
+}) {
+  const { activeTab: initialTab, fabHidden, onboardingHidden, onProvideCallbacks } = props
 
-  const state = { activeTab }
-  const handlers = createHandlers(state, businessHandlers)
+  console.log('[App] Component function called, initialTab:', initialTab)
 
-  // Initialize tab visibility
-  requestAnimationFrame(() => {
-    const navItems = document.querySelectorAll('.nav-item')
-    const tabContents = document.querySelectorAll('.tab-content')
+  // Use useState for tab management instead of imperative DOM manipulation
+  const [activeTab, setActiveTab] = useState<TabName>(initialTab)
 
-    navItems.forEach((item) => {
-      const tabName = item.getAttribute('data-tab')
-      if (tabName === activeTab) {
-        item.classList.add('active')
-      }
-      else {
-        item.classList.remove('active')
-      }
-    })
+  console.log('[App] After useState, activeTab:', activeTab)
 
-    tabContents.forEach((content) => {
-      const tabId = content.id
-      if (tabId === `tab-${activeTab}`) {
-        content.classList.add('active')
-      }
-      else {
-        content.classList.remove('active')
-      }
-    })
-  })
+  // Use useDialog hook for dialog state management
+  const {
+    confirmDialog,
+    notebookDialog,
+    showNotebook,
+    _handleConfirm,
+    _handleConfirmCancel,
+    _handleNotebookConfirm,
+    _handleNotebookCancel,
+    _setNotebookInput,
+  } = useDialog()
+
+  // Use useNotification hook for notification state
+  const { showNotification } = useNotification()
+
+  // Store callbacks in refs to avoid triggering useEffect on every render
+  const showNotebookRef = useRef(showNotebook)
+  const showNotificationRef = useRef(showNotification)
+
+  // Keep refs in sync (but only when the functions actually change)
+  showNotebookRef.current = showNotebook
+  showNotificationRef.current = showNotification
+
+  // Provide callbacks to main.tsx via the onProvideCallbacks prop
+  // This allows main.tsx to trigger dialogs/notifications without global state
+  useEffect(() => {
+    console.log('[App] useEffect running, calling onProvideCallbacks')
+    if (onProvideCallbacks) {
+      onProvideCallbacks({
+        showNotebook: (...args) => showNotebookRef.current(...args),
+        showNotification: (...args) => showNotificationRef.current(...args),
+      })
+    }
+  }, [onProvideCallbacks])
+
+  const handleTabClick = (tab: TabName) => {
+    console.log('[App] handleTabClick called with tab:', tab, 'current activeTab:', activeTab)
+    setActiveTab(tab)
+    console.log('[App] setActiveTab called, waiting for re-render...')
+  }
+
+  const handleFabClick = () => {
+    setActiveTab('add')
+  }
 
   return (
     <>
-      <Header
-        onLibraryClick={handlers.handleHeaderLibraryClick}
-        onSettingsClick={handlers.handleHeaderSettingsClick}
-        onNotebookChange={() => { void businessHandlers?.handleNotebookChange() }}
-        onNewNotebook={() => { void businessHandlers?.handleNewNotebook() }}
-      />
+      <HeaderStateful showNotebook={showNotebook} />
 
       <main className="content">
-        <AddTab
-          active={activeTab === 'add'}
-          onAddCurrentTab={() => { void businessHandlers?.handleAddCurrentTab() }}
-          onImportTabs={() => { void businessHandlers?.handleImportTabs() }}
-          onImportTabGroups={() => { void businessHandlers?.handleImportTabGroups() }}
-          onImportBookmarks={() => { void businessHandlers?.handleImportBookmarks() }}
-          onImportHistory={() => { void businessHandlers?.handleImportHistory() }}
-        />
+        <AddTabStateful active={activeTab === 'add'} />
 
-        <ChatTab
-          active={activeTab === 'chat'}
-          onQuery={() => { void businessHandlers?.handleQuery() }}
-          onClearChat={() => { void businessHandlers?.handleClearChat() }}
-          onRegenerateSummary={() => { void businessHandlers?.handleRegenerateSummary() }}
-          onAddCurrentTab={() => { void businessHandlers?.handleAddCurrentTab() }}
-        />
+        <ChatTabStateful active={activeTab === 'chat'} />
 
-        <TransformTab active={activeTab === 'transform'} onTransform={handlers.handleTransform} />
+        <TransformTabStateful active={activeTab === 'transform'} />
 
-        <LibraryTab active={activeTab === 'library'} />
+        <LibraryTabStateful active={activeTab === 'library'} />
 
-        <SettingsTab
-          active={activeTab === 'settings'}
-          onPermissionToggle={(permission: PermissionType) => { void businessHandlers?.handlePermissionToggle(permission) }}
-          onClearAllData={() => { void businessHandlers?.handleClearAllData() }}
-        />
+        <SettingsTabStateful active={activeTab === 'settings'} />
       </main>
 
-      <BottomNav activeTab={activeTab} onTabClick={handlers.handleTabClick} />
+      <BottomNav activeTab={activeTab} onTabClick={handleTabClick} />
 
-      <Fab hidden={fabHidden} onClick={handlers.handleFabClick} />
+      <Fab hidden={fabHidden} onClick={handleFabClick} />
 
       <PickerModal />
-      <NotebookDialog />
-      <ConfirmDialog />
-      <Notification />
+      <NotebookDialog
+        visible={notebookDialog.visible}
+        title={notebookDialog.title}
+        placeholder={notebookDialog.placeholder}
+        confirmText={notebookDialog.confirmText}
+        inputValue={notebookDialog.inputValue}
+        onConfirm={_handleNotebookConfirm}
+        onCancel={_handleNotebookCancel}
+        onInput={_setNotebookInput}
+      />
+      <ConfirmDialog
+        visible={confirmDialog.visible}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        isDestructive={confirmDialog.isDestructive}
+        onConfirm={_handleConfirm}
+        onCancel={_handleConfirmCancel}
+      />
+      <NotificationStateful />
       <Onboarding hidden={onboardingHidden} />
     </>
   )

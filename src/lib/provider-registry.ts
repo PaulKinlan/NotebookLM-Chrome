@@ -17,6 +17,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { builtInAI } from '@built-in-ai/core'
 import { createVertexExpress } from './vertex-express'
+import { createMockModel } from './mock-provider'
 import type { LanguageModel } from 'ai'
 
 /**
@@ -586,6 +587,28 @@ export const PROVIDER_REGISTRY = {
     },
     group: 'Built-in',
     createModel: () => builtInAI(),
+  },
+
+  // ==========================================================================
+  // Mock Provider (Testing Only)
+  // ==========================================================================
+  'mock': {
+    id: 'mock',
+    displayName: 'Mock (Testing)',
+    defaultModel: 'mock-test-model',
+    features: {
+      supportsModelFetching: false,
+      requiresApiKeyForFetching: false,
+      requiresApiKey: false,
+      authStyle: 'none',
+    },
+    modelsResponseFormat: {
+      modelsPath: '',
+      idField: 'id',
+      nameField: 'name',
+    },
+    group: 'Testing',
+    createModel: () => createMockModel(),
   },
 } as const
 

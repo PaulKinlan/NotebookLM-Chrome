@@ -32,16 +32,17 @@ vi.mock('../../lib/theme.ts', () => ({
   onSystemThemeChange: (cb: (isDark: boolean) => void): (() => void) => mockOnSystemThemeChange(cb),
 }))
 
-// Type for the useTheme module
-type UseThemeModule = typeof import('./useTheme.tsx')
+// Static import - must come after mocks are set up
+import * as useThemeModule from './useTheme.tsx'
 
 describe('useTheme', () => {
-  let useThemeModule: UseThemeModule
   let systemThemeCallback: ((isDark: boolean) => void) | null = null
 
-  beforeEach(async () => {
+  beforeEach(() => {
+    // Reset module state between tests
+    useThemeModule.__resetModuleState()
+
     vi.clearAllMocks()
-    vi.resetModules()
 
     // Set up default mock behaviors
     mockGetThemePreference.mockResolvedValue('system')
@@ -57,9 +58,6 @@ describe('useTheme', () => {
         systemThemeCallback = null
       }
     })
-
-    // Re-import the module fresh
-    useThemeModule = await import('./useTheme.tsx')
   })
 
   afterEach(() => {
