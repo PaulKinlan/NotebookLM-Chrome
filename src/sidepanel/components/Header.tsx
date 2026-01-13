@@ -7,7 +7,6 @@
 
 import { useNotebook } from '../hooks/useNotebook.ts'
 import { useNavigation } from '../hooks/useNavigation.ts'
-import { createNotebook, saveNotebook } from '../../lib/storage.ts'
 
 interface HeaderStatefulProps {
   /** Optional callback when notebook changes (in addition to hook's selectNotebook) */
@@ -17,7 +16,7 @@ interface HeaderStatefulProps {
 }
 
 export function HeaderStateful({ onNotebookChange, showNotebook }: HeaderStatefulProps) {
-  const { notebooks, currentNotebookId, selectNotebook } = useNotebook()
+  const { notebooks, currentNotebookId, selectNotebook, createNotebook } = useNotebook()
   const { switchTab } = useNavigation()
 
   const handleNotebookChange = async (e: { target: HTMLSelectElement }) => {
@@ -31,15 +30,29 @@ export function HeaderStateful({ onNotebookChange, showNotebook }: HeaderStatefu
   }
 
   const handleNewNotebook = async () => {
+    console.log('[handleNewNotebook] Starting notebook creation flow')
     const name = await showNotebook({
       title: 'New Folio',
       placeholder: 'Enter folio name...',
       confirmText: 'Create',
     })
+    console.log('[handleNewNotebook] showNotebook returned:', name)
     if (name) {
-      const nb = createNotebook(name)
-      await saveNotebook(nb)
-      await selectNotebook(nb.id)
+      // Use the hook's createNotebook which handles saving and state updates
+      console.log('[handleNewNotebook] Calling createNotebook with:', name)
+      const nb = await createNotebook(name)
+      console.log('[handleNewNotebook] createNotebook returned:', nb)
+      if (nb) {
+        console.log('[handleNewNotebook] Calling selectNotebook with id:', nb.id)
+        await selectNotebook(nb.id)
+        console.log('[handleNewNotebook] selectNotebook completed')
+      }
+      else {
+        console.log('[handleNewNotebook] createNotebook returned null')
+      }
+    }
+    else {
+      console.log('[handleNewNotebook] name was empty/null, not creating notebook')
     }
   }
 

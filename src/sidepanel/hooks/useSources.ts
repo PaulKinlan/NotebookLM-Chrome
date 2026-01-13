@@ -68,6 +68,7 @@ export function useSources(notebookId: string | null): UseSourcesReturn {
 
   // Load sources when notebookId changes
   useEffect(() => {
+    console.log('[useSources] Effect running, notebookId:', notebookId)
     if (notebookId) {
       void loadSources(notebookId)
     }
@@ -77,10 +78,12 @@ export function useSources(notebookId: string | null): UseSourcesReturn {
   }, [notebookId])
 
   const loadSources = async (id: string): Promise<void> => {
+    console.log('[useSources] loadSources called for id:', id)
     setIsLoading(true)
     setError(null)
     try {
       const loaded = await getSourcesByNotebook(id)
+      console.log('[useSources] Loaded', loaded.length, 'sources')
       setSources(loaded)
     }
     catch (err) {

@@ -12,12 +12,19 @@ interface BottomNavProps {
 export function BottomNav(props: BottomNavProps) {
   const { activeTab, onTabClick } = props
 
+  console.log('[BottomNav] render, activeTab:', activeTab)
+
+  const handleTabClick = (tab: TabName) => {
+    console.log('[BottomNav] handleTabClick called with tab:', tab)
+    onTabClick(tab)
+  }
+
   return (
     <nav className="bottom-nav">
       <button
         className={`nav-item ${activeTab === 'add' ? 'active' : ''}`}
         data-tab="add"
-        onClick={() => onTabClick('add')}
+        onClick={() => handleTabClick('add')}
       >
         <svg
           width="20"
@@ -36,7 +43,7 @@ export function BottomNav(props: BottomNavProps) {
       <button
         className={`nav-item ${activeTab === 'chat' ? 'active' : ''}`}
         data-tab="chat"
-        onClick={() => onTabClick('chat')}
+        onClick={() => handleTabClick('chat')}
       >
         <svg
           width="20"
@@ -53,7 +60,7 @@ export function BottomNav(props: BottomNavProps) {
       <button
         className={`nav-item ${activeTab === 'transform' ? 'active' : ''}`}
         data-tab="transform"
-        onClick={() => onTabClick('transform')}
+        onClick={() => handleTabClick('transform')}
       >
         <svg
           width="20"

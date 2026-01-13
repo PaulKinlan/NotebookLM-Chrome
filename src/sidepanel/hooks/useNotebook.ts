@@ -81,24 +81,33 @@ export function useNotebook(): UseNotebookReturn {
   }, [])
 
   const selectNotebook = async (id: string): Promise<void> => {
+    console.log('[useNotebook] selectNotebook called with id:', id)
     // Update active notebook
     await setActiveNotebookId(id)
+    console.log('[useNotebook] About to call setCurrentNotebookId with:', id, 'type of setCurrentNotebookId:', typeof setCurrentNotebookId)
     setCurrentNotebookId(id)
+    console.log('[useNotebook] currentNotebookId set to:', id)
 
     // Reload notebooks to get latest data
     const loaded = await getNotebooks()
+    console.log('[useNotebook] About to call setNotebooks with', loaded.length, 'notebooks, type of setNotebooks:', typeof setNotebooks)
     setNotebooks(loaded)
+    console.log('[useNotebook] notebooks reloaded, count:', loaded.length)
   }
 
   const createNotebook = async (name: string): Promise<Notebook | null> => {
+    console.log('[useNotebook] createNotebook called with name:', name)
     const newNotebook = createNb(name)
+    console.log('[useNotebook] created notebook object with id:', newNotebook.id)
 
     // Save the new notebook
     await saveNotebook(newNotebook)
+    console.log('[useNotebook] saved notebook to storage')
 
     // Reload notebooks list
     const loaded = await getNotebooks()
     setNotebooks(loaded)
+    console.log('[useNotebook] notebooks reloaded, count:', loaded.length)
     return newNotebook
   }
 
