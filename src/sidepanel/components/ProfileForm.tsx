@@ -159,7 +159,10 @@ export function ProfileForm({
           placeholder="e.g., GPT-4 Turbo (Work)"
           value={formState.name}
           onInput={(e: InputEvent) => {
-            onChange({ name: (e.target as HTMLInputElement).value })
+            const target = e.currentTarget
+            if (target instanceof HTMLInputElement) {
+              onChange({ name: target.value })
+            }
           }}
         />
 
@@ -183,7 +186,10 @@ export function ProfileForm({
               placeholder="Required for most providers"
               value={formState.apiKey}
               onInput={(e: InputEvent) => {
-                onChange({ apiKey: (e.target as HTMLInputElement).value })
+                const target = e.currentTarget
+                if (target instanceof HTMLInputElement) {
+                  onChange({ apiKey: target.value })
+                }
               }}
             />
             <button
@@ -237,7 +243,10 @@ export function ProfileForm({
             value={modelInputValue}
             onFocus={() => setModelDropdownOpen(true)}
             onInput={(e: InputEvent) => {
-              handleModelInput((e.target as HTMLInputElement).value)
+              const target = e.currentTarget
+              if (target instanceof HTMLInputElement) {
+                handleModelInput(target.value)
+              }
             }}
             onKeyDown={(e: KeyboardEvent) => {
               if (e.key === 'Escape') {
@@ -318,7 +327,10 @@ export function ProfileForm({
               step="0.1"
               value={formState.temperature}
               onInput={(e: InputEvent) => {
-                onChange({ temperature: parseFloat((e.target as HTMLInputElement).value) })
+                const target = e.currentTarget
+                if (target instanceof HTMLInputElement) {
+                  onChange({ temperature: parseFloat(target.value) })
+                }
               }}
             />
             <span className="profile-temperature-value">{temperatureDisplay}</span>
@@ -335,8 +347,11 @@ export function ProfileForm({
             placeholder="Default"
             value={formState.maxTokens || ''}
             onInput={(e: InputEvent) => {
-              const value = (e.target as HTMLInputElement).value
-              onChange({ maxTokens: value ? parseInt(value, 10) : undefined })
+              const target = e.currentTarget
+              if (target instanceof HTMLInputElement) {
+                const value = target.value
+                onChange({ maxTokens: value ? parseInt(value, 10) : undefined })
+              }
             }}
           />
           <p className="setting-hint">Maximum length of the response. Leave empty for model default.</p>
@@ -345,10 +360,13 @@ export function ProfileForm({
           <select
             className="form-select profile-compression-mode-input"
             onChange={(e: InputEvent) => {
-              const value = (e.target as HTMLSelectElement).value
-              onChange({
-                compressionMode: (value === 'two-pass' || value === 'single-pass' ? value : undefined),
-              })
+              const target = e.currentTarget
+              if (target instanceof HTMLSelectElement) {
+                const value = target.value
+                onChange({
+                  compressionMode: (value === 'two-pass' || value === 'single-pass' ? value : undefined),
+                })
+              }
             }}
           >
             <option value="two-pass" selected={!formState.compressionMode || formState.compressionMode === 'two-pass'}>
