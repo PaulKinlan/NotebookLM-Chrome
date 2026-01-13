@@ -1,187 +1,119 @@
 // ============================================================================
-// Re-export hooks system
+// JSX Runtime - VNode-based
 // ============================================================================
+// This is a VNode-based JSX runtime that works with the reconciler.
+// All JSX expressions return VNodes, which are then rendered via render().
 
-// Export hooks and VDOM types for components that use state
+import type { VNode, ComponentFn } from './jsx-runtime/vnode.ts'
+
+// Re-export hooks and VDOM types for components that use state
 export { useState, useEffect, useContext, useMemo, useCallback, createContext, ContextProvider } from './jsx-runtime/hooks/index.ts'
 export type { Context } from './jsx-runtime/hooks/useContext.ts'
-export type { VNode, ComponentFn } from './jsx-runtime/vnode.ts'
+export type { VNode, ComponentFn }
 export { render, renderToDOM } from './jsx-runtime/render.ts'
 
 // ============================================================================
-// Legacy JSX Runtime (for non-hook components)
+// VNode Child Types
 // ============================================================================
 
-type Child = Node | string | number | boolean | null | undefined
+// Children can be VNodes, primitives, arrays, null/undefined/boolean (ignored)
+type VNodeChild = VNode | string | number | boolean | null | undefined | VNodeChild[]
 
-function isNode(x: unknown): x is Node {
-  return typeof Node !== 'undefined' && x instanceof Node
-}
+/**
+ * Normalize a child value to a VNode or array of VNodes
+ */
+function normalizeChild(child: VNodeChild): VNode[] {
+  // Ignore null, undefined, boolean
+  if (child === null || child === undefined || child === false || child === true) {
+    return []
+  }
 
-// SVG namespace for creating SVG elements
-const SVG_NS = 'http://www.w3.org/2000/svg'
-
-// SVG element names that need to be created in the SVG namespace
-const SVG_TAGS = new Set([
-  'svg',
-  'path',
-  'circle',
-  'rect',
-  'ellipse',
-  'line',
-  'polygon',
-  'polyline',
-  'text',
-  'tspan',
-  'g',
-  'defs',
-  'use',
-  'marker',
-  'clipPath',
-  'mask',
-  'pattern',
-  'gradient',
-  'linearGradient',
-  'radialGradient',
-  'stop',
-  'animate',
-  'animateTransform',
-  'animateMotion',
-  'image',
-  'foreignObject',
-])
-
-function append(el: Element | DocumentFragment, child: Child): void {
-  if (child === null || child === undefined || child === false || child === true) return
-
+  // Flatten arrays
   if (Array.isArray(child)) {
-    for (const c of child as unknown as Child[]) append(el, c)
-    return
+    return child.flatMap(normalizeChild)
   }
 
-  if (isNode(child)) {
-    el.appendChild(child)
-    return
+  // Already a VNode
+  if (typeof child === 'object' && 'type' in child) {
+    return [child]
   }
 
-  el.appendChild(document.createTextNode(String(child)))
-}
-
-export function Fragment(props: { children?: Child | Child[] }): DocumentFragment {
-  const frag = document.createDocumentFragment()
-  const children = props.children
-
-  if (Array.isArray(children)) {
-    for (const c of children) append(frag, c)
-  }
-  else {
-    append(frag, children)
-  }
-
-  return frag
+  // Convert primitives to text VNodes
+  return [{ type: 'text', value: String(child) }]
 }
 
 /**
- * jsx is for elements with static children (known at compile time)
- * Children are passed in props
+ * Normalize children from props to an array of VNodes
+ */
+function normalizeChildren(children: VNodeChild | VNodeChild[]): VNode[] {
+  if (Array.isArray(children)) {
+    return children.flatMap(normalizeChild)
+  }
+  return normalizeChild(children)
+}
+
+// ============================================================================
+// JSX Factory Functions
+// ============================================================================
+
+/**
+ * Fragment - groups children without a wrapper element
+ * Returns a VNode of type 'fragment'
+ */
+export function Fragment(props: { children?: VNodeChild | VNodeChild[] }): VNode {
+  const children = props.children
+  return {
+    type: 'fragment',
+    children: children !== undefined ? normalizeChildren(children) : [],
+  }
+}
+
+/**
+ * jsx - creates VNodes from JSX expressions
+ *
+ * For function components, returns a component VNode that will be rendered by the reconciler.
+ * For string tags (elements), returns an element VNode.
+ *
+ * @param tag - The element tag name or component function
+ * @param props - The props/attributes including children
+ * @param key - Optional key for reconciliation
  */
 export function jsx(
-  tag: string | ((props: Record<string, unknown>) => Node),
+  tag: string | ((props: Record<string, unknown>) => Node | VNode),
   props: Record<string, unknown> & { key?: string | number | null },
   key?: string | number | null,
-): Node {
+): VNode {
+  // Handle component functions
   if (typeof tag === 'function') {
-    return tag({ ...props, ...(key !== undefined ? { key } : {}) })
-  }
-
-  // Create element in correct namespace (HTML or SVG)
-  const isSvg = SVG_TAGS.has(tag)
-  const el = isSvg
-    ? document.createElementNS(SVG_NS, tag)
-    : document.createElement(tag)
-
-  // Set key as data attribute for debugging/reconciliation
-  if (key !== undefined && key !== null) {
-    el.setAttribute('data-key', String(key))
-  }
-
-  if (props) {
-    for (const [propKey, value] of Object.entries(props)) {
-      // Skip key - already handled above
-      if (propKey === 'key') continue
-      if (propKey === 'className') {
-        // For SVG, set class attribute; for HTML, set class directly
-        if (isSvg) {
-          el.setAttribute('class', String(value))
-        }
-        else {
-          (el as HTMLElement).className = String(value)
-        }
-      }
-      else if (propKey.startsWith('on') && typeof value === 'function') {
-        // onClick -> click
-        const event = propKey.slice(2).toLowerCase()
-        el.addEventListener(event, value as EventListener)
-      }
-      else if (value === true) {
-        el.setAttribute(propKey, '')
-      }
-      else if (
-        propKey === 'style'
-        && value !== null
-        && value !== undefined
-        && typeof value === 'object'
-        && !Array.isArray(value)
-      ) {
-        const style = (el as HTMLElement).style
-        // Type assertion is safe here - we've validated value is a non-array object above
-        const styleObj = value as Record<string, unknown>
-        for (const [styleName, styleValue] of Object.entries(styleObj)) {
-          if (styleValue === null || styleValue === undefined || styleValue === false) {
-            continue
-          }
-          // CSS property values must be strings - skip non-primitive values
-          if (typeof styleValue !== 'string' && typeof styleValue !== 'number') {
-            continue
-          }
-          style.setProperty(styleName, String(styleValue))
-        }
-      }
-      else if (value !== false && value !== null && propKey !== 'children') {
-        // For boolean attributes on SVG (like fill="true"), convert to string
-        // Only primitive types are valid attribute values
-        if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean') {
-          continue
-        }
-        el.setAttribute(propKey, String(value))
-      }
-    }
-
-    // Handle children from props
-    if ('children' in props) {
-      const children = props.children
-      const childrenValue = children as Child | Child[]
-      if (Array.isArray(childrenValue)) {
-        for (const c of childrenValue) append(el, c)
-      }
-      else {
-        append(el, childrenValue)
-      }
+    return {
+      type: 'component',
+      fn: tag as ComponentFn,
+      props: { ...props, ...(key !== undefined ? { key } : {}) },
+      key: key !== undefined && key !== null ? String(key) : undefined,
     }
   }
 
-  return el
+  // Handle element tags
+  const { children, key: propsKey, ...restProps } = props
+  const effectiveKey = key ?? propsKey
+
+  return {
+    type: 'element',
+    tag,
+    props: restProps,
+    children: children !== undefined ? normalizeChildren(children as VNodeChild | VNodeChild[]) : [],
+    key: effectiveKey !== undefined && effectiveKey !== null ? String(effectiveKey) : undefined,
+  }
 }
 
 /**
- * jsxs is for elements with multiple/dynamic children (arrays)
- * Children are passed in props
- * Same implementation as jsx - kept separate for React compatibility
+ * jsxs - same as jsx, kept for React compatibility
+ * Used by the JSX transform for elements with multiple children
  */
 export function jsxs(
-  tag: string | ((props: Record<string, unknown>) => Node),
+  tag: string | ((props: Record<string, unknown>) => Node | VNode),
   props: Record<string, unknown> & { key?: string | number | null },
-): Node {
+): VNode {
   const { key, ...restProps } = props
   return jsx(tag, restProps, key)
 }

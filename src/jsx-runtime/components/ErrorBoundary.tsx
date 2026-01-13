@@ -12,8 +12,8 @@ import { useState } from '../hooks/index.ts'
 import { getCurrentComponent } from '../component.ts'
 
 export interface ErrorBoundaryProps {
-  children: Node
-  fallback?: (error: Error) => Node
+  children: JSX.Element
+  fallback?: (error: Error) => JSX.Element
   fallbackClassName?: string
   onError?: (error: Error, errorInfo: { componentStack?: string }) => void
 }
@@ -55,7 +55,7 @@ export function ErrorBoundary({
   fallback,
   fallbackClassName = 'error-boundary',
   onError: _onErrorIgnored, // Passed to reconciler via errorBoundaryProps, not used in component body
-}: ErrorBoundaryProps): Node {
+}: ErrorBoundaryProps): JSX.Element {
   // Note: onError is stored in the component instance by the reconciler
   // and called when errors are captured. We don't use it directly here.
   void _onErrorIgnored // Mark as used to satisfy linter
@@ -115,9 +115,9 @@ export function ErrorBoundary({
  * ```
  */
 export function withErrorBoundary<P extends Record<string, unknown>>(
-  Component: (props: P) => Node,
+  Component: (props: P) => JSX.Element,
   errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>,
-): (props: P) => Node {
+): (props: P) => JSX.Element {
   const WrappedComponent = (props: P) => {
     return (
       <ErrorBoundary {...errorBoundaryProps}>
