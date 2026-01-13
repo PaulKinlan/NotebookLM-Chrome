@@ -181,11 +181,10 @@ async function ensureNotebookExists(
     // Enter a notebook name
     await page.type('#notebook-name-input', 'Test Notebook');
 
-    // Click confirm
+    // Click confirm button
     await page.click('#notebook-dialog-confirm');
 
     // Wait for notebook to be created and selected
-    // We check this by waiting for the select element to have a value
     await page.waitForFunction(() => {
       const select = document.getElementById('notebook-select') as HTMLSelectElement;
       return select && select.value !== '';
