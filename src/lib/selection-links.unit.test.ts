@@ -10,50 +10,50 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getLinksInSelection } from './selection-links.ts';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { getLinksInSelection } from './selection-links.ts'
 
 describe('getLinksInSelection', () => {
-  let container: HTMLDivElement;
+  let container: HTMLDivElement
 
   beforeEach(() => {
     // Create a container for our test DOM
-    container = document.createElement('div');
-    document.body.appendChild(container);
-  });
+    container = document.createElement('div')
+    document.body.appendChild(container)
+  })
 
   afterEach(() => {
     // Clean up the DOM
-    document.body.removeChild(container);
+    document.body.removeChild(container)
     // Clear any selection
-    window.getSelection()?.removeAllRanges();
-  });
+    window.getSelection()?.removeAllRanges()
+  })
 
   /**
    * Helper function to select a range of content
    */
   function selectContent(startNode: Node, startOffset: number, endNode: Node, endOffset: number): void {
-    const selection = window.getSelection();
-    if (!selection) return;
+    const selection = window.getSelection()
+    if (!selection) return
 
-    selection.removeAllRanges();
-    const range = document.createRange();
-    range.setStart(startNode, startOffset);
-    range.setEnd(endNode, endOffset);
-    selection.addRange(range);
+    selection.removeAllRanges()
+    const range = document.createRange()
+    range.setStart(startNode, startOffset)
+    range.setEnd(endNode, endOffset)
+    selection.addRange(range)
   }
 
   /**
    * Helper function to select all content within an element
    */
   function selectAll(element: HTMLElement): void {
-    const selection = window.getSelection();
-    if (!selection) return;
+    const selection = window.getSelection()
+    if (!selection) return
 
-    selection.removeAllRanges();
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    selection.addRange(range);
+    selection.removeAllRanges()
+    const range = document.createRange()
+    range.selectNodeContents(element)
+    selection.addRange(range)
   }
 
   /**
@@ -61,32 +61,32 @@ describe('getLinksInSelection', () => {
    * Uses innerHTML for test fixtures - safe because content is hardcoded, not user input
    */
   function setTestHTML(html: string): void {
-    container.innerHTML = html;
+    container.innerHTML = html
   }
 
   it('returns empty array when there is no selection', () => {
-    const result = getLinksInSelection();
-    expect(result).toEqual([]);
-  });
+    const result = getLinksInSelection()
+    expect(result).toEqual([])
+  })
 
   it('returns empty array when selection has no links', () => {
-    setTestHTML('<p>Just some plain text without any links.</p>');
-    const p = container.querySelector('p')!;
-    selectAll(p);
+    setTestHTML('<p>Just some plain text without any links.</p>')
+    const p = container.querySelector('p')!
+    selectAll(p)
 
-    const result = getLinksInSelection();
-    expect(result).toEqual([]);
-  });
+    const result = getLinksInSelection()
+    expect(result).toEqual([])
+  })
 
   it('extracts a single link from selection', () => {
-    setTestHTML('<p>Check out <a href="https://example.com">this link</a> for more info.</p>');
-    const p = container.querySelector('p')!;
-    selectAll(p);
+    setTestHTML('<p>Check out <a href="https://example.com">this link</a> for more info.</p>')
+    const p = container.querySelector('p')!
+    selectAll(p)
 
-    const result = getLinksInSelection();
-    expect(result).toContain('https://example.com/');
-    expect(result).toHaveLength(1);
-  });
+    const result = getLinksInSelection()
+    expect(result).toContain('https://example.com/')
+    expect(result).toHaveLength(1)
+  })
 
   it('extracts multiple links from selection', () => {
     setTestHTML(`
@@ -94,15 +94,15 @@ describe('getLinksInSelection', () => {
         Visit <a href="https://example.com">Example</a> and
         <a href="https://google.com">Google</a> for more.
       </p>
-    `);
-    const p = container.querySelector('p')!;
-    selectAll(p);
+    `)
+    const p = container.querySelector('p')!
+    selectAll(p)
 
-    const result = getLinksInSelection();
-    expect(result).toHaveLength(2);
-    expect(result).toContain('https://example.com/');
-    expect(result).toContain('https://google.com/');
-  });
+    const result = getLinksInSelection()
+    expect(result).toHaveLength(2)
+    expect(result).toContain('https://example.com/')
+    expect(result).toContain('https://google.com/')
+  })
 
   it('returns unique links when same URL appears multiple times', () => {
     setTestHTML(`
@@ -110,14 +110,14 @@ describe('getLinksInSelection', () => {
         <a href="https://example.com">First link</a> and
         <a href="https://example.com">same link again</a>.
       </p>
-    `);
-    const p = container.querySelector('p')!;
-    selectAll(p);
+    `)
+    const p = container.querySelector('p')!
+    selectAll(p)
 
-    const result = getLinksInSelection();
-    expect(result).toHaveLength(1);
-    expect(result).toContain('https://example.com/');
-  });
+    const result = getLinksInSelection()
+    expect(result).toHaveLength(1)
+    expect(result).toContain('https://example.com/')
+  })
 
   it('only extracts HTTP and HTTPS links', () => {
     setTestHTML(`
@@ -128,31 +128,31 @@ describe('getLinksInSelection', () => {
         <a href="javascript:void(0)">JS</a>,
         <a href="ftp://files.com">FTP</a>.
       </p>
-    `);
-    const p = container.querySelector('p')!;
-    selectAll(p);
+    `)
+    const p = container.querySelector('p')!
+    selectAll(p)
 
-    const result = getLinksInSelection();
-    expect(result).toHaveLength(2);
-    expect(result).toContain('https://secure.com/');
-    expect(result).toContain('http://insecure.com/');
-    expect(result).not.toContain('mailto:test@example.com');
-    expect(result).not.toContain('javascript:void(0)');
-    expect(result).not.toContain('ftp://files.com/');
-  });
+    const result = getLinksInSelection()
+    expect(result).toHaveLength(2)
+    expect(result).toContain('https://secure.com/')
+    expect(result).toContain('http://insecure.com/')
+    expect(result).not.toContain('mailto:test@example.com')
+    expect(result).not.toContain('javascript:void(0)')
+    expect(result).not.toContain('ftp://files.com/')
+  })
 
   it('extracts link when selection is entirely within an anchor', () => {
-    setTestHTML('<p><a href="https://example.com">This is a long link text that you might select partially</a></p>');
-    const anchor = container.querySelector('a')!;
-    const textNode = anchor.firstChild!;
+    setTestHTML('<p><a href="https://example.com">This is a long link text that you might select partially</a></p>')
+    const anchor = container.querySelector('a')!
+    const textNode = anchor.firstChild!
 
     // Select just part of the link text
-    selectContent(textNode, 5, textNode, 15);
+    selectContent(textNode, 5, textNode, 15)
 
-    const result = getLinksInSelection();
-    expect(result).toHaveLength(1);
-    expect(result).toContain('https://example.com/');
-  });
+    const result = getLinksInSelection()
+    expect(result).toHaveLength(1)
+    expect(result).toContain('https://example.com/')
+  })
 
   it('extracts nested links within complex DOM structures', () => {
     setTestHTML(`
@@ -164,15 +164,15 @@ describe('getLinksInSelection', () => {
         </ul>
         <p>Some text after</p>
       </div>
-    `);
-    const div = container.querySelector('div')!;
-    selectAll(div);
+    `)
+    const div = container.querySelector('div')!
+    selectAll(div)
 
-    const result = getLinksInSelection();
-    expect(result).toHaveLength(2);
-    expect(result).toContain('https://link1.com/');
-    expect(result).toContain('https://link2.com/');
-  });
+    const result = getLinksInSelection()
+    expect(result).toHaveLength(2)
+    expect(result).toContain('https://link1.com/')
+    expect(result).toContain('https://link2.com/')
+  })
 
   it('handles links with various URL formats', () => {
     setTestHTML(`
@@ -182,17 +182,17 @@ describe('getLinksInSelection', () => {
         <a href="https://example.com#section">With hash</a>,
         <a href="https://sub.example.com">Subdomain</a>.
       </p>
-    `);
-    const p = container.querySelector('p')!;
-    selectAll(p);
+    `)
+    const p = container.querySelector('p')!
+    selectAll(p)
 
-    const result = getLinksInSelection();
-    expect(result).toHaveLength(4);
-    expect(result).toContain('https://example.com/path/to/page');
-    expect(result).toContain('https://example.com/?query=value');
-    expect(result).toContain('https://example.com/#section');
-    expect(result).toContain('https://sub.example.com/');
-  });
+    const result = getLinksInSelection()
+    expect(result).toHaveLength(4)
+    expect(result).toContain('https://example.com/path/to/page')
+    expect(result).toContain('https://example.com/?query=value')
+    expect(result).toContain('https://example.com/#section')
+    expect(result).toContain('https://sub.example.com/')
+  })
 
   it('ignores anchors without href attribute', () => {
     setTestHTML(`
@@ -201,35 +201,35 @@ describe('getLinksInSelection', () => {
         <a name="bookmark">Named anchor</a> and
         <a>Empty anchor</a>.
       </p>
-    `);
-    const p = container.querySelector('p')!;
-    selectAll(p);
+    `)
+    const p = container.querySelector('p')!
+    selectAll(p)
 
-    const result = getLinksInSelection();
-    expect(result).toHaveLength(1);
-    expect(result).toContain('https://example.com/');
-  });
+    const result = getLinksInSelection()
+    expect(result).toHaveLength(1)
+    expect(result).toContain('https://example.com/')
+  })
 
   it('handles selection spanning multiple elements', () => {
     setTestHTML(`
       <div id="start">Start text <a href="https://first.com">first link</a></div>
       <div>Middle text <a href="https://middle.com">middle link</a></div>
       <div id="end"><a href="https://last.com">last link</a> end text</div>
-    `);
+    `)
 
-    const startDiv = container.querySelector('#start')!;
-    const endDiv = container.querySelector('#end')!;
+    const startDiv = container.querySelector('#start')!
+    const endDiv = container.querySelector('#end')!
 
     // Select from start of first div to end of last div
-    const selection = window.getSelection();
-    if (!selection) return;
-    selection.removeAllRanges();
-    const range = document.createRange();
-    range.setStart(startDiv, 0);
-    range.setEnd(endDiv, endDiv.childNodes.length);
-    selection.addRange(range);
+    const selection = window.getSelection()
+    if (!selection) return
+    selection.removeAllRanges()
+    const range = document.createRange()
+    range.setStart(startDiv, 0)
+    range.setEnd(endDiv, endDiv.childNodes.length)
+    selection.addRange(range)
 
-    const result = getLinksInSelection();
-    expect(result.length).toBeGreaterThanOrEqual(1);
-  });
-});
+    const result = getLinksInSelection()
+    expect(result.length).toBeGreaterThanOrEqual(1)
+  })
+})

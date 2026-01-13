@@ -1,26 +1,55 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts';
-import { trackUsage } from '../usage.ts';
+import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { trackUsage } from '../usage.ts'
+import type { FlashcardsConfig } from '../../types/index.ts'
+import { DEFAULT_FLASHCARDS_CONFIG } from '../transform-config.ts'
 
 export async function generateFlashcards(
   sources: Source[],
-  cardCount: number = 10
+  config: Partial<FlashcardsConfig> = {},
 ): Promise<string> {
-  const config = await getModelWithConfig();
-  if (!config) {
+  const modelConfig = await getModelWithConfig()
+  if (!modelConfig) {
     throw new Error(
-      "AI provider not configured. Please add your API key in settings."
-    );
+      'AI provider not configured. Please add your API key in settings.',
+    )
   }
 
-  const result = await generateText({
-    model: config.model,
-    system: `You are a helpful AI assistant that creates interactive study flashcards as self-contained HTML/CSS/JS.
-Create clickable flashcards that flip to reveal answers when clicked.
-Questions should be specific and answers should be concise but complete.
+  // Merge with defaults
+  const c = { ...DEFAULT_FLASHCARDS_CONFIG, ...config }
+
+  // Difficulty descriptions
+  const difficultyDesc: Record<typeof c.difficulty, string> = {
+    easy: 'basic concepts and straightforward facts',
+    medium: 'moderately challenging concepts requiring understanding',
+    hard: 'complex concepts requiring deep knowledge',
+    mixed: 'a mix of easy, medium, and hard cards',
+  }
+
+  // Card style descriptions
+  const cardStyleDesc: Record<typeof c.cardStyle, string> = {
+    'question-answer': 'questions on the front and answers on the back',
+    'term-definition': 'terms/vocabulary on the front and definitions on the back',
+    'concept-example': 'concepts on the front and examples/applications on the back',
+  }
+
+  const hintsNote = c.includeHints
+    ? '\nInclude a subtle hint on each card front to help recall.'
+    : ''
+
+  const systemPrompt = `You are a helpful AI assistant that creates interactive study flashcards as self-contained HTML/CSS/JS.
+Create flashcards with ${cardStyleDesc[c.cardStyle]}.
+Focus on ${difficultyDesc[c.difficulty]}.${hintsNote}
+Cards should be clickable and flip to reveal the answer.
 
 IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No markdown.
-Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.`,
-    prompt: `Create ${cardCount} interactive flashcards based on these sources:
+Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.${
+  c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
+}`
+
+  const result = await generateText({
+    model: modelConfig.model,
+    system: systemPrompt,
+    prompt: `Create ${c.cardCount} interactive flashcards based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -32,6 +61,7 @@ Generate self-contained HTML flashcards with:
 5. Progress indicator
 6. Clean, modern card design with good contrast
 7. Visual cue that cards are clickable (e.g., "Click to reveal" text)
+${c.includeHints ? '8. A subtle hint displayed on the front of each card' : ''}
 
 Structure your response as:
 <div class="flashcards-container">
@@ -43,19 +73,19 @@ Structure your response as:
 <script>
   // Interactive JavaScript for flipping and navigation - reference elements from HTML above
 </script>`,
-  });
+  })
 
   // Track usage
   if (result.usage) {
     trackUsage({
-      modelConfigId: config.modelConfigId,
-      providerId: config.providerId,
-      model: config.modelId,
+      modelConfigId: modelConfig.modelConfigId,
+      providerId: modelConfig.providerId,
+      model: modelConfig.modelId,
       inputTokens: result.usage.inputTokens ?? 0,
       outputTokens: result.usage.outputTokens ?? 0,
       operation: 'transform',
-    }).catch((err) => console.warn('[Transform] Failed to track flashcards usage:', err));
+    }).catch(err => console.warn('[Transform] Failed to track flashcards usage:', err))
   }
 
-  return result.text;
+  return result.text
 }

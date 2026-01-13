@@ -3,120 +3,120 @@
  * Supports Markdown and JSON formats
  */
 
-import type { Notebook, Source, ChatEvent, Transformation } from '../types/index.ts';
+import type { Notebook, Source, ChatEvent, Transformation } from '../types/index.ts'
 
-export type ExportFormat = 'markdown' | 'json';
+export type ExportFormat = 'markdown' | 'json'
 
 export interface NotebookExport {
-  notebook: Notebook;
-  sources: Source[];
-  chatHistory: ChatEvent[];
-  transformations: Transformation[];
-  exportedAt: string;
-  version: string;
+  notebook: Notebook
+  sources: Source[]
+  chatHistory: ChatEvent[]
+  transformations: Transformation[]
+  exportedAt: string
+  version: string
 }
 
 /**
  * Export a notebook and its contents to JSON format
  */
 export function exportToJSON(data: NotebookExport): string {
-  return JSON.stringify(data, null, 2);
+  return JSON.stringify(data, null, 2)
 }
 
 /**
  * Export a notebook and its contents to Markdown format
  */
 export function exportToMarkdown(data: NotebookExport): string {
-  const lines: string[] = [];
-  const { notebook, sources, chatHistory, transformations } = data;
+  const lines: string[] = []
+  const { notebook, sources, chatHistory, transformations } = data
 
   // Header
-  lines.push(`# ${notebook.name}`);
-  lines.push('');
-  lines.push(`*Exported from FolioLM on ${new Date(data.exportedAt).toLocaleDateString()}*`);
-  lines.push('');
+  lines.push(`# ${notebook.name}`)
+  lines.push('')
+  lines.push(`*Exported from FolioLM on ${new Date(data.exportedAt).toLocaleDateString()}*`)
+  lines.push('')
 
   // Sources section
   if (sources.length > 0) {
-    lines.push('## Sources');
-    lines.push('');
+    lines.push('## Sources')
+    lines.push('')
 
     for (const source of sources) {
-      lines.push(`### ${source.title}`);
-      lines.push('');
-      lines.push(`- **URL:** ${source.url}`);
-      lines.push(`- **Type:** ${source.type}`);
+      lines.push(`### ${source.title}`)
+      lines.push('')
+      lines.push(`- **URL:** ${source.url}`)
+      lines.push(`- **Type:** ${source.type}`)
       if (source.metadata?.wordCount) {
-        lines.push(`- **Word Count:** ${source.metadata.wordCount}`);
+        lines.push(`- **Word Count:** ${source.metadata.wordCount}`)
       }
-      lines.push('');
+      lines.push('')
 
       // Include content (truncated for very long content)
       if (source.content) {
         const content = source.content.length > 5000
           ? source.content.substring(0, 5000) + '\n\n*[Content truncated...]*'
-          : source.content;
-        lines.push('#### Content');
-        lines.push('');
-        lines.push(content);
-        lines.push('');
+          : source.content
+        lines.push('#### Content')
+        lines.push('')
+        lines.push(content)
+        lines.push('')
       }
 
-      lines.push('---');
-      lines.push('');
+      lines.push('---')
+      lines.push('')
     }
   }
 
   // Chat history section
   if (chatHistory.length > 0) {
-    lines.push('## Chat History');
-    lines.push('');
+    lines.push('## Chat History')
+    lines.push('')
 
     for (const event of chatHistory) {
       // Skip tool-result events in markdown export
-      if (event.type === 'tool-result') continue;
+      if (event.type === 'tool-result') continue
 
       // Only user and assistant events have content
-      if (event.type !== 'user' && event.type !== 'assistant') continue;
+      if (event.type !== 'user' && event.type !== 'assistant') continue
 
-      const role = event.type === 'user' ? 'You' : 'Assistant';
-      const time = new Date(event.timestamp).toLocaleString();
+      const role = event.type === 'user' ? 'You' : 'Assistant'
+      const time = new Date(event.timestamp).toLocaleString()
 
-      lines.push(`**${role}** *(${time})*`);
-      lines.push('');
-      lines.push(event.content);
-      lines.push('');
+      lines.push(`**${role}** *(${time})*`)
+      lines.push('')
+      lines.push(event.content)
+      lines.push('')
 
       // Include citations if present (only on assistant events)
       if (event.type === 'assistant' && event.citations && event.citations.length > 0) {
-        lines.push('*Citations:*');
+        lines.push('*Citations:*')
         for (const citation of event.citations) {
-          lines.push(`- ${citation.sourceTitle}: "${citation.excerpt}"`);
+          lines.push(`- ${citation.sourceTitle}: "${citation.excerpt}"`)
         }
-        lines.push('');
+        lines.push('')
       }
     }
 
-    lines.push('---');
-    lines.push('');
+    lines.push('---')
+    lines.push('')
   }
 
   // Transformations section
   if (transformations.length > 0) {
-    lines.push('## Transformations');
-    lines.push('');
+    lines.push('## Transformations')
+    lines.push('')
 
     for (const transform of transformations) {
-      lines.push(`### ${transform.title} (${transform.type})`);
-      lines.push('');
-      lines.push(transform.content);
-      lines.push('');
-      lines.push('---');
-      lines.push('');
+      lines.push(`### ${transform.title} (${transform.type})`)
+      lines.push('')
+      lines.push(transform.content)
+      lines.push('')
+      lines.push('---')
+      lines.push('')
     }
   }
 
-  return lines.join('\n');
+  return lines.join('\n')
 }
 
 /**
@@ -126,30 +126,30 @@ export function generateExportFilename(notebookName: string, format: ExportForma
   const sanitized = notebookName
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
+    .replace(/^-|-$/g, '')
 
-  const date = new Date().toISOString().split('T')[0];
-  const extension = format === 'json' ? 'json' : 'md';
+  const date = new Date().toISOString().split('T')[0]
+  const extension = format === 'json' ? 'json' : 'md'
 
-  return `${sanitized}-${date}.${extension}`;
+  return `${sanitized}-${date}.${extension}`
 }
 
 /**
  * Download content as a file
  */
 export function downloadFile(content: string, filename: string, mimeType: string): void {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
 
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 
   // Clean up the URL object
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(url)
 }
 
 /**
@@ -157,16 +157,17 @@ export function downloadFile(content: string, filename: string, mimeType: string
  */
 export function exportNotebook(
   data: NotebookExport,
-  format: ExportFormat
+  format: ExportFormat,
 ): void {
-  const filename = generateExportFilename(data.notebook.name, format);
+  const filename = generateExportFilename(data.notebook.name, format)
 
   if (format === 'json') {
-    const content = exportToJSON(data);
-    downloadFile(content, filename, 'application/json');
-  } else {
-    const content = exportToMarkdown(data);
-    downloadFile(content, filename, 'text/markdown');
+    const content = exportToJSON(data)
+    downloadFile(content, filename, 'application/json')
+  }
+  else {
+    const content = exportToMarkdown(data)
+    downloadFile(content, filename, 'text/markdown')
   }
 }
 
@@ -174,9 +175,9 @@ export function exportNotebook(
  * Export all notebooks (for backup purposes)
  */
 export interface FullBackup {
-  notebooks: NotebookExport[];
-  exportedAt: string;
-  version: string;
+  notebooks: NotebookExport[]
+  exportedAt: string
+  version: string
 }
 
 export function exportFullBackup(notebooks: NotebookExport[]): string {
@@ -184,13 +185,13 @@ export function exportFullBackup(notebooks: NotebookExport[]): string {
     notebooks,
     exportedAt: new Date().toISOString(),
     version: '1.0.0',
-  };
-  return JSON.stringify(backup, null, 2);
+  }
+  return JSON.stringify(backup, null, 2)
 }
 
 export function downloadFullBackup(notebooks: NotebookExport[]): void {
-  const content = exportFullBackup(notebooks);
-  const date = new Date().toISOString().split('T')[0];
-  const filename = `foliolm-backup-${date}.json`;
-  downloadFile(content, filename, 'application/json');
+  const content = exportFullBackup(notebooks)
+  const date = new Date().toISOString().split('T')[0]
+  const filename = `foliolm-backup-${date}.json`
+  downloadFile(content, filename, 'application/json')
 }

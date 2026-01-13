@@ -1,12 +1,12 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts';
-import { trackUsage } from '../usage.ts';
+import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { trackUsage } from '../usage.ts'
 
 export async function generateSummary(sources: Source[]): Promise<string> {
-  const config = await getModelWithConfig();
+  const config = await getModelWithConfig()
   if (!config) {
     throw new Error(
-      "AI provider not configured. Please add your API key in settings."
-    );
+      'AI provider not configured. Please add your API key in settings.',
+    )
   }
 
   const result = await generateText({
@@ -19,7 +19,7 @@ Do not use bullet points, headings, or multiple paragraphs. Output only the over
     prompt: `Write a concise overview paragraph for these sources:
 
 ${buildSourceContextSimple(sources)}`,
-  });
+  })
 
   // Track usage
   if (result.usage) {
@@ -30,8 +30,8 @@ ${buildSourceContextSimple(sources)}`,
       inputTokens: result.usage.inputTokens ?? 0,
       outputTokens: result.usage.outputTokens ?? 0,
       operation: 'transform',
-    }).catch((err) => console.warn('[Transform] Failed to track summary usage:', err));
+    }).catch(err => console.warn('[Transform] Failed to track summary usage:', err))
   }
 
-  return result.text;
+  return result.text
 }

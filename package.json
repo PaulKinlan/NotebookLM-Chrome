@@ -4,6 +4,7 @@
   "description": "FolioLM - Collect and query content from tabs, bookmarks, and history. Your AI research companion.",
   "type": "module",
   "scripts": {
+    "prepare": "husky",
     "dev": "vite",
     "watch": "npm run build -- --watch",
     "build": "tsc && vite build",
@@ -39,44 +40,55 @@
     "@ai-sdk/google": "^3.0.5",
     "@ai-sdk/groq": "^3.0.4",
     "@ai-sdk/huggingface": "^1.0.4",
-    "@ai-sdk/openai": "^3.0.7",
+    "@ai-sdk/openai": "^3.0.8",
     "@ai-sdk/openai-compatible": "^2.0.4",
     "@built-in-ai/core": "^3.0.1",
     "@mozilla/readability": "^0.6.0",
     "@openrouter/ai-sdk-provider": "^1.5.4",
-    "@types/marked": "^5.0.2",
-    "ai": "^6.0.14",
+    "@types/marked": "^6.0.0",
+    "ai": "^6.0.28",
     "dompurify": "^3.3.1",
     "marked": "^17.0.1",
     "turndown": "^7.2.0"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.0.0-beta.28",
-    "@types/chrome": "^0.0.287",
-    "@types/dompurify": "^3.0.5",
+    "@stylistic/eslint-plugin": "^5.7.0",
+    "@types/chrome": "^0.1.33",
+    "@types/dompurify": "^3.2.0",
     "@types/eslint": "^9.6.1",
     "@types/mozilla__readability": "^0.4.2",
     "@types/node": "^25.0.6",
-    "@types/puppeteer": "^5.4.7",
+    "@types/puppeteer": "^7.0.4",
     "@types/turndown": "^5.0.5",
     "@typescript-eslint/eslint-plugin": "^8.19.0",
     "@typescript-eslint/parser": "^8.19.0",
-    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/coverage-v8": "^4.0.17",
     "@vitest/ui": "^4.0.16",
     "eslint": "^9.17.0",
     "eslint-plugin-eslint-comments": "^3.2.0",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.1.0",
+    "husky": "^9.1.7",
     "jiti": "^2.6.1",
     "jsdom": "^27.4.0",
-    "puppeteer": "^24.34.0",
+    "lint-staged": "^16.2.7",
+    "puppeteer": "^24.35.0",
     "typescript": "^5.7.2",
-    "vite": "^6.0.6",
+    "vite": "^7.3.1",
     "vitest": "^4.0.16"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix"
+    ]
   },
   "overrides": {
     "@openrouter/ai-sdk-provider": {
       "ai": "^6.0.14"
     }
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.55.1"
   }
 }

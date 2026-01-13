@@ -5,14 +5,16 @@ import type {
   Citation,
   SuggestedLink,
   StreamEvent,
-} from "../types/index.ts";
-import DOMPurify from "dompurify";
-import { checkPermissions, requestPermission } from "../lib/permissions.ts";
-import { renderMarkdown, isHtmlContent } from "../lib/markdown-renderer.ts";
+  Message,
+} from '../types/index.ts'
+import DOMPurify from 'dompurify'
+import type { ExtractedLink } from '../types/index.ts'
+import { checkPermissions, requestPermission } from '../lib/permissions.ts'
+import { renderMarkdown, isHtmlContent } from '../lib/markdown-renderer.ts'
 import {
   escapeHtml,
   formatMarkdown,
-} from "./dom-utils.ts";
+} from './dom-utils.ts'
 import {
   getNotebooks,
   saveNotebook,
@@ -40,7 +42,7 @@ import {
   createSummary,
   clearAllData,
   getTransformations,
-} from "../lib/storage.ts";
+} from '../lib/storage.ts'
 import {
   streamChat,
   generatePodcastScript,
@@ -64,67 +66,132 @@ import {
   generateOutline,
   generateSummary,
   formatErrorForUser,
-} from "../lib/ai.ts";
-import { getSourceTools } from "../lib/agent-tools.ts";
-import { getToolPermissions } from "../lib/tool-permissions.ts";
-import type { ToolPermissionsConfig } from "../types/index.ts";
+} from '../lib/ai.ts'
+import { getSourceTools } from '../lib/agent-tools.ts'
+import { getToolPermissions } from '../lib/tool-permissions.ts'
+import type { ToolPermissionsConfig } from '../types/index.ts'
 import {
   getContextMode,
   setContextMode,
   getAISettings,
-} from "../lib/settings.ts";
+} from '../lib/settings.ts'
 import {
   getModelConfigs,
   getDefaultModelConfig,
-} from "../lib/model-configs.ts";
-import { initProviderConfigUI, AI_PROFILES_CHANGED_EVENT } from './provider-config-ui.ts';
-import { filterLinksWithAI, hasExtractableLinks } from '../lib/suggested-links.ts';
-import { SandboxRenderer } from "../lib/sandbox-renderer.ts";
+} from '../lib/model-configs.ts'
+import { initProviderConfigUI, AI_PROFILES_CHANGED_EVENT } from './provider-config-ui.ts'
+import { filterLinksWithAI, hasExtractableLinks } from '../lib/suggested-links.ts'
+import { SandboxRenderer } from '../lib/sandbox-renderer.ts'
 import {
   exportNotebook,
   type NotebookExport,
   type ExportFormat,
-} from "../lib/export.ts";
+} from '../lib/export.ts'
 import {
   isOnboardingComplete,
   markOnboardingComplete,
   ONBOARDING_STEPS,
-} from "../lib/onboarding.ts";
+} from '../lib/onboarding.ts'
 import {
   initApprovalUI,
   checkAndShowPendingApprovals,
-} from "./approval-ui.ts";
+} from './approval-ui.ts'
+import { getTransformConfig } from '../lib/transform-config.ts'
+import { initTransformConfigButtons } from './components/TransformConfigPopover.tsx'
+
+// ============================================================================
+// Chrome Message Response Types
+// ============================================================================
+
+/**
+ * Response from chrome.tabs.sendMessage for content extraction
+ */
+interface TabExtractContentResponse {
+  url: string
+  title: string
+  markdown: string
+  links?: ExtractedLink[]
+}
+
+/**
+ * Response from chrome.runtime.sendMessage for URL extraction
+ */
+interface UrlExtractResponse {
+  url?: string
+  title?: string
+  content?: string
+  markdown?: string
+  links?: ExtractedLink[]
+  success?: boolean
+}
+
+/**
+ * Type guard for TabExtractContentResponse
+ */
+function isTabExtractContentResponse(value: unknown): value is TabExtractContentResponse {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'url' in value
+    && 'title' in value
+    && 'markdown' in value
+    && typeof value.url === 'string'
+    && typeof value.title === 'string'
+    && typeof value.markdown === 'string'
+  )
+}
+
+/**
+ * Type guard for UrlExtractResponse
+ */
+function isUrlExtractResponse(value: unknown): value is UrlExtractResponse {
+  return (
+    typeof value === 'object'
+    && value !== null
+  )
+}
+
+/**
+ * Type guard for successful UrlExtractResponse with success: true
+ */
+function isSuccessfulUrlExtractResponse(value: unknown): value is UrlExtractResponse & { success: true } {
+  return (
+    isUrlExtractResponse(value)
+    && 'success' in value
+    && value.success === true
+  )
+}
 
 // ============================================================================
 // State
 // ============================================================================
 
-let currentNotebookId: string | null = null;
-let onboardingStep = 0;
+let currentNotebookId: string | null = null
+let onboardingStep = 0
 
 let permissions: PermissionStatus = {
   tabs: false,
   tabGroups: false,
   bookmarks: false,
   history: false,
-};
+}
 
 // Picker state
 interface PickerItem {
-  id: string;
-  url: string;
-  title: string;
-  favicon?: string;
-  color?: string; // For tab groups
-  tabCount?: number; // For tab groups
+  id: string
+  url: string
+  title: string
+  favicon?: string
+  color?: string // For tab groups
+  tabCount?: number // For tab groups
 }
-let pickerItems: PickerItem[] = [];
-let selectedPickerItems: Set<string> = new Set();
-let pickerType: "tab" | "tabGroup" | "bookmark" | "history" | null = null;
+let pickerItems: PickerItem[] = []
+let selectedPickerItems: Set<string> = new Set()
+let pickerType: 'tab' | 'tabGroup' | 'bookmark' | 'history' | null = null
 
 // Suggested links state
-let suggestedLinksCache: Map<string, SuggestedLink[]> = new Map();
-let suggestedLinksLoading = false;
+let suggestedLinksCache: Map<string, SuggestedLink[]> = new Map()
+let suggestedLinksLoading = false
 
 // ============================================================================
 // DOM Elements
@@ -132,7 +199,7 @@ let suggestedLinksLoading = false;
 
 // Helper to lazily get elements (for TSX compatibility where elements render later)
 function getElementById<T extends HTMLElement>(id: string): T | null {
-  return document.getElementById(id) as T | null;
+  return document.getElementById(id) as T | null
 }
 
 // ============================================================================
@@ -143,318 +210,321 @@ const elements = {
   // Navigation
   get navItems(): HTMLElement[] {
     return Array.from(
-      document.querySelectorAll(".nav-item")
-    ).filter((item): item is HTMLElement => item instanceof HTMLElement);
+      document.querySelectorAll('.nav-item'),
+    ).filter((item): item is HTMLElement => item instanceof HTMLElement)
   },
   get tabContents(): HTMLElement[] {
     return Array.from(
-      document.querySelectorAll(".tab-content")
-    ).filter((item): item is HTMLElement => item instanceof HTMLElement);
+      document.querySelectorAll('.tab-content'),
+    ).filter((item): item is HTMLElement => item instanceof HTMLElement)
   },
 
   // Header buttons
   get headerLibraryBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("header-library-btn")!;
+    return getElementById<HTMLButtonElement>('header-library-btn')!
   },
   get headerSettingsBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("header-settings-btn")!;
+    return getElementById<HTMLButtonElement>('header-settings-btn')!
   },
 
   // Add Sources tab
   get addCurrentTabBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("add-current-tab-btn")!;
+    return getElementById<HTMLButtonElement>('add-current-tab-btn')!
   },
   get searchSources(): HTMLInputElement {
-    return getElementById<HTMLInputElement>("search-sources")!;
+    return getElementById<HTMLInputElement>('search-sources')!
   },
   get importTabs(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("import-tabs")!;
+    return getElementById<HTMLButtonElement>('import-tabs')!
   },
   get importTabGroups(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("import-tab-groups")!;
+    return getElementById<HTMLButtonElement>('import-tab-groups')!
   },
   get importBookmarks(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("import-bookmarks")!;
+    return getElementById<HTMLButtonElement>('import-bookmarks')!
   },
   get importHistory(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("import-history")!;
+    return getElementById<HTMLButtonElement>('import-history')!
   },
   get tabsCount(): HTMLSpanElement {
-    return getElementById<HTMLSpanElement>("tabs-count")!;
+    return getElementById<HTMLSpanElement>('tabs-count')!
   },
   get sourcesList(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("sources-list")!;
+    return getElementById<HTMLDivElement>('sources-list')!
   },
 
   // Chat tab
   get notebookSelect(): HTMLSelectElement {
-    return getElementById<HTMLSelectElement>("notebook-select")!;
+    return getElementById<HTMLSelectElement>('notebook-select')!
   },
   get aiModelBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("ai-model-btn")!;
+    return getElementById<HTMLButtonElement>('ai-model-btn')!
   },
   get aiModelDropdown(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("ai-model-dropdown")!;
+    return getElementById<HTMLDivElement>('ai-model-dropdown')!
   },
   get aiModelList(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("ai-model-list")!;
+    return getElementById<HTMLDivElement>('ai-model-list')!
   },
   get newNotebookBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("new-notebook-btn")!;
+    return getElementById<HTMLButtonElement>('new-notebook-btn')!
   },
   get queryInput(): HTMLInputElement {
-    return getElementById<HTMLInputElement>("query-input")!;
+    return getElementById<HTMLInputElement>('query-input')!
   },
   get queryBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("query-btn")!;
+    return getElementById<HTMLButtonElement>('query-btn')!
   },
   get sourceCount(): HTMLSpanElement {
-    return getElementById<HTMLSpanElement>("source-count")!;
+    return getElementById<HTMLSpanElement>('source-count')!
   },
   get activeSources(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("active-sources")!;
+    return getElementById<HTMLDivElement>('active-sources')!
+  },
+  get refreshAllSourcesBtn(): HTMLButtonElement {
+    return getElementById<HTMLButtonElement>('refresh-all-sources-btn')!
   },
   get addPageBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("add-page-btn")!;
+    return getElementById<HTMLButtonElement>('add-page-btn')!
   },
   get chatMessages(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("chat-messages")!;
+    return getElementById<HTMLDivElement>('chat-messages')!
   },
   get clearChatBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("clear-chat-btn")!;
+    return getElementById<HTMLButtonElement>('clear-chat-btn')!
   },
   get chatStatus(): HTMLParagraphElement {
-    return getElementById<HTMLParagraphElement>("chat-status")!;
+    return getElementById<HTMLParagraphElement>('chat-status')!
   },
   get autocompleteDropdown(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("autocomplete-dropdown")!;
+    return getElementById<HTMLDivElement>('autocomplete-dropdown')!
   },
   get autocompleteGhost(): HTMLSpanElement {
-    return getElementById<HTMLSpanElement>("autocomplete-ghost")!;
+    return getElementById<HTMLSpanElement>('autocomplete-ghost')!
   },
 
   // Summary section
   get summarySection(): HTMLDetailsElement {
-    return getElementById<HTMLDetailsElement>("summary-section")!;
+    return getElementById<HTMLDetailsElement>('summary-section')!
   },
   get notebookSummary(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("notebook-summary")!;
+    return getElementById<HTMLDivElement>('notebook-summary')!
   },
   get regenerateSummaryBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("regenerate-summary-btn")!;
+    return getElementById<HTMLButtonElement>('regenerate-summary-btn')!
   },
 
   // Suggested links section
   get suggestedLinksSection(): HTMLDetailsElement | null {
-    return getElementById<HTMLDetailsElement>("suggested-links-section");
+    return getElementById<HTMLDetailsElement>('suggested-links-section')
   },
   get suggestedLinksCount(): HTMLSpanElement | null {
-    return getElementById<HTMLSpanElement>("suggested-links-count");
+    return getElementById<HTMLSpanElement>('suggested-links-count')
   },
   get suggestedLinksContent(): HTMLDivElement | null {
-    return getElementById<HTMLDivElement>("suggested-links-content");
+    return getElementById<HTMLDivElement>('suggested-links-content')
   },
   get suggestedLinksList(): HTMLDivElement | null {
-    return getElementById<HTMLDivElement>("suggested-links-list");
+    return getElementById<HTMLDivElement>('suggested-links-list')
   },
   get refreshLinksBtn(): HTMLButtonElement | null {
-    return getElementById<HTMLButtonElement>("refresh-links-btn");
+    return getElementById<HTMLButtonElement>('refresh-links-btn')
   },
 
   // Transform tab
   get transformPodcast(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-podcast")!;
+    return getElementById<HTMLButtonElement>('transform-podcast')!
   },
   get transformQuiz(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-quiz")!;
+    return getElementById<HTMLButtonElement>('transform-quiz')!
   },
   get transformTakeaways(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-takeaways")!;
+    return getElementById<HTMLButtonElement>('transform-takeaways')!
   },
   get transformEmail(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-email")!;
+    return getElementById<HTMLButtonElement>('transform-email')!
   },
   get transformSlidedeck(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-slidedeck")!;
+    return getElementById<HTMLButtonElement>('transform-slidedeck')!
   },
   get transformReport(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-report")!;
+    return getElementById<HTMLButtonElement>('transform-report')!
   },
   get transformDatatable(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-datatable")!;
+    return getElementById<HTMLButtonElement>('transform-datatable')!
   },
   get transformMindmap(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-mindmap")!;
+    return getElementById<HTMLButtonElement>('transform-mindmap')!
   },
   get transformFlashcards(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-flashcards")!;
+    return getElementById<HTMLButtonElement>('transform-flashcards')!
   },
   get transformTimeline(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-timeline")!;
+    return getElementById<HTMLButtonElement>('transform-timeline')!
   },
   get transformGlossary(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-glossary")!;
+    return getElementById<HTMLButtonElement>('transform-glossary')!
   },
   get transformComparison(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-comparison")!;
+    return getElementById<HTMLButtonElement>('transform-comparison')!
   },
   get transformFaq(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-faq")!;
+    return getElementById<HTMLButtonElement>('transform-faq')!
   },
   get transformActionitems(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-actionitems")!;
+    return getElementById<HTMLButtonElement>('transform-actionitems')!
   },
   get transformExecutivebrief(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-executivebrief")!;
+    return getElementById<HTMLButtonElement>('transform-executivebrief')!
   },
   get transformStudyguide(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-studyguide")!;
+    return getElementById<HTMLButtonElement>('transform-studyguide')!
   },
   get transformProscons(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-proscons")!;
+    return getElementById<HTMLButtonElement>('transform-proscons')!
   },
   get transformCitations(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-citations")!;
+    return getElementById<HTMLButtonElement>('transform-citations')!
   },
   get transformOutline(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("transform-outline")!;
+    return getElementById<HTMLButtonElement>('transform-outline')!
   },
   get transformHistory(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("transform-history")!;
+    return getElementById<HTMLDivElement>('transform-history')!
   },
 
   // Library tab
   get notebooksList(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("notebooks-list")!;
+    return getElementById<HTMLDivElement>('notebooks-list')!
   },
 
   // Settings tab (permissions only - AI provider configs are in provider-config-ui.ts)
   get permTabs(): HTMLInputElement {
-    return getElementById<HTMLInputElement>("perm-tabs")!;
+    return getElementById<HTMLInputElement>('perm-tabs')!
   },
   get permTabGroups(): HTMLInputElement {
-    return getElementById<HTMLInputElement>("perm-tab-groups")!;
+    return getElementById<HTMLInputElement>('perm-tab-groups')!
   },
   get permBookmarks(): HTMLInputElement {
-    return getElementById<HTMLInputElement>("perm-bookmarks")!;
+    return getElementById<HTMLInputElement>('perm-bookmarks')!
   },
   get permHistory(): HTMLInputElement {
-    return getElementById<HTMLInputElement>("perm-history")!;
+    return getElementById<HTMLInputElement>('perm-history')!
   },
   get toolBasedContext(): HTMLInputElement {
-    return getElementById<HTMLInputElement>("tool-based-context")!;
+    return getElementById<HTMLInputElement>('tool-based-context')!
   },
   get chromeToolsWarning(): HTMLParagraphElement {
-    return getElementById<HTMLParagraphElement>("chrome-tools-warning")!;
+    return getElementById<HTMLParagraphElement>('chrome-tools-warning')!
   },
   get clearAllDataBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("clear-all-data-btn")!;
+    return getElementById<HTMLButtonElement>('clear-all-data-btn')!
   },
   get toolPermissionsList(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("tool-permissions-list")!;
+    return getElementById<HTMLDivElement>('tool-permissions-list')!
   },
   get resetToolPermissionsBtn(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("reset-tool-permissions-btn")!;
+    return getElementById<HTMLButtonElement>('reset-tool-permissions-btn')!
   },
 
   // FAB
   get fab(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("fab")!;
+    return getElementById<HTMLButtonElement>('fab')!
   },
 
   // Picker Modal
   get pickerModal(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("picker-modal")!;
+    return getElementById<HTMLDivElement>('picker-modal')!
   },
   get pickerTitle(): HTMLHeadingElement {
-    return getElementById<HTMLHeadingElement>("picker-title")!;
+    return getElementById<HTMLHeadingElement>('picker-title')!
   },
   get pickerSearch(): HTMLInputElement {
-    return getElementById<HTMLInputElement>("picker-search")!;
+    return getElementById<HTMLInputElement>('picker-search')!
   },
   get pickerList(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("picker-list")!;
+    return getElementById<HTMLDivElement>('picker-list')!
   },
   get pickerSelectedCount(): HTMLSpanElement {
-    return getElementById<HTMLSpanElement>("picker-selected-count")!;
+    return getElementById<HTMLSpanElement>('picker-selected-count')!
   },
   get pickerClose(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("picker-close")!;
+    return getElementById<HTMLButtonElement>('picker-close')!
   },
   get pickerCancel(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("picker-cancel")!;
+    return getElementById<HTMLButtonElement>('picker-cancel')!
   },
   get pickerAdd(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("picker-add")!;
+    return getElementById<HTMLButtonElement>('picker-add')!
   },
   get pickerBackdrop(): HTMLDivElement {
-    const el = document.querySelector(".modal-backdrop");
+    const el = document.querySelector('.modal-backdrop')
     if (!el || !(el instanceof HTMLDivElement)) {
-      throw new Error("Required element .modal-backdrop not found or is not HTMLDivElement");
+      throw new Error('Required element .modal-backdrop not found or is not HTMLDivElement')
     }
-    return el;
+    return el
   },
 
   // Dialogs
   get notebookDialog(): HTMLDialogElement {
-    return getElementById<HTMLDialogElement>("notebook-dialog")!;
+    return getElementById<HTMLDialogElement>('notebook-dialog')!
   },
   get notebookDialogTitle(): HTMLHeadingElement {
-    return getElementById<HTMLHeadingElement>("notebook-dialog-title")!;
+    return getElementById<HTMLHeadingElement>('notebook-dialog-title')!
   },
   get notebookNameInput(): HTMLInputElement {
-    return getElementById<HTMLInputElement>("notebook-name-input")!;
+    return getElementById<HTMLInputElement>('notebook-name-input')!
   },
   get notebookDialogCancel(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("notebook-dialog-cancel")!;
+    return getElementById<HTMLButtonElement>('notebook-dialog-cancel')!
   },
   get notebookDialogConfirm(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("notebook-dialog-confirm")!;
+    return getElementById<HTMLButtonElement>('notebook-dialog-confirm')!
   },
 
   get confirmDialog(): HTMLDialogElement {
-    return getElementById<HTMLDialogElement>("confirm-dialog")!;
+    return getElementById<HTMLDialogElement>('confirm-dialog')!
   },
   get confirmDialogTitle(): HTMLHeadingElement {
-    return getElementById<HTMLHeadingElement>("confirm-dialog-title")!;
+    return getElementById<HTMLHeadingElement>('confirm-dialog-title')!
   },
   get confirmDialogMessage(): HTMLParagraphElement {
-    return getElementById<HTMLParagraphElement>("confirm-dialog-message")!;
+    return getElementById<HTMLParagraphElement>('confirm-dialog-message')!
   },
   get confirmDialogCancel(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("confirm-dialog-cancel")!;
+    return getElementById<HTMLButtonElement>('confirm-dialog-cancel')!
   },
   get confirmDialogConfirm(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("confirm-dialog-confirm")!;
+    return getElementById<HTMLButtonElement>('confirm-dialog-confirm')!
   },
 
   get notification(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("notification")!;
+    return getElementById<HTMLDivElement>('notification')!
   },
 
   // Onboarding elements
   get onboardingOverlay(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("onboarding-overlay")!;
+    return getElementById<HTMLDivElement>('onboarding-overlay')!
   },
   get onboardingIcon(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("onboarding-icon")!;
+    return getElementById<HTMLDivElement>('onboarding-icon')!
   },
   get onboardingTitle(): HTMLHeadingElement {
-    return getElementById<HTMLHeadingElement>("onboarding-title")!;
+    return getElementById<HTMLHeadingElement>('onboarding-title')!
   },
   get onboardingDescription(): HTMLParagraphElement {
-    return getElementById<HTMLParagraphElement>("onboarding-description")!;
+    return getElementById<HTMLParagraphElement>('onboarding-description')!
   },
   get onboardingDots(): HTMLDivElement {
-    return getElementById<HTMLDivElement>("onboarding-dots")!;
+    return getElementById<HTMLDivElement>('onboarding-dots')!
   },
   get onboardingSkip(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("onboarding-skip")!;
+    return getElementById<HTMLButtonElement>('onboarding-skip')!
   },
   get onboardingNext(): HTMLButtonElement {
-    return getElementById<HTMLButtonElement>("onboarding-next")!;
+    return getElementById<HTMLButtonElement>('onboarding-next')!
   },
-};
+}
 
 // ============================================================================
 // Initialization
@@ -465,272 +535,315 @@ const elements = {
  * Shows warning when using Chrome built-in AI with tool-based context
  */
 async function updateChromeToolsWarning(): Promise<void> {
-  const settings = await getAISettings();
-  const isChrome = settings.provider === 'chrome';
-  const isToolBased = elements.toolBasedContext.checked;
+  const settings = await getAISettings()
+  const isChrome = settings.provider === 'chrome'
+  const isToolBased = elements.toolBasedContext.checked
 
   if (isChrome && isToolBased) {
-    elements.chromeToolsWarning.classList.remove('hidden');
-  } else {
-    elements.chromeToolsWarning.classList.add('hidden');
+    elements.chromeToolsWarning.classList.remove('hidden')
+  }
+  else {
+    elements.chromeToolsWarning.classList.add('hidden')
   }
 }
 
 async function init(): Promise<void> {
-  permissions = await checkPermissions();
-  currentNotebookId = await getActiveNotebookId();
+  permissions = await checkPermissions()
+  currentNotebookId = await getActiveNotebookId()
 
   // Check for onboarding
-  const onboardingComplete = await isOnboardingComplete();
+  const onboardingComplete = await isOnboardingComplete()
   if (!onboardingComplete) {
-    showOnboarding();
+    showOnboarding()
   }
 
-  updatePermissionUI();
+  updatePermissionUI()
   // Load context mode setting
-  const contextMode = await getContextMode();
-  elements.toolBasedContext.checked = contextMode === "agentic";
-  await updateChromeToolsWarning();
+  const contextMode = await getContextMode()
+  elements.toolBasedContext.checked = contextMode === 'agentic'
+  await updateChromeToolsWarning()
 
   // Initialize approval UI
-  initApprovalUI();
+  initApprovalUI()
 
   // Initialize tool permissions UI
-  await initToolPermissionsUI();
+  await initToolPermissionsUI()
 
   // updateSettingsUI() is now handled by provider-config-ui.ts
-  setupEventListeners();
-  await loadNotebooks();
-  await loadAIConfigs();
-  await loadSources();
-  await loadChatHistory();
-  updateTabCount();
-  updateAddTabButton();
+  setupEventListeners()
+  await loadNotebooks()
+  await loadAIConfigs()
+  await loadSources()
+  await loadChatHistory()
+  void updateTabCount()
+  void updateAddTabButton()
 
   // Initialize provider config UI
-  await initProviderConfigUI();
+  await initProviderConfigUI()
+
+  // Initialize transform config buttons (cog icons)
+  initTransformConfigButtons()
 
   // Listen for AI profile changes to update the AI config select
   window.addEventListener(AI_PROFILES_CHANGED_EVENT, () => {
-    loadAIConfigs();
-    updateChromeToolsWarning();
-  });
+    void loadAIConfigs()
+    void updateChromeToolsWarning()
+  })
 
   // Listen for tab highlight changes to update button text
   chrome.tabs.onHighlighted.addListener(() => {
-    updateAddTabButton();
-  });
+    void updateAddTabButton()
+  })
 
   // Listen for tab creation/removal to update tab count in real-time
   chrome.tabs.onCreated.addListener(() => {
-    updateTabCount();
-    refreshPickerIfShowingTabs();
-  });
+    void updateTabCount()
+    void refreshPickerIfShowingTabs()
+  })
 
   chrome.tabs.onRemoved.addListener(() => {
-    updateTabCount();
-    refreshPickerIfShowingTabs();
-  });
+    void updateTabCount()
+    void refreshPickerIfShowingTabs()
+  })
 
   chrome.tabs.onUpdated.addListener((_tabId, changeInfo) => {
     // Only refresh when URL or title changes (not for every status update)
     if (changeInfo.url || changeInfo.title) {
-      refreshPickerIfShowingTabs();
+      void refreshPickerIfShowingTabs()
     }
-  });
+  })
 
   // Check for pending tool approvals periodically (every 1 second)
   setInterval(async () => {
-    await checkAndShowPendingApprovals();
-  }, 1000);
+    await checkAndShowPendingApprovals()
+  }, 1000)
 
   // Listen for messages from background script
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.type === "SOURCE_ADDED") {
+  chrome.runtime.onMessage.addListener((message: Message) => {
+    if (message.type === 'SOURCE_ADDED') {
       // Clear suggested links cache so new sources trigger a refresh
       if (currentNotebookId) {
-        suggestedLinksCache.delete(currentNotebookId);
+        suggestedLinksCache.delete(currentNotebookId)
       }
-      loadNotebooks();
-      loadSources();
-      loadNotebooksList(); // Refresh library page source counts
-      showNotification("Source added");
-    } else if (message.type === "CREATE_NOTEBOOK_AND_ADD_PAGE") {
-      // Clear pending action to prevent duplicate processing
-      chrome.storage.session.remove("pendingAction").catch(() => {});
-      handleCreateNotebookAndAddPage(message.payload.tabId);
-    } else if (message.type === "CREATE_NOTEBOOK_AND_ADD_LINK") {
-      // Clear pending action to prevent duplicate processing
-      chrome.storage.session.remove("pendingAction").catch(() => {});
-      handleCreateNotebookAndAddLink(message.payload.linkUrl);
-    } else if (message.type === "CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS") {
-      // Clear pending action to prevent duplicate processing
-      chrome.storage.session.remove("pendingAction").catch(() => {});
-      handleCreateNotebookAndAddSelectionLinks(message.payload.links);
+      void loadNotebooks()
+      void loadSources()
+      void loadNotebooksList() // Refresh library page source counts
+      showNotification('Source added')
     }
-  });
+    else if (message.type === 'SOURCE_REFRESHED') {
+      // Clear suggested links cache so refreshed sources trigger a refresh
+      if (currentNotebookId) {
+        suggestedLinksCache.delete(currentNotebookId)
+      }
+      void loadSources()
+    }
+    else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_PAGE') {
+      // Clear pending action to prevent duplicate processing
+      chrome.storage.session.remove('pendingAction').catch(() => {})
+      const payload = message.payload as { tabId?: number } | undefined
+      if (payload?.tabId !== undefined) void handleCreateNotebookAndAddPage(payload.tabId)
+    }
+    else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_LINK') {
+      // Clear pending action to prevent duplicate processing
+      chrome.storage.session.remove('pendingAction').catch(() => {})
+      const payload = message.payload as { linkUrl?: string } | undefined
+      if (payload?.linkUrl !== undefined) void handleCreateNotebookAndAddLink(payload.linkUrl)
+    }
+    else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS') {
+      // Clear pending action to prevent duplicate processing
+      chrome.storage.session.remove('pendingAction').catch(() => {})
+      const payload = message.payload as { links?: string[] } | undefined
+      if (payload?.links !== undefined) void handleCreateNotebookAndAddSelectionLinks(payload.links)
+    }
+  })
 
   // Check for pending actions from context menu (in case side panel was just opened)
-  await checkPendingAction();
+  await checkPendingAction()
+}
+
+interface PendingAction {
+  type: string
+  payload: {
+    tabId?: number
+    linkUrl?: string
+    links?: string[]
+  }
 }
 
 async function checkPendingAction(): Promise<void> {
   try {
-    const result = await chrome.storage.session.get("pendingAction");
+    const result = await chrome.storage.session.get('pendingAction')
     if (result.pendingAction) {
       // Clear the pending action first to prevent duplicate processing
-      await chrome.storage.session.remove("pendingAction");
+      await chrome.storage.session.remove('pendingAction')
 
-      const { type, payload } = result.pendingAction;
-      if (type === "CREATE_NOTEBOOK_AND_ADD_PAGE" && payload.tabId) {
-        handleCreateNotebookAndAddPage(payload.tabId);
-      } else if (type === "CREATE_NOTEBOOK_AND_ADD_LINK" && payload.linkUrl) {
-        handleCreateNotebookAndAddLink(payload.linkUrl);
-      } else if (type === "CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS" && payload.links) {
-        handleCreateNotebookAndAddSelectionLinks(payload.links);
+      const { type, payload } = result.pendingAction as PendingAction
+      if (type === 'CREATE_NOTEBOOK_AND_ADD_PAGE' && payload.tabId) {
+        void handleCreateNotebookAndAddPage(payload.tabId)
+      }
+      else if (type === 'CREATE_NOTEBOOK_AND_ADD_LINK' && payload.linkUrl) {
+        void handleCreateNotebookAndAddLink(payload.linkUrl)
+      }
+      else if (type === 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS' && payload.links) {
+        void handleCreateNotebookAndAddSelectionLinks(payload.links)
       }
     }
-  } catch (error) {
-    console.error("Failed to check pending action:", error);
+  }
+  catch (error) {
+    console.error('Failed to check pending action:', error)
   }
 }
 
 // Notify background script to rebuild context menus when notebooks change
 function notifyNotebooksChanged(): void {
-  chrome.runtime.sendMessage({ type: "REBUILD_CONTEXT_MENUS" }).catch(() => {
+  chrome.runtime.sendMessage({ type: 'REBUILD_CONTEXT_MENUS' }).catch(() => {
     // Background may not be ready
-  });
+  })
 }
 
 async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
-  const name = await showNotebookDialog("New Notebook");
-  if (!name) return;
+  const name = await showNotebookDialog('New Notebook')
+  if (!name) return
 
-  const notebook = createNotebook(name);
-  await saveNotebook(notebook);
-  currentNotebookId = notebook.id;
-  await setActiveNotebookId(notebook.id);
-  await loadNotebooks();
-  await loadNotebooksList();
-  elements.notebookSelect.value = notebook.id;
-  notifyNotebooksChanged();
+  const notebook = createNotebook(name)
+  await saveNotebook(notebook)
+  currentNotebookId = notebook.id
+  await setActiveNotebookId(notebook.id)
+  await loadNotebooks()
+  await loadNotebooksList()
+  elements.notebookSelect.value = notebook.id
+  notifyNotebooksChanged()
 
   // Now extract and add the page
   try {
-    const result = await chrome.tabs.sendMessage(tabId, {
-      action: "extractContent",
-    });
-    if (result) {
+    const result: unknown = await chrome.tabs.sendMessage(tabId, {
+      action: 'extractContent',
+    })
+    // Type guard to ensure result has expected properties
+    if (isTabExtractContentResponse(result)) {
       const source = createSource(
         notebook.id,
-        "tab",
+        'tab',
         result.url,
         result.title,
         result.markdown,
-        result.links
-      );
-      await saveSource(source);
+        result.links,
+      )
+      await saveSource(source)
       // Clear suggested links cache so new sources trigger a refresh
-      suggestedLinksCache.delete(notebook.id);
-      await loadSources();
-      showNotification("Notebook created and source added");
+      suggestedLinksCache.delete(notebook.id)
+      await loadSources()
+      showNotification('Notebook created and source added')
     }
-  } catch (error) {
-    console.error("Failed to add page:", error);
-    showNotification("Notebook created");
+  }
+  catch (error) {
+    console.error('Failed to add page:', error)
+    showNotification('Notebook created')
   }
 }
 
 async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
-  const name = await showNotebookDialog("New Notebook");
-  if (!name) return;
+  const name = await showNotebookDialog('New Notebook')
+  if (!name) return
 
-  const notebook = createNotebook(name);
-  await saveNotebook(notebook);
-  currentNotebookId = notebook.id;
-  await setActiveNotebookId(notebook.id);
-  await loadNotebooks();
-  await loadNotebooksList();
-  elements.notebookSelect.value = notebook.id;
-  notifyNotebooksChanged();
+  const notebook = createNotebook(name)
+  await saveNotebook(notebook)
+  currentNotebookId = notebook.id
+  await setActiveNotebookId(notebook.id)
+  await loadNotebooks()
+  await loadNotebooksList()
+  elements.notebookSelect.value = notebook.id
+  notifyNotebooksChanged()
 
-  showNotification("Creating notebook and extracting content...");
+  showNotification('Creating notebook and extracting content...')
 
   // Now extract and add the link
   try {
-    const response = await chrome.runtime.sendMessage({
-      type: "EXTRACT_FROM_URL",
+    const response: unknown = await chrome.runtime.sendMessage({
+      type: 'EXTRACT_FROM_URL',
       payload: linkUrl,
-    });
+    })
 
-    if (response) {
+    // Type guard to ensure response has expected properties
+    if (isUrlExtractResponse(response)) {
+      const url = response.url ?? linkUrl
+      const title = response.title ?? 'Untitled'
+      const content = response.content ?? ''
+
       const source = createSource(
         notebook.id,
-        "tab",
-        response.url || linkUrl,
-        response.title || "Untitled",
-        response.content || "",
-        response.links
-      );
-      await saveSource(source);
+        'tab',
+        url,
+        title,
+        content,
+        response.links,
+      )
+      await saveSource(source)
       // Clear suggested links cache so new sources trigger a refresh
-      suggestedLinksCache.delete(notebook.id);
-      await loadSources();
-      showNotification("Notebook created and source added");
+      suggestedLinksCache.delete(notebook.id)
+      await loadSources()
+      showNotification('Notebook created and source added')
     }
-  } catch (error) {
-    console.error("Failed to add link:", error);
-    showNotification("Notebook created but failed to add link");
+  }
+  catch (error) {
+    console.error('Failed to add link:', error)
+    showNotification('Notebook created but failed to add link')
   }
 }
 
 async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promise<void> {
-  const name = await showNotebookDialog("New Notebook");
-  if (!name) return;
+  const name = await showNotebookDialog('New Notebook')
+  if (!name) return
 
-  const notebook = createNotebook(name);
-  await saveNotebook(notebook);
-  currentNotebookId = notebook.id;
-  await setActiveNotebookId(notebook.id);
-  await loadNotebooks();
-  await loadNotebooksList();
-  elements.notebookSelect.value = notebook.id;
-  notifyNotebooksChanged();
+  const notebook = createNotebook(name)
+  await saveNotebook(notebook)
+  currentNotebookId = notebook.id
+  await setActiveNotebookId(notebook.id)
+  await loadNotebooks()
+  await loadNotebooksList()
+  elements.notebookSelect.value = notebook.id
+  notifyNotebooksChanged()
 
-  const linkCount = links.length;
-  showNotification(`Creating notebook and extracting ${linkCount} link${linkCount === 1 ? '' : 's'}...`);
+  const linkCount = links.length
+  showNotification(`Creating notebook and extracting ${linkCount} link${linkCount === 1 ? '' : 's'}...`)
 
   // Extract and add each link
-  let addedCount = 0;
+  let addedCount = 0
   for (const linkUrl of links) {
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: "EXTRACT_FROM_URL",
+      const response: unknown = await chrome.runtime.sendMessage({
+        type: 'EXTRACT_FROM_URL',
         payload: linkUrl,
-      });
+      })
 
-      if (response) {
+      // Type guard to ensure response has expected properties
+      if (isUrlExtractResponse(response)) {
+        const url = response.url ?? linkUrl
+        const title = response.title ?? 'Untitled'
+        const content = response.content ?? ''
+
         const source = createSource(
           notebook.id,
-          "tab",
-          response.url || linkUrl,
-          response.title || "Untitled",
-          response.content || "",
-          response.links
-        );
-        await saveSource(source);
-        addedCount++;
+          'tab',
+          url,
+          title,
+          content,
+          response.links,
+        )
+        await saveSource(source)
+        addedCount++
       }
-    } catch (error) {
-      console.error(`Failed to add link ${linkUrl}:`, error);
+    }
+    catch (error) {
+      console.error(`Failed to add link ${linkUrl}:`, error)
       // Continue with other links even if one fails
     }
   }
 
   // Clear suggested links cache so new sources trigger a refresh
-  suggestedLinksCache.delete(notebook.id);
-  await loadSources();
-  showNotification(`Notebook created with ${addedCount} source${addedCount === 1 ? '' : 's'}`);
+  suggestedLinksCache.delete(notebook.id)
+  await loadSources()
+  showNotification(`Notebook created with ${addedCount} source${addedCount === 1 ? '' : 's'}`)
 }
 
 // ============================================================================
@@ -741,50 +854,53 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
  * Initialize tool permissions UI
  */
 async function initToolPermissionsUI(): Promise<void> {
-  const config = await getToolPermissions();
-  renderToolPermissions(config);
+  const config = await getToolPermissions()
+  renderToolPermissions(config)
 }
 
 /**
  * Render the tool permissions list
  */
 function renderToolPermissions(config: ToolPermissionsConfig): void {
-  const container = elements.toolPermissionsList;
-  container.innerHTML = "";
+  const container = elements.toolPermissionsList
+  container.innerHTML = ''
 
-  const toolNames = Object.keys(config.permissions).sort();
+  const toolNames = Object.keys(config.permissions).sort()
 
   for (const toolName of toolNames) {
-    const permission = config.permissions[toolName];
-    const isSessionApproved = config.sessionApprovals.includes(toolName);
+    const permission = config.permissions[toolName]
+    const isSessionApproved = config.sessionApprovals.includes(toolName)
 
-    const item = document.createElement("div");
-    item.className = "tool-permission-item";
+    const item = document.createElement('div')
+    item.className = 'tool-permission-item'
 
     // Determine status
-    let statusClass = "disabled";
-    let statusText = "Disabled";
+    let statusClass = 'disabled'
+    let statusText = 'Disabled'
     if (permission.visible) {
       if (permission.autoApproved) {
-        statusClass = "auto-approved";
-        statusText = "Auto-Approved";
-      } else if (isSessionApproved) {
-        statusClass = "session-approved";
-        statusText = "Session-Approved";
-      } else if (permission.requiresApproval) {
-        statusClass = "requires-approval";
-        statusText = "Requires Approval";
-      } else {
-        statusClass = "auto-approved";
-        statusText = "Auto-Approved";
+        statusClass = 'auto-approved'
+        statusText = 'Auto-Approved'
+      }
+      else if (isSessionApproved) {
+        statusClass = 'session-approved'
+        statusText = 'Session-Approved'
+      }
+      else if (permission.requiresApproval) {
+        statusClass = 'requires-approval'
+        statusText = 'Requires Approval'
+      }
+      else {
+        statusClass = 'auto-approved'
+        statusText = 'Auto-Approved'
       }
     }
 
     // Format tool name for display
     const displayName = toolName
-      .replace(/([A-Z])/g, " $1")
+      .replace(/([A-Z])/g, ' $1')
       .trim()
-      .replace(/^./, (s) => s.toUpperCase());
+      .replace(/^./, s => s.toUpperCase())
 
     item.innerHTML = `
       <div class="tool-permission-header">
@@ -800,7 +916,7 @@ function renderToolPermissions(config: ToolPermissionsConfig): void {
             id="tool-enabled-${toolName}"
             data-tool-name="${toolName}"
             data-action="visible"
-            ${permission.visible ? "checked" : ""}
+            ${permission.visible ? 'checked' : ''}
           />
           <label for="tool-enabled-${toolName}">Enabled</label>
         </div>
@@ -810,15 +926,15 @@ function renderToolPermissions(config: ToolPermissionsConfig): void {
             id="tool-no-approval-${toolName}"
             data-tool-name="${toolName}"
             data-action="noApproval"
-            ${!permission.requiresApproval ? "checked" : ""}
-            ${!permission.visible ? "disabled" : ""}
+            ${!permission.requiresApproval ? 'checked' : ''}
+            ${!permission.visible ? 'disabled' : ''}
           />
           <label for="tool-no-approval-${toolName}">Auto approve</label>
         </div>
       </div>
-    `;
+    `
 
-    container.appendChild(item);
+    container.appendChild(item)
   }
 }
 
@@ -826,43 +942,43 @@ function renderToolPermissions(config: ToolPermissionsConfig): void {
  * Handle toggling tool enabled state
  */
 async function handleToggleToolVisible(toolName: string, visible: boolean): Promise<void> {
-  const config = await getToolPermissions();
+  const config = await getToolPermissions()
 
   // Update permission
-  config.permissions[toolName].visible = visible;
+  config.permissions[toolName].visible = visible
 
   // If disabling, also clear any auto-approval
   if (!visible) {
-    config.permissions[toolName].autoApproved = false;
+    config.permissions[toolName].autoApproved = false
   }
 
   // If enabling but has no approval requirement, mark as auto-approved
   if (visible && !config.permissions[toolName].requiresApproval) {
-    config.permissions[toolName].autoApproved = true;
+    config.permissions[toolName].autoApproved = true
   }
 
-  config.lastModified = Date.now();
-  await saveToolPermissions(config);
-  renderToolPermissions(config);
+  config.lastModified = Date.now()
+  await saveToolPermissions(config)
+  renderToolPermissions(config)
 }
 
 /**
  * Handle toggling whether tool requires approval
  */
 async function handleToggleToolRequiresApproval(toolName: string, requiresApproval: boolean): Promise<void> {
-  const config = await getToolPermissions();
+  const config = await getToolPermissions()
 
   // Update permission
-  config.permissions[toolName].requiresApproval = requiresApproval;
+  config.permissions[toolName].requiresApproval = requiresApproval
 
   // If removing approval requirement, mark as auto-approved
   if (!requiresApproval) {
-    config.permissions[toolName].autoApproved = true;
+    config.permissions[toolName].autoApproved = true
   }
 
-  config.lastModified = Date.now();
-  await saveToolPermissions(config);
-  renderToolPermissions(config);
+  config.lastModified = Date.now()
+  await saveToolPermissions(config)
+  renderToolPermissions(config)
 }
 
 /**
@@ -870,21 +986,21 @@ async function handleToggleToolRequiresApproval(toolName: string, requiresApprov
  */
 async function handleResetToolPermissions(): Promise<void> {
   // Reset to defaults by clearing and reloading
-  const { storage } = await import("../lib/storage.ts");
-  await storage.setSetting("toolPermissions", null);
+  const { storage } = await import('../lib/storage.ts')
+  await storage.setSetting('toolPermissions', null)
 
-  const config = await getToolPermissions();
-  renderToolPermissions(config);
+  const config = await getToolPermissions()
+  renderToolPermissions(config)
 
-  showNotification("Tool permissions reset to defaults");
+  showNotification('Tool permissions reset to defaults')
 }
 
 /**
  * Save tool permissions configuration
  */
 async function saveToolPermissions(config: ToolPermissionsConfig): Promise<void> {
-  const { storage } = await import("../lib/storage.ts");
-  await storage.setSetting("toolPermissions", config);
+  const { storage } = await import('../lib/storage.ts')
+  await storage.setSetting('toolPermissions', config)
 }
 
 // ============================================================================
@@ -894,178 +1010,214 @@ async function saveToolPermissions(config: ToolPermissionsConfig): Promise<void>
 function setupEventListeners(): void {
   // Navigation
   elements.navItems.forEach((item) => {
-    item.addEventListener("click", () => {
-      const tab = item.dataset.tab;
-      if (tab) switchTab(tab);
-    });
-  });
+    item.addEventListener('click', () => {
+      const tab = item.dataset.tab
+      if (tab) switchTab(tab)
+    })
+  })
 
   // Header buttons
-  elements.headerLibraryBtn.addEventListener("click", () =>
-    switchTab("library")
-  );
-  elements.headerSettingsBtn.addEventListener("click", () =>
-    switchTab("settings")
-  );
+  elements.headerLibraryBtn.addEventListener('click', () =>
+    switchTab('library'),
+  )
+  elements.headerSettingsBtn.addEventListener('click', () =>
+    switchTab('settings'),
+  )
 
   // Add Sources tab
-  elements.addCurrentTabBtn.addEventListener("click", handleAddCurrentTab);
-  elements.importTabs.addEventListener("click", handleImportTabs);
-  elements.importTabGroups.addEventListener("click", handleImportTabGroups);
-  elements.importBookmarks.addEventListener("click", handleImportBookmarks);
-  elements.importHistory.addEventListener("click", handleImportHistory);
+  elements.addCurrentTabBtn.addEventListener('click', () => {
+    void handleAddCurrentTab()
+  })
+  elements.importTabs.addEventListener('click', () => {
+    void handleImportTabs()
+  })
+  elements.importTabGroups.addEventListener('click', () => {
+    void handleImportTabGroups()
+  })
+  elements.importBookmarks.addEventListener('click', () => {
+    void handleImportBookmarks()
+  })
+  elements.importHistory.addEventListener('click', () => {
+    void handleImportHistory()
+  })
 
   // Chat tab
-  elements.notebookSelect.addEventListener("change", handleNotebookChange);
-  elements.aiModelBtn.addEventListener("click", toggleAIModelDropdown);
-  elements.newNotebookBtn.addEventListener("click", handleNewNotebook);
+  elements.notebookSelect.addEventListener('change', () => {
+    void handleNotebookChange()
+  })
+  elements.aiModelBtn.addEventListener('click', toggleAIModelDropdown)
+  elements.newNotebookBtn.addEventListener('click', () => {
+    void handleNewNotebook()
+  })
 
   // Close AI model dropdown when clicking outside
-  document.addEventListener("click", (e) => {
-    if (!elements.aiModelDropdown?.classList.contains("hidden")) {
-      const target = e.target;
-      if (target instanceof Node &&
-          !elements.aiModelBtn.contains(target) &&
-          !elements.aiModelDropdown.contains(target)) {
-        closeAIModelDropdown();
+  document.addEventListener('click', (e) => {
+    if (!elements.aiModelDropdown?.classList.contains('hidden')) {
+      const target = e.target
+      if (target instanceof Node
+        && !elements.aiModelBtn.contains(target)
+        && !elements.aiModelDropdown.contains(target)) {
+        closeAIModelDropdown()
       }
     }
 
     // Close autocomplete dropdown when clicking outside
-    if (!elements.autocompleteDropdown.classList.contains("hidden")) {
-      const target = e.target;
-      if (target instanceof Node &&
-          !elements.queryInput.contains(target) &&
-          !elements.autocompleteDropdown.contains(target)) {
-        hideAutocomplete();
+    if (!elements.autocompleteDropdown.classList.contains('hidden')) {
+      const target = e.target
+      if (target instanceof Node
+        && !elements.queryInput.contains(target)
+        && !elements.autocompleteDropdown.contains(target)) {
+        hideAutocomplete()
       }
     }
-  });
-  elements.queryBtn.addEventListener("click", handleQuery);
-  elements.queryInput.addEventListener("input", handleAutocompleteInput);
-  elements.queryInput.addEventListener("keydown", (e) => {
+  })
+  elements.queryBtn.addEventListener('click', () => {
+    void handleQuery()
+  })
+  elements.queryInput.addEventListener('input', handleAutocompleteInput)
+  elements.queryInput.addEventListener('keydown', (e) => {
     // Handle autocomplete keyboard navigation first
-    handleAutocompleteKeydown(e);
+    handleAutocompleteKeydown(e)
 
     // Handle Enter key for query submission
-    if (e.key === "Enter" && !e.defaultPrevented) {
+    if (e.key === 'Enter' && !e.defaultPrevented) {
       // Hide autocomplete before submitting
-      hideAutocomplete();
-      handleQuery();
+      hideAutocomplete()
+      void handleQuery()
     }
-  });
-  elements.addPageBtn.addEventListener("click", handleAddCurrentTab);
-  elements.clearChatBtn?.addEventListener("click", handleClearChat);
-  elements.chatMessages?.addEventListener("click", handleCitationClick);
+  })
+  elements.addPageBtn.addEventListener('click', () => {
+    void handleAddCurrentTab()
+  })
+  elements.clearChatBtn?.addEventListener('click', () => {
+    void handleClearChat()
+  })
+  elements.chatMessages?.addEventListener('click', handleCitationClick)
   elements.regenerateSummaryBtn?.addEventListener(
-    "click",
-    handleRegenerateSummary
-  );
+    'click',
+    () => {
+      void handleRegenerateSummary()
+    },
+  )
+
+  // Refresh all sources
+  elements.refreshAllSourcesBtn?.addEventListener('click', () => {
+    void handleRefreshAllSources()
+  })
 
   // Suggested links
-  elements.refreshLinksBtn?.addEventListener("click", handleRefreshSuggestedLinks);
-  elements.suggestedLinksList?.addEventListener("click", handleSuggestedLinkClick);
+  elements.refreshLinksBtn?.addEventListener('click', () => {
+    void handleRefreshSuggestedLinks()
+  })
+  elements.suggestedLinksList?.addEventListener('click', (e) => {
+    void handleSuggestedLinkClick(e)
+  })
 
   // Transform tab
-  elements.transformPodcast?.addEventListener("click", () =>
-    handleTransform("podcast")
-  );
-  elements.transformQuiz?.addEventListener("click", () =>
-    handleTransform("quiz")
-  );
-  elements.transformTakeaways?.addEventListener("click", () =>
-    handleTransform("takeaways")
-  );
-  elements.transformEmail?.addEventListener("click", () =>
-    handleTransform("email")
-  );
-  elements.transformSlidedeck?.addEventListener("click", () =>
-    handleTransform("slidedeck")
-  );
-  elements.transformReport?.addEventListener("click", () =>
-    handleTransform("report")
-  );
-  elements.transformDatatable?.addEventListener("click", () =>
-    handleTransform("datatable")
-  );
-  elements.transformMindmap?.addEventListener("click", () =>
-    handleTransform("mindmap")
-  );
-  elements.transformFlashcards?.addEventListener("click", () =>
-    handleTransform("flashcards")
-  );
-  elements.transformTimeline?.addEventListener("click", () =>
-    handleTransform("timeline")
-  );
-  elements.transformGlossary?.addEventListener("click", () =>
-    handleTransform("glossary")
-  );
-  elements.transformComparison?.addEventListener("click", () =>
-    handleTransform("comparison")
-  );
-  elements.transformFaq?.addEventListener("click", () =>
-    handleTransform("faq")
-  );
-  elements.transformActionitems?.addEventListener("click", () =>
-    handleTransform("actionitems")
-  );
-  elements.transformExecutivebrief?.addEventListener("click", () =>
-    handleTransform("executivebrief")
-  );
-  elements.transformStudyguide?.addEventListener("click", () =>
-    handleTransform("studyguide")
-  );
-  elements.transformProscons?.addEventListener("click", () =>
-    handleTransform("proscons")
-  );
-  elements.transformCitations?.addEventListener("click", () =>
-    handleTransform("citations")
-  );
-  elements.transformOutline?.addEventListener("click", () =>
-    handleTransform("outline")
-  );
+  elements.transformPodcast?.addEventListener('click', () => {
+    void handleTransform('podcast')
+  })
+  elements.transformQuiz?.addEventListener('click', () => {
+    void handleTransform('quiz')
+  })
+  elements.transformTakeaways?.addEventListener('click', () => {
+    void handleTransform('takeaways')
+  })
+  elements.transformEmail?.addEventListener('click', () => {
+    void handleTransform('email')
+  })
+  elements.transformSlidedeck?.addEventListener('click', () => {
+    void handleTransform('slidedeck')
+  })
+  elements.transformReport?.addEventListener('click', () => {
+    void handleTransform('report')
+  })
+  elements.transformDatatable?.addEventListener('click', () => {
+    void handleTransform('datatable')
+  })
+  elements.transformMindmap?.addEventListener('click', () => {
+    void handleTransform('mindmap')
+  })
+  elements.transformFlashcards?.addEventListener('click', () => {
+    void handleTransform('flashcards')
+  })
+  elements.transformTimeline?.addEventListener('click', () => {
+    void handleTransform('timeline')
+  })
+  elements.transformGlossary?.addEventListener('click', () => {
+    void handleTransform('glossary')
+  })
+  elements.transformComparison?.addEventListener('click', () => {
+    void handleTransform('comparison')
+  })
+  elements.transformFaq?.addEventListener('click', () => {
+    void handleTransform('faq')
+  })
+  elements.transformActionitems?.addEventListener('click', () => {
+    void handleTransform('actionitems')
+  })
+  elements.transformExecutivebrief?.addEventListener('click', () => {
+    void handleTransform('executivebrief')
+  })
+  elements.transformStudyguide?.addEventListener('click', () => {
+    void handleTransform('studyguide')
+  })
+  elements.transformProscons?.addEventListener('click', () => {
+    void handleTransform('proscons')
+  })
+  elements.transformCitations?.addEventListener('click', () => {
+    void handleTransform('citations')
+  })
+  elements.transformOutline?.addEventListener('click', () => {
+    void handleTransform('outline')
+  })
 
   // Settings tab
-  elements.permTabs.addEventListener("change", () =>
-    handlePermissionToggle("tabs")
-  );
-  elements.permTabGroups.addEventListener("change", () =>
-    handlePermissionToggle("tabGroups")
-  );
-  elements.permBookmarks.addEventListener("change", () =>
-    handlePermissionToggle("bookmarks")
-  );
-  elements.permHistory.addEventListener("change", () =>
-    handlePermissionToggle("history")
-  );
-  elements.resetToolPermissionsBtn.addEventListener("click", handleResetToolPermissions);
+  elements.permTabs.addEventListener('change', () => {
+    void handlePermissionToggle('tabs')
+  })
+  elements.permTabGroups.addEventListener('change', () => {
+    void handlePermissionToggle('tabGroups')
+  })
+  elements.permBookmarks.addEventListener('change', () => {
+    void handlePermissionToggle('bookmarks')
+  })
+  elements.permHistory.addEventListener('change', () => {
+    void handlePermissionToggle('history')
+  })
+  elements.resetToolPermissionsBtn.addEventListener('click', () => {
+    void handleResetToolPermissions()
+  })
 
   // Tool Permissions
-  elements.toolPermissionsList.addEventListener("change", async (e) => {
-    const target = e.target;
+  elements.toolPermissionsList.addEventListener('change', (e) => {
+    const target = e.target
     if (
-      target instanceof HTMLInputElement &&
-      target.dataset.toolName &&
-      target.dataset.action
+      target instanceof HTMLInputElement
+      && target.dataset.toolName
+      && target.dataset.action
     ) {
-      const toolName = target.dataset.toolName;
-      const action = target.dataset.action;
+      const toolName = target.dataset.toolName
+      const action = target.dataset.action
 
-      if (action === "visible") {
-        await handleToggleToolVisible(toolName, target.checked);
-      } else if (action === "noApproval") {
+      if (action === 'visible') {
+        void handleToggleToolVisible(toolName, target.checked)
+      }
+      else if (action === 'noApproval') {
         // Checkbox is "Auto approve", so checked = no approval needed
-        await handleToggleToolRequiresApproval(toolName, !target.checked);
+        void handleToggleToolRequiresApproval(toolName, !target.checked)
       }
     }
-  });
+  })
 
-  elements.toolBasedContext.addEventListener("change", async () => {
-    const mode = elements.toolBasedContext.checked ? "agentic" : "classic";
-    await setContextMode(mode);
-    await updateChromeToolsWarning();
-  });
-  elements.clearAllDataBtn.addEventListener("click", handleClearAllData);
+  elements.toolBasedContext.addEventListener('change', () => {
+    const mode = elements.toolBasedContext.checked ? 'agentic' : 'classic'
+    void setContextMode(mode)
+    void updateChromeToolsWarning()
+  })
+  elements.clearAllDataBtn.addEventListener('click', () => {
+    void handleClearAllData()
+  })
 
   // Old AI settings event listeners - replaced by provider-config-ui.ts
   /*
@@ -1098,11 +1250,13 @@ function setupEventListeners(): void {
   */
 
   // Picker Modal
-  elements.pickerClose?.addEventListener("click", closePicker);
-  elements.pickerCancel?.addEventListener("click", closePicker);
-  elements.pickerBackdrop?.addEventListener("click", closePicker);
-  elements.pickerAdd?.addEventListener("click", handlePickerAdd);
-  elements.pickerSearch?.addEventListener("input", handlePickerSearch);
+  elements.pickerClose?.addEventListener('click', closePicker)
+  elements.pickerCancel?.addEventListener('click', closePicker)
+  elements.pickerBackdrop?.addEventListener('click', closePicker)
+  elements.pickerAdd?.addEventListener('click', () => {
+    void handlePickerAdd()
+  })
+  elements.pickerSearch?.addEventListener('input', handlePickerSearch)
 }
 
 // ============================================================================
@@ -1112,22 +1266,24 @@ function setupEventListeners(): void {
 function switchTab(tabName: string): void {
   // Update nav items
   elements.navItems.forEach((item) => {
-    item.classList.toggle("active", item.dataset.tab === tabName);
-  });
+    item.classList.toggle('active', item.dataset.tab === tabName)
+  })
 
   // Update tab content
   elements.tabContents.forEach((content) => {
-    content.classList.toggle("active", content.id === `tab-${tabName}`);
-  });
+    content.classList.toggle('active', content.id === `tab-${tabName}`)
+  })
 
   // Refresh data when switching tabs
-  if (tabName === "library") {
-    loadNotebooksList();
-  } else if (tabName === "chat") {
-    loadSources();
-    loadChatHistory();
-  } else if (tabName === "transform") {
-    loadSources();
+  if (tabName === 'library') {
+    void loadNotebooksList()
+  }
+  else if (tabName === 'chat') {
+    void loadSources()
+    void loadChatHistory()
+  }
+  else if (tabName === 'transform') {
+    void loadSources()
   }
 }
 
@@ -1136,119 +1292,122 @@ function switchTab(tabName: string): void {
 // ============================================================================
 
 async function loadNotebooks(): Promise<void> {
-  const notebooks = await getNotebooks();
+  const notebooks = await getNotebooks()
 
-  elements.notebookSelect.innerHTML =
-    '<option value="">Select a notebook...</option>';
+  elements.notebookSelect.innerHTML
+    = '<option value="">Select a notebook...</option>'
 
   for (const notebook of notebooks) {
-    const option = document.createElement("option");
-    option.value = notebook.id;
-    option.textContent = notebook.name;
-    elements.notebookSelect.appendChild(option);
+    const option = document.createElement('option')
+    option.value = notebook.id
+    option.textContent = notebook.name
+    elements.notebookSelect.appendChild(option)
   }
 
   if (currentNotebookId) {
-    elements.notebookSelect.value = currentNotebookId;
+    elements.notebookSelect.value = currentNotebookId
   }
 }
 
 // Current selected model config ID for the dropdown
-let currentSelectedModelConfigId: string | undefined = undefined;
+let currentSelectedModelConfigId: string | undefined = undefined
 
 /**
  * Create a checkmark SVG element
  */
 function createCheckmarkSvg(): SVGSVGElement {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("width", "16");
-  svg.setAttribute("height", "16");
-  svg.setAttribute("viewBox", "0 0 24 24");
-  svg.setAttribute("fill", "none");
-  svg.setAttribute("stroke", "currentColor");
-  svg.setAttribute("stroke-width", "2");
-  svg.classList.add("ai-model-item-check", "hidden");
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('width', '16')
+  svg.setAttribute('height', '16')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('fill', 'none')
+  svg.setAttribute('stroke', 'currentColor')
+  svg.setAttribute('stroke-width', '2')
+  svg.classList.add('ai-model-item-check', 'hidden')
 
-  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-  polyline.setAttribute("points", "20 6 9 17 4 12");
-  svg.appendChild(polyline);
+  const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline')
+  polyline.setAttribute('points', '20 6 9 17 4 12')
+  svg.appendChild(polyline)
 
-  return svg;
+  return svg
 }
 
 /**
  * Load AI model configs into the dropdown
  */
 async function loadAIConfigs(): Promise<void> {
-  const modelConfigs = await getModelConfigs();
-  const defaultConfig = await getDefaultModelConfig();
+  const modelConfigs = await getModelConfigs()
+  const defaultConfig = await getDefaultModelConfig()
 
   // Clear existing items
   while (elements.aiModelList.firstChild) {
-    elements.aiModelList.removeChild(elements.aiModelList.firstChild);
+    elements.aiModelList.removeChild(elements.aiModelList.firstChild)
   }
 
   // Add "Default" option which uses the default model config
   const defaultItem = createModelItem(
-    "",
+    '',
     defaultConfig ? `Default (${defaultConfig.name})` : 'Default',
-    true
-  );
-  elements.aiModelList.appendChild(defaultItem);
+    true,
+  )
+  elements.aiModelList.appendChild(defaultItem)
 
   // Add all model configs
   for (const config of modelConfigs) {
-    const item = createModelItem(config.id, config.name, false);
-    elements.aiModelList.appendChild(item);
+    const item = createModelItem(config.id, config.name, false)
+    elements.aiModelList.appendChild(item)
   }
 
   // Update selection based on current notebook
-  await updateAIConfigForNotebook();
+  await updateAIConfigForNotebook()
 }
 
 /**
  * Create a model item element for the dropdown
  */
 function createModelItem(id: string, name: string, isDefault: boolean): HTMLElement {
-  const item = document.createElement("div");
-  item.className = "ai-model-item";
-  item.dataset.modelId = id;
+  const item = document.createElement('div')
+  item.className = 'ai-model-item'
+  item.dataset.modelId = id
 
-  const checkmark = createCheckmarkSvg();
+  const checkmark = createCheckmarkSvg()
 
-  const content = document.createElement("div");
-  content.className = "ai-model-item-content";
+  const content = document.createElement('div')
+  content.className = 'ai-model-item-content'
 
-  const nameEl = document.createElement("div");
-  nameEl.className = "ai-model-item-name";
-  nameEl.textContent = name;
-  content.appendChild(nameEl);
+  const nameEl = document.createElement('div')
+  nameEl.className = 'ai-model-item-name'
+  nameEl.textContent = name
+  content.appendChild(nameEl)
 
   if (isDefault) {
-    const defaultLabel = document.createElement("div");
-    defaultLabel.className = "ai-model-item-default";
-    defaultLabel.textContent = "Uses your default AI profile";
-    content.appendChild(defaultLabel);
+    const defaultLabel = document.createElement('div')
+    defaultLabel.className = 'ai-model-item-default'
+    defaultLabel.textContent = 'Uses your default AI profile'
+    content.appendChild(defaultLabel)
   }
 
-  item.appendChild(checkmark);
-  item.appendChild(content);
+  item.appendChild(checkmark)
+  item.appendChild(content)
 
-  item.addEventListener("click", () => handleModelItemClick(id));
+  item.addEventListener('click', () => {
+    void handleModelItemClick(id)
+  })
 
-  return item;
+  return item
 }
 
 /**
  * Toggle the AI model dropdown visibility
  */
 function toggleAIModelDropdown(): void {
-  const isHidden = elements.aiModelDropdown.classList.contains("hidden");
+  const isHidden = elements.aiModelDropdown.classList.contains('hidden')
   if (isHidden) {
-    elements.aiModelDropdown.classList.remove("hidden");
-    elements.aiModelBtn.classList.add("active");
-  } else {
-    closeAIModelDropdown();
+    elements.aiModelDropdown.classList.remove('hidden')
+    elements.aiModelBtn.classList.add('active')
+  }
+  else {
+    closeAIModelDropdown()
   }
 }
 
@@ -1256,8 +1415,8 @@ function toggleAIModelDropdown(): void {
  * Close the AI model dropdown
  */
 function closeAIModelDropdown(): void {
-  elements.aiModelDropdown.classList.add("hidden");
-  elements.aiModelBtn.classList.remove("active");
+  elements.aiModelDropdown.classList.add('hidden')
+  elements.aiModelBtn.classList.remove('active')
 }
 
 /**
@@ -1265,40 +1424,40 @@ function closeAIModelDropdown(): void {
  */
 async function handleModelItemClick(modelId: string): Promise<void> {
   if (!currentNotebookId) {
-    closeAIModelDropdown();
-    return;
+    closeAIModelDropdown()
+    return
   }
 
   // Update storage
-  const notebook = await getNotebook(currentNotebookId);
+  const notebook = await getNotebook(currentNotebookId)
   if (notebook) {
-    notebook.modelConfigId = modelId || undefined;
-    await saveNotebook(notebook);
+    notebook.modelConfigId = modelId || undefined
+    await saveNotebook(notebook)
   }
 
   // Update UI
-  currentSelectedModelConfigId = modelId || undefined;
-  updateModelDropdownSelection();
-  closeAIModelDropdown();
+  currentSelectedModelConfigId = modelId || undefined
+  updateModelDropdownSelection()
+  closeAIModelDropdown()
 }
 
 /**
  * Update the visual selection state in the dropdown
  */
 function updateModelDropdownSelection(): void {
-  const items = elements.aiModelList.querySelectorAll(".ai-model-item");
+  const items = elements.aiModelList.querySelectorAll('.ai-model-item')
   items.forEach((item) => {
-    if (!(item instanceof HTMLElement)) return;
-    const el = item;
-    const modelId = el.dataset.modelId || "";
-    const isSelected = modelId === (currentSelectedModelConfigId || "");
+    if (!(item instanceof HTMLElement)) return
+    const el = item
+    const modelId = el.dataset.modelId || ''
+    const isSelected = modelId === (currentSelectedModelConfigId || '')
 
-    el.classList.toggle("selected", isSelected);
-    const checkmark = el.querySelector(".ai-model-item-check");
+    el.classList.toggle('selected', isSelected)
+    const checkmark = el.querySelector('.ai-model-item-check')
     if (checkmark) {
-      checkmark.classList.toggle("hidden", !isSelected);
+      checkmark.classList.toggle('hidden', !isSelected)
     }
-  });
+  })
 }
 
 /**
@@ -1306,132 +1465,134 @@ function updateModelDropdownSelection(): void {
  */
 async function updateAIConfigForNotebook(): Promise<void> {
   if (!currentNotebookId) {
-    currentSelectedModelConfigId = undefined;
-    updateModelDropdownSelection();
-    return;
+    currentSelectedModelConfigId = undefined
+    updateModelDropdownSelection()
+    return
   }
 
-  const notebook = await getNotebook(currentNotebookId);
-  currentSelectedModelConfigId = notebook?.modelConfigId || undefined;
-  updateModelDropdownSelection();
+  const notebook = await getNotebook(currentNotebookId)
+  currentSelectedModelConfigId = notebook?.modelConfigId || undefined
+  updateModelDropdownSelection()
 }
 
 async function loadNotebooksList(): Promise<void> {
-  const notebooks = await getNotebooks();
+  const notebooks = await getNotebooks()
 
   if (notebooks.length === 0) {
     elements.notebooksList.innerHTML = `
       <div class="empty-state">
         <p>No notebooks yet. Create one to get started.</p>
       </div>
-    `;
-    return;
+    `
+    return
   }
 
-  elements.notebooksList.innerHTML = "";
+  elements.notebooksList.innerHTML = ''
 
   for (const notebook of notebooks) {
-    const sources = await getSourcesByNotebook(notebook.id);
-    const div = document.createElement("div");
-    div.className = "notebook-item";
+    const sources = await getSourcesByNotebook(notebook.id)
+    const div = document.createElement('div')
+    div.className = 'notebook-item'
 
     // Build notebook item using DOM methods for security
-    const iconDiv = document.createElement("div");
-    iconDiv.className = "notebook-icon";
+    const iconDiv = document.createElement('div')
+    iconDiv.className = 'notebook-icon'
     iconDiv.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
           <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-        </svg>`;
+        </svg>`
 
-    const infoDiv = document.createElement("div");
-    infoDiv.className = "notebook-info";
-    const nameDiv = document.createElement("div");
-    nameDiv.className = "notebook-name";
-    nameDiv.textContent = notebook.name;
-    const metaDiv = document.createElement("div");
-    metaDiv.className = "notebook-meta";
-    metaDiv.textContent = `${sources.length} sources`;
-    infoDiv.appendChild(nameDiv);
-    infoDiv.appendChild(metaDiv);
+    const infoDiv = document.createElement('div')
+    infoDiv.className = 'notebook-info'
+    const nameDiv = document.createElement('div')
+    nameDiv.className = 'notebook-name'
+    nameDiv.textContent = notebook.name
+    const metaDiv = document.createElement('div')
+    metaDiv.className = 'notebook-meta'
+    metaDiv.textContent = `${sources.length} sources`
+    infoDiv.appendChild(nameDiv)
+    infoDiv.appendChild(metaDiv)
 
-    const actionsDiv = document.createElement("div");
-    actionsDiv.className = "notebook-actions";
+    const actionsDiv = document.createElement('div')
+    actionsDiv.className = 'notebook-actions'
 
-    const exportBtn = document.createElement("button");
-    exportBtn.className = "icon-btn btn-export-notebook";
-    exportBtn.dataset.id = notebook.id;
-    exportBtn.title = "Export notebook";
+    const exportBtn = document.createElement('button')
+    exportBtn.className = 'icon-btn btn-export-notebook'
+    exportBtn.dataset.id = notebook.id
+    exportBtn.title = 'Export notebook'
     exportBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>`;
+          </svg>`
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "icon-btn btn-delete-notebook";
-    deleteBtn.dataset.id = notebook.id;
-    deleteBtn.title = "Delete notebook";
+    const deleteBtn = document.createElement('button')
+    deleteBtn.className = 'icon-btn btn-delete-notebook'
+    deleteBtn.dataset.id = notebook.id
+    deleteBtn.title = 'Delete notebook'
     deleteBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          </svg>`;
+          </svg>`
 
-    actionsDiv.appendChild(exportBtn);
-    actionsDiv.appendChild(deleteBtn);
+    actionsDiv.appendChild(exportBtn)
+    actionsDiv.appendChild(deleteBtn)
 
-    div.appendChild(iconDiv);
-    div.appendChild(infoDiv);
-    div.appendChild(actionsDiv);
+    div.appendChild(iconDiv)
+    div.appendChild(infoDiv)
+    div.appendChild(actionsDiv)
 
-    infoDiv.addEventListener("click", () => selectNotebook(notebook.id));
+    infoDiv.addEventListener('click', () => {
+      void selectNotebook(notebook.id)
+    })
 
-    exportBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      handleExportNotebook(notebook.id);
-    });
+    exportBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      void handleExportNotebook(notebook.id)
+    })
 
-    deleteBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      handleDeleteNotebook(notebook.id, notebook.name);
-    });
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation()
+      void handleDeleteNotebook(notebook.id, notebook.name)
+    })
 
-    elements.notebooksList.appendChild(div);
+    elements.notebooksList.appendChild(div)
   }
 }
 
 async function handleDeleteNotebook(id: string, name: string): Promise<void> {
   const confirmed = await showConfirmDialog(
-    "Delete Notebook",
-    `Are you sure you want to delete "${name}"? This will also delete all sources in this notebook.`
-  );
+    'Delete Notebook',
+    `Are you sure you want to delete "${name}"? This will also delete all sources in this notebook.`,
+  )
 
-  if (!confirmed) return;
+  if (!confirmed) return
 
-  await deleteNotebook(id);
+  await deleteNotebook(id)
 
   // If we deleted the active notebook, clear it
   if (currentNotebookId === id) {
-    currentNotebookId = null;
-    await loadNotebooks();
+    currentNotebookId = null
+    await loadNotebooks()
   }
 
-  await loadNotebooksList();
-  await loadSources();
-  notifyNotebooksChanged();
-  showNotification("Notebook deleted");
+  await loadNotebooksList()
+  await loadSources()
+  notifyNotebooksChanged()
+  showNotification('Notebook deleted')
 }
 
 async function handleExportNotebook(id: string): Promise<void> {
   try {
-    const notebook = await getNotebook(id);
+    const notebook = await getNotebook(id)
     if (!notebook) {
-      showNotification("Notebook not found");
-      return;
+      showNotification('Notebook not found')
+      return
     }
 
-    const sources = await getSourcesByNotebook(id);
-    const chatHistory = await getChatHistory(id);
-    const transformations = await getTransformations(id);
+    const sources = await getSourcesByNotebook(id)
+    const chatHistory = await getChatHistory(id)
+    const transformations = await getTransformations(id)
 
     const exportData: NotebookExport = {
       notebook,
@@ -1439,25 +1600,26 @@ async function handleExportNotebook(id: string): Promise<void> {
       chatHistory,
       transformations,
       exportedAt: new Date().toISOString(),
-      version: "1.0.0",
-    };
+      version: '1.0.0',
+    }
 
     // Show format selection dialog
-    const format = await showExportFormatDialog();
-    if (!format) return;
+    const format = await showExportFormatDialog()
+    if (!format) return
 
-    exportNotebook(exportData, format);
-    showNotification(`Exported as ${format.toUpperCase()}`);
-  } catch (error) {
-    console.error("Export failed:", error);
-    showNotification("Export failed");
+    exportNotebook(exportData, format)
+    showNotification(`Exported as ${format.toUpperCase()}`)
+  }
+  catch (error) {
+    console.error('Export failed:', error)
+    showNotification('Export failed')
   }
 }
 
 async function showExportFormatDialog(): Promise<ExportFormat | null> {
   return new Promise((resolve) => {
-    const dialog = document.createElement("dialog");
-    dialog.className = "dialog";
+    const dialog = document.createElement('dialog')
+    dialog.className = 'dialog'
     dialog.innerHTML = `
       <h3>Export Format</h3>
       <p>Choose the format for your export:</p>
@@ -1478,73 +1640,73 @@ async function showExportFormatDialog(): Promise<ExportFormat | null> {
         </button>
         <button class="btn btn-outline btn-export-cancel" style="width: 100%;">Cancel</button>
       </div>
-    `;
+    `
 
-    const mdBtn = dialog.querySelector(".btn-export-md");
-    const jsonBtn = dialog.querySelector(".btn-export-json");
-    const cancelBtn = dialog.querySelector(".btn-export-cancel");
+    const mdBtn = dialog.querySelector('.btn-export-md')
+    const jsonBtn = dialog.querySelector('.btn-export-json')
+    const cancelBtn = dialog.querySelector('.btn-export-cancel')
 
-    mdBtn?.addEventListener("click", () => {
-      dialog.close();
-      dialog.remove();
-      resolve("markdown");
-    });
+    mdBtn?.addEventListener('click', () => {
+      dialog.close()
+      dialog.remove()
+      resolve('markdown')
+    })
 
-    jsonBtn?.addEventListener("click", () => {
-      dialog.close();
-      dialog.remove();
-      resolve("json");
-    });
+    jsonBtn?.addEventListener('click', () => {
+      dialog.close()
+      dialog.remove()
+      resolve('json')
+    })
 
-    cancelBtn?.addEventListener("click", () => {
-      dialog.close();
-      dialog.remove();
-      resolve(null);
-    });
+    cancelBtn?.addEventListener('click', () => {
+      dialog.close()
+      dialog.remove()
+      resolve(null)
+    })
 
-    dialog.addEventListener("close", () => {
-      dialog.remove();
-      resolve(null);
-    });
+    dialog.addEventListener('close', () => {
+      dialog.remove()
+      resolve(null)
+    })
 
-    document.body.appendChild(dialog);
-    dialog.showModal();
-  });
+    document.body.appendChild(dialog)
+    dialog.showModal()
+  })
 }
 
 async function handleNewNotebook(): Promise<void> {
-  const name = await showNotebookDialog("New Notebook");
-  if (!name) return;
+  const name = await showNotebookDialog('New Notebook')
+  if (!name) return
 
-  const notebook = createNotebook(name);
-  await saveNotebook(notebook);
-  currentNotebookId = notebook.id;
-  await setActiveNotebookId(notebook.id);
-  await loadNotebooks();
-  await loadNotebooksList();
-  elements.notebookSelect.value = notebook.id;
-  notifyNotebooksChanged();
-  showNotification("Notebook created");
+  const notebook = createNotebook(name)
+  await saveNotebook(notebook)
+  currentNotebookId = notebook.id
+  await setActiveNotebookId(notebook.id)
+  await loadNotebooks()
+  await loadNotebooksList()
+  elements.notebookSelect.value = notebook.id
+  notifyNotebooksChanged()
+  showNotification('Notebook created')
 }
 
 async function handleNotebookChange(): Promise<void> {
-  const id = elements.notebookSelect.value;
-  currentNotebookId = id || null;
-  await setActiveNotebookId(currentNotebookId);
-  await updateAIConfigForNotebook();
-  await loadSources();
-  await loadChatHistory();
+  const id = elements.notebookSelect.value
+  currentNotebookId = id || null
+  await setActiveNotebookId(currentNotebookId)
+  await updateAIConfigForNotebook()
+  await loadSources()
+  await loadChatHistory()
 }
 
 async function selectNotebook(id: string): Promise<void> {
-  currentNotebookId = id;
-  await setActiveNotebookId(id);
-  await loadNotebooks();
-  elements.notebookSelect.value = id;
-  await updateAIConfigForNotebook();
-  switchTab("chat");
-  await loadSources();
-  await loadChatHistory();
+  currentNotebookId = id
+  await setActiveNotebookId(id)
+  await loadNotebooks()
+  elements.notebookSelect.value = id
+  await updateAIConfigForNotebook()
+  switchTab('chat')
+  await loadSources()
+  await loadChatHistory()
 }
 
 // ============================================================================
@@ -1557,30 +1719,30 @@ async function loadSources(): Promise<void> {
       <div class="empty-state">
         <p>Select or create a notebook to add sources.</p>
       </div>
-    `;
-    elements.sourceCount.textContent = "0";
-    elements.sourcesList.innerHTML = "";
-    hideSummary();
-    hideSuggestedLinksSection();
-    return;
+    `
+    elements.sourceCount.textContent = '0'
+    elements.sourcesList.innerHTML = ''
+    hideSummary()
+    hideSuggestedLinksSection()
+    return
   }
 
-  const sources = await getSourcesByNotebook(currentNotebookId);
-  elements.sourceCount.textContent = sources.length.toString();
+  const sources = await getSourcesByNotebook(currentNotebookId)
+  elements.sourceCount.textContent = sources.length.toString()
 
   // Render in Chat tab (compact)
-  renderSourcesList(elements.activeSources, sources);
+  renderSourcesList(elements.activeSources, sources)
 
   // Render in Add tab (recent sources)
-  renderSourcesList(elements.sourcesList, sources.slice(0, 5));
+  renderSourcesList(elements.sourcesList, sources.slice(0, 5))
 
   // Load or generate summary
-  await loadOrGenerateSummary(sources);
+  await loadOrGenerateSummary(sources)
 
   // Load suggested links (don't await - let it load in background)
-  loadSuggestedLinks(sources).catch((err) =>
-    console.warn("[SuggestedLinks] Failed to load:", err)
-  );
+  loadSuggestedLinks(sources).catch(err =>
+    console.warn('[SuggestedLinks] Failed to load:', err),
+  )
 }
 
 function renderSourcesList(container: HTMLElement, sources: Source[]): void {
@@ -1589,18 +1751,21 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
       <div class="empty-state">
         <p>No sources added yet.</p>
       </div>
-    `;
-    return;
+    `
+    return
   }
 
-  container.innerHTML = "";
+  container.innerHTML = ''
 
   for (const source of sources) {
-    const div = document.createElement("div");
-    div.className = "source-item";
+    const div = document.createElement('div')
+    div.className = 'source-item'
 
-    const domain = new URL(source.url).hostname.replace("www.", "");
-    const initial = source.title.charAt(0).toUpperCase();
+    const domain = new URL(source.url).hostname.replace('www.', '')
+    const initial = source.title.charAt(0).toUpperCase()
+
+    // Check if source can be refreshed (has URL and is not manual/text type)
+    const canRefresh = source.type !== 'manual' && source.type !== 'text'
 
     div.innerHTML = `
       <div class="source-icon">${DOMPurify.sanitize(initial)}</div>
@@ -1614,12 +1779,23 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
               <line x1="10" y1="14" x2="21" y2="3"></line>
             </svg>
           </a>
+          ${
+            canRefresh
+              ? `<button class="source-refresh-btn" data-id="${DOMPurify.sanitize(source.id)}" title="Refresh content">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>`
+              : ''
+          }
         </div>
         <div class="source-url">${DOMPurify.sanitize(domain)}</div>
       </div>
       <div class="source-actions">
         <button class="icon-btn btn-remove" data-id="${DOMPurify.sanitize(
-          source.id
+          source.id,
         )}" title="Remove">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -1627,15 +1803,21 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
           </svg>
         </button>
       </div>
-    `;
+    `
 
-    const removeBtn = div.querySelector(".btn-remove");
-    removeBtn?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      handleRemoveSource(source.id);
-    });
+    const removeBtn = div.querySelector('.btn-remove')
+    removeBtn?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      void handleRemoveSource(source.id)
+    })
 
-    container.appendChild(div);
+    const refreshBtn = div.querySelector('.source-refresh-btn')
+    refreshBtn?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      void handleRefreshSource(source.id, refreshBtn as HTMLButtonElement)
+    })
+
+    container.appendChild(div)
   }
 }
 
@@ -1644,107 +1826,108 @@ function renderSourcesList(container: HTMLElement, sources: Source[]): void {
 // ============================================================================
 
 function hideSummary(): void {
-  elements.summarySection.style.display = "none";
+  elements.summarySection.style.display = 'none'
 }
 
 function showSummary(): void {
-  elements.summarySection.style.display = "block";
-  elements.summarySection.open = true;
+  elements.summarySection.style.display = 'block'
+  elements.summarySection.open = true
 }
 
 function showSummaryLoading(): void {
-  showSummary();
+  showSummary()
   elements.notebookSummary.innerHTML = `
     <div class="summary-loading">
       <span class="loading-spinner"></span>
       <span>Generating summary...</span>
     </div>
-  `;
+  `
 }
 
 function showSummaryError(message: string): void {
-  showSummary();
+  showSummary()
   elements.notebookSummary.innerHTML = `
     <div class="summary-error">${escapeHtml(message)}</div>
-  `;
+  `
 }
 
 function showSummaryContent(content: string): void {
-  showSummary();
+  showSummary()
   // Render markdown content
-  const rendered = renderMarkdown(content);
-  elements.notebookSummary.innerHTML = rendered;
+  const rendered = renderMarkdown(content)
+  elements.notebookSummary.innerHTML = rendered
 }
 
 function sourceIdsMatch(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const sortedA = [...a].sort();
-  const sortedB = [...b].sort();
-  return sortedA.every((id, i) => id === sortedB[i]);
+  if (a.length !== b.length) return false
+  const sortedA = [...a].sort()
+  const sortedB = [...b].sort()
+  return sortedA.every((id, i) => id === sortedB[i])
 }
 
 async function loadOrGenerateSummary(sources: Source[]): Promise<void> {
   if (!currentNotebookId) {
-    hideSummary();
-    return;
+    hideSummary()
+    return
   }
 
   // Hide summary if no sources
   if (sources.length === 0) {
-    hideSummary();
-    return;
+    hideSummary()
+    return
   }
 
-  const sourceIds = sources.map((s) => s.id);
+  const sourceIds = sources.map(s => s.id)
 
   // Check if we have a cached summary with matching source IDs
-  const cachedSummary = await getSummary(currentNotebookId);
+  const cachedSummary = await getSummary(currentNotebookId)
 
   if (cachedSummary && sourceIdsMatch(cachedSummary.sourceIds, sourceIds)) {
     // Use cached summary
-    showSummaryContent(cachedSummary.content);
-    return;
+    showSummaryContent(cachedSummary.content)
+    return
   }
 
   // Need to generate a new summary
-  await generateAndSaveSummary(sources, sourceIds);
+  await generateAndSaveSummary(sources, sourceIds)
 }
 
 async function generateAndSaveSummary(
   sources: Source[],
-  sourceIds: string[]
+  sourceIds: string[],
 ): Promise<void> {
-  if (!currentNotebookId) return;
+  if (!currentNotebookId) return
 
-  showSummaryLoading();
+  showSummaryLoading()
 
   try {
-    const content = await generateSummary(sources);
+    const content = await generateSummary(sources)
 
     // Save the summary
-    const summary = createSummary(currentNotebookId, sourceIds, content);
-    await saveSummary(summary);
+    const summary = createSummary(currentNotebookId, sourceIds, content)
+    await saveSummary(summary)
 
     // Display it
-    showSummaryContent(content);
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to generate summary";
-    showSummaryError(message);
+    showSummaryContent(content)
+  }
+  catch (error) {
+    const message
+      = error instanceof Error ? error.message : 'Failed to generate summary'
+    showSummaryError(message)
   }
 }
 
 async function handleRegenerateSummary(): Promise<void> {
-  if (!currentNotebookId) return;
+  if (!currentNotebookId) return
 
-  const sources = await getSourcesByNotebook(currentNotebookId);
+  const sources = await getSourcesByNotebook(currentNotebookId)
   if (sources.length === 0) {
-    hideSummary();
-    return;
+    hideSummary()
+    return
   }
 
-  const sourceIds = sources.map((s) => s.id);
-  await generateAndSaveSummary(sources, sourceIds);
+  const sourceIds = sources.map(s => s.id)
+  await generateAndSaveSummary(sources, sourceIds)
 }
 
 // ============================================================================
@@ -1755,45 +1938,45 @@ async function handleRegenerateSummary(): Promise<void> {
  * Show the suggested links section
  */
 function showSuggestedLinksSection(): void {
-  elements.suggestedLinksSection?.style.setProperty("display", "block");
+  elements.suggestedLinksSection?.style.setProperty('display', 'block')
 }
 
 /**
  * Hide the suggested links section
  */
 function hideSuggestedLinksSection(): void {
-  elements.suggestedLinksSection?.style.setProperty("display", "none");
+  elements.suggestedLinksSection?.style.setProperty('display', 'none')
 }
 
 /**
  * Show loading state in suggested links
  */
 function showSuggestedLinksLoading(): void {
-  if (!elements.suggestedLinksContent) return;
-  const loading = elements.suggestedLinksContent.querySelector(".suggested-links-loading") as HTMLElement;
-  const empty = elements.suggestedLinksContent.querySelector(".suggested-links-empty") as HTMLElement;
-  if (loading) loading.style.display = "flex";
-  if (empty) empty.style.display = "none";
-  if (elements.suggestedLinksList) elements.suggestedLinksList.innerHTML = "";
+  if (!elements.suggestedLinksContent) return
+  const loading = elements.suggestedLinksContent.querySelector('.suggested-links-loading') as HTMLElement
+  const empty = elements.suggestedLinksContent.querySelector('.suggested-links-empty') as HTMLElement
+  if (loading) loading.style.display = 'flex'
+  if (empty) empty.style.display = 'none'
+  if (elements.suggestedLinksList) elements.suggestedLinksList.innerHTML = ''
 }
 
 /**
  * Hide loading state in suggested links
  */
 function hideSuggestedLinksLoading(): void {
-  if (!elements.suggestedLinksContent) return;
-  const loading = elements.suggestedLinksContent.querySelector(".suggested-links-loading") as HTMLElement;
-  if (loading) loading.style.display = "none";
+  if (!elements.suggestedLinksContent) return
+  const loading = elements.suggestedLinksContent.querySelector('.suggested-links-loading') as HTMLElement
+  if (loading) loading.style.display = 'none'
 }
 
 /**
  * Show empty state in suggested links
  */
 function showSuggestedLinksEmpty(): void {
-  if (!elements.suggestedLinksContent) return;
-  const empty = elements.suggestedLinksContent.querySelector(".suggested-links-empty") as HTMLElement;
-  if (empty) empty.style.display = "block";
-  if (elements.suggestedLinksList) elements.suggestedLinksList.innerHTML = "";
+  if (!elements.suggestedLinksContent) return
+  const empty = elements.suggestedLinksContent.querySelector('.suggested-links-empty') as HTMLElement
+  if (empty) empty.style.display = 'block'
+  if (elements.suggestedLinksList) elements.suggestedLinksList.innerHTML = ''
 }
 
 /**
@@ -1801,10 +1984,11 @@ function showSuggestedLinksEmpty(): void {
  */
 function extractDomain(url: string): string {
   try {
-    const urlObj = new URL(url);
-    return urlObj.hostname.replace(/^www\./, "");
-  } catch {
-    return url;
+    const urlObj = new URL(url)
+    return urlObj.hostname.replace(/^www\./, '')
+  }
+  catch {
+    return url
   }
 }
 
@@ -1813,27 +1997,27 @@ function extractDomain(url: string): string {
  * Note: All dynamic content is sanitized with DOMPurify to prevent XSS
  */
 function renderSuggestedLinks(links: SuggestedLink[]): void {
-  hideSuggestedLinksLoading();
+  hideSuggestedLinksLoading()
 
   if (links.length === 0) {
-    showSuggestedLinksEmpty();
-    if (elements.suggestedLinksCount) elements.suggestedLinksCount.textContent = "0";
-    return;
+    showSuggestedLinksEmpty()
+    if (elements.suggestedLinksCount) elements.suggestedLinksCount.textContent = '0'
+    return
   }
 
-  if (!elements.suggestedLinksContent) return;
-  const empty = elements.suggestedLinksContent.querySelector(".suggested-links-empty") as HTMLElement;
-  if (empty) empty.style.display = "none";
+  if (!elements.suggestedLinksContent) return
+  const empty = elements.suggestedLinksContent.querySelector('.suggested-links-empty') as HTMLElement
+  if (empty) empty.style.display = 'none'
 
-  if (elements.suggestedLinksCount) elements.suggestedLinksCount.textContent = String(links.length);
+  if (elements.suggestedLinksCount) elements.suggestedLinksCount.textContent = String(links.length)
 
-  if (!elements.suggestedLinksList) return;
+  if (!elements.suggestedLinksList) return
 
   // Build HTML with all dynamic content sanitized via DOMPurify
   elements.suggestedLinksList.innerHTML = links
     .map((link) => {
-      const domain = extractDomain(link.url);
-      const scorePercent = Math.round(link.relevanceScore * 100);
+      const domain = extractDomain(link.url)
+      const scorePercent = Math.round(link.relevanceScore * 100)
       return `
         <div class="suggested-link-item" data-url="${DOMPurify.sanitize(link.url)}">
           <div class="suggested-link-icon">
@@ -1866,52 +2050,54 @@ function renderSuggestedLinks(links: SuggestedLink[]): void {
             <div class="suggested-link-score">${scorePercent}%</div>
           </div>
         </div>
-      `;
+      `
     })
-    .join("");
+    .join('')
 }
 
 /**
  * Load and display suggested links for the current notebook
  */
 async function loadSuggestedLinks(sources: Source[], forceRefresh = false): Promise<void> {
-  if (!currentNotebookId) return;
+  if (!currentNotebookId) return
 
   // Check if sources have any links
   if (!hasExtractableLinks(sources)) {
-    hideSuggestedLinksSection();
-    return;
+    hideSuggestedLinksSection()
+    return
   }
 
   // Show the section
-  showSuggestedLinksSection();
+  showSuggestedLinksSection()
 
   // Check cache first (unless forcing refresh)
-  const cacheKey = currentNotebookId;
+  const cacheKey = currentNotebookId
 
   if (!forceRefresh && suggestedLinksCache.has(cacheKey)) {
-    const cached = suggestedLinksCache.get(cacheKey);
+    const cached = suggestedLinksCache.get(cacheKey)
     if (cached) {
-      renderSuggestedLinks(cached);
-      return;
+      renderSuggestedLinks(cached)
+      return
     }
   }
 
   // Don't fetch if already loading
-  if (suggestedLinksLoading) return;
+  if (suggestedLinksLoading) return
 
-  suggestedLinksLoading = true;
-  showSuggestedLinksLoading();
+  suggestedLinksLoading = true
+  showSuggestedLinksLoading()
 
   try {
-    const links = await filterLinksWithAI(sources, 10);
-    suggestedLinksCache.set(cacheKey, links);
-    renderSuggestedLinks(links);
-  } catch (error) {
-    console.error("[SuggestedLinks] Failed to load:", error);
-    showSuggestedLinksEmpty();
-  } finally {
-    suggestedLinksLoading = false;
+    const links = await filterLinksWithAI(sources, 10)
+    suggestedLinksCache.set(cacheKey, links)
+    renderSuggestedLinks(links)
+  }
+  catch (error) {
+    console.error('[SuggestedLinks] Failed to load:', error)
+    showSuggestedLinksEmpty()
+  }
+  finally {
+    suggestedLinksLoading = false
   }
 }
 
@@ -1919,40 +2105,40 @@ async function loadSuggestedLinks(sources: Source[], forceRefresh = false): Prom
  * Handle refresh button click
  */
 async function handleRefreshSuggestedLinks(): Promise<void> {
-  if (!currentNotebookId) return;
+  if (!currentNotebookId) return
 
-  const sources = await getSourcesByNotebook(currentNotebookId);
+  const sources = await getSourcesByNotebook(currentNotebookId)
   if (sources.length === 0) {
-    hideSuggestedLinksSection();
-    return;
+    hideSuggestedLinksSection()
+    return
   }
 
   // Clear cache and reload
-  suggestedLinksCache.delete(currentNotebookId);
-  await loadSuggestedLinks(sources, true);
+  suggestedLinksCache.delete(currentNotebookId)
+  await loadSuggestedLinks(sources, true)
 }
 
 /**
  * Handle clicks on suggested link items
  */
 async function handleSuggestedLinkClick(event: Event): Promise<void> {
-  const target = event.target as HTMLElement;
-  const linkItem = target.closest(".suggested-link-item") as HTMLElement;
-  if (!linkItem) return;
+  const target = event.target as HTMLElement
+  const linkItem = target.closest('.suggested-link-item') as HTMLElement
+  if (!linkItem) return
 
-  const url = linkItem.dataset.url;
-  if (!url) return;
+  const url = linkItem.dataset.url
+  if (!url) return
 
   // Check if open button was clicked
-  if (target.closest(".suggested-link-open")) {
-    window.open(url, "_blank");
-    return;
+  if (target.closest('.suggested-link-open')) {
+    window.open(url, '_blank')
+    return
   }
 
   // Check if add button was clicked
-  if (target.closest(".suggested-link-add")) {
-    await handleAddSuggestedLink(url, linkItem);
-    return;
+  if (target.closest('.suggested-link-add')) {
+    await handleAddSuggestedLink(url, linkItem)
+    return
   }
 }
 
@@ -1960,160 +2146,173 @@ async function handleSuggestedLinkClick(event: Event): Promise<void> {
  * Add a suggested link as a new source
  */
 async function handleAddSuggestedLink(url: string, linkItem: HTMLElement): Promise<void> {
-  if (!currentNotebookId) return;
+  if (!currentNotebookId) return
 
   // Disable the add button
-  const addBtn = linkItem.querySelector(".suggested-link-add") as HTMLButtonElement;
-  if (addBtn) addBtn.disabled = true;
+  const addBtn = linkItem.querySelector('.suggested-link-add') as HTMLButtonElement
+  if (addBtn) addBtn.disabled = true
 
   // Show loading state
-  linkItem.style.opacity = "0.5";
+  linkItem.style.opacity = '0.5'
 
   try {
     // Request content extraction from background script
-    const response = await chrome.runtime.sendMessage({
-      type: "EXTRACT_FROM_URL",
+    const response: unknown = await chrome.runtime.sendMessage({
+      type: 'EXTRACT_FROM_URL',
       payload: { url, notebookId: currentNotebookId },
-    });
+    })
 
-    if (response && response.success) {
+    // Type guard for response
+    if (isSuccessfulUrlExtractResponse(response)) {
       // Remove the item from the list since it's now a source
-      linkItem.remove();
+      linkItem.remove()
 
       // Update count (with null checks)
       if (elements.suggestedLinksList && elements.suggestedLinksCount) {
-        const remaining = elements.suggestedLinksList.querySelectorAll(".suggested-link-item").length;
-        elements.suggestedLinksCount.textContent = String(remaining);
+        const remaining = elements.suggestedLinksList.querySelectorAll('.suggested-link-item').length
+        elements.suggestedLinksCount.textContent = String(remaining)
 
         // Update cache
-        const cached = suggestedLinksCache.get(currentNotebookId);
+        const cached = suggestedLinksCache.get(currentNotebookId)
         if (cached) {
           suggestedLinksCache.set(
             currentNotebookId,
-            cached.filter((link) => link.url !== url)
-          );
+            cached.filter(link => link.url !== url),
+          )
         }
 
         // Show empty state if no more links
         if (remaining === 0) {
-          showSuggestedLinksEmpty();
+          showSuggestedLinksEmpty()
         }
       }
-    } else {
-      // Failed to add - restore state
-      linkItem.style.opacity = "1";
-      if (addBtn) addBtn.disabled = false;
     }
-  } catch (error) {
-    console.error("[SuggestedLinks] Failed to add link:", error);
-    linkItem.style.opacity = "1";
-    if (addBtn) addBtn.disabled = false;
+    else {
+      // Failed to add - restore state
+      linkItem.style.opacity = '1'
+      if (addBtn) addBtn.disabled = false
+    }
+  }
+  catch (error) {
+    console.error('[SuggestedLinks] Failed to add link:', error)
+    linkItem.style.opacity = '1'
+    if (addBtn) addBtn.disabled = false
   }
 }
 
 async function handleAddCurrentTab(): Promise<void> {
   if (!currentNotebookId) {
-    const name = await showNotebookDialog("Create a notebook first");
-    if (!name) return;
+    const name = await showNotebookDialog('Create a notebook first')
+    if (!name) return
 
-    const notebook = createNotebook(name);
-    await saveNotebook(notebook);
-    currentNotebookId = notebook.id;
-    await setActiveNotebookId(notebook.id);
-    await loadNotebooks();
-    elements.notebookSelect.value = notebook.id;
+    const notebook = createNotebook(name)
+    await saveNotebook(notebook)
+    currentNotebookId = notebook.id
+    await setActiveNotebookId(notebook.id)
+    await loadNotebooks()
+    elements.notebookSelect.value = notebook.id
   }
 
   // After the guard, currentNotebookId is guaranteed to be set
-  const notebookId = currentNotebookId;
-  if (!notebookId) return;
+  const notebookId = currentNotebookId
+  if (!notebookId) return
 
-  elements.addCurrentTabBtn.disabled = true;
+  elements.addCurrentTabBtn.disabled = true
 
   try {
     // Check for multiple highlighted tabs
     const highlightedTabs = await chrome.tabs.query({
       highlighted: true,
       currentWindow: true,
-    });
+    })
     const tabsToAdd = highlightedTabs.filter(
-      (tab) => tab.url && !tab.url.startsWith("chrome://")
-    );
+      tab => tab.url && !tab.url.startsWith('chrome://'),
+    )
 
     if (tabsToAdd.length > 1) {
       // Multiple tabs selected - send message directly to content scripts
-      elements.addCurrentTabBtn.textContent = `Adding ${tabsToAdd.length} tabs...`;
+      elements.addCurrentTabBtn.textContent = `Adding ${tabsToAdd.length} tabs...`
 
-      let addedCount = 0;
+      let addedCount = 0
       for (const tab of tabsToAdd) {
-        if (!tab.id || !tab.url) continue;
+        if (!tab.id || !tab.url) continue
 
         try {
           // Send message directly to the content script in the tab
-          const result = await chrome.tabs.sendMessage(tab.id, {
-            action: "extractContent",
-          });
+          const result: unknown = await chrome.tabs.sendMessage(tab.id, {
+            action: 'extractContent',
+          })
 
-          if (result) {
+          // Type guard to ensure result has expected properties
+          if (isTabExtractContentResponse(result)) {
             const source = createSource(
               notebookId,
-              "tab",
-              result.url || tab.url,
-              result.title || tab.title || "Untitled",
-              result.markdown || "",
-              result.links
-            );
-            await saveSource(source);
-            addedCount++;
+              'tab',
+              result.url ?? tab.url,
+              result.title ?? tab.title ?? 'Untitled',
+              result.markdown ?? '',
+              result.links,
+            )
+            await saveSource(source)
+            addedCount++
           }
-        } catch (error) {
-          console.error(`Failed to add tab ${tab.url}:`, error);
+        }
+        catch (error) {
+          console.error(`Failed to add tab ${tab.url}:`, error)
           // Fallback: add with just title/url if content script not available
           const source = createSource(
             notebookId,
-            "tab",
+            'tab',
             tab.url,
-            tab.title || "Untitled",
-            `Content from: ${tab.url}`
-          );
-          await saveSource(source);
-          addedCount++;
+            tab.title || 'Untitled',
+            `Content from: ${tab.url}`,
+          )
+          await saveSource(source)
+          addedCount++
         }
       }
 
       // Clear suggested links cache so new sources trigger a refresh
-      suggestedLinksCache.delete(notebookId);
-      await loadSources();
+      suggestedLinksCache.delete(notebookId)
+      await loadSources()
       showNotification(
-        `Added ${addedCount} source${addedCount > 1 ? "s" : ""}`
-      );
-    } else {
+        `Added ${addedCount} source${addedCount > 1 ? 's' : ''}`,
+      )
+    }
+    else {
       // Single tab - use existing logic
-      elements.addCurrentTabBtn.textContent = "Adding...";
-      const response = await chrome.runtime.sendMessage({
-        type: "EXTRACT_CONTENT",
-      });
+      elements.addCurrentTabBtn.textContent = 'Adding...'
+      const response: unknown = await chrome.runtime.sendMessage({
+        type: 'EXTRACT_CONTENT',
+      })
 
-      if (response) {
+      // Type guard to ensure response has expected properties
+      if (isUrlExtractResponse(response)) {
+        const url = response.url ?? ''
+        const title = response.title ?? ''
+        const content = response.content ?? ''
+
         const source = createSource(
           notebookId,
-          "tab",
-          response.url,
-          response.title,
-          response.content,
-          response.links
-        );
-        await saveSource(source);
+          'tab',
+          url,
+          title,
+          content,
+          response.links,
+        )
+        await saveSource(source)
         // Clear suggested links cache so new sources trigger a refresh
-        suggestedLinksCache.delete(notebookId);
-        await loadSources();
+        suggestedLinksCache.delete(notebookId)
+        await loadSources()
       }
     }
-  } catch (error) {
-    console.error("Failed to add tab(s):", error);
-  } finally {
-    elements.addCurrentTabBtn.disabled = false;
-    updateAddTabButton();
+  }
+  catch (error) {
+    console.error('Failed to add tab(s):', error)
+  }
+  finally {
+    elements.addCurrentTabBtn.disabled = false
+    void updateAddTabButton()
   }
 }
 
@@ -2122,10 +2321,10 @@ async function updateAddTabButton(): Promise<void> {
     const highlightedTabs = await chrome.tabs.query({
       highlighted: true,
       currentWindow: true,
-    });
+    })
     const validTabs = highlightedTabs.filter(
-      (tab) => tab.url && !tab.url.startsWith("chrome://")
-    );
+      tab => tab.url && !tab.url.startsWith('chrome://'),
+    )
 
     if (validTabs.length > 1) {
       elements.addCurrentTabBtn.innerHTML = `
@@ -2134,24 +2333,91 @@ async function updateAddTabButton(): Promise<void> {
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
         Add ${validTabs.length} Selected Tabs
-      `;
-    } else {
+      `
+    }
+    else {
       elements.addCurrentTabBtn.innerHTML = `
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
         Add Current Tab
-      `;
+      `
     }
-  } catch {
+  }
+  catch {
     // Keep default text if query fails
   }
 }
 
 async function handleRemoveSource(sourceId: string): Promise<void> {
-  await deleteSource(sourceId);
-  await loadSources();
+  await deleteSource(sourceId)
+  await loadSources()
+}
+
+async function handleRefreshSource(sourceId: string, button: HTMLButtonElement): Promise<void> {
+  // Add refreshing state
+  button.classList.add('refreshing')
+  button.disabled = true
+
+  try {
+    const result = await chrome.runtime.sendMessage<Message, { success: boolean, error?: string }>({
+      type: 'REFRESH_SOURCE',
+      payload: { sourceId },
+    })
+
+    if (result?.success) {
+      showNotification('Source refreshed')
+    }
+    else {
+      showNotification(result?.error || 'Failed to refresh source')
+    }
+  }
+  catch (error) {
+    console.error('Failed to refresh source:', error)
+    showNotification('Failed to refresh source')
+  }
+  finally {
+    button.classList.remove('refreshing')
+    button.disabled = false
+  }
+}
+
+async function handleRefreshAllSources(): Promise<void> {
+  if (!currentNotebookId) return
+
+  const btn = elements.refreshAllSourcesBtn
+  btn.classList.add('refreshing')
+  btn.disabled = true
+
+  try {
+    const result = await chrome.runtime.sendMessage<Message, { success: boolean, refreshedCount: number, errors: string[] }>({
+      type: 'REFRESH_ALL_SOURCES',
+      payload: { notebookId: currentNotebookId },
+    })
+
+    if (result?.success) {
+      if (result.refreshedCount > 0) {
+        showNotification(`Refreshed ${result.refreshedCount} source${result.refreshedCount > 1 ? 's' : ''}`)
+      }
+      else {
+        showNotification('No sources to refresh')
+      }
+      // Reload sources to show updated content
+      await loadSources()
+    }
+    else {
+      showNotification('Failed to refresh sources')
+    }
+  }
+  catch (error) {
+    console.error('Failed to refresh all sources:', error)
+    showNotification('Failed to refresh sources')
+  }
+  finally {
+    btn.classList.remove('refreshing')
+    btn.disabled = false
+  }
 }
 
 // ============================================================================
@@ -2160,124 +2426,127 @@ async function handleRemoveSource(sourceId: string): Promise<void> {
 
 async function handleImportTabs(): Promise<void> {
   if (!permissions.tabs) {
-    const granted = await requestPermission("tabs");
-    if (!granted) return;
-    permissions = await checkPermissions();
-    updatePermissionUI();
+    const granted = await requestPermission('tabs')
+    if (!granted) return
+    permissions = await checkPermissions()
+    updatePermissionUI()
   }
 
-  pickerType = "tab";
-  elements.pickerTitle.textContent = "Select Tabs";
-  elements.pickerList.innerHTML =
-    '<div class="picker-loading">Loading tabs...</div>';
-  openPicker();
+  pickerType = 'tab'
+  elements.pickerTitle.textContent = 'Select Tabs'
+  elements.pickerList.innerHTML
+    = '<div class="picker-loading">Loading tabs...</div>'
+  openPicker()
 
   try {
-    const tabs = await chrome.tabs.query({});
+    const tabs = await chrome.tabs.query({})
     pickerItems = tabs
-      .filter((tab) => tab.url && !tab.url.startsWith("chrome://"))
-      .map((tab) => ({
-        id: tab.id?.toString() || "",
-        url: tab.url || "",
-        title: tab.title || "Untitled",
+      .filter(tab => tab.url && !tab.url.startsWith('chrome://'))
+      .map(tab => ({
+        id: tab.id?.toString() || '',
+        url: tab.url || '',
+        title: tab.title || 'Untitled',
         favicon: tab.favIconUrl,
-      }));
-    renderPickerItems();
-  } catch (error) {
-    console.error("Failed to load tabs:", error);
-    elements.pickerList.innerHTML =
-      '<div class="picker-empty">Failed to load tabs</div>';
+      }))
+    renderPickerItems()
+  }
+  catch (error) {
+    console.error('Failed to load tabs:', error)
+    elements.pickerList.innerHTML
+      = '<div class="picker-empty">Failed to load tabs</div>'
   }
 }
 
 async function handleImportTabGroups(): Promise<void> {
   // Tab groups require both tabs and tabGroups permissions
   if (!permissions.tabGroups) {
-    const granted = await requestPermission("tabGroups");
-    if (!granted) return;
-    permissions = await checkPermissions();
-    updatePermissionUI();
+    const granted = await requestPermission('tabGroups')
+    if (!granted) return
+    permissions = await checkPermissions()
+    updatePermissionUI()
   }
 
   // Also need tabs permission to query tabs in groups
   if (!permissions.tabs) {
-    const granted = await requestPermission("tabs");
-    if (!granted) return;
-    permissions = await checkPermissions();
-    updatePermissionUI();
+    const granted = await requestPermission('tabs')
+    if (!granted) return
+    permissions = await checkPermissions()
+    updatePermissionUI()
   }
 
-  pickerType = "tabGroup";
-  elements.pickerTitle.textContent = "Select Tab Groups";
-  elements.pickerList.innerHTML =
-    '<div class="picker-loading">Loading tab groups...</div>';
-  openPicker();
+  pickerType = 'tabGroup'
+  elements.pickerTitle.textContent = 'Select Tab Groups'
+  elements.pickerList.innerHTML
+    = '<div class="picker-loading">Loading tab groups...</div>'
+  openPicker()
 
   try {
-    const groups = await chrome.tabGroups.query({});
+    const groups = await chrome.tabGroups.query({})
 
     if (groups.length === 0) {
-      elements.pickerList.innerHTML =
-        '<div class="picker-empty">No tab groups found. Create a tab group first by right-clicking a tab.</div>';
-      return;
+      elements.pickerList.innerHTML
+        = '<div class="picker-empty">No tab groups found. Create a tab group first by right-clicking a tab.</div>'
+      return
     }
 
     // Get tab counts for each group
     const groupsWithCounts = await Promise.all(
       groups.map(async (group) => {
-        const tabsInGroup = await chrome.tabs.query({ groupId: group.id });
+        const tabsInGroup = await chrome.tabs.query({ groupId: group.id })
         return {
           ...group,
           tabCount: tabsInGroup.length,
-        };
-      })
-    );
+        }
+      }),
+    )
 
-    pickerItems = groupsWithCounts.map((group) => ({
+    pickerItems = groupsWithCounts.map(group => ({
       id: group.id.toString(),
-      url: "", // Tab groups don't have URLs
+      url: '', // Tab groups don't have URLs
       title: group.title || `Unnamed ${group.color} group`,
       color: group.color,
       tabCount: group.tabCount,
-    }));
+    }))
 
-    renderPickerItems();
-  } catch (error) {
-    console.error("Failed to load tab groups:", error);
-    elements.pickerList.innerHTML =
-      '<div class="picker-empty">Failed to load tab groups</div>';
+    renderPickerItems()
+  }
+  catch (error) {
+    console.error('Failed to load tab groups:', error)
+    elements.pickerList.innerHTML
+      = '<div class="picker-empty">Failed to load tab groups</div>'
   }
 }
 
 async function handleImportBookmarks(): Promise<void> {
   if (!permissions.bookmarks) {
-    const granted = await requestPermission("bookmarks");
-    if (!granted) return;
-    permissions = await checkPermissions();
-    updatePermissionUI();
+    const granted = await requestPermission('bookmarks')
+    if (!granted) return
+    permissions = await checkPermissions()
+    updatePermissionUI()
   }
 
-  pickerType = "bookmark";
-  elements.pickerTitle.textContent = "Select Bookmarks";
-  elements.pickerList.innerHTML =
-    '<div class="picker-loading">Loading bookmarks...</div>';
-  openPicker();
+  pickerType = 'bookmark'
+  elements.pickerTitle.textContent = 'Select Bookmarks'
+  elements.pickerList.innerHTML
+    = '<div class="picker-loading">Loading bookmarks...</div>'
+  openPicker()
 
   try {
-    const bookmarkTree = await chrome.bookmarks.getTree();
-    pickerItems = flattenBookmarks(bookmarkTree);
-    renderPickerItems();
-  } catch (error) {
-    console.error("Failed to load bookmarks:", error);
-    elements.pickerList.innerHTML =
-      '<div class="picker-empty">Failed to load bookmarks</div>';
+    const bookmarkTree = await chrome.bookmarks.getTree()
+    pickerItems = flattenBookmarks(bookmarkTree)
+    renderPickerItems()
+  }
+  catch (error) {
+    console.error('Failed to load bookmarks:', error)
+    elements.pickerList.innerHTML
+      = '<div class="picker-empty">Failed to load bookmarks</div>'
   }
 }
 
 function flattenBookmarks(
-  nodes: chrome.bookmarks.BookmarkTreeNode[]
+  nodes: chrome.bookmarks.BookmarkTreeNode[],
 ): PickerItem[] {
-  const items: PickerItem[] = [];
+  const items: PickerItem[] = []
 
   function traverse(nodes: chrome.bookmarks.BookmarkTreeNode[]): void {
     for (const node of nodes) {
@@ -2285,61 +2554,63 @@ function flattenBookmarks(
         items.push({
           id: node.id,
           url: node.url,
-          title: node.title || "Untitled",
-        });
+          title: node.title || 'Untitled',
+        })
       }
       if (node.children) {
-        traverse(node.children);
+        traverse(node.children)
       }
     }
   }
 
-  traverse(nodes);
-  return items;
+  traverse(nodes)
+  return items
 }
 
 async function handleImportHistory(): Promise<void> {
   if (!permissions.history) {
-    const granted = await requestPermission("history");
-    if (!granted) return;
-    permissions = await checkPermissions();
-    updatePermissionUI();
+    const granted = await requestPermission('history')
+    if (!granted) return
+    permissions = await checkPermissions()
+    updatePermissionUI()
   }
 
-  pickerType = "history";
-  elements.pickerTitle.textContent = "Select from History";
-  elements.pickerList.innerHTML =
-    '<div class="picker-loading">Loading history...</div>';
-  openPicker();
+  pickerType = 'history'
+  elements.pickerTitle.textContent = 'Select from History'
+  elements.pickerList.innerHTML
+    = '<div class="picker-loading">Loading history...</div>'
+  openPicker()
 
   try {
     const historyItems = await chrome.history.search({
-      text: "",
+      text: '',
       maxResults: 100,
       startTime: Date.now() - 7 * 24 * 60 * 60 * 1000, // Last 7 days
-    });
+    })
     pickerItems = historyItems
-      .filter((item) => item.url && item.title)
-      .map((item) => ({
-        id: item.id || item.url || "",
-        url: item.url || "",
-        title: item.title || "Untitled",
-      }));
-    renderPickerItems();
-  } catch (error) {
-    console.error("Failed to load history:", error);
-    elements.pickerList.innerHTML =
-      '<div class="picker-empty">Failed to load history</div>';
+      .filter(item => item.url && item.title)
+      .map(item => ({
+        id: item.id || item.url || '',
+        url: item.url || '',
+        title: item.title || 'Untitled',
+      }))
+    renderPickerItems()
+  }
+  catch (error) {
+    console.error('Failed to load history:', error)
+    elements.pickerList.innerHTML
+      = '<div class="picker-empty">Failed to load history</div>'
   }
 }
 
 async function updateTabCount(): Promise<void> {
   try {
     if (permissions.tabs) {
-      const tabs = await chrome.tabs.query({});
-      elements.tabsCount.textContent = `Choose from ${tabs.length} active tabs`;
+      const tabs = await chrome.tabs.query({})
+      elements.tabsCount.textContent = `Choose from ${tabs.length} active tabs`
     }
-  } catch {
+  }
+  catch {
     // Ignore if permission not granted
   }
 }
@@ -2349,81 +2620,82 @@ async function updateTabCount(): Promise<void> {
 // ============================================================================
 
 function openPicker(): void {
-  selectedPickerItems.clear();
-  elements.pickerSearch.value = "";
-  updatePickerSelectedCount();
-  elements.pickerModal.classList.remove("hidden");
+  selectedPickerItems.clear()
+  elements.pickerSearch.value = ''
+  updatePickerSelectedCount()
+  elements.pickerModal.classList.remove('hidden')
 }
 
 function closePicker(): void {
-  elements.pickerModal.classList.add("hidden");
-  pickerItems = [];
-  selectedPickerItems.clear();
-  pickerType = null;
+  elements.pickerModal.classList.add('hidden')
+  pickerItems = []
+  selectedPickerItems.clear()
+  pickerType = null
 }
 
 async function refreshPickerIfShowingTabs(): Promise<void> {
   // Only refresh if picker is open and showing tabs
-  if (pickerType !== "tab") return;
-  if (elements.pickerModal.classList.contains("hidden")) return;
+  if (pickerType !== 'tab') return
+  if (elements.pickerModal.classList.contains('hidden')) return
 
   try {
-    const tabs = await chrome.tabs.query({});
-    const currentFilter = elements.pickerSearch.value;
+    const tabs = await chrome.tabs.query({})
+    const currentFilter = elements.pickerSearch.value
 
     pickerItems = tabs
-      .filter((tab) => tab.url && !tab.url.startsWith("chrome://"))
-      .map((tab) => ({
-        id: tab.id?.toString() || "",
-        url: tab.url || "",
-        title: tab.title || "Untitled",
+      .filter(tab => tab.url && !tab.url.startsWith('chrome://'))
+      .map(tab => ({
+        id: tab.id?.toString() || '',
+        url: tab.url || '',
+        title: tab.title || 'Untitled',
         favicon: tab.favIconUrl,
-      }));
+      }))
 
     // Remove any selected items that no longer exist
-    const currentIds = new Set(pickerItems.map((item) => item.id));
+    const currentIds = new Set(pickerItems.map(item => item.id))
     for (const selectedId of selectedPickerItems) {
       if (!currentIds.has(selectedId)) {
-        selectedPickerItems.delete(selectedId);
+        selectedPickerItems.delete(selectedId)
       }
     }
 
-    renderPickerItems(currentFilter);
-    updatePickerSelectedCount();
-  } catch (error) {
-    console.error("Failed to refresh tabs:", error);
+    renderPickerItems(currentFilter)
+    updatePickerSelectedCount()
+  }
+  catch (error) {
+    console.error('Failed to refresh tabs:', error)
   }
 }
 
-function renderPickerItems(filter: string = ""): void {
+function renderPickerItems(filter: string = ''): void {
   const filteredItems = filter
     ? pickerItems.filter(
-        (item) =>
-          item.title.toLowerCase().includes(filter.toLowerCase()) ||
-          item.url.toLowerCase().includes(filter.toLowerCase())
+        item =>
+          item.title.toLowerCase().includes(filter.toLowerCase())
+          || item.url.toLowerCase().includes(filter.toLowerCase()),
       )
-    : pickerItems;
+    : pickerItems
 
   if (filteredItems.length === 0) {
-    elements.pickerList.innerHTML =
-      '<div class="picker-empty">No items found</div>';
-    return;
+    elements.pickerList.innerHTML
+      = '<div class="picker-empty">No items found</div>'
+    return
   }
 
-  elements.pickerList.innerHTML = "";
+  elements.pickerList.innerHTML = ''
 
   for (const item of filteredItems) {
-    const div = document.createElement("div");
+    const div = document.createElement('div')
     div.className = `picker-item${
-      selectedPickerItems.has(item.id) ? " selected" : ""
-    }`;
-    div.dataset.id = item.id;
+      selectedPickerItems.has(item.id) ? ' selected' : ''
+    }`
+    div.dataset.id = item.id
 
-    const initial = item.title.charAt(0).toUpperCase();
+    const initial = item.title.charAt(0).toUpperCase()
 
     // Handle tab groups differently
-    if (pickerType === "tabGroup") {
-      const colorClass = item.color ? `tab-group-color-${item.color}` : "";
+    if (pickerType === 'tabGroup') {
+      const colorClass = item.color ? `tab-group-color-${item.color}` : ''
       div.innerHTML = `
         <div class="picker-checkbox">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -2431,8 +2703,8 @@ function renderPickerItems(filter: string = ""): void {
           </svg>
         </div>
         <div class="picker-icon ${colorClass}" style="background-color: var(--tab-group-${
-        item.color || "grey"
-      });">
+          item.color || 'grey'
+        });">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="3" width="7" height="7" rx="1"></rect>
             <rect x="14" y="3" width="7" height="7" rx="1"></rect>
@@ -2443,12 +2715,13 @@ function renderPickerItems(filter: string = ""): void {
         <div class="picker-info">
           <div class="picker-title">${escapeHtml(item.title)}</div>
           <div class="picker-url">${item.tabCount} tab${
-        item.tabCount !== 1 ? "s" : ""
-      }</div>
+            item.tabCount !== 1 ? 's' : ''
+          }</div>
         </div>
-      `;
-    } else {
-      const domain = getDomain(item.url);
+      `
+    }
+    else {
+      const domain = getDomain(item.url)
       div.innerHTML = `
         <div class="picker-checkbox">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
@@ -2466,181 +2739,193 @@ function renderPickerItems(filter: string = ""): void {
           <div class="picker-title">${escapeHtml(item.title)}</div>
           <div class="picker-url">${escapeHtml(domain)}</div>
         </div>
-      `;
+      `
 
       // Attach error handler safely (no inline JS)
       if (item.favicon) {
-        const img = div.querySelector(".picker-icon img");
+        const img = div.querySelector('.picker-icon img')
         if (img instanceof HTMLImageElement) {
-          img.addEventListener("error", () => {
-            img.style.display = "none";
+          img.addEventListener('error', () => {
+            img.style.display = 'none'
             if (img.parentNode) {
-              img.parentNode.textContent = initial;
+              img.parentNode.textContent = initial
             }
-          });
+          })
         }
       }
     }
 
-    div.addEventListener("click", () => togglePickerItem(item.id));
-    elements.pickerList.appendChild(div);
+    div.addEventListener('click', () => togglePickerItem(item.id))
+    elements.pickerList.appendChild(div)
   }
 }
 
 function togglePickerItem(id: string): void {
   if (selectedPickerItems.has(id)) {
-    selectedPickerItems.delete(id);
-  } else {
-    selectedPickerItems.add(id);
+    selectedPickerItems.delete(id)
+  }
+  else {
+    selectedPickerItems.add(id)
   }
 
   // Update UI
-  const item = elements.pickerList.querySelector(`[data-id="${id}"]`);
-  item?.classList.toggle("selected", selectedPickerItems.has(id));
-  updatePickerSelectedCount();
+  const item = elements.pickerList.querySelector(`[data-id="${id}"]`)
+  item?.classList.toggle('selected', selectedPickerItems.has(id))
+  updatePickerSelectedCount()
 }
 
 function updatePickerSelectedCount(): void {
-  const count = selectedPickerItems.size;
-  elements.pickerSelectedCount.textContent = `${count} selected`;
-  elements.pickerAdd.disabled = count === 0;
+  const count = selectedPickerItems.size
+  elements.pickerSelectedCount.textContent = `${count} selected`
+  elements.pickerAdd.disabled = count === 0
 }
 
 function handlePickerSearch(): void {
-  const filter = elements.pickerSearch.value.trim();
-  renderPickerItems(filter);
+  const filter = elements.pickerSearch.value.trim()
+  renderPickerItems(filter)
 }
 
 async function handlePickerAdd(): Promise<void> {
-  if (selectedPickerItems.size === 0) return;
+  if (selectedPickerItems.size === 0) return
 
   // Ensure notebook exists
   if (!currentNotebookId) {
-    const name = await showNotebookDialog("Create a notebook first");
-    if (!name) return;
+    const name = await showNotebookDialog('Create a notebook first')
+    if (!name) return
 
-    const notebook = createNotebook(name);
-    await saveNotebook(notebook);
-    currentNotebookId = notebook.id;
-    await setActiveNotebookId(notebook.id);
-    await loadNotebooks();
-    elements.notebookSelect.value = notebook.id;
+    const notebook = createNotebook(name)
+    await saveNotebook(notebook)
+    currentNotebookId = notebook.id
+    await setActiveNotebookId(notebook.id)
+    await loadNotebooks()
+    elements.notebookSelect.value = notebook.id
   }
 
   // After the guard, currentNotebookId is guaranteed to be set
-  const notebookId = currentNotebookId;
-  if (!notebookId) return;
+  const notebookId = currentNotebookId
+  if (!notebookId) return
 
-  const selectedItems = pickerItems.filter((item) =>
-    selectedPickerItems.has(item.id)
-  );
-  elements.pickerAdd.disabled = true;
-  elements.pickerAdd.textContent = "Adding...";
+  const selectedItems = pickerItems.filter(item =>
+    selectedPickerItems.has(item.id),
+  )
+  elements.pickerAdd.disabled = true
+  elements.pickerAdd.textContent = 'Adding...'
 
-  let addedCount = 0;
+  let addedCount = 0
 
   // Handle tab groups specially - need to get all tabs in the group
-  if (pickerType === "tabGroup") {
+  if (pickerType === 'tabGroup') {
     for (const groupItem of selectedItems) {
       try {
-        const groupId = parseInt(groupItem.id, 10);
-        const tabsInGroup = await chrome.tabs.query({ groupId });
+        const groupId = parseInt(groupItem.id, 10)
+        const tabsInGroup = await chrome.tabs.query({ groupId })
 
         for (const tab of tabsInGroup) {
-          if (!tab.id || !tab.url || tab.url.startsWith("chrome://")) continue;
+          if (!tab.id || !tab.url || tab.url.startsWith('chrome://')) continue
 
           try {
             // Send message directly to content script
-            const result = await chrome.tabs.sendMessage(tab.id, {
-              action: "extractContent",
-            });
+            const result: unknown = await chrome.tabs.sendMessage(tab.id, {
+              action: 'extractContent',
+            })
 
-            if (result) {
+            // Type guard to ensure result has expected properties
+            if (isTabExtractContentResponse(result)) {
               const source = createSource(
                 notebookId,
-                "tab",
-                result.url || tab.url,
-                result.title || tab.title || "Untitled",
-                result.markdown || "",
-                result.links
-              );
-              await saveSource(source);
-              addedCount++;
+                'tab',
+                result.url ?? tab.url,
+                result.title ?? tab.title ?? 'Untitled',
+                result.markdown ?? '',
+                result.links,
+              )
+              await saveSource(source)
+              addedCount++
             }
-          } catch (error) {
-            console.error(`Failed to extract from tab ${tab.url}:`, error);
+          }
+          catch (error) {
+            console.error(`Failed to extract from tab ${tab.url}:`, error)
             // Fallback: add with just title/url
             const source = createSource(
               notebookId,
-              "tab",
+              'tab',
               tab.url,
-              tab.title || "Untitled",
-              `Content from: ${tab.url}`
-            );
-            await saveSource(source);
-            addedCount++;
+              tab.title || 'Untitled',
+              `Content from: ${tab.url}`,
+            )
+            await saveSource(source)
+            addedCount++
           }
         }
-      } catch (error) {
-        console.error(`Failed to process tab group ${groupItem.id}:`, error);
+      }
+      catch (error) {
+        console.error(`Failed to process tab group ${groupItem.id}:`, error)
       }
     }
-  } else {
+  }
+  else {
     // Handle regular items (tabs, bookmarks, history)
     for (const item of selectedItems) {
       try {
         // Extract content from the URL
-        const response = await chrome.runtime.sendMessage({
-          type: "EXTRACT_FROM_URL",
+        const response: unknown = await chrome.runtime.sendMessage({
+          type: 'EXTRACT_FROM_URL',
           payload: item.url,
-        });
+        })
 
-        if (response) {
+        // Type guard to ensure response has expected properties
+        if (isUrlExtractResponse(response)) {
+          const url = response.url ?? item.url
+          const title = response.title ?? item.title
+          const content = response.content ?? ''
+
           const source = createSource(
             notebookId,
-            pickerType || "tab",
-            response.url || item.url,
-            response.title || item.title,
-            response.content || "",
-            response.links
-          );
-          await saveSource(source);
-          addedCount++;
+            pickerType || 'tab',
+            url,
+            title,
+            content,
+            response.links,
+          )
+          await saveSource(source)
+          addedCount++
         }
-      } catch (error) {
-        console.error(`Failed to add ${item.url}:`, error);
+      }
+      catch (error) {
+        console.error(`Failed to add ${item.url}:`, error)
         // If extraction fails, add with just the title/url
         const source = createSource(
           notebookId,
-          pickerType || "tab",
+          pickerType || 'tab',
           item.url,
           item.title,
-          `Content from: ${item.url}`
-        );
-        await saveSource(source);
-        addedCount++;
+          `Content from: ${item.url}`,
+        )
+        await saveSource(source)
+        addedCount++
       }
     }
   }
 
-  closePicker();
+  closePicker()
   // Clear suggested links cache so new sources trigger a refresh
-  suggestedLinksCache.delete(notebookId);
-  await loadSources();
+  suggestedLinksCache.delete(notebookId)
+  await loadSources()
 
   if (addedCount > 0) {
-    showNotification(`Added ${addedCount} source${addedCount > 1 ? "s" : ""}`);
+    showNotification(`Added ${addedCount} source${addedCount > 1 ? 's' : ''}`)
   }
 
-  elements.pickerAdd.disabled = false;
-  elements.pickerAdd.textContent = "Add Selected";
+  elements.pickerAdd.disabled = false
+  elements.pickerAdd.textContent = 'Add Selected'
 }
 
 function getDomain(url: string): string {
   try {
-    return new URL(url).hostname.replace("www.", "");
-  } catch {
-    return url;
+    return new URL(url).hostname.replace('www.', '')
+  }
+  catch {
+    return url
   }
 }
 
@@ -2652,73 +2937,73 @@ function getDomain(url: string): string {
  * Available slash commands with descriptions
  */
 interface SlashCommand {
-  command: string;
-  description: string;
-  usage: string;
+  command: string
+  description: string
+  usage: string
 }
 
 const SLASH_COMMANDS: SlashCommand[] = [
   {
-    command: "compact",
-    description: "Summarize chat history",
-    usage: "/compact [optional custom instructions]",
+    command: 'compact',
+    description: 'Summarize chat history',
+    usage: '/compact [optional custom instructions]',
   },
-];
+]
 
 /**
  * Simple fuzzy match scoring function
  * Returns higher score for better matches
  */
 function fuzzyMatchScore(text: string, query: string): number {
-  if (!query) return 0;
+  if (!query) return 0
 
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
+  const lowerText = text.toLowerCase()
+  const lowerQuery = query.toLowerCase()
 
   // Exact match at start - highest priority
   if (lowerText.startsWith(lowerQuery)) {
-    return 100;
+    return 100
   }
 
   // Exact match anywhere
   if (lowerText.includes(lowerQuery)) {
-    return 50;
+    return 50
   }
 
   // Character sequence match
-  let queryIndex = 0;
-  let score = 0;
+  let queryIndex = 0
+  let score = 0
   for (let i = 0; i < lowerText.length && queryIndex < lowerQuery.length; i++) {
     if (lowerText[i] === lowerQuery[queryIndex]) {
-      score += 1;
-      queryIndex++;
+      score += 1
+      queryIndex++
     }
   }
 
   // If we matched all characters in order
   if (queryIndex === lowerQuery.length) {
-    return Math.min(score, 49);
+    return Math.min(score, 49)
   }
 
-  return -1; // No match
+  return -1 // No match
 }
 
 /**
  * Parse a slash command from user input
  * Returns null if input is not a slash command
  */
-function parseSlashCommand(input: string): { command: string; args: string } | null {
-  const trimmed = input.trim();
-  if (!trimmed.startsWith("/")) {
-    return null;
+function parseSlashCommand(input: string): { command: string, args: string } | null {
+  const trimmed = input.trim()
+  if (!trimmed.startsWith('/')) {
+    return null
   }
 
   // Split on first space to get command and args
-  const parts = trimmed.slice(1).split(/\s+/);
-  const command = parts[0];
-  const args = parts.slice(1).join(" ");
+  const parts = trimmed.slice(1).split(/\s+/)
+  const command = parts[0]
+  const args = parts.slice(1).join(' ')
 
-  return { command, args };
+  return { command, args }
 }
 
 /**
@@ -2727,14 +3012,14 @@ function parseSlashCommand(input: string): { command: string; args: string } | n
  */
 async function executeSlashCommand(
   command: string,
-  args: string
+  args: string,
 ): Promise<boolean> {
   switch (command) {
-    case "compact":
-      return await handleCompactCommand(args);
+    case 'compact':
+      return await handleCompactCommand(args)
     default:
-      showNotification(`Unknown command: /${command}`, 3000);
-      return false;
+      showNotification(`Unknown command: /${command}`, 3000)
+      return false
   }
 }
 
@@ -2744,131 +3029,133 @@ async function executeSlashCommand(
  */
 async function handleCompactCommand(customInstructions: string): Promise<boolean> {
   if (!currentNotebookId) {
-    showNotification("Please select a notebook first");
-    return true;
+    showNotification('Please select a notebook first')
+    return true
   }
 
-  const history = await getChatHistory(currentNotebookId);
+  const history = await getChatHistory(currentNotebookId)
   if (history.length === 0) {
-    showNotification("No chat history to compact");
-    return true;
+    showNotification('No chat history to compact')
+    return true
   }
 
-  elements.chatStatus.textContent = "Compacting chat history...";
-  elements.queryBtn.disabled = true;
+  elements.chatStatus.textContent = 'Compacting chat history...'
+  elements.queryBtn.disabled = true
 
   try {
     // Build a summary from all messages (filter out tool-result events)
     const conversationText = history
-      .filter((e) => e.type === 'user' || e.type === 'assistant')
-      .map((e) => `${e.type}: ${e.content}`)
-      .join("\n\n");
+      .filter(e => e.type === 'user' || e.type === 'assistant')
+      .map(e => `${e.type}: ${e.content}`)
+      .join('\n\n')
 
     // Prepend instructions to the content for summarization
     const contentToSummarize = customInstructions
       ? `Instructions: ${customInstructions}\n\nConversation:\n${conversationText}`
-      : conversationText;
+      : conversationText
 
     // Create a temporary source object for summarization
-    const now = Date.now();
+    const now = Date.now()
     const chatHistorySource: Source = {
-      id: "chat-history",
+      id: 'chat-history',
       notebookId: currentNotebookId,
-      type: "text",
-      url: "",
-      title: "Chat History",
+      type: 'text',
+      url: '',
+      title: 'Chat History',
       content: contentToSummarize,
-      syncStatus: "synced",
+      syncStatus: 'synced',
       createdAt: now,
       updatedAt: now,
       metadata: { wordCount: contentToSummarize.split(/\s+/).length },
-    };
+    }
 
     // Use the existing generateSummary function
-    const summary = await generateSummary([chatHistorySource]);
+    const summary = await generateSummary([chatHistorySource])
 
     // Create a system event with the summary
     const summaryEvent = createAssistantEvent(
       currentNotebookId,
-      `**Chat Summary**\n\n${summary}`
-    );
-    await saveChatEvent(summaryEvent);
+      `**Chat Summary**\n\n${summary}`,
+    )
+    await saveChatEvent(summaryEvent)
 
     // Reload chat history to show the summary
-    await loadChatHistory();
+    await loadChatHistory()
 
-    showNotification("Chat history compacted");
-  } catch (error) {
-    console.error("Compact failed:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Failed to compact chat";
-    showNotification(`Compact failed: ${errorMessage}`, 4000);
-  } finally {
-    elements.queryBtn.disabled = false;
-    elements.chatStatus.textContent =
-      "Ask questions to synthesize information from your sources.";
+    showNotification('Chat history compacted')
+  }
+  catch (error) {
+    console.error('Compact failed:', error)
+    const errorMessage
+      = error instanceof Error ? error.message : 'Failed to compact chat'
+    showNotification(`Compact failed: ${errorMessage}`, 4000)
+  }
+  finally {
+    elements.queryBtn.disabled = false
+    elements.chatStatus.textContent
+      = 'Ask questions to synthesize information from your sources.'
   }
 
-  return true;
+  return true
 }
 
 // ============================================================================
 // Autocomplete
 // ============================================================================
 
-let autocompleteSelectedIndex = -1;
-let autocompleteFilteredCommands: SlashCommand[] = [];
-let autocompleteScores: number[] = [];
+let autocompleteSelectedIndex = -1
+let autocompleteFilteredCommands: SlashCommand[] = []
+let autocompleteScores: number[] = []
 
 /**
  * Show autocomplete dropdown with filtered commands
  */
 function showAutocomplete(commands: SlashCommand[], scores: number[]): void {
-  autocompleteFilteredCommands = commands;
-  autocompleteScores = scores;
-  autocompleteSelectedIndex = -1;
+  autocompleteFilteredCommands = commands
+  autocompleteScores = scores
+  autocompleteSelectedIndex = -1
 
   if (commands.length === 0) {
-    hideAutocomplete();
-    return;
+    hideAutocomplete()
+    return
   }
 
   // Render autocomplete items
-  elements.autocompleteDropdown.innerHTML = "";
+  elements.autocompleteDropdown.innerHTML = ''
   for (const cmd of commands) {
-    const item = document.createElement("div");
-    item.className = "autocomplete-item";
+    const item = document.createElement('div')
+    item.className = 'autocomplete-item'
 
-    const commandSpan = document.createElement("span");
-    commandSpan.className = "autocomplete-item-command";
-    commandSpan.textContent = `/${cmd.command}`;
+    const commandSpan = document.createElement('span')
+    commandSpan.className = 'autocomplete-item-command'
+    commandSpan.textContent = `/${cmd.command}`
 
-    const descriptionSpan = document.createElement("span");
-    descriptionSpan.className = "autocomplete-item-description";
-    descriptionSpan.textContent = cmd.description;
+    const descriptionSpan = document.createElement('span')
+    descriptionSpan.className = 'autocomplete-item-description'
+    descriptionSpan.textContent = cmd.description
 
-    item.appendChild(commandSpan);
-    item.appendChild(descriptionSpan);
+    item.appendChild(commandSpan)
+    item.appendChild(descriptionSpan)
 
-    item.addEventListener("click", () => {
-      selectAutocompleteItem(cmd);
-    });
+    item.addEventListener('click', () => {
+      selectAutocompleteItem(cmd)
+    })
 
-    elements.autocompleteDropdown.appendChild(item);
+    elements.autocompleteDropdown.appendChild(item)
   }
 
-  elements.autocompleteDropdown.classList.remove("hidden");
+  elements.autocompleteDropdown.classList.remove('hidden')
 }
 
 /**
  * Hide autocomplete dropdown
  */
 function hideAutocomplete(): void {
-  elements.autocompleteDropdown.classList.add("hidden");
-  autocompleteSelectedIndex = -1;
-  autocompleteFilteredCommands = [];
-  autocompleteScores = [];
-  elements.autocompleteGhost.textContent = "";
+  elements.autocompleteDropdown.classList.add('hidden')
+  autocompleteSelectedIndex = -1
+  autocompleteFilteredCommands = []
+  autocompleteScores = []
+  elements.autocompleteGhost.textContent = ''
 }
 
 /**
@@ -2877,16 +3164,16 @@ function hideAutocomplete(): void {
  * @param submit - Whether to submit the query after selection (default: false)
  */
 function selectAutocompleteItem(cmd: SlashCommand, submit = false): void {
-  elements.queryInput.value = `/${cmd.command} `;
-  elements.autocompleteGhost.textContent = "";
-  hideAutocomplete();
-  elements.queryInput.focus();
+  elements.queryInput.value = `/${cmd.command} `
+  elements.autocompleteGhost.textContent = ''
+  hideAutocomplete()
+  elements.queryInput.focus()
 
   if (submit) {
     // Trigger query submission after a brief delay to allow input to update
     setTimeout(() => {
-      handleQuery();
-    }, 0);
+      void handleQuery()
+    }, 0)
   }
 }
 
@@ -2894,75 +3181,76 @@ function selectAutocompleteItem(cmd: SlashCommand, submit = false): void {
  * Handle input event for autocomplete
  */
 function handleAutocompleteInput(): void {
-  const value = elements.queryInput.value;
+  const value = elements.queryInput.value
 
   // Only show autocomplete for slash commands
-  if (!value.startsWith("/")) {
-    hideAutocomplete();
-    return;
+  if (!value.startsWith('/')) {
+    hideAutocomplete()
+    return
   }
 
   // Extract the partial command (after / but before any space)
-  const match = value.match(/^\/(\w*)/);
+  const match = value.match(/^\/(\w*)/)
   if (!match) {
-    hideAutocomplete();
-    elements.autocompleteGhost.textContent = "";
-    return;
+    hideAutocomplete()
+    elements.autocompleteGhost.textContent = ''
+    return
   }
 
-  const partialCommand = match[1];
+  const partialCommand = match[1]
 
   // Show all commands if no input after slash
-  if (partialCommand === "") {
-    showAutocomplete(SLASH_COMMANDS, SLASH_COMMANDS.map(() => 0));
-    elements.autocompleteGhost.textContent = "";
-    return;
+  if (partialCommand === '') {
+    showAutocomplete(SLASH_COMMANDS, SLASH_COMMANDS.map(() => 0))
+    elements.autocompleteGhost.textContent = ''
+    return
   }
 
   // Score all commands based on fuzzy match
-  const scoredCommands = SLASH_COMMANDS.map((cmd) => ({
+  const scoredCommands = SLASH_COMMANDS.map(cmd => ({
     cmd,
     score: fuzzyMatchScore(cmd.command, partialCommand),
-  }));
+  }))
 
   // Filter to commands that match (score >= 0)
-  const matched = scoredCommands.filter(({ score }) => score >= 0);
+  const matched = scoredCommands.filter(({ score }) => score >= 0)
 
   // Sort by score (highest first)
-  matched.sort((a, b) => b.score - a.score);
+  matched.sort((a, b) => b.score - a.score)
 
   // Extract commands and scores separately
-  const filteredCommands = matched.map(({ cmd }) => cmd);
-  const filteredScores = matched.map(({ score }) => score);
+  const filteredCommands = matched.map(({ cmd }) => cmd)
+  const filteredScores = matched.map(({ score }) => score)
 
   // Show ghost text for high-certainty matches (exact prefix or exact match)
   if (filteredCommands.length === 1 && filteredScores[0] >= 50) {
-    const bestMatch = filteredCommands[0];
+    const bestMatch = filteredCommands[0]
     // Show full usage (including parameters) in ghost text
-    const fullUsage = bestMatch.usage;
+    const fullUsage = bestMatch.usage
 
     // Create a canvas to measure text width
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
     if (context) {
-      const inputStyle = window.getComputedStyle(elements.queryInput);
-      context.font = inputStyle.font;
-      const typedWidth = context.measureText(value).width;
+      const inputStyle = window.getComputedStyle(elements.queryInput)
+      context.font = inputStyle.font
+      const typedWidth = context.measureText(value).width
 
       // Calculate position from input's computed styles
-      const paddingLeft = parseFloat(inputStyle.paddingLeft);
-      const paddingTop = parseFloat(inputStyle.paddingTop);
+      const paddingLeft = parseFloat(inputStyle.paddingLeft)
+      const paddingTop = parseFloat(inputStyle.paddingTop)
 
       // Set ghost text position using computed padding values
-      elements.autocompleteGhost.style.left = `${paddingLeft + typedWidth}px`;
-      elements.autocompleteGhost.style.top = `${paddingTop}px`;
-      elements.autocompleteGhost.textContent = fullUsage.slice(value.length);
+      elements.autocompleteGhost.style.left = `${paddingLeft + typedWidth}px`
+      elements.autocompleteGhost.style.top = `${paddingTop}px`
+      elements.autocompleteGhost.textContent = fullUsage.slice(value.length)
     }
-  } else {
-    elements.autocompleteGhost.textContent = "";
+  }
+  else {
+    elements.autocompleteGhost.textContent = ''
   }
 
-  showAutocomplete(filteredCommands, filteredScores);
+  showAutocomplete(filteredCommands, filteredScores)
 }
 
 /**
@@ -2970,105 +3258,105 @@ function handleAutocompleteInput(): void {
  */
 function handleAutocompleteKeydown(e: KeyboardEvent): void {
   // Check if autocomplete is visible
-  const isAutocompleteVisible = !elements.autocompleteDropdown.classList.contains("hidden");
+  const isAutocompleteVisible = !elements.autocompleteDropdown.classList.contains('hidden')
 
   switch (e.key) {
-    case "ArrowDown":
+    case 'ArrowDown':
       if (isAutocompleteVisible) {
-        e.preventDefault();
+        e.preventDefault()
         autocompleteSelectedIndex = Math.min(
           autocompleteSelectedIndex + 1,
-          autocompleteFilteredCommands.length - 1
-        );
-        updateAutocompleteSelection();
+          autocompleteFilteredCommands.length - 1,
+        )
+        updateAutocompleteSelection()
       }
-      break;
+      break
 
-    case "ArrowUp":
+    case 'ArrowUp':
       if (isAutocompleteVisible) {
-        e.preventDefault();
-        autocompleteSelectedIndex = Math.max(autocompleteSelectedIndex - 1, -1);
-        updateAutocompleteSelection();
+        e.preventDefault()
+        autocompleteSelectedIndex = Math.max(autocompleteSelectedIndex - 1, -1)
+        updateAutocompleteSelection()
       }
-      break;
+      break
 
-    case "Enter":
+    case 'Enter':
       if (isAutocompleteVisible) {
         // High certainty: single match with high score (exact or prefix match)
-        const isHighCertainty =
-          autocompleteFilteredCommands.length === 1 &&
-          autocompleteScores[0] >= 50;
+        const isHighCertainty
+          = autocompleteFilteredCommands.length === 1
+            && autocompleteScores[0] >= 50
 
         if (isHighCertainty) {
-          e.preventDefault();
-          selectAutocompleteItem(autocompleteFilteredCommands[0], true);
+          e.preventDefault()
+          selectAutocompleteItem(autocompleteFilteredCommands[0], true)
         }
         // User explicitly selected an item with arrows
         else if (autocompleteSelectedIndex >= 0) {
-          e.preventDefault();
-          selectAutocompleteItem(autocompleteFilteredCommands[autocompleteSelectedIndex], true);
+          e.preventDefault()
+          selectAutocompleteItem(autocompleteFilteredCommands[autocompleteSelectedIndex], true)
         }
         // Otherwise let the event bubble through to normal submission
       }
-      break;
+      break
 
-    case "Tab":
+    case 'Tab':
       // Check for ghost text first (high-certainty autocomplete)
       if (elements.autocompleteGhost.textContent) {
-        e.preventDefault();
+        e.preventDefault()
         // Complete only the command part (not the usage parameters)
         // Ghost text shows usage suffix, extract just the command name
-        const value = elements.queryInput.value;
-        const ghostText = elements.autocompleteGhost.textContent;
-        const fullSuggestion = value + ghostText;
+        const value = elements.queryInput.value
+        const ghostText = elements.autocompleteGhost.textContent
+        const fullSuggestion = value + ghostText
 
         // Extract just the command name (up to first space or end)
-        const commandMatch = fullSuggestion.match(/^\/\S+/);
+        const commandMatch = fullSuggestion.match(/^\/\S+/)
         if (commandMatch) {
-          elements.queryInput.value = commandMatch[0] + " ";
+          elements.queryInput.value = commandMatch[0] + ' '
         }
-        elements.autocompleteGhost.textContent = "";
-        hideAutocomplete();
-        elements.queryInput.focus();
+        elements.autocompleteGhost.textContent = ''
+        hideAutocomplete()
+        elements.queryInput.focus()
       }
       // Fall through to dropdown selection if no ghost text
       else if (isAutocompleteVisible) {
-        e.preventDefault();
+        e.preventDefault()
         // Select first item if nothing selected, or current selection
-        const indexToSelect = autocompleteSelectedIndex >= 0 ? autocompleteSelectedIndex : 0;
+        const indexToSelect = autocompleteSelectedIndex >= 0 ? autocompleteSelectedIndex : 0
         if (autocompleteFilteredCommands[indexToSelect]) {
-          selectAutocompleteItem(autocompleteFilteredCommands[indexToSelect], false);
+          selectAutocompleteItem(autocompleteFilteredCommands[indexToSelect], false)
         }
       }
-      break;
+      break
 
-    case "ArrowRight":
+    case 'ArrowRight':
       // Accept ghost text if caret is at end of input
-      if (elements.autocompleteGhost.textContent &&
-          elements.queryInput.selectionStart === elements.queryInput.value.length) {
-        e.preventDefault();
+      if (elements.autocompleteGhost.textContent
+        && elements.queryInput.selectionStart === elements.queryInput.value.length) {
+        e.preventDefault()
         // Complete only the command part (not the usage parameters)
-        const value = elements.queryInput.value;
-        const ghostText = elements.autocompleteGhost.textContent;
-        const fullSuggestion = value + ghostText;
+        const value = elements.queryInput.value
+        const ghostText = elements.autocompleteGhost.textContent
+        const fullSuggestion = value + ghostText
 
         // Extract just the command name (up to first space or end)
-        const commandMatch = fullSuggestion.match(/^\/\S+/);
+        const commandMatch = fullSuggestion.match(/^\/\S+/)
         if (commandMatch) {
-          elements.queryInput.value = commandMatch[0] + " ";
+          elements.queryInput.value = commandMatch[0] + ' '
         }
-        elements.autocompleteGhost.textContent = "";
+        elements.autocompleteGhost.textContent = ''
         // Keep cursor at end
-        elements.queryInput.setSelectionRange(elements.queryInput.value.length, elements.queryInput.value.length);
+        elements.queryInput.setSelectionRange(elements.queryInput.value.length, elements.queryInput.value.length)
       }
-      break;
+      break
 
-    case "Escape":
+    case 'Escape':
       if (isAutocompleteVisible) {
-        e.preventDefault();
-        hideAutocomplete();
+        e.preventDefault()
+        hideAutocomplete()
       }
-      break;
+      break
   }
 }
 
@@ -3076,16 +3364,16 @@ function handleAutocompleteKeydown(e: KeyboardEvent): void {
  * Update visual selection in autocomplete dropdown
  */
 function updateAutocompleteSelection(): void {
-  const items = elements.autocompleteDropdown.querySelectorAll(".autocomplete-item");
+  const items = elements.autocompleteDropdown.querySelectorAll('.autocomplete-item')
   items.forEach((item, index) => {
-    item.classList.toggle("selected", index === autocompleteSelectedIndex);
-  });
+    item.classList.toggle('selected', index === autocompleteSelectedIndex)
+  })
 
   // Scroll selected item into view
   if (autocompleteSelectedIndex >= 0) {
-    const selectedItem = items[autocompleteSelectedIndex];
+    const selectedItem = items[autocompleteSelectedIndex]
     if (selectedItem instanceof HTMLElement) {
-      selectedItem.scrollIntoView({ block: "nearest" });
+      selectedItem.scrollIntoView({ block: 'nearest' })
     }
   }
 }
@@ -3100,32 +3388,32 @@ async function loadChatHistory(): Promise<void> {
       <div class="empty-state">
         <p>Select a notebook to view chat history.</p>
       </div>
-    `;
-    return;
+    `
+    return
   }
 
-  const events = await getChatHistory(currentNotebookId);
+  const events = await getChatHistory(currentNotebookId)
 
   if (events.length === 0) {
     elements.chatMessages.innerHTML = `
       <div class="empty-state">
         <p>Ask a question to get started.</p>
       </div>
-    `;
-    return;
+    `
+    return
   }
 
   // Fetch sources for citation rendering
-  const sources = await getSourcesByNotebook(currentNotebookId);
+  const sources = await getSourcesByNotebook(currentNotebookId)
 
-  elements.chatMessages.innerHTML = "";
+  elements.chatMessages.innerHTML = ''
 
   for (const event of events) {
-    appendChatEvent(event, sources);
+    appendChatEvent(event, sources)
   }
 
   // Scroll to bottom
-  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight
 }
 
 /**
@@ -3134,74 +3422,77 @@ async function loadChatHistory(): Promise<void> {
 function appendChatEvent(
   event: ChatEvent,
   sources: Source[] = [],
-  isStreaming: boolean = false
+  isStreaming: boolean = false,
 ): HTMLDivElement {
   // Remove empty state if present
-  const emptyState = elements.chatMessages.querySelector(".empty-state");
+  const emptyState = elements.chatMessages.querySelector('.empty-state')
   if (emptyState) {
-    emptyState.remove();
+    emptyState.remove()
   }
 
-  const existingElement = document.getElementById(`msg-${event.id}`);
+  const existingElement = document.getElementById(`msg-${event.id}`)
   if (existingElement) {
     // Update existing element based on event type
     if (event.type === 'assistant' || event.type === 'user') {
-      const contentEl = existingElement.querySelector(".chat-message-content");
+      const contentEl = existingElement.querySelector('.chat-message-content')
       if (contentEl) {
-        contentEl.innerHTML = formatMarkdown(event.content);
+        contentEl.innerHTML = formatMarkdown(event.content)
       }
       // Update citations if present
       if (event.type === 'assistant' && event.citations && event.citations.length > 0 && !isStreaming) {
-        let citationsEl = existingElement.querySelector(".chat-citations");
+        let citationsEl = existingElement.querySelector('.chat-citations')
         if (!citationsEl) {
-          citationsEl = document.createElement("div");
-          citationsEl.className = "chat-citations";
-          existingElement.appendChild(citationsEl);
+          citationsEl = document.createElement('div')
+          citationsEl.className = 'chat-citations'
+          existingElement.appendChild(citationsEl)
         }
-        citationsEl.innerHTML = renderCitations(event.citations, sources);
+        citationsEl.innerHTML = renderCitations(event.citations, sources)
       }
     }
     if (existingElement instanceof HTMLDivElement) {
-      return existingElement;
+      return existingElement
     }
-    throw new Error('existingElement is not an HTMLDivElement');
+    throw new Error('existingElement is not an HTMLDivElement')
   }
 
   // Create new element based on event type
   if (event.type === 'user') {
-    return appendUserEvent(event);
-  } else if (event.type === 'assistant') {
-    return appendAssistantEvent(event, sources, isStreaming);
-  } else if (event.type === 'tool-result') {
-    return appendToolResultEventToChat(event);
+    return appendUserEvent(event)
+  }
+  else if (event.type === 'assistant') {
+    return appendAssistantEvent(event, sources, isStreaming)
+  }
+  else if (event.type === 'tool-result') {
+    return appendToolResultEventToChat(event)
   }
 
   // Fallback (shouldn't happen - all ChatEvent types are handled above)
   // This satisfies TypeScript's exhaustiveness check
-  const _exhaustiveCheck: never = event;
-  throw new Error(`Unknown event type: ${_exhaustiveCheck}`);
+  const _exhaustiveCheck: never = event
+  // Cast to string for error message since `never` cannot be used in template literals
+  throw new Error(`Unknown event type: ${String(_exhaustiveCheck)}`)
 }
 
 /**
  * Append a user event to the chat.
  */
 function appendUserEvent(event: ChatEvent & { type: 'user' }): HTMLDivElement {
-  const div = document.createElement("div");
-  div.id = `msg-${event.id}`;
-  div.className = "chat-message user";
+  const div = document.createElement('div')
+  div.id = `msg-${event.id}`
+  div.className = 'chat-message user'
 
-  const timeStr = formatRelativeTime(event.timestamp);
+  const timeStr = formatRelativeTime(event.timestamp)
 
   div.innerHTML = `
     <div class="chat-message-role">You</div>
     <div class="chat-message-content">${formatMarkdown(event.content)}</div>
     <div class="chat-message-time">${timeStr}</div>
-  `;
+  `
 
-  elements.chatMessages.appendChild(div);
-  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  elements.chatMessages.appendChild(div)
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight
 
-  return div;
+  return div
 }
 
 /**
@@ -3210,13 +3501,13 @@ function appendUserEvent(event: ChatEvent & { type: 'user' }): HTMLDivElement {
 function appendAssistantEvent(
   event: ChatEvent & { type: 'assistant' },
   sources: Source[] = [],
-  isStreaming: boolean = false
+  isStreaming: boolean = false,
 ): HTMLDivElement {
-  const div = document.createElement("div");
-  div.id = `msg-${event.id}`;
-  div.className = "chat-message assistant";
+  const div = document.createElement('div')
+  div.id = `msg-${event.id}`
+  div.className = 'chat-message assistant'
 
-  const timeStr = formatRelativeTime(event.timestamp);
+  const timeStr = formatRelativeTime(event.timestamp)
 
   div.innerHTML = `
     <div class="chat-message-role">Assistant</div>
@@ -3228,120 +3519,121 @@ function appendAssistantEvent(
         ${renderCitations(event.citations, sources)}
       </div>
     `
-        : ""
+        : ''
     }
     <div class="chat-message-time">${timeStr}</div>
-  `;
+  `
 
   // If there are tool calls, append them
   if (event.toolCalls && event.toolCalls.length > 0) {
-    let toolCallsContainer = div.querySelector(".assistant-tool-calls");
+    let toolCallsContainer = div.querySelector('.assistant-tool-calls')
     if (!toolCallsContainer) {
-      toolCallsContainer = document.createElement("div");
-      toolCallsContainer.className = "assistant-tool-calls";
-      const timeEl = div.querySelector(".chat-message-time");
+      toolCallsContainer = document.createElement('div')
+      toolCallsContainer.className = 'assistant-tool-calls'
+      const timeEl = div.querySelector('.chat-message-time')
       if (timeEl) {
-        div.insertBefore(toolCallsContainer, timeEl);
+        div.insertBefore(toolCallsContainer, timeEl)
       }
     }
 
     for (const toolCall of event.toolCalls) {
-      const toolCallEl = document.createElement("div");
-      toolCallEl.className = "assistant-tool-call";
-      toolCallEl.dataset.toolCallId = toolCall.toolCallId;
+      const toolCallEl = document.createElement('div')
+      toolCallEl.className = 'assistant-tool-call'
+      toolCallEl.dataset.toolCallId = toolCall.toolCallId
 
-      const argsStr = JSON.stringify(toolCall.args, null, 2);
+      const argsStr = JSON.stringify(toolCall.args, null, 2)
       toolCallEl.innerHTML = `
         <div class="tool-call-header">
           <span class="tool-call-name">${escapeHtml(toolCall.toolName)}</span>
           <span class="tool-call-status done">Called</span>
         </div>
-        ${argsStr.length > 0 ? `<pre class="tool-call-args">${escapeHtml(argsStr)}</pre>` : ""}
-      `;
-      toolCallsContainer.appendChild(toolCallEl);
+        ${argsStr.length > 0 ? `<pre class="tool-call-args">${escapeHtml(argsStr)}</pre>` : ''}
+      `
+      toolCallsContainer.appendChild(toolCallEl)
     }
   }
 
-  elements.chatMessages.appendChild(div);
-  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  elements.chatMessages.appendChild(div)
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight
 
-  return div;
+  return div
 }
 
 /**
  * Append a tool result event to the chat.
  */
 function appendToolResultEventToChat(event: ChatEvent & { type: 'tool-result' }): HTMLDivElement {
-  const div = document.createElement("div");
-  div.id = `msg-${event.id}`;
-  div.className = "chat-message tool-result";
+  const div = document.createElement('div')
+  div.id = `msg-${event.id}`
+  div.className = 'chat-message tool-result'
 
-  const timeStr = formatRelativeTime(event.timestamp);
+  const timeStr = formatRelativeTime(event.timestamp)
   const resultStr = typeof event.result === 'string'
     ? event.result
-    : JSON.stringify(event.result, null, 2);
+    : JSON.stringify(event.result, null, 2)
 
   div.innerHTML = `
     <div class="chat-message-role">📊 Result</div>
     <div class="chat-message-content">
       <div class="tool-result-source">from ${escapeHtml(event.toolName)}</div>
       <div class="tool-result-data"><pre>${escapeHtml(resultStr)}</pre></div>
-      ${event.error ? `<div class="tool-result-error">${escapeHtml(event.error)}</div>` : ""}
-      ${event.duration ? `<div class="tool-result-duration">${event.duration}ms</div>` : ""}
+      ${event.error ? `<div class="tool-result-error">${escapeHtml(event.error)}</div>` : ''}
+      ${event.duration ? `<div class="tool-result-duration">${event.duration}ms</div>` : ''}
     </div>
     <div class="chat-message-time">${timeStr}</div>
-  `;
+  `
 
-  elements.chatMessages.appendChild(div);
-  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+  elements.chatMessages.appendChild(div)
+  elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight
 
-  return div;
+  return div
 }
 
 interface GroupedCitation {
-  sourceId: string;
-  sourceTitle: string;
-  sourceUrl: string;
-  excerpts: string[];
+  sourceId: string
+  sourceTitle: string
+  sourceUrl: string
+  excerpts: string[]
 }
 
 function renderCitations(citations: Citation[], sources: Source[]): string {
-  if (citations.length === 0) return "";
+  if (citations.length === 0) return ''
 
   // Group citations by sourceId
-  const groupedMap = new Map<string, GroupedCitation>();
+  const groupedMap = new Map<string, GroupedCitation>()
 
   for (const citation of citations) {
-    const source = sources.find((s) => s.id === citation.sourceId);
-    const sourceUrl = source?.url || "";
+    const source = sources.find(s => s.id === citation.sourceId)
+    const sourceUrl = source?.url || ''
 
     if (groupedMap.has(citation.sourceId)) {
-      const group = groupedMap.get(citation.sourceId);
+      const group = groupedMap.get(citation.sourceId)
       if (group) {
         // Only add unique excerpts
         if (!group.excerpts.includes(citation.excerpt)) {
-          group.excerpts.push(citation.excerpt);
+          group.excerpts.push(citation.excerpt)
         }
       }
-    } else {
+    }
+    else {
       groupedMap.set(citation.sourceId, {
         sourceId: citation.sourceId,
         sourceTitle: citation.sourceTitle,
         sourceUrl,
         excerpts: [citation.excerpt],
-      });
+      })
     }
   }
 
-  const grouped = Array.from(groupedMap.values());
+  const grouped = Array.from(groupedMap.values())
 
   return `
     <div class="chat-citations-title">Sources cited (${grouped.length} source${
-    grouped.length !== 1 ? "s" : ""
-  })</div>
+      grouped.length !== 1 ? 's' : ''
+    })</div>
     ${grouped
       .map((group, sourceIndex) => {
-        const sourceNumber = sourceIndex + 1;
+        const sourceNumber = sourceIndex + 1
 
         if (group.excerpts.length === 1) {
           // Single excerpt - show simple format
@@ -3349,27 +3641,28 @@ function renderCitations(citations: Citation[], sources: Source[]): string {
           <div class="citation-item" data-source-id="${
             group.sourceId
           }" data-source-url="${escapeHtml(
-            group.sourceUrl
+            group.sourceUrl,
           )}" data-excerpt="${escapeHtml(group.excerpts[0])}">
             <div class="citation-number">${sourceNumber}</div>
             <div class="citation-content">
               <div class="citation-source">${escapeHtml(
-                group.sourceTitle
+                group.sourceTitle,
               )}</div>
               <div class="citation-excerpt">${escapeHtml(
-                group.excerpts[0]
+                group.excerpts[0],
               )}</div>
             </div>
           </div>
-        `;
-        } else {
+        `
+        }
+        else {
           // Multiple excerpts - show grouped format with sub-labels
           return `
           <div class="citation-group">
             <div class="citation-group-header">
               <div class="citation-number">${sourceNumber}</div>
               <div class="citation-source">${escapeHtml(
-                group.sourceTitle
+                group.sourceTitle,
               )}</div>
               <div class="citation-excerpt-count">${
                 group.excerpts.length
@@ -3378,89 +3671,89 @@ function renderCitations(citations: Citation[], sources: Source[]): string {
             <div class="citation-group-excerpts">
               ${group.excerpts
                 .map((excerpt, excerptIndex) => {
-                  const subLabel = String.fromCharCode(97 + excerptIndex); // a, b, c, ...
+                  const subLabel = String.fromCharCode(97 + excerptIndex) // a, b, c, ...
                   return `
                 <div class="citation-item citation-sub-item" data-source-id="${
                   group.sourceId
                 }" data-source-url="${escapeHtml(
-                    group.sourceUrl
-                  )}" data-excerpt="${escapeHtml(excerpt)}">
+                  group.sourceUrl,
+                )}" data-excerpt="${escapeHtml(excerpt)}">
                   <div class="citation-number citation-sub-number">${sourceNumber}${subLabel}</div>
                   <div class="citation-content">
                     <div class="citation-excerpt">${escapeHtml(excerpt)}</div>
                   </div>
                 </div>
-              `;
+              `
                 })
-                .join("")}
+                .join('')}
             </div>
           </div>
-        `;
+        `
         }
       })
-      .join("")}
-  `;
+      .join('')}
+  `
 }
 
 function createTextFragmentUrl(baseUrl: string, excerpt: string): string {
   // Clean up the excerpt for text fragment
   // Take first ~100 chars to avoid overly long fragments
-  let text = excerpt.trim();
+  let text = excerpt.trim()
   if (text.length > 100) {
     // Try to cut at a word boundary
-    text = text.substring(0, 100);
-    const lastSpace = text.lastIndexOf(" ");
+    text = text.substring(0, 100)
+    const lastSpace = text.lastIndexOf(' ')
     if (lastSpace > 50) {
-      text = text.substring(0, lastSpace);
+      text = text.substring(0, lastSpace)
     }
   }
 
   // Remove any existing fragment
-  const urlWithoutFragment = baseUrl.split("#")[0];
+  const urlWithoutFragment = baseUrl.split('#')[0]
 
   // Encode the text for URL
-  const encodedText = encodeURIComponent(text);
+  const encodedText = encodeURIComponent(text)
 
-  return `${urlWithoutFragment}#:~:text=${encodedText}`;
+  return `${urlWithoutFragment}#:~:text=${encodedText}`
 }
 
 function handleCitationClick(event: Event): void {
-  const target = event.target;
-  if (!(target instanceof HTMLElement)) return;
-  const citationItem = target.closest(".citation-item");
+  const target = event.target
+  if (!(target instanceof HTMLElement)) return
+  const citationItem = target.closest('.citation-item')
 
-  if (!(citationItem instanceof HTMLElement)) return;
+  if (!(citationItem instanceof HTMLElement)) return
 
-  const sourceUrl = citationItem.dataset.sourceUrl;
-  const excerpt = citationItem.dataset.excerpt;
+  const sourceUrl = citationItem.dataset.sourceUrl
+  const excerpt = citationItem.dataset.excerpt
 
   if (!sourceUrl) {
-    showNotification("Source URL not available");
-    return;
+    showNotification('Source URL not available')
+    return
   }
 
   // Skip if excerpt is generic
-  if (!excerpt || excerpt === "Referenced in response") {
+  if (!excerpt || excerpt === 'Referenced in response') {
     // Just open the URL without text fragment
-    chrome.tabs.create({ url: sourceUrl });
-    return;
+    void chrome.tabs.create({ url: sourceUrl })
+    return
   }
 
   // Create URL with text fragment
-  const fragmentUrl = createTextFragmentUrl(sourceUrl, excerpt);
-  chrome.tabs.create({ url: fragmentUrl });
+  const fragmentUrl = createTextFragmentUrl(sourceUrl, excerpt)
+  void chrome.tabs.create({ url: fragmentUrl })
 }
 
 function formatRelativeTime(timestamp: number): string {
-  const diff = Date.now() - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
+  const diff = Date.now() - timestamp
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
 
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  return `${days}d ago`;
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  if (hours < 24) return `${hours}h ago`
+  return `${days}d ago`
 }
 
 /**
@@ -3470,28 +3763,29 @@ function appendToolCallToAssistant(
   messageDiv: HTMLDivElement,
   toolCallId: string,
   toolName: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
 ): HTMLDivElement {
   // Check if we already have a tool-calls container
-  let toolCallsContainer = messageDiv.querySelector(".assistant-tool-calls");
+  let toolCallsContainer = messageDiv.querySelector('.assistant-tool-calls')
   if (!toolCallsContainer) {
-    toolCallsContainer = document.createElement("div");
-    toolCallsContainer.className = "assistant-tool-calls";
+    toolCallsContainer = document.createElement('div')
+    toolCallsContainer.className = 'assistant-tool-calls'
     // Insert before the timestamp
-    const timeEl = messageDiv.querySelector(".chat-message-time");
+    const timeEl = messageDiv.querySelector('.chat-message-time')
     if (timeEl) {
-      messageDiv.insertBefore(toolCallsContainer, timeEl);
-    } else {
-      messageDiv.appendChild(toolCallsContainer);
+      messageDiv.insertBefore(toolCallsContainer, timeEl)
+    }
+    else {
+      messageDiv.appendChild(toolCallsContainer)
     }
   }
 
-  const toolCallEl = document.createElement("div");
-  toolCallEl.className = "assistant-tool-call";
-  toolCallEl.dataset.toolCallId = toolCallId;
-  toolCallEl.dataset.toolName = toolName;
+  const toolCallEl = document.createElement('div')
+  toolCallEl.className = 'assistant-tool-call'
+  toolCallEl.dataset.toolCallId = toolCallId
+  toolCallEl.dataset.toolName = toolName
 
-  const argsStr = JSON.stringify(args, null, 2);
+  const argsStr = JSON.stringify(args, null, 2)
 
   toolCallEl.innerHTML = `
     <div class="tool-call-header">
@@ -3500,10 +3794,10 @@ function appendToolCallToAssistant(
       <span class="tool-call-status calling">Calling...</span>
     </div>
     <div class="tool-call-args"><pre>${escapeHtml(argsStr)}</pre></div>
-  `;
+  `
 
-  toolCallsContainer.appendChild(toolCallEl);
-  return toolCallEl;
+  toolCallsContainer.appendChild(toolCallEl)
+  return toolCallEl
 }
 
 /**
@@ -3511,137 +3805,141 @@ function appendToolCallToAssistant(
  */
 function updateToolCallStatus(
   toolCallEl: HTMLDivElement,
-  status: "calling" | "done" | "error"
+  status: 'calling' | 'done' | 'error',
 ): void {
-  const statusEl = toolCallEl.querySelector(".tool-call-status");
+  const statusEl = toolCallEl.querySelector('.tool-call-status')
   if (statusEl) {
-    statusEl.className = `tool-call-status ${status}`;
-    statusEl.textContent = status === "calling" ? "Calling..." :
-                        status === "done" ? "Called" :
-                        "Error";
+    statusEl.className = `tool-call-status ${status}`
+    statusEl.textContent = status === 'calling'
+      ? 'Calling...'
+      : status === 'done'
+        ? 'Called'
+        : 'Error'
   }
 }
 
 async function handleQuery(): Promise<void> {
-  const query = elements.queryInput.value.trim();
-  if (!query) return;
+  const query = elements.queryInput.value.trim()
+  if (!query) return
 
   // Allow chat without a notebook - use empty string as notebook ID for transient chats
-  const notebookId = currentNotebookId || "";
+  const notebookId = currentNotebookId || ''
 
   // Check for slash commands first
-  const slashCommand = parseSlashCommand(query);
+  const slashCommand = parseSlashCommand(query)
   if (slashCommand) {
-    elements.queryInput.value = "";
-    await executeSlashCommand(slashCommand.command, slashCommand.args);
-    return;
+    elements.queryInput.value = ''
+    await executeSlashCommand(slashCommand.command, slashCommand.args)
+    return
   }
 
   // Get sources if we have a notebook, otherwise empty array
-  const sources = notebookId ? await getSourcesByNotebook(notebookId) : [];
+  const sources = notebookId ? await getSourcesByNotebook(notebookId) : []
   // Allow chat without sources or notebook - user can still ask questions
 
-  elements.queryInput.value = "";
-  elements.queryBtn.disabled = true;
-  elements.chatStatus.textContent = "Preparing...";
+  elements.queryInput.value = ''
+  elements.queryBtn.disabled = true
+  elements.chatStatus.textContent = 'Preparing...'
 
   // Save user message
-  const userEvent = createUserEvent(notebookId, query);
-  await saveChatEvent(userEvent);
-  appendChatEvent(userEvent, sources);
+  const userEvent = createUserEvent(notebookId, query)
+  await saveChatEvent(userEvent)
+  appendChatEvent(userEvent, sources)
 
   // Get conversation history (includes the message we just saved)
-  const history = await getChatHistory(notebookId);
+  const history = await getChatHistory(notebookId)
 
   // Check cache first
-  const sourceIds = sources.map((s) => s.id);
-  const cacheKey = createCacheKey(query, sourceIds);
-  const cached = await getCachedResponse(cacheKey);
+  const sourceIds = sources.map(s => s.id)
+  const cacheKey = createCacheKey(query, sourceIds)
+  const cached = await getCachedResponse(cacheKey)
 
   if (cached && !navigator.onLine) {
     // Use cached response when offline
     const assistantEvent = createAssistantEvent(
       notebookId,
       cached.response,
-      { citations: cached.citations }
-    );
-    await saveChatEvent(assistantEvent);
-    appendChatEvent(assistantEvent, sources);
-    elements.queryBtn.disabled = false;
-    elements.chatStatus.innerHTML =
-      'Response loaded from cache <span class="offline-indicator">Offline</span>';
-    return;
+      { citations: cached.citations },
+    )
+    await saveChatEvent(assistantEvent)
+    appendChatEvent(assistantEvent, sources)
+    elements.queryBtn.disabled = false
+    elements.chatStatus.innerHTML
+      = 'Response loaded from cache <span class="offline-indicator">Offline</span>'
+    return
   }
 
   // Create placeholder for assistant message
-  const assistantEvent = createAssistantEvent(notebookId, "");
-  const messageDiv = appendChatEvent(assistantEvent, sources, true);
+  const assistantEvent = createAssistantEvent(notebookId, '')
+  const messageDiv = appendChatEvent(assistantEvent, sources, true)
 
   try {
     // Get context mode and source tools
-    const contextMode = await getContextMode();
-    const tools = contextMode === "agentic" ? await getSourceTools() : undefined;
+    const contextMode = await getContextMode()
+    const tools = contextMode === 'agentic' ? await getSourceTools() : undefined
 
     const stream = streamChat(sources, query, history, {
       tools,
       contextMode,
       onStatus: (status) => {
-        elements.chatStatus.textContent = status;
-      }
-    });
-    let fullContent = "";
-    let citations: Citation[] = [];
+        elements.chatStatus.textContent = status
+      },
+    })
+    let fullContent = ''
+    let citations: Citation[] = []
     let streamResult: IteratorResult<
       StreamEvent,
-      { content: string; citations: Citation[] }
-    >;
+      { content: string, citations: Citation[] }
+    >
 
     // Track tool calls and their timestamps for persistence
-    const toolCalls: import('../types/index.js').ToolCall[] = [];
-    const pendingToolCalls = new Map<string, HTMLDivElement>();
+    const toolCalls: import('../types/index.js').ToolCall[] = []
+    const pendingToolCalls = new Map<string, HTMLDivElement>()
 
     // Consume the stream
     while (true) {
-      streamResult = await stream.next();
+      streamResult = await stream.next()
       if (streamResult.done) {
         // Stream finished - get final result with citations
-        fullContent = streamResult.value.content;
-        citations = streamResult.value.citations;
-        break;
+        fullContent = streamResult.value.content
+        citations = streamResult.value.citations
+        break
       }
 
-      const event = streamResult.value;
+      const event = streamResult.value
 
       // Handle different stream event types
       if (event.type === 'text') {
-        fullContent += event.content;
+        fullContent += event.content
         // Update message content as it streams
-        const contentEl = messageDiv.querySelector(".chat-message-content");
+        const contentEl = messageDiv.querySelector('.chat-message-content')
         if (contentEl) {
-          contentEl.innerHTML = formatMarkdown(fullContent);
+          contentEl.innerHTML = formatMarkdown(fullContent)
         }
-      } else if (event.type === 'tool-call') {
+      }
+      else if (event.type === 'tool-call') {
         // Track tool call for persistence
         toolCalls.push({
           toolCallId: event.toolCallId,
           toolName: event.toolName,
           args: event.args,
           timestamp: Date.now(),
-        });
+        })
 
         // Append tool call to assistant's message (not separate entry)
         const toolCallEl = appendToolCallToAssistant(
           messageDiv,
           event.toolCallId,
           event.toolName,
-          event.args
-        );
-        pendingToolCalls.set(event.toolCallId, toolCallEl);
-      } else if (event.type === 'tool-result') {
+          event.args,
+        )
+        pendingToolCalls.set(event.toolCallId, toolCallEl)
+      }
+      else if (event.type === 'tool-result') {
         // Update tool call status
-        const toolCallEl = pendingToolCalls.get(event.toolCallId);
+        const toolCallEl = pendingToolCalls.get(event.toolCallId)
         if (toolCallEl) {
-          updateToolCallStatus(toolCallEl, 'done');
+          updateToolCallStatus(toolCallEl, 'done')
         }
 
         // Persist tool result as separate event
@@ -3649,46 +3947,46 @@ async function handleQuery(): Promise<void> {
           notebookId,
           event.toolCallId,
           event.toolName,
-          event.result
-        );
-        await saveChatEvent(toolResultEvent);
+          event.result,
+        )
+        await saveChatEvent(toolResultEvent)
 
         // Create separate timeline entry for result
         if (toolResultEvent.type === 'tool-result') {
-          appendToolResultEventToChat(toolResultEvent);
+          appendToolResultEventToChat(toolResultEvent)
         }
       }
 
-      elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+      elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight
     }
 
     // Update the assistant event with final content, citations, and tool calls
     if (assistantEvent.type === 'assistant') {
-      assistantEvent.content = fullContent;
+      assistantEvent.content = fullContent
       if (citations.length > 0) {
-        assistantEvent.citations = citations;
+        assistantEvent.citations = citations
       }
       if (toolCalls.length > 0) {
-        assistantEvent.toolCalls = toolCalls;
+        assistantEvent.toolCalls = toolCalls
       }
     }
-    await saveChatEvent(assistantEvent);
+    await saveChatEvent(assistantEvent)
 
     // Re-render with citations
-    const contentEl = messageDiv.querySelector(".chat-message-content");
+    const contentEl = messageDiv.querySelector('.chat-message-content')
     if (contentEl) {
-      contentEl.innerHTML = formatMarkdown(fullContent);
+      contentEl.innerHTML = formatMarkdown(fullContent)
     }
 
     // Add citations if present
     if (citations.length > 0) {
-      const citationsDiv = document.createElement("div");
-      citationsDiv.className = "chat-citations";
-      citationsDiv.innerHTML = renderCitations(citations, sources);
+      const citationsDiv = document.createElement('div')
+      citationsDiv.className = 'chat-citations'
+      citationsDiv.innerHTML = renderCitations(citations, sources)
       messageDiv.insertBefore(
         citationsDiv,
-        messageDiv.querySelector(".chat-message-time")
-      );
+        messageDiv.querySelector('.chat-message-time'),
+      )
     }
 
     // Cache the response for offline use (only if we have a notebook)
@@ -3698,238 +3996,241 @@ async function handleQuery(): Promise<void> {
         query,
         sourceIds,
         fullContent,
-        citations
-      );
-      await saveCachedResponse(cachedResponse);
+        citations,
+      )
+      await saveCachedResponse(cachedResponse)
     }
 
-    elements.chatStatus.textContent =
-      "Ask questions to synthesize information from your sources.";
-  } catch (error) {
-    console.error("Query failed:", error);
-    const userFriendlyError = formatErrorForUser(error);
+    elements.chatStatus.textContent
+      = 'Ask questions to synthesize information from your sources.'
+  }
+  catch (error) {
+    console.error('Query failed:', error)
+    const userFriendlyError = formatErrorForUser(error)
 
     // Check if we have a cached response to fall back to
     if (cached) {
       if (assistantEvent.type === 'assistant') {
-        assistantEvent.content = cached.response;
-        assistantEvent.citations = cached.citations;
+        assistantEvent.content = cached.response
+        assistantEvent.citations = cached.citations
       }
-      await saveChatEvent(assistantEvent);
+      await saveChatEvent(assistantEvent)
 
-      const contentEl = messageDiv.querySelector(".chat-message-content");
+      const contentEl = messageDiv.querySelector('.chat-message-content')
       if (contentEl) {
-        contentEl.innerHTML = formatMarkdown(cached.response);
+        contentEl.innerHTML = formatMarkdown(cached.response)
       }
 
       if (cached.citations.length > 0) {
-        const citationsDiv = document.createElement("div");
-        citationsDiv.className = "chat-citations";
-        citationsDiv.innerHTML = renderCitations(cached.citations, sources);
+        const citationsDiv = document.createElement('div')
+        citationsDiv.className = 'chat-citations'
+        citationsDiv.innerHTML = renderCitations(cached.citations, sources)
         messageDiv.insertBefore(
           citationsDiv,
-          messageDiv.querySelector(".chat-message-time")
-        );
+          messageDiv.querySelector('.chat-message-time'),
+        )
       }
 
-      elements.chatStatus.innerHTML = "Response loaded from cache (API error)";
-      showNotification("Using cached response due to API error");
-    } else {
-      // Show error in the message with user-friendly formatting
-      const errorContent = `Failed to generate response: ${userFriendlyError}`;
-      if (assistantEvent.type === 'assistant') {
-        assistantEvent.content = errorContent;
-      }
-      await saveChatEvent(assistantEvent);
-
-      const contentEl = messageDiv.querySelector(".chat-message-content");
-      if (contentEl) {
-        contentEl.innerHTML = `<p class="error">${escapeHtml(errorContent)}</p>`;
-      }
-      elements.chatStatus.textContent = userFriendlyError;
+      elements.chatStatus.innerHTML = 'Response loaded from cache (API error)'
+      showNotification('Using cached response due to API error')
     }
-  } finally {
-    elements.queryBtn.disabled = false;
+    else {
+      // Show error in the message with user-friendly formatting
+      const errorContent = `Failed to generate response: ${userFriendlyError}`
+      if (assistantEvent.type === 'assistant') {
+        assistantEvent.content = errorContent
+      }
+      await saveChatEvent(assistantEvent)
+
+      const contentEl = messageDiv.querySelector('.chat-message-content')
+      if (contentEl) {
+        contentEl.innerHTML = `<p class="error">${escapeHtml(errorContent)}</p>`
+      }
+      elements.chatStatus.textContent = userFriendlyError
+    }
+  }
+  finally {
+    elements.queryBtn.disabled = false
   }
 }
 
 async function handleClearChat(): Promise<void> {
-  if (!currentNotebookId) return;
+  if (!currentNotebookId) return
 
   const confirmed = await showConfirmDialog(
-    "Clear Chat History",
-    "Are you sure you want to clear all chat messages for this notebook?"
-  );
+    'Clear Chat History',
+    'Are you sure you want to clear all chat messages for this notebook?',
+  )
 
-  if (!confirmed) return;
+  if (!confirmed) return
 
-  await clearChatHistory(currentNotebookId);
-  await loadChatHistory();
-  showNotification("Chat history cleared");
+  await clearChatHistory(currentNotebookId)
+  await loadChatHistory()
+  showNotification('Chat history cleared')
 }
 
 // ============================================================================
 // Transformations
 // ============================================================================
 
-type TransformType =
-  | "podcast"
-  | "quiz"
-  | "takeaways"
-  | "email"
-  | "slidedeck"
-  | "report"
-  | "datatable"
-  | "mindmap"
-  | "flashcards"
-  | "timeline"
-  | "glossary"
-  | "comparison"
-  | "faq"
-  | "actionitems"
-  | "executivebrief"
-  | "studyguide"
-  | "proscons"
-  | "citations"
-  | "outline";
+type TransformType
+  = | 'podcast'
+    | 'quiz'
+    | 'takeaways'
+    | 'email'
+    | 'slidedeck'
+    | 'report'
+    | 'datatable'
+    | 'mindmap'
+    | 'flashcards'
+    | 'timeline'
+    | 'glossary'
+    | 'comparison'
+    | 'faq'
+    | 'actionitems'
+    | 'executivebrief'
+    | 'studyguide'
+    | 'proscons'
+    | 'citations'
+    | 'outline'
 
 // Track sandboxes for proper cleanup when cards are removed
-const cardSandboxes = new WeakMap<HTMLElement, SandboxRenderer>();
-const MAX_TRANSFORM_HISTORY = 10;
+const cardSandboxes = new WeakMap<HTMLElement, SandboxRenderer>()
+const MAX_TRANSFORM_HISTORY = 10
 
 // Helper to create a transform result card element
 function createTransformResultCard(title: string): {
-  card: HTMLDivElement;
-  sandbox: SandboxRenderer;
+  card: HTMLDivElement
+  sandbox: SandboxRenderer
 } {
-  const card = document.createElement("div");
-  card.className = "transform-result";
+  const card = document.createElement('div')
+  card.className = 'transform-result'
 
-  const header = document.createElement("div");
-  header.className = "transform-result-header";
+  const header = document.createElement('div')
+  header.className = 'transform-result-header'
 
-  const titleEl = document.createElement("h3");
-  titleEl.textContent = title;
+  const titleEl = document.createElement('h3')
+  titleEl.textContent = title
 
-  const actions = document.createElement("div");
-  actions.className = "transform-result-actions";
+  const actions = document.createElement('div')
+  actions.className = 'transform-result-actions'
 
-  const copyBtn = document.createElement("button");
-  copyBtn.className = "icon-btn";
-  copyBtn.title = "Copy";
+  const copyBtn = document.createElement('button')
+  copyBtn.className = 'icon-btn'
+  copyBtn.title = 'Copy'
   copyBtn.innerHTML = `
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
       <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
     </svg>
-  `;
+  `
 
-  const closeBtn = document.createElement("button");
-  closeBtn.className = "icon-btn";
-  closeBtn.title = "Remove";
+  const closeBtn = document.createElement('button')
+  closeBtn.className = 'icon-btn'
+  closeBtn.title = 'Remove'
   closeBtn.innerHTML = `
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <line x1="18" y1="6" x2="6" y2="18"></line>
       <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>
-  `;
+  `
 
-  actions.appendChild(copyBtn);
-  actions.appendChild(closeBtn);
+  actions.appendChild(copyBtn)
+  actions.appendChild(closeBtn)
 
-  header.appendChild(titleEl);
-  header.appendChild(actions);
+  header.appendChild(titleEl)
+  header.appendChild(actions)
 
-  const contentContainer = document.createElement("div");
-  contentContainer.className = "transform-content";
+  const contentContainer = document.createElement('div')
+  contentContainer.className = 'transform-content'
 
-  card.appendChild(header);
-  card.appendChild(contentContainer);
+  card.appendChild(header)
+  card.appendChild(contentContainer)
 
   // Create sandbox renderer for this card
-  const sandbox = new SandboxRenderer(contentContainer);
-  cardSandboxes.set(card, sandbox);
+  const sandbox = new SandboxRenderer(contentContainer)
+  cardSandboxes.set(card, sandbox)
 
   // Wire up copy button
-  copyBtn.addEventListener("click", () => {
-    copyToClipboard(contentContainer.textContent || "");
-  });
+  copyBtn.addEventListener('click', () => {
+    copyToClipboard(contentContainer.textContent || '')
+  })
 
   // Wire up close button to remove this card
-  closeBtn.addEventListener("click", () => {
-    removeTransformCard(card);
-  });
+  closeBtn.addEventListener('click', () => {
+    removeTransformCard(card)
+  })
 
-  return { card, sandbox };
+  return { card, sandbox }
 }
 
 // Helper to properly remove a transform card and clean up its sandbox
 function removeTransformCard(card: HTMLElement): void {
-  const sandbox = cardSandboxes.get(card);
+  const sandbox = cardSandboxes.get(card)
   if (sandbox) {
-    sandbox.destroy();
-    cardSandboxes.delete(card);
+    sandbox.destroy()
+    cardSandboxes.delete(card)
   }
-  card.remove();
+  card.remove()
 }
 
 // Enforce the max history limit by removing oldest cards
 function enforceTransformHistoryLimit(): void {
-  const cards = elements.transformHistory.children;
+  const cards = elements.transformHistory.children
   while (cards.length > MAX_TRANSFORM_HISTORY) {
-    const oldestCard = cards[cards.length - 1];
+    const oldestCard = cards[cards.length - 1]
     if (oldestCard instanceof HTMLElement) {
-      removeTransformCard(oldestCard);
+      removeTransformCard(oldestCard)
     }
   }
 }
 
 async function handleTransform(type: TransformType): Promise<void> {
   if (!currentNotebookId) {
-    showNotification("Please select a notebook first");
-    return;
+    showNotification('Please select a notebook first')
+    return
   }
 
-  const sources = await getSourcesByNotebook(currentNotebookId);
+  const sources = await getSourcesByNotebook(currentNotebookId)
   if (sources.length === 0) {
-    showNotification("Add some sources first");
-    return;
+    showNotification('Add some sources first')
+    return
   }
 
   const titles: Record<TransformType, string> = {
-    podcast: "Podcast Script",
-    quiz: "Study Quiz",
-    takeaways: "Key Takeaways",
-    email: "Email Summary",
-    slidedeck: "Slide Deck",
-    report: "Report",
-    datatable: "Data Table",
-    mindmap: "Mind Map",
-    flashcards: "Flashcards",
-    timeline: "Timeline",
-    glossary: "Glossary",
-    comparison: "Comparison Chart",
-    faq: "FAQ",
-    actionitems: "Action Items",
-    executivebrief: "Executive Brief",
-    studyguide: "Study Guide",
-    proscons: "Pros & Cons",
-    citations: "Citation List",
-    outline: "Outline",
-  };
+    podcast: 'Podcast Script',
+    quiz: 'Study Quiz',
+    takeaways: 'Key Takeaways',
+    email: 'Email Summary',
+    slidedeck: 'Slide Deck',
+    report: 'Report',
+    datatable: 'Data Table',
+    mindmap: 'Mind Map',
+    flashcards: 'Flashcards',
+    timeline: 'Timeline',
+    glossary: 'Glossary',
+    comparison: 'Comparison Chart',
+    faq: 'FAQ',
+    actionitems: 'Action Items',
+    executivebrief: 'Executive Brief',
+    studyguide: 'Study Guide',
+    proscons: 'Pros & Cons',
+    citations: 'Citation List',
+    outline: 'Outline',
+  }
 
   // Create a new result card and prepend it to the history container
-  const { card, sandbox } = createTransformResultCard(titles[type]);
-  elements.transformHistory.prepend(card);
+  const { card, sandbox } = createTransformResultCard(titles[type])
+  elements.transformHistory.prepend(card)
 
   // Enforce the history limit (remove oldest cards if over limit)
-  enforceTransformHistoryLimit();
+  enforceTransformHistoryLimit()
 
   // Scroll to the new card
-  card.scrollIntoView({ behavior: "smooth", block: "start" });
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   // Show loading state
-  await sandbox.render("<em>Generating...</em>");
+  await sandbox.render('<em>Generating...</em>')
 
   // Disable all transform buttons during generation
   const buttons = [
@@ -3952,101 +4253,104 @@ async function handleTransform(type: TransformType): Promise<void> {
     elements.transformProscons,
     elements.transformCitations,
     elements.transformOutline,
-  ];
-  buttons.forEach((btn) => btn && (btn.disabled = true));
+  ]
+  buttons.forEach(btn => btn && (btn.disabled = true))
 
   try {
-    let result: string;
+    let result: string
 
     switch (type) {
-      case "podcast":
-        result = await generatePodcastScript(sources, 5);
-        break;
-      case "quiz":
-        result = await generateQuiz(sources, 5);
-        break;
-      case "takeaways":
-        result = await generateKeyTakeaways(sources);
-        break;
-      case "email":
-        result = await generateEmailSummary(sources);
-        break;
-      case "slidedeck":
-        result = await generateSlideDeck(sources);
-        break;
-      case "report":
-        result = await generateReport(sources);
-        break;
-      case "datatable":
-        result = await generateDataTable(sources);
-        break;
-      case "mindmap":
-        result = await generateMindMap(sources);
-        break;
-      case "flashcards":
-        result = await generateFlashcards(sources, 10);
-        break;
-      case "timeline":
-        result = await generateTimeline(sources);
-        break;
-      case "glossary":
-        result = await generateGlossary(sources);
-        break;
-      case "comparison":
-        result = await generateComparison(sources);
-        break;
-      case "faq":
-        result = await generateFAQ(sources, 10);
-        break;
-      case "actionitems":
-        result = await generateActionItems(sources);
-        break;
-      case "executivebrief":
-        result = await generateExecutiveBrief(sources);
-        break;
-      case "studyguide":
-        result = await generateStudyGuide(sources);
-        break;
-      case "proscons":
-        result = await generateProsCons(sources);
-        break;
-      case "citations":
-        result = await generateCitationList(sources);
-        break;
-      case "outline":
-        result = await generateOutline(sources);
-        break;
+      case 'podcast':
+        result = await generatePodcastScript(sources, await getTransformConfig('podcast'))
+        break
+      case 'quiz':
+        result = await generateQuiz(sources, await getTransformConfig('quiz'))
+        break
+      case 'takeaways':
+        result = await generateKeyTakeaways(sources, await getTransformConfig('takeaways'))
+        break
+      case 'email':
+        result = await generateEmailSummary(sources, await getTransformConfig('email'))
+        break
+      case 'slidedeck':
+        result = await generateSlideDeck(sources, await getTransformConfig('slidedeck'))
+        break
+      case 'report':
+        result = await generateReport(sources, await getTransformConfig('report'))
+        break
+      case 'datatable':
+        result = await generateDataTable(sources, await getTransformConfig('datatable'))
+        break
+      case 'mindmap':
+        result = await generateMindMap(sources, await getTransformConfig('mindmap'))
+        break
+      case 'flashcards':
+        result = await generateFlashcards(sources, await getTransformConfig('flashcards'))
+        break
+      case 'timeline':
+        result = await generateTimeline(sources, await getTransformConfig('timeline'))
+        break
+      case 'glossary':
+        result = await generateGlossary(sources, await getTransformConfig('glossary'))
+        break
+      case 'comparison':
+        result = await generateComparison(sources, await getTransformConfig('comparison'))
+        break
+      case 'faq':
+        result = await generateFAQ(sources, await getTransformConfig('faq'))
+        break
+      case 'actionitems':
+        result = await generateActionItems(sources, await getTransformConfig('actionitems'))
+        break
+      case 'executivebrief':
+        result = await generateExecutiveBrief(sources, await getTransformConfig('executivebrief'))
+        break
+      case 'studyguide':
+        result = await generateStudyGuide(sources, await getTransformConfig('studyguide'))
+        break
+      case 'proscons':
+        result = await generateProsCons(sources, await getTransformConfig('proscons'))
+        break
+      case 'citations':
+        result = await generateCitationList(sources, await getTransformConfig('citations'))
+        break
+      case 'outline':
+        result = await generateOutline(sources, await getTransformConfig('outline'))
+        break
     }
 
     // Determine if this is an interactive transform that returns HTML
     const interactiveTypes: TransformType[] = [
-      "quiz",
-      "flashcards",
-      "timeline",
-      "slidedeck",
-      "mindmap",
-      "studyguide",
-    ];
+      'quiz',
+      'flashcards',
+      'timeline',
+      'slidedeck',
+      'mindmap',
+      'studyguide',
+    ]
 
     // Render AI-generated content in sandbox for defense-in-depth
     if (interactiveTypes.includes(type) && isHtmlContent(result)) {
       // Interactive HTML content (quiz, flashcards, etc.)
-      await sandbox.renderInteractive(result);
-    } else {
-      // Standard markdown content - render with proper markdown parser
-      await sandbox.render(renderMarkdown(result));
+      await sandbox.renderInteractive(result)
     }
-  } catch (error) {
-    console.error("Transform failed:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
+    else {
+      // Standard markdown content - render with proper markdown parser
+      await sandbox.render(renderMarkdown(result))
+    }
+  }
+  catch (error) {
+    console.error('Transform failed:', error)
+    const errorMessage
+      = error instanceof Error ? error.message : 'Unknown error'
     const errorHtml = `
       <p class="error">Failed to generate: ${escapeHtml(errorMessage)}</p>
       <p>Please check your API key in Settings.</p>
-    `;
-    await sandbox.render(errorHtml);
-  } finally {
-    buttons.forEach((btn) => btn && (btn.disabled = false));
+    `
+    await sandbox.render(errorHtml)
+  }
+  finally {
+    buttons.forEach(btn => btn && (btn.disabled = false))
   }
 }
 
@@ -4055,15 +4359,15 @@ async function handleTransform(type: TransformType): Promise<void> {
 // ============================================================================
 
 function updatePermissionUI(): void {
-  elements.permTabs.checked = permissions.tabs;
-  elements.permTabGroups.checked = permissions.tabGroups;
-  elements.permBookmarks.checked = permissions.bookmarks;
-  elements.permHistory.checked = permissions.history;
+  elements.permTabs.checked = permissions.tabs
+  elements.permTabGroups.checked = permissions.tabGroups
+  elements.permBookmarks.checked = permissions.bookmarks
+  elements.permHistory.checked = permissions.history
 
-  elements.importTabs.disabled = false;
-  elements.importTabGroups.disabled = false;
-  elements.importBookmarks.disabled = false;
-  elements.importHistory.disabled = false;
+  elements.importTabs.disabled = false
+  elements.importTabGroups.disabled = false
+  elements.importBookmarks.disabled = false
+  elements.importHistory.disabled = false
 }
 
 // Old settings UI - replaced by provider-config-ui.ts
@@ -4100,26 +4404,26 @@ function updateSettingsUI(): void {
 */
 
 async function handlePermissionToggle(
-  permission: "tabs" | "tabGroups" | "bookmarks" | "history"
+  permission: 'tabs' | 'tabGroups' | 'bookmarks' | 'history',
 ): Promise<void> {
   // Map permission names to element property names
   const elementMap: Record<string, keyof typeof elements> = {
-    tabs: "permTabs",
-    tabGroups: "permTabGroups",
-    bookmarks: "permBookmarks",
-    history: "permHistory",
-  };
-
-  const checkbox = elements[elementMap[permission]];
-
-  if (checkbox instanceof HTMLInputElement && checkbox.checked) {
-    const granted = await requestPermission(permission);
-    checkbox.checked = granted;
+    tabs: 'permTabs',
+    tabGroups: 'permTabGroups',
+    bookmarks: 'permBookmarks',
+    history: 'permHistory',
   }
 
-  permissions = await checkPermissions();
-  updatePermissionUI();
-  updateTabCount();
+  const checkbox = elements[elementMap[permission]]
+
+  if (checkbox instanceof HTMLInputElement && checkbox.checked) {
+    const granted = await requestPermission(permission)
+    checkbox.checked = granted
+  }
+
+  permissions = await checkPermissions()
+  updatePermissionUI()
+  void updateTabCount()
 }
 
 /**
@@ -4127,24 +4431,25 @@ async function handlePermissionToggle(
  */
 async function handleClearAllData(): Promise<void> {
   const confirmed = await showConfirmDialog(
-    "Clear All Data",
-    "This will permanently delete all notebooks, sources, chat history, and AI profiles. This action cannot be undone."
-  );
+    'Clear All Data',
+    'This will permanently delete all notebooks, sources, chat history, and AI profiles. This action cannot be undone.',
+  )
 
-  if (!confirmed) return;
+  if (!confirmed) return
 
   try {
     // Clear all IndexedDB data
-    await clearAllData();
+    await clearAllData()
 
     // Clear chrome.storage.local model cache (provider model lists)
-    await chrome.storage.local.clear();
+    await chrome.storage.local.clear()
 
     // Reload the sidepanel to refresh UI
-    location.reload();
-  } catch (error) {
-    console.error("Failed to clear all data:", error);
-    showNotification("Failed to clear all data. Please try again.");
+    location.reload()
+  }
+  catch (error) {
+    console.error('Failed to clear all data:', error)
+    showNotification('Failed to clear all data. Please try again.')
   }
 }
 
@@ -4554,11 +4859,11 @@ function copyToClipboard(text: string): void {
   navigator.clipboard
     .writeText(text)
     .then(() => {
-      showNotification("Copied to clipboard");
+      showNotification('Copied to clipboard')
     })
     .catch((err) => {
-      console.error("Failed to copy:", err);
-    });
+      console.error('Failed to copy:', err)
+    })
 }
 
 // ============================================================================
@@ -4566,139 +4871,156 @@ function copyToClipboard(text: string): void {
 // ============================================================================
 
 function showNotification(message: string, duration: number = 2000): void {
-  if (!elements.notification) return;
-  elements.notification.textContent = message;
-  elements.notification.classList.add("show");
+  if (!elements.notification) return
+  elements.notification.textContent = message
+  elements.notification.classList.add('show')
   setTimeout(() => {
-    elements.notification.classList.remove("show");
-  }, duration);
+    elements.notification.classList.remove('show')
+  }, duration)
 }
 
 function showNotebookDialog(
-  title: string = "New Notebook"
+  title: string = 'New Notebook',
 ): Promise<string | null> {
   return new Promise((resolve) => {
-    elements.notebookDialogTitle.textContent = title;
-    elements.notebookNameInput.value = "";
-    elements.notebookDialog.showModal();
+    elements.notebookDialogTitle.textContent = title
+    elements.notebookNameInput.value = ''
+    elements.notebookDialog.showModal()
 
     const handleCancel = () => {
-      elements.notebookDialog.close();
-      cleanup();
-      resolve(null);
-    };
+      elements.notebookDialog.close()
+      cleanup()
+      resolve(null)
+    }
 
     const handleConfirm = () => {
-      const name = elements.notebookNameInput.value.trim();
-      elements.notebookDialog.close();
-      cleanup();
-      resolve(name || null);
-    };
+      const name = elements.notebookNameInput.value.trim()
+      elements.notebookDialog.close()
+      cleanup()
+      resolve(name || null)
+    }
 
     const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        handleConfirm();
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleConfirm()
       }
-    };
+    }
 
     const cleanup = () => {
-      elements.notebookDialogCancel.removeEventListener("click", handleCancel);
+      elements.notebookDialogCancel.removeEventListener('click', handleCancel)
       elements.notebookDialogConfirm.removeEventListener(
-        "click",
-        handleConfirm
-      );
-      elements.notebookNameInput.removeEventListener("keydown", handleKeydown);
-    };
+        'click',
+        handleConfirm,
+      )
+      elements.notebookNameInput.removeEventListener('keydown', handleKeydown)
+    }
 
-    elements.notebookDialogCancel.addEventListener("click", handleCancel);
-    elements.notebookDialogConfirm.addEventListener("click", handleConfirm);
-    elements.notebookNameInput.addEventListener("keydown", handleKeydown);
-    elements.notebookNameInput.focus();
-  });
+    elements.notebookDialogCancel.addEventListener('click', handleCancel)
+    elements.notebookDialogConfirm.addEventListener('click', handleConfirm)
+    elements.notebookNameInput.addEventListener('keydown', handleKeydown)
+    elements.notebookNameInput.focus()
+  })
 }
 
 function showConfirmDialog(title: string, message: string): Promise<boolean> {
   return new Promise((resolve) => {
-    elements.confirmDialogTitle.textContent = title;
-    elements.confirmDialogMessage.textContent = message;
-    elements.confirmDialog.showModal();
+    elements.confirmDialogTitle.textContent = title
+    elements.confirmDialogMessage.textContent = message
+    elements.confirmDialog.showModal()
 
     const handleCancel = () => {
-      elements.confirmDialog.close();
-      cleanup();
-      resolve(false);
-    };
+      elements.confirmDialog.close()
+      cleanup()
+      resolve(false)
+    }
 
     const handleConfirm = () => {
-      elements.confirmDialog.close();
-      cleanup();
-      resolve(true);
-    };
+      elements.confirmDialog.close()
+      cleanup()
+      resolve(true)
+    }
 
     const cleanup = () => {
-      elements.confirmDialogCancel.removeEventListener("click", handleCancel);
-      elements.confirmDialogConfirm.removeEventListener("click", handleConfirm);
-    };
+      elements.confirmDialogCancel.removeEventListener('click', handleCancel)
+      elements.confirmDialogConfirm.removeEventListener('click', handleConfirm)
+    }
 
-    elements.confirmDialogCancel.addEventListener("click", handleCancel);
-    elements.confirmDialogConfirm.addEventListener("click", handleConfirm);
-  });
+    elements.confirmDialogCancel.addEventListener('click', handleCancel)
+    elements.confirmDialogConfirm.addEventListener('click', handleConfirm)
+  })
 }
 
 // ============================================================================
 // Onboarding
 // ============================================================================
 
+// Store handler references for proper cleanup
+let onboardingSkipHandler: (() => void) | null = null
+let onboardingNextHandler: (() => void) | null = null
+
 function showOnboarding(): void {
-  onboardingStep = 0;
-  renderOnboardingStep();
-  elements.onboardingOverlay.classList.remove("hidden");
+  onboardingStep = 0
+  renderOnboardingStep()
+  elements.onboardingOverlay.classList.remove('hidden')
 
   // Setup event listeners
-  elements.onboardingSkip.addEventListener("click", completeOnboarding);
-  elements.onboardingNext.addEventListener("click", nextOnboardingStep);
+  onboardingSkipHandler = () => {
+    void completeOnboarding()
+  }
+  onboardingNextHandler = () => {
+    nextOnboardingStep()
+  }
+  elements.onboardingSkip.addEventListener('click', onboardingSkipHandler)
+  elements.onboardingNext.addEventListener('click', onboardingNextHandler)
 }
 
 function renderOnboardingStep(): void {
-  const step = ONBOARDING_STEPS[onboardingStep];
-  if (!step) return;
+  const step = ONBOARDING_STEPS[onboardingStep]
+  if (!step) return
 
-  elements.onboardingIcon.innerHTML = step.icon;
-  elements.onboardingTitle.textContent = step.title;
-  elements.onboardingDescription.textContent = step.description;
+  elements.onboardingIcon.innerHTML = step.icon
+  elements.onboardingTitle.textContent = step.title
+  elements.onboardingDescription.textContent = step.description
 
   // Update dots
   elements.onboardingDots.innerHTML = ONBOARDING_STEPS.map((_, index) => {
-    const activeClass = index === onboardingStep ? "active" : "";
-    return `<div class="onboarding-dot ${activeClass}"></div>`;
-  }).join("");
+    const activeClass = index === onboardingStep ? 'active' : ''
+    return `<div class="onboarding-dot ${activeClass}"></div>`
+  }).join('')
 
   // Update button text
-  const isLastStep = onboardingStep === ONBOARDING_STEPS.length - 1;
-  elements.onboardingNext.textContent = isLastStep ? "Get Started" : "Next";
+  const isLastStep = onboardingStep === ONBOARDING_STEPS.length - 1
+  elements.onboardingNext.textContent = isLastStep ? 'Get Started' : 'Next'
 }
 
 function nextOnboardingStep(): void {
   if (onboardingStep < ONBOARDING_STEPS.length - 1) {
-    onboardingStep++;
-    renderOnboardingStep();
-  } else {
-    completeOnboarding();
+    onboardingStep++
+    renderOnboardingStep()
+  }
+  else {
+    void completeOnboarding()
   }
 }
 
 async function completeOnboarding(): Promise<void> {
-  await markOnboardingComplete();
-  elements.onboardingOverlay.classList.add("hidden");
+  await markOnboardingComplete()
+  elements.onboardingOverlay.classList.add('hidden')
 
   // Clean up event listeners
-  elements.onboardingSkip.removeEventListener("click", completeOnboarding);
-  elements.onboardingNext.removeEventListener("click", nextOnboardingStep);
+  if (onboardingSkipHandler) {
+    elements.onboardingSkip.removeEventListener('click', onboardingSkipHandler)
+    onboardingSkipHandler = null
+  }
+  if (onboardingNextHandler) {
+    elements.onboardingNext.removeEventListener('click', onboardingNextHandler)
+    onboardingNextHandler = null
+  }
 
   // Switch to settings tab to prompt AI setup
-  switchTab("settings");
-  showNotification("Welcome to FolioLM! Set up an AI profile to get started.");
+  switchTab('settings')
+  showNotification('Welcome to FolioLM! Set up an AI profile to get started.')
 }
 
 // ============================================================================
@@ -4711,9 +5033,9 @@ async function completeOnboarding(): Promise<void> {
  */
 async function getCurrentSources(): Promise<Source[]> {
   if (!currentNotebookId) {
-    return [];
+    return []
   }
-  return await getSourcesByNotebook(currentNotebookId);
+  return await getSourcesByNotebook(currentNotebookId)
 }
 
 // ============================================================================
@@ -4750,12 +5072,12 @@ export const handlers = {
 
   // Summary & Suggested Links
   handleRegenerateSummary: async () => {
-    const sources = await getCurrentSources();
-    await loadOrGenerateSummary(sources);
+    const sources = await getCurrentSources()
+    await loadOrGenerateSummary(sources)
   },
   handleRefreshSuggestedLinks: async () => {
-    const sources = await getCurrentSources();
-    await loadSuggestedLinks(sources, true);
+    const sources = await getCurrentSources()
+    await loadSuggestedLinks(sources, true)
   },
 
   // Transformations
@@ -4783,14 +5105,14 @@ export const handlers = {
 
   // Onboarding
   showOnboarding,
-};
+}
 
 // Export state getters for TSX components
 export const getState = {
   getCurrentNotebookId: () => currentNotebookId,
   getPermissions: () => permissions,
   getCurrentSources,
-};
+}
 
 // ============================================================================
 // Start
@@ -4798,4 +5120,4 @@ export const getState = {
 
 // Export init to be called after DOM is rendered (from main.tsx)
 // This prevents race condition where event listeners are attached before DOM exists
-export { init as initControllers };
+export { init as initControllers }

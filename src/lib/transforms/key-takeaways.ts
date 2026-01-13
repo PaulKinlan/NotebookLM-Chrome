@@ -1,37 +1,61 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts';
-import { trackUsage } from '../usage.ts';
+import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { trackUsage } from '../usage.ts'
+import type { TakeawaysConfig } from '../../types/index.ts'
+import { DEFAULT_TAKEAWAYS_CONFIG } from '../transform-config.ts'
 
-export async function generateKeyTakeaways(sources: Source[]): Promise<string> {
-  const config = await getModelWithConfig();
-  if (!config) {
+export async function generateKeyTakeaways(
+  sources: Source[],
+  config: Partial<TakeawaysConfig> = {},
+): Promise<string> {
+  const modelConfig = await getModelWithConfig()
+  if (!modelConfig) {
     throw new Error(
-      "AI provider not configured. Please add your API key in settings."
-    );
+      'AI provider not configured. Please add your API key in settings.',
+    )
   }
 
+  // Merge with defaults
+  const c = { ...DEFAULT_TAKEAWAYS_CONFIG, ...config }
+
+  // Format descriptions
+  const formatDesc: Record<typeof c.format, string> = {
+    bullets: 'bullet points (using - or •)',
+    numbered: 'a numbered list',
+    paragraphs: 'short paragraphs with clear headings',
+  }
+
+  const detailsNote = c.includeDetails
+    ? 'Include a brief supporting detail or context for each point.'
+    : 'Keep each point concise and self-contained without additional details.'
+
+  const systemPrompt = `You are a helpful AI assistant that extracts key takeaways.
+Create ${formatDesc[c.format]} with the ${c.pointCount} most important points from the sources.
+Each takeaway should be clear, actionable, and self-contained.
+${detailsNote}${
+  c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
+}`
+
   const result = await generateText({
-    model: config.model,
-    system: `You are a helpful AI assistant that extracts key takeaways.
-Create a bulleted list of the most important points from the sources.
-Each takeaway should be clear, actionable, and self-contained.`,
-    prompt: `Extract the key takeaways from these sources:
+    model: modelConfig.model,
+    system: systemPrompt,
+    prompt: `Extract the ${c.pointCount} key takeaways from these sources:
 
 ${buildSourceContextSimple(sources)}
 
-Format as a bulleted list with clear, concise points.`,
-  });
+Format as ${formatDesc[c.format]} with clear, concise points.`,
+  })
 
   // Track usage
   if (result.usage) {
     trackUsage({
-      modelConfigId: config.modelConfigId,
-      providerId: config.providerId,
-      model: config.modelId,
+      modelConfigId: modelConfig.modelConfigId,
+      providerId: modelConfig.providerId,
+      model: modelConfig.modelId,
       inputTokens: result.usage.inputTokens ?? 0,
       outputTokens: result.usage.outputTokens ?? 0,
       operation: 'transform',
-    }).catch((err) => console.warn('[Transform] Failed to track key-takeaways usage:', err));
+    }).catch(err => console.warn('[Transform] Failed to track key-takeaways usage:', err))
   }
 
-  return result.text;
+  return result.text
 }

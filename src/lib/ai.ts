@@ -1,18 +1,58 @@
-import { streamText, generateText, type LanguageModel, type ToolSet, type ModelMessage } from 'ai';
-import type { Source, Citation, Notebook, ChatEvent, ContextMode, StreamEvent } from '../types/index.ts';
-import { getActiveNotebookId, getNotebook } from './storage.ts';
-import { resolveModelConfig, type ResolvedModelConfig } from './model-configs.ts';
+import { streamText, generateText, type LanguageModel, type ToolSet, type ModelMessage } from 'ai'
+import type { JSONValue } from '@ai-sdk/provider'
+import type { Source, Citation, Notebook, ChatEvent, ContextMode, StreamEvent } from '../types/index.ts'
+import { getActiveNotebookId, getNotebook } from './storage.ts'
+import { resolveModelConfig, type ResolvedModelConfig } from './model-configs.ts'
 import {
   getProviderConfig,
   getProviderDefaultModel,
   providerRequiresApiKey,
   type AIProvider,
-} from './provider-registry.ts';
-import { withRetry } from './errors.ts';
-import { trackUsage } from './usage.ts';
+} from './provider-registry.ts'
+import { withRetry } from './errors.ts'
+import { trackUsage } from './usage.ts'
 
 // Re-export error utilities for convenience
-export { classifyError, formatErrorForUser, withRetry } from './errors.ts';
+export { classifyError, formatErrorForUser, withRetry } from './errors.ts'
+
+// ============================================================================
+// Type Guards
+// ============================================================================
+
+/**
+ * Type assertion function to validate that a value is JSONValue
+ * This provides runtime validation while satisfying TypeScript's type checker
+ */
+function assertIsJSONValue(value: unknown): asserts value is JSONValue {
+  if (
+    value === null
+    || typeof value === 'string'
+    || typeof value === 'number'
+    || typeof value === 'boolean'
+  ) {
+    return // Primitives are valid JSONValue
+  }
+
+  if (Array.isArray(value)) {
+    // Arrays are valid if all elements are JSONValue
+    for (const item of value) {
+      assertIsJSONValue(item)
+    }
+    return
+  }
+
+  if (typeof value === 'object') {
+    // Objects are valid if all values are JSONValue
+    for (const key in value) {
+      if (Object.prototype.hasOwnProperty.call(value, key)) {
+        assertIsJSONValue((value as Record<string, unknown>)[key])
+      }
+    }
+    return
+  }
+
+  throw new Error(`Value is not JSON-serializable: ${typeof value}`)
+}
 
 // ============================================================================
 // Provider Factory
@@ -26,30 +66,30 @@ function createProviderInstance(
   providerType: AIProvider,
   apiKey: string,
   modelId: string,
-  baseURL?: string
+  baseURL?: string,
 ): LanguageModel | null {
-  const config = getProviderConfig(providerType);
+  const config = getProviderConfig(providerType)
 
   // If baseURL not provided, get from registry
   if (!baseURL) {
-    baseURL = config.baseURL;
+    baseURL = config.baseURL
   }
 
   // Use the provider's createModel function from the registry
-  return config.createModel(apiKey, modelId, baseURL);
+  return config.createModel(apiKey, modelId, baseURL)
 }
 
 /**
  * Model instance with associated config for usage tracking
  */
 interface ModelWithConfig {
-  model: LanguageModel;
-  config: ResolvedModelConfig;
+  model: LanguageModel
+  config: ResolvedModelConfig
 }
 
 async function getModel(): Promise<LanguageModel | null> {
-  const result = await getModelWithConfig();
-  return result?.model ?? null;
+  const result = await getModelWithConfig()
+  return result?.model ?? null
 }
 
 /**
@@ -57,34 +97,34 @@ async function getModel(): Promise<LanguageModel | null> {
  */
 async function getModelWithConfig(): Promise<ModelWithConfig | null> {
   // Get active notebook to resolve model config with potential credential override
-  const activeNotebookId = await getActiveNotebookId();
+  const activeNotebookId = await getActiveNotebookId()
 
-  let notebook: Notebook | undefined;
+  let notebook: Notebook | undefined
   if (activeNotebookId) {
-    const notebookResult = await getNotebook(activeNotebookId);
+    const notebookResult = await getNotebook(activeNotebookId)
     if (notebookResult) {
-      notebook = notebookResult;
+      notebook = notebookResult
     }
   }
 
   // Resolve model config (handles notebook-specific config and credential override)
-  const resolved = await resolveModelConfig(notebook);
+  const resolved = await resolveModelConfig(notebook)
 
   if (!resolved) {
-    throw new Error('No AI model configured. Please add a model configuration in settings.');
+    throw new Error('No AI model configured. Please add a model configuration in settings.')
   }
 
-  const { modelConfig, credential, providerType, baseURL } = resolved;
-  const apiKey = credential.apiKey;
-  const modelId = modelConfig.model;
+  const { modelConfig, credential, providerType, baseURL } = resolved
+  const apiKey = credential.apiKey
+  const modelId = modelConfig.model
 
   // Get defaults from registry
-  const defaultModel = getProviderDefaultModel(providerType);
-  const requiresApiKey = providerRequiresApiKey(providerType);
+  const defaultModel = getProviderDefaultModel(providerType)
+  const requiresApiKey = providerRequiresApiKey(providerType)
 
   // Check API key requirement
   if (requiresApiKey && !apiKey) {
-    return null;
+    return null
   }
 
   // Create provider instance using SDK factory
@@ -93,38 +133,38 @@ async function getModelWithConfig(): Promise<ModelWithConfig | null> {
     providerType,
     apiKey,
     modelId || defaultModel,
-    baseURL
-  );
+    baseURL,
+  )
 
   if (!model) {
-    return null;
+    return null
   }
 
-  return { model, config: resolved };
+  return { model, config: resolved }
 }
 
 async function getCompressionMode(): Promise<'two-pass' | 'single-pass'> {
   // Get active notebook to resolve model config
-  const activeNotebookId = await getActiveNotebookId();
+  const activeNotebookId = await getActiveNotebookId()
 
-  let notebook: Notebook | undefined;
+  let notebook: Notebook | undefined
   if (activeNotebookId) {
-    const notebookResult = await getNotebook(activeNotebookId);
+    const notebookResult = await getNotebook(activeNotebookId)
     if (notebookResult) {
-      notebook = notebookResult;
+      notebook = notebookResult
     }
   }
 
   // Resolve model config (handles notebook-specific config)
-  const resolved = await resolveModelConfig(notebook);
+  const resolved = await resolveModelConfig(notebook)
 
   // Default to two-pass if no config is set
   if (!resolved) {
-    return 'two-pass';
+    return 'two-pass'
   }
 
   // Return the compression mode from the config, defaulting to two-pass
-  return resolved.modelConfig.compressionMode || 'two-pass';
+  return resolved.modelConfig.compressionMode || 'two-pass'
 }
 
 // ============================================================================
@@ -132,8 +172,8 @@ async function getCompressionMode(): Promise<'two-pass' | 'single-pass'> {
 // ============================================================================
 
 export interface SourceWithRelevance extends Source {
-  relevanceScore?: number;
-  relevanceReason?: string;
+  relevanceScore?: number
+  relevanceReason?: string
 }
 
 /**
@@ -142,12 +182,12 @@ export interface SourceWithRelevance extends Source {
 function buildSourceMetadata(sources: Source[]): string {
   return sources
     .map((source, i) => {
-      const preview = source.content.slice(0, 150).replace(/\n/g, ' ');
+      const preview = source.content.slice(0, 150).replace(/\n/g, ' ')
       return `[${i + 1}] "${source.title}"
 URL: ${source.url}
-Preview: ${preview}${source.content.length > 150 ? '...' : ''}`;
+Preview: ${preview}${source.content.length > 150 ? '...' : ''}`
     })
-    .join("\n\n");
+    .join('\n\n')
 }
 
 /**
@@ -155,18 +195,18 @@ Preview: ${preview}${source.content.length > 150 ? '...' : ''}`;
  */
 export async function rankSourceRelevance(
   sources: Source[],
-  query: string
+  query: string,
 ): Promise<SourceWithRelevance[]> {
-  const modelWithConfig = await getModelWithConfig();
+  const modelWithConfig = await getModelWithConfig()
   if (!modelWithConfig) {
     // Fallback: return all sources without ranking if no model
-    return sources.map(s => ({ ...s, relevanceScore: 1.0 }));
+    return sources.map(s => ({ ...s, relevanceScore: 1.0 }))
   }
 
-  const { model, config } = modelWithConfig;
-  const metadata = buildSourceMetadata(sources);
+  const { model, config } = modelWithConfig
+  const metadata = buildSourceMetadata(sources)
 
-  let rankingsResult;
+  let rankingsResult
   try {
     rankingsResult = await generateText({
       model,
@@ -197,7 +237,7 @@ Sources:
 ${metadata}
 
 Return the JSON ranking.`,
-    });
+    })
 
     // Track usage
     if (rankingsResult.usage) {
@@ -208,55 +248,79 @@ Return the JSON ranking.`,
         inputTokens: rankingsResult.usage.inputTokens ?? 0,
         outputTokens: rankingsResult.usage.outputTokens ?? 0,
         operation: 'ranking',
-      }).catch((err) => console.warn('[AI] Failed to track ranking usage:', err));
+      }).catch(err => console.warn('[AI] Failed to track ranking usage:', err))
     }
-  } catch (error) {
-    console.error('Failed to generate relevance ranking:', error);
+  }
+  catch (error) {
+    console.error('Failed to generate relevance ranking:', error)
     // Fallback: return all sources with neutral score when ranking generation fails
-    return sources.map(s => ({ ...s, relevanceScore: 0.5 }));
+    return sources.map(s => ({ ...s, relevanceScore: 0.5 }))
   }
 
   try {
     // Handle potential markdown code fences around JSON
-    const jsonText = rankingsResult.text.trim().replace(/^```json\s*|\s*```$/g, '');
-    const parsedRankings = JSON.parse(jsonText);
+    const jsonText = rankingsResult.text.trim().replace(/^```json\s*|\s*```$/g, '')
+    const parsedRankings: unknown = JSON.parse(jsonText)
 
     // Type guard to ensure the parsed data has the correct structure
     if (!Array.isArray(parsedRankings)) {
-      throw new Error('Rankings result is not an array');
+      throw new Error('Rankings result is not an array')
     }
 
+    // Type guard for each ranking item
     const rankings: Array<{
-      index: number;
-      score: number;
-      reason: string;
-    }> = parsedRankings.map((r) => {
-      if (typeof r.index !== 'number' || typeof r.score !== 'number' || typeof r.reason !== 'string') {
-        throw new Error('Invalid ranking item structure');
+      index: number
+      score: number
+      reason: string
+    }> = []
+
+    for (const r of parsedRankings) {
+      // Validate the shape before casting
+      if (
+        typeof r === 'object'
+        && r !== null
+        && 'index' in r
+        && 'score' in r
+        && 'reason' in r
+      ) {
+        const item = r as Record<string, unknown>
+        if (
+          typeof item.index === 'number'
+          && typeof item.score === 'number'
+          && typeof item.reason === 'string'
+        ) {
+          rankings.push({ index: item.index, score: item.score, reason: item.reason })
+        }
+        else {
+          throw new Error('Invalid ranking item structure')
+        }
       }
-      return r;
-    });
+      else {
+        throw new Error('Invalid ranking item structure')
+      }
+    }
 
     // Map rankings back to sources
-    const sourceMap = sources.map((s, i) => ({ ...s, originalIndex: i }));
+    const sourceMap = sources.map((s, i) => ({ ...s, originalIndex: i }))
     const ranked = sourceMap.map((source): SourceWithRelevance => {
-      const ranking = rankings.find(r => r.index === source.originalIndex + 1);
+      const ranking = rankings.find(r => r.index === source.originalIndex + 1)
       if (!ranking) {
-        console.warn(`Source ${source.originalIndex + 1} ("${source.title}") missing from ranking response, assigning default score`);
+        console.warn(`Source ${source.originalIndex + 1} ("${source.title}") missing from ranking response, assigning default score`)
       }
       return {
         ...source,
         relevanceScore: ranking?.score ?? 0.5,
         relevanceReason: ranking?.reason,
-      };
-    });
+      }
+    })
 
     // Sort by relevance score descending
-    return ranked.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0));
-  } catch (error) {
-    console.error('Failed to parse relevance ranking:', error);
+    return ranked.sort((a, b) => (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0))
+  }
+  catch (error) {
+    console.error('Failed to parse relevance ranking:', error)
     // Fallback: return all sources with neutral score
-    return sources.map(s => ({ ...s, relevanceScore: 0.5 }));
+    return sources.map(s => ({ ...s, relevanceScore: 0.5 }))
   }
 }
 
@@ -265,23 +329,23 @@ Return the JSON ranking.`,
  */
 async function summarizeSources(
   sources: SourceWithRelevance[],
-  maxSummaries: number = 10
+  maxSummaries: number = 10,
 ): Promise<Map<string, string>> {
-  if (sources.length === 0) return new Map();
+  if (sources.length === 0) return new Map()
 
-  const modelWithConfig = await getModelWithConfig();
-  if (!modelWithConfig) return new Map();
+  const modelWithConfig = await getModelWithConfig()
+  if (!modelWithConfig) return new Map()
 
-  const { model, config } = modelWithConfig;
-  const summaries = new Map<string, string>();
+  const { model, config } = modelWithConfig
+  const summaries = new Map<string, string>()
 
   // Batch summarize sources to reduce API calls
-  const batch = sources.slice(0, maxSummaries);
+  const batch = sources.slice(0, maxSummaries)
   const sourcesText = batch
     .map((s, i) => `[Source ${i + 1}] "${s.title}"\n${s.content.slice(0, 500)}...`)
-    .join('\n\n---\n\n');
+    .join('\n\n---\n\n')
 
-  let summaryResult;
+  let summaryResult
   try {
     summaryResult = await generateText({
       model,
@@ -295,7 +359,7 @@ Return ONLY a JSON array of objects:
 
 Be accurate and concise. Focus on substantive content.`,
       prompt: `Summarize these sources:\n\n${sourcesText}\n\nReturn the JSON summaries.`,
-    });
+    })
 
     // Track usage
     if (summaryResult.usage) {
@@ -306,84 +370,106 @@ Be accurate and concise. Focus on substantive content.`,
         inputTokens: summaryResult.usage.inputTokens ?? 0,
         outputTokens: summaryResult.usage.outputTokens ?? 0,
         operation: 'summarization',
-      }).catch((err) => console.warn('[AI] Failed to track summarization usage:', err));
+      }).catch(err => console.warn('[AI] Failed to track summarization usage:', err))
     }
-  } catch (error) {
-    console.error('Failed to generate summaries:', error);
+  }
+  catch (error) {
+    console.error('Failed to generate summaries:', error)
     // Fallback: generate extractive summaries for all sources
     for (const source of sources) {
-      const content = source.content || '';
-      const sentenceMatches = content.match(/[^.!?]+[.!?]*/g) || [];
+      const content = source.content || ''
+      const sentenceMatches = content.match(/[^.!?]+[.!?]*/g) || []
       const sentences = sentenceMatches
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-      const rawSummary =
-        (sentences.length > 0 ? sentences.slice(0, 3).join(' ') : '') || content;
-      const summary = rawSummary.trim();
-      const finalSummary =
-        summary === ''
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+      const rawSummary
+        = (sentences.length > 0 ? sentences.slice(0, 3).join(' ') : '') || content
+      const summary = rawSummary.trim()
+      const finalSummary
+        = summary === ''
           ? '(no content available)'
           : /[.!?]$/.test(summary)
-          ? summary
-          : summary + '.';
-      summaries.set(source.id, finalSummary);
+            ? summary
+            : summary + '.'
+      summaries.set(source.id, finalSummary)
     }
-    return summaries;
+    return summaries
   }
 
   try {
     // Handle potential markdown code fences around JSON
-    const jsonText = summaryResult.text.trim().replace(/^```json\s*|\s*```$/g, '');
-    const parsedSummaries = JSON.parse(jsonText);
+    const jsonText = summaryResult.text.trim().replace(/^```json\s*|\s*```$/g, '')
+    const parsedSummaries: unknown = JSON.parse(jsonText)
 
     // Type guard to ensure the parsed data has the correct structure
     if (!Array.isArray(parsedSummaries)) {
-      throw new Error('Summaries result is not an array');
+      throw new Error('Summaries result is not an array')
     }
 
+    // Type guard for each summary item
     const parsed: Array<{
-      index: number;
-      summary: string;
-    }> = parsedSummaries.map((s) => {
-      if (typeof s.index !== 'number' || typeof s.summary !== 'string') {
-        throw new Error('Invalid summary item structure');
+      index: number
+      summary: string
+    }> = []
+
+    for (const s of parsedSummaries) {
+      // Validate the shape before casting
+      if (
+        typeof s === 'object'
+        && s !== null
+        && 'index' in s
+        && 'summary' in s
+      ) {
+        const item = s as Record<string, unknown>
+        if (
+          typeof item.index === 'number'
+          && typeof item.summary === 'string'
+        ) {
+          parsed.push({ index: item.index, summary: item.summary })
+        }
+        else {
+          throw new Error('Invalid summary item structure')
+        }
       }
-      return s;
-    });
+      else {
+        throw new Error('Invalid summary item structure')
+      }
+    }
 
     for (const item of parsed) {
-      const source = batch[item.index - 1];
+      const source = batch[item.index - 1]
       if (source) {
-        summaries.set(source.id, item.summary);
+        summaries.set(source.id, item.summary)
       }
     }
-  } catch (error) {
-    console.error('Failed to parse summaries:', error);
+  }
+  catch (error) {
+    console.error('Failed to parse summaries:', error)
   }
 
   // Fallback: add extractive summaries for sources that weren't processed
   // (either beyond batch limit or missing from LLM response)
   for (const source of sources) {
     if (!summaries.has(source.id)) {
-      const content = source.content || '';
-      const sentenceMatches = content.match(/[^.!?]+[.!?]*/g) || [];
+      const content = source.content || ''
+      const sentenceMatches = content.match(/[^.!?]+[.!?]*/g) || []
       const sentences = sentenceMatches
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
-      const rawSummary =
-        (sentences.length > 0 ? sentences.slice(0, 3).join(' ') : '') || content;
-      const summary = rawSummary.trim();
-      const finalSummary =
-        summary === ''
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+      const rawSummary
+        = (sentences.length > 0 ? sentences.slice(0, 3).join(' ') : '') || content
+      const summary = rawSummary.trim()
+      const finalSummary
+        = summary === ''
           ? '(no content available)'
           : /[.!?]$/.test(summary)
-          ? summary
-          : summary + '.';
-      summaries.set(source.id, finalSummary);
+            ? summary
+            : summary + '.'
+      summaries.set(source.id, finalSummary)
     }
   }
 
-  return summaries;
+  return summaries
 }
 
 /**
@@ -391,55 +477,55 @@ Be accurate and concise. Focus on substantive content.`,
  * Faster but less intelligent than two-pass
  */
 function buildSourceContextSinglePass(
-  sources: Source[]
+  sources: Source[],
 ): string {
-  if (sources.length === 0) return '';
+  if (sources.length === 0) return ''
 
   // Simple strategy: First 5 get full content, next 10 get summaries, rest get titles
-  const parts: string[] = [];
-  let sourceIndex = 1; // Use sequential numeric indices for citations
+  const parts: string[] = []
+  let sourceIndex = 1 // Use sequential numeric indices for citations
 
   // Full content for first 5 sources
   for (const source of sources.slice(0, 5)) {
     parts.push(
-      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`
-    );
-    sourceIndex++;
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`,
+    )
+    sourceIndex++
   }
 
   // Summaries for next 10 sources (basic extractive summary)
   for (const source of sources.slice(5, 15)) {
-    const content = source.content || '';
+    const content = source.content || ''
     // Match sentence boundaries more robustly and filter empty matches
-    const sentenceMatches = content.match(/[^.!?]+[.!?]*/g) || [];
+    const sentenceMatches = content.match(/[^.!?]+[.!?]*/g) || []
     const sentences = sentenceMatches
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-    const rawSummary =
-      (sentences.length > 0 ? sentences.slice(0, 3).join(' ') : '') || content;
-    const summary = rawSummary.trim();
-    const finalSummary =
-      summary === ''
+      .map(s => s.trim())
+      .filter(s => s.length > 0)
+    const rawSummary
+      = (sentences.length > 0 ? sentences.slice(0, 3).join(' ') : '') || content
+    const summary = rawSummary.trim()
+    const finalSummary
+      = summary === ''
         ? '(no content available)'
         : /[.!?]$/.test(summary)
-        ? summary
-        : summary + '.';
+          ? summary
+          : summary + '.'
 
     parts.push(
-      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\nSummary: ${finalSummary}`
-    );
-    sourceIndex++;
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\nSummary: ${finalSummary}`,
+    )
+    sourceIndex++
   }
 
   // Titles only for remaining sources
   for (const source of sources.slice(15)) {
     parts.push(
-      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n(See source for details)`
-    );
-    sourceIndex++;
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n(See source for details)`,
+    )
+    sourceIndex++
   }
 
-  return parts.join('\n\n---\n\n');
+  return parts.join('\n\n---\n\n')
 }
 
 /**
@@ -450,80 +536,80 @@ function buildSourceContextSinglePass(
 async function buildSourceContext(
   sources: Source[],
   query: string,
-  compressionMode: 'two-pass' | 'single-pass' = 'two-pass'
+  compressionMode: 'two-pass' | 'single-pass' = 'two-pass',
 ): Promise<string> {
-  if (sources.length === 0) return '';
+  if (sources.length === 0) return ''
 
   // If only a few sources, skip compression regardless of mode
   if (sources.length <= 5) {
     return sources
       .map((source, i) => {
-        return `[Source ${i + 1}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`;
+        return `[Source ${i + 1}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`
       })
-      .join('\n\n---\n\n');
+      .join('\n\n---\n\n')
   }
 
   // Single-pass mode: Use fixed strategy without LLM calls
   if (compressionMode === 'single-pass') {
-    return buildSourceContextSinglePass(sources);
+    return buildSourceContextSinglePass(sources)
   }
 
   // Two-pass mode: Use LLM-based ranking and summarization
   // Pass 1: Rank by relevance
-  const ranked = await rankSourceRelevance(sources, query);
+  const ranked = await rankSourceRelevance(sources, query)
 
   // Cap the number of full-content sources to prevent token overflow
-  const MAX_FULL_CONTENT_SOURCES = 15;
+  const MAX_FULL_CONTENT_SOURCES = 15
 
   // Categorize by relevance
-  const highlyRelevant = ranked.filter(s => (s.relevanceScore ?? 0) >= 0.7);
-  const fullContentHighlyRelevant = highlyRelevant.slice(0, MAX_FULL_CONTENT_SOURCES);
-  const summarizedHighlyRelevant = highlyRelevant.slice(MAX_FULL_CONTENT_SOURCES);
+  const highlyRelevant = ranked.filter(s => (s.relevanceScore ?? 0) >= 0.7)
+  const fullContentHighlyRelevant = highlyRelevant.slice(0, MAX_FULL_CONTENT_SOURCES)
+  const summarizedHighlyRelevant = highlyRelevant.slice(MAX_FULL_CONTENT_SOURCES)
   const moderatelyRelevant = ranked
     .filter(s => (s.relevanceScore ?? 0) >= 0.4 && (s.relevanceScore ?? 0) < 0.7)
-    .concat(summarizedHighlyRelevant);
-  const lessRelevant = ranked.filter(s => (s.relevanceScore ?? 0) < 0.4);
+    .concat(summarizedHighlyRelevant)
+  const lessRelevant = ranked.filter(s => (s.relevanceScore ?? 0) < 0.4)
 
   // Pass 2: Summarize moderately relevant sources (including overflow highly relevant)
-  const summaries = await summarizeSources(moderatelyRelevant);
+  const summaries = await summarizeSources(moderatelyRelevant)
 
   // Build context with appropriate detail level
-  const parts: string[] = [];
-  let sourceIndex = 1; // Use sequential numeric indices for citations
+  const parts: string[] = []
+  let sourceIndex = 1 // Use sequential numeric indices for citations
 
   // Full content for top-N highly relevant sources
   // Cap at MAX_FULL_CONTENT_SOURCES to prevent token overflow
   for (const source of fullContentHighlyRelevant) {
     parts.push(
-      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`
-    );
-    sourceIndex++;
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n${source.content}`,
+    )
+    sourceIndex++
   }
 
   // Summaries for moderately relevant
   for (const source of moderatelyRelevant) {
-    const summary = summaries.get(source.id) ?? 'Summary not available.';
+    const summary = summaries.get(source.id) ?? 'Summary not available.'
     parts.push(
-      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\nSummary: ${summary}`
-    );
-    sourceIndex++;
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\nSummary: ${summary}`,
+    )
+    sourceIndex++
   }
 
   // Titles only for less relevant
   for (const source of lessRelevant) {
     parts.push(
-      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n(Referenced but not highly relevant to this query)`
-    );
-    sourceIndex++;
+      `[Source ${sourceIndex}] ID: ${source.id}\nTitle: ${source.title}\nURL: ${source.url}\n\n(Referenced but not highly relevant to this query)`,
+    )
+    sourceIndex++
   }
 
-  return parts.join('\n\n---\n\n');
+  return parts.join('\n\n---\n\n')
 }
 
 function buildSourceList(sources: Source[]): string {
   return sources
     .map((source, i) => `  ${i + 1}. "${source.title}" (ID: ${source.id})`)
-    .join("\n");
+    .join('\n')
 }
 
 // ============================================================================
@@ -531,8 +617,8 @@ function buildSourceList(sources: Source[]): string {
 // ============================================================================
 
 export interface ChatResult {
-  content: string;
-  citations: Citation[];
+  content: string
+  citations: Citation[]
 }
 
 /**
@@ -541,7 +627,7 @@ export interface ChatResult {
  */
 function buildAgenticSystemPrompt(
   notebookName: string,
-  sourceCount: number
+  sourceCount: number,
 ): string {
   // When there are no sources, provide a general chat prompt
   if (sourceCount === 0) {
@@ -555,7 +641,7 @@ Answer their questions helpfully and accurately using your general knowledge. Yo
 - Explain concepts and provide information
 - Suggest what kinds of sources would be helpful for their topic
 
-Keep your responses conversational and helpful.`;
+Keep your responses conversational and helpful.`
   }
 
   return `You are a helpful AI assistant analyzing sources from the notebook "${notebookName}".
@@ -585,15 +671,15 @@ CITATION FORMAT:
 When referencing information from a source, use:
 ---CITATIONS---
 [Source ID]: "exact quote or paraphrase"
----END CITATIONS---`;
+---END CITATIONS---`
 }
 
 async function buildChatSystemPrompt(
   sources: Source[],
   query: string,
-  compressionMode: 'two-pass' | 'single-pass' = 'two-pass'
+  compressionMode: 'two-pass' | 'single-pass' = 'two-pass',
 ): Promise<string> {
-  const sourceContext = await buildSourceContext(sources, query, compressionMode);
+  const sourceContext = await buildSourceContext(sources, query, compressionMode)
 
   // When there are no sources, provide a general chat prompt
   if (sources.length === 0) {
@@ -607,7 +693,7 @@ You can:
 - Explain concepts and provide information
 - Suggest what kinds of sources would be helpful for their topic
 
-Keep your responses conversational and helpful.`;
+Keep your responses conversational and helpful.`
   }
 
   return `You are a helpful AI assistant that answers questions based on the provided sources.
@@ -630,7 +716,7 @@ ${buildSourceList(sources)}
 
 Source contents:
 
-${sourceContext}`;
+${sourceContext}`
 }
 
 /**
@@ -639,17 +725,17 @@ ${sourceContext}`;
 function isJSONValue(value: unknown): boolean {
   // Primitives and null
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return true;
+    return true
   }
   // Arrays
   if (Array.isArray(value)) {
-    return true;
+    return true
   }
   // Objects
   if (typeof value === 'object' && !Array.isArray(value)) {
-    return true;
+    return true
   }
-  return false;
+  return false
 }
 
 /**
@@ -657,31 +743,32 @@ function isJSONValue(value: unknown): boolean {
  * Includes user messages, assistant messages with tool calls, and tool results.
  */
 function buildChatHistory(history?: ChatEvent[]): ModelMessage[] {
-  if (!history) return [];
+  if (!history) return []
 
   // Use all history events - context compression handles token limits efficiently
 
-  const messages: ModelMessage[] = [];
+  const messages: ModelMessage[] = []
 
   for (const event of history) {
     if (event.type === 'user') {
       messages.push({
         role: 'user',
         content: event.content,
-      });
-    } else if (event.type === 'assistant') {
+      })
+    }
+    else if (event.type === 'assistant') {
       // If assistant has tool calls, format as content array
       if (event.toolCalls && event.toolCalls.length > 0) {
-        type AssistantContent = Array<{ type: 'text'; text: string } | { type: 'tool-call'; toolName: string; toolCallId: string; input: Record<string, unknown> }>;
+        type AssistantContent = Array<{ type: 'text', text: string } | { type: 'tool-call', toolName: string, toolCallId: string, input: Record<string, unknown> }>
 
-        const content: AssistantContent = [];
+        const content: AssistantContent = []
 
         // Add text content first (if any)
         if (event.content) {
           content.push({
             type: 'text',
             text: event.content,
-          });
+          })
         }
 
         // Add tool calls using Vercel AI SDK format (input instead of args)
@@ -691,21 +778,23 @@ function buildChatHistory(history?: ChatEvent[]): ModelMessage[] {
             toolName: toolCall.toolName,
             toolCallId: toolCall.toolCallId,
             input: toolCall.args,
-          });
+          })
         }
 
         messages.push({
           role: 'assistant',
           content,
-        });
-      } else {
+        })
+      }
+      else {
         // No tool calls, just regular text message
         messages.push({
           role: 'assistant',
           content: event.content,
-        });
+        })
       }
-    } else if (event.type === 'tool-result') {
+    }
+    else if (event.type === 'tool-result') {
       // Add tool result for the model to see
       // ToolResultOutput format: { type: 'text' | 'json' | 'error-text' | 'error-json', value: string | JSONValue }
 
@@ -720,8 +809,9 @@ function buildChatHistory(history?: ChatEvent[]): ModelMessage[] {
               output: { type: 'error-text', value: event.error },
             },
           ],
-        });
-      } else if (typeof event.result === 'string') {
+        })
+      }
+      else if (typeof event.result === 'string') {
         messages.push({
           role: 'tool',
           content: [
@@ -732,8 +822,9 @@ function buildChatHistory(history?: ChatEvent[]): ModelMessage[] {
               output: { type: 'text', value: event.result },
             },
           ],
-        });
-      } else if (isJSONValue(event.result)) {
+        })
+      }
+      else if (isJSONValue(event.result)) {
         // Runtime validation passed - use json type
         messages.push({
           role: 'tool',
@@ -745,8 +836,9 @@ function buildChatHistory(history?: ChatEvent[]): ModelMessage[] {
               output: { type: 'json', value: event.result },
             },
           ],
-        });
-      } else {
+        })
+      }
+      else {
         // Fallback for non-JSON-serializable results
         messages.push({
           role: 'tool',
@@ -758,119 +850,121 @@ function buildChatHistory(history?: ChatEvent[]): ModelMessage[] {
               output: { type: 'error-text', value: 'Tool returned non-JSON-serializable result' },
             },
           ],
-        });
+        })
       }
     }
   }
 
-  return messages;
+  return messages
 }
 
 function parseCitations(
   content: string,
-  sources: Source[]
-): { cleanContent: string; citations: Citation[] } {
-  const citations: Citation[] = [];
-  let cleanContent = content;
+  sources: Source[],
+): { cleanContent: string, citations: Citation[] } {
+  const citations: Citation[] = []
+  let cleanContent = content
 
   // First, extract citations section and group by source number
-  const citationsBySourceNum = new Map<number, string[]>();
+  const citationsBySourceNum = new Map<number, string[]>()
 
   const citationsMatch = content.match(
-    /---CITATIONS---\n([\s\S]*?)\n---END CITATIONS---/
-  );
+    /---CITATIONS---\n([\s\S]*?)\n---END CITATIONS---/,
+  )
   if (citationsMatch) {
     cleanContent = content
-      .replace(/\n?---CITATIONS---[\s\S]*?---END CITATIONS---\n?/, "")
-      .trim();
-    const citationsText = citationsMatch[1];
+      .replace(/\n?---CITATIONS---[\s\S]*?---END CITATIONS---\n?/, '')
+      .trim()
+    const citationsText = citationsMatch[1]
 
     // Parse each citation line and group by source number
     const citationLines = citationsText
-      .split("\n")
-      .filter((line) => line.trim());
+      .split('\n')
+      .filter(line => line.trim())
     for (const line of citationLines) {
-      const match = line.match(/\[Source (\d+)\]:\s*"?([^"]+)"?/);
+      const match = line.match(/\[Source (\d+)\]:\s*"?([^"]+)"?/)
       if (match) {
-        const sourceNum = parseInt(match[1], 10);
-        const excerpt = match[2].trim();
+        const sourceNum = parseInt(match[1], 10)
+        const excerpt = match[2].trim()
         if (!citationsBySourceNum.has(sourceNum)) {
-          citationsBySourceNum.set(sourceNum, []);
+          citationsBySourceNum.set(sourceNum, [])
         }
-        const excerpts = citationsBySourceNum.get(sourceNum);
+        const excerpts = citationsBySourceNum.get(sourceNum)
         if (excerpts) {
-          excerpts.push(excerpt);
+          excerpts.push(excerpt)
         }
       }
     }
   }
 
   // Count how many times each [Source N] appears in the text
-  const sourceCountInText = new Map<number, number>();
-  const sourceMatches = cleanContent.matchAll(/\[Source (\d+)\]/g);
+  const sourceCountInText = new Map<number, number>()
+  const sourceMatches = cleanContent.matchAll(/\[Source (\d+)\]/g)
   for (const match of sourceMatches) {
-    const sourceNum = parseInt(match[1], 10);
+    const sourceNum = parseInt(match[1] ?? '0', 10)
     sourceCountInText.set(
       sourceNum,
-      (sourceCountInText.get(sourceNum) || 0) + 1
-    );
+      (sourceCountInText.get(sourceNum) || 0) + 1,
+    )
   }
 
   // Track occurrence index as we replace
-  const sourceOccurrenceIndex = new Map<number, number>();
+  const sourceOccurrenceIndex = new Map<number, number>()
 
   // Replace inline [Source N] with [Source Na], [Source Nb], etc. if source appears multiple times in text
-  cleanContent = cleanContent.replace(/\[Source (\d+)\]/g, (match, numStr) => {
-    const sourceNum = parseInt(numStr, 10);
-    const countInText = sourceCountInText.get(sourceNum) || 1;
+  cleanContent = cleanContent.replace(/\[Source (\d+)\]/g, (...args: unknown[]): string => {
+    const [match, numStr] = args as [string, string]
+    const sourceNum = parseInt(numStr, 10)
+    const countInText = sourceCountInText.get(sourceNum) || 1
 
     // Get current occurrence index for this source
-    const currentIndex = sourceOccurrenceIndex.get(sourceNum) || 0;
-    sourceOccurrenceIndex.set(sourceNum, currentIndex + 1);
+    const currentIndex = sourceOccurrenceIndex.get(sourceNum) || 0
+    sourceOccurrenceIndex.set(sourceNum, currentIndex + 1)
 
     // If this source appears multiple times in the text, use sub-labels
     if (countInText > 1) {
-      const subLabel = String.fromCharCode(97 + currentIndex); // a, b, c, ...
-      return `[Source ${sourceNum}${subLabel}]`;
+      const subLabel = String.fromCharCode(97 + currentIndex) // a, b, c, ...
+      return `[Source ${sourceNum}${subLabel}]`
     }
 
     // Single occurrence - keep as is
-    return match;
-  });
+    return match
+  })
 
   // Build final citations list
   // For sources with multiple text occurrences, create a citation for each occurrence
   for (const [sourceNum, count] of sourceCountInText) {
-    const sourceIndex = sourceNum - 1;
+    const sourceIndex = sourceNum - 1
     if (sourceIndex >= 0 && sourceIndex < sources.length) {
-      const source = sources[sourceIndex];
-      const excerpts = citationsBySourceNum.get(sourceNum) || [];
+      const source = sources[sourceIndex]
+      const excerpts = citationsBySourceNum.get(sourceNum) || []
 
       if (count > 1) {
         // Multiple occurrences - create citation for each
         for (let i = 0; i < count; i++) {
-          const excerpt =
-            excerpts[i] ||
-            `Reference ${String.fromCharCode(97 + i)} from this source`;
+          const excerpt
+            = excerpts[i]
+              || `Reference ${String.fromCharCode(97 + i)} from this source`
           citations.push({
             sourceId: source.id,
             sourceTitle: source.title,
             excerpt,
-          });
+          })
         }
-      } else {
+      }
+      else {
         // Single occurrence
-        const excerpt = excerpts[0] || "Referenced in response";
+        const excerpt = excerpts[0] || 'Referenced in response'
         citations.push({
           sourceId: source.id,
           sourceTitle: source.title,
           excerpt,
-        });
+        })
       }
     }
   }
 
-  return { cleanContent, citations };
+  return { cleanContent, citations }
 }
 
 export async function* streamChat(
@@ -878,29 +972,29 @@ export async function* streamChat(
   question: string,
   history?: ChatEvent[],
   options?: {
-    tools?: ToolSet;
-    contextMode?: ContextMode;
-    onStatus?: (status: string) => void;
-  }
+    tools?: ToolSet
+    contextMode?: ContextMode
+    onStatus?: (status: string) => void
+  },
 ): AsyncGenerator<StreamEvent, ChatResult, unknown> {
-  const modelWithConfig = await getModelWithConfig();
+  const modelWithConfig = await getModelWithConfig()
   if (!modelWithConfig) {
     throw new Error(
-      "AI provider not configured. Please add your API key in settings."
-    );
+      'AI provider not configured. Please add your API key in settings.',
+    )
   }
 
-  const { model, config } = modelWithConfig;
-  const { tools, contextMode, onStatus } = options || {};
+  const { model, config } = modelWithConfig
+  const { tools, contextMode, onStatus } = options || {}
 
   // Agentic mode: Pass tools to LLM, minimal initial context
   if (tools && contextMode === 'agentic') {
-    const notebookName = sources[0]?.notebookId || 'this notebook';
-    const systemPrompt = buildAgenticSystemPrompt(notebookName, sources.length);
+    const notebookName = sources[0]?.notebookId || 'this notebook'
+    const systemPrompt = buildAgenticSystemPrompt(notebookName, sources.length)
 
-    const messages = buildChatHistory(history);
+    const messages = buildChatHistory(history)
 
-    console.log('[Agentic Mode] Starting stream with tools:', Object.keys(tools));
+    console.log('[Agentic Mode] Starting stream with tools:', Object.keys(tools))
 
     const result = streamText({
       model,
@@ -910,49 +1004,52 @@ export async function* streamChat(
         { role: 'user', content: question },
       ],
       tools,
-    });
+    })
 
     // Use fullStream to capture tool calls and results
-    let fullContent = "";
-    let chunkCount = 0;
+    let fullContent = ''
+    let chunkCount = 0
 
     for await (const chunk of result.fullStream) {
       switch (chunk.type) {
         case 'text-delta':
-          fullContent += chunk.text;
-          chunkCount++;
+          fullContent += chunk.text
+          chunkCount++
           if (chunkCount === 1) {
-            console.log('[Agentic Mode] First chunk received:', chunk.text);
+            console.log('[Agentic Mode] First chunk received:', chunk.text)
           }
-          yield { type: 'text', content: chunk.text };
-          break;
+          yield { type: 'text', content: chunk.text }
+          break
         case 'tool-call': {
-          console.log('[Agentic Mode] Tool called:', chunk.toolName, chunk.input);
-          const args = chunk.input !== null ? (chunk.input as Record<string, unknown>) : {};
+          console.log('[Agentic Mode] Tool called:', chunk.toolName, chunk.input)
+          const args = chunk.input !== null ? (chunk.input as Record<string, unknown>) : {}
           yield {
             type: 'tool-call',
             toolName: chunk.toolName,
             args,
             toolCallId: chunk.toolCallId,
-          };
-          break;
+          }
+          break
         }
-        case 'tool-result':
-          console.log('[Agentic Mode] Tool result:', chunk.toolName, chunk.output);
+        case 'tool-result': {
+          console.log('[Agentic Mode] Tool result:', chunk.toolName, chunk.output)
+          // Validate tool output is JSON-serializable before yielding
+          assertIsJSONValue(chunk.output)
           yield {
             type: 'tool-result',
             toolName: chunk.toolName,
             result: chunk.output,
             toolCallId: chunk.toolCallId,
-          };
-          break;
+          }
+          break
+        }
       }
     }
 
-    console.log('[Agentic Mode] Stream complete. Total chunks:', chunkCount, 'Content length:', fullContent.length);
+    console.log('[Agentic Mode] Stream complete. Total chunks:', chunkCount, 'Content length:', fullContent.length)
 
     // Track usage after stream completes
-    const usage = await result.usage;
+    const usage = await result.usage
     if (usage) {
       trackUsage({
         modelConfigId: config.modelConfig.id,
@@ -961,26 +1058,26 @@ export async function* streamChat(
         inputTokens: usage.inputTokens ?? 0,
         outputTokens: usage.outputTokens ?? 0,
         operation: 'chat',
-      }).catch((err) => console.warn('[AI] Failed to track usage:', err));
+      }).catch(err => console.warn('[AI] Failed to track usage:', err))
     }
 
     // In agentic mode, we still parse citations from the response
     // The LLM should cite sources using [Source ID] format based on tool results
-    const { cleanContent, citations } = parseCitations(fullContent, sources);
+    const { cleanContent, citations } = parseCitations(fullContent, sources)
 
     return {
       content: cleanContent,
       citations,
-    };
+    }
   }
 
   // Classic mode: Pre-load sources with compression
-  const compressionMode = await getCompressionMode();
-  onStatus?.("Analyzing sources...");
-  const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode);
-  onStatus?.("Generating response...");
+  const compressionMode = await getCompressionMode()
+  onStatus?.('Analyzing sources...')
+  const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode)
+  onStatus?.('Generating response...')
 
-  const messages = buildChatHistory(history);
+  const messages = buildChatHistory(history)
 
   const result = streamText({
     model,
@@ -989,18 +1086,18 @@ export async function* streamChat(
       ...messages,
       { role: 'user', content: question },
     ],
-  });
+  })
 
-  let fullContent = "";
+  let fullContent = ''
   for await (const chunk of result.textStream) {
-    fullContent += chunk;
+    fullContent += chunk
     // Don't yield the citations section while streaming
-    const cleanChunk = chunk.replace(/---CITATIONS---[\s\S]*$/, "");
-    yield { type: 'text', content: cleanChunk };
+    const cleanChunk = chunk.replace(/---CITATIONS---[\s\S]*$/, '')
+    yield { type: 'text', content: cleanChunk }
   }
 
   // Track usage after stream completes
-  const usage = await result.usage;
+  const usage = await result.usage
   if (usage) {
     trackUsage({
       modelConfigId: config.modelConfig.id,
@@ -1009,38 +1106,38 @@ export async function* streamChat(
       inputTokens: usage.inputTokens ?? 0,
       outputTokens: usage.outputTokens ?? 0,
       operation: 'chat',
-    }).catch((err) => console.warn('[AI] Failed to track usage:', err));
+    }).catch(err => console.warn('[AI] Failed to track usage:', err))
   }
 
-  const { cleanContent, citations } = parseCitations(fullContent, sources);
+  const { cleanContent, citations } = parseCitations(fullContent, sources)
 
   return {
     content: cleanContent,
     citations,
-  };
+  }
 }
 
 export async function chat(
   sources: Source[],
   question: string,
   history?: ChatEvent[],
-  onStatus?: (status: string) => void
+  onStatus?: (status: string) => void,
 ): Promise<ChatResult> {
-  const modelWithConfig = await getModelWithConfig();
+  const modelWithConfig = await getModelWithConfig()
   if (!modelWithConfig) {
     throw new Error(
-      "AI provider not configured. Please add your API key in settings."
-    );
+      'AI provider not configured. Please add your API key in settings.',
+    )
   }
 
-  const { model, config } = modelWithConfig;
+  const { model, config } = modelWithConfig
 
-  const compressionMode = await getCompressionMode();
-  onStatus?.("Analyzing sources...");
-  const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode);
-  onStatus?.("Generating response...");
+  const compressionMode = await getCompressionMode()
+  onStatus?.('Analyzing sources...')
+  const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode)
+  onStatus?.('Generating response...')
 
-  const messages = buildChatHistory(history);
+  const messages = buildChatHistory(history)
 
   // Use retry logic for recoverable errors (network, rate limits)
   const result = await withRetry(
@@ -1055,8 +1152,8 @@ export async function chat(
     {
       maxAttempts: 3,
       initialDelayMs: 1000,
-    }
-  );
+    },
+  )
 
   // Track usage
   if (result.usage) {
@@ -1067,15 +1164,15 @@ export async function chat(
       inputTokens: result.usage.inputTokens ?? 0,
       outputTokens: result.usage.outputTokens ?? 0,
       operation: 'chat',
-    }).catch((err) => console.warn('[AI] Failed to track usage:', err));
+    }).catch(err => console.warn('[AI] Failed to track usage:', err))
   }
 
-  const { cleanContent, citations } = parseCitations(result.text, sources);
+  const { cleanContent, citations } = parseCitations(result.text, sources)
 
   return {
     content: cleanContent,
     citations,
-  };
+  }
 }
 
 // ============================================================================
@@ -1104,33 +1201,34 @@ export {
   generateCitationList,
   generateOutline,
   type PodcastSegment,
-} from './transforms/index.ts';
+} from './transforms/index.ts'
 
 // ============================================================================
 // Test Connection
 // ============================================================================
 
 export async function testConnection(): Promise<{
-  success: boolean;
-  error?: string;
+  success: boolean
+  error?: string
 }> {
   try {
-    const model = await getModel();
+    const model = await getModel()
     if (!model) {
-      return { success: false, error: "No API key configured" };
+      return { success: false, error: 'No API key configured' }
     }
 
     await generateText({
       model,
       prompt: 'Say "Connection successful" in exactly those words.',
-    });
+    })
 
-    return { success: true };
-  } catch (error) {
+    return { success: true }
+  }
+  catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
   }
 }
 
@@ -1142,22 +1240,22 @@ export async function testConnectionWithConfig(
   providerType: string,
   apiKey: string,
   modelId: string,
-  timeoutMs: number = 15000
+  timeoutMs: number = 15000,
 ): Promise<{
-  success: boolean;
-  error?: string;
+  success: boolean
+  error?: string
 }> {
   try {
-    const providerConfig = getProviderConfig(providerType);
+    const providerConfig = getProviderConfig(providerType)
     if (!providerConfig) {
-      return { success: false, error: `Unknown provider: ${providerType}` };
+      return { success: false, error: `Unknown provider: ${providerType}` }
     }
 
-    const baseURL = providerConfig.baseURL;
-    const model = providerConfig.createModel(apiKey, modelId, baseURL);
+    const baseURL = providerConfig.baseURL
+    const model = providerConfig.createModel(apiKey, modelId, baseURL)
 
     if (!model) {
-      return { success: false, error: "Failed to create model instance" };
+      return { success: false, error: 'Failed to create model instance' }
     }
 
     // Add timeout to prevent indefinite waiting
@@ -1167,15 +1265,16 @@ export async function testConnectionWithConfig(
         prompt: 'Say "Connection successful" in exactly those words.',
       }),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(`Connection test timed out after ${timeoutMs}ms`)), timeoutMs)
+        setTimeout(() => reject(new Error(`Connection test timed out after ${timeoutMs}ms`)), timeoutMs),
       ),
-    ]);
+    ])
 
-    return { success: true };
-  } catch (error) {
+    return { success: true }
+  }
+  catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
   }
 }
