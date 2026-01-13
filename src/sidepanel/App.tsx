@@ -73,22 +73,6 @@ export function App(props: AppProps = {
     }
   }, [showNotebook, showNotification, onProvideCallbacks])
 
-  // Apply active class to nav items and tab contents via CSS-based rendering
-  // The stateful components handle their own visibility based on the `active` prop
-  useEffect(() => {
-    // Update data-tab attributes for navigation highlighting
-    const navItems = document.querySelectorAll('.nav-item')
-    navItems.forEach((item) => {
-      const tabName = item.getAttribute('data-tab')
-      if (tabName === activeTab) {
-        item.classList.add('active')
-      }
-      else {
-        item.classList.remove('active')
-      }
-    })
-  }, [activeTab])
-
   const handleTabClick = (tab: TabName) => {
     setActiveTab(tab)
   }

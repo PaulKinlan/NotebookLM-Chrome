@@ -56,7 +56,6 @@ export async function reconcile(
 
   // Case 3: Same type - update in place (both old and new have same type)
   if (newVNode.type === 'text' && oldVNode.type === 'text') {
-    console.log('[reconcile text] old:', oldVNode.value, 'new:', newVNode.value, 'parent.tagName:', (parent as Element).tagName, 'parent.textContent:', parent.textContent)
     if (oldVNode.value !== newVNode.value) {
       parent.textContent = newVNode.value
     }
@@ -195,19 +194,24 @@ function updateElement(
   newVNode: Extract<VNode, { type: 'element' }>,
 ): Node {
   // Find the DOM element that corresponds to oldVNode
-  // We can't just use parent.firstChild because the element might not be the first child
   let el: Element | null = null
-  const oldKey = oldVNode.key
 
   for (const child of parent.children) {
     if (child.tagName === oldVNode.tag.toUpperCase()) {
-      // Check if this is the right element by comparing the mounted VNode
       const mounted = mountedNodes.get(child)
-      if (mounted?.vdom === oldVNode || (oldKey && oldVNode.key === newVNode.key)) {
+      // Check if this is the exact element we're looking for
+      if (mounted?.vdom === oldVNode) {
         el = child
         break
       }
-      // If there's no key, use the first matching tag
+      // For keyed elements, also check by key
+      const oldKey = oldVNode.key
+      const childKey = (mounted?.vdom as Extract<VNode, { type: 'element' }> | undefined)?.key
+      if (oldKey && childKey === oldKey) {
+        el = child
+        break
+      }
+      // If there's no key on the old vnode, use the first matching tag
       if (!oldKey && !el) {
         el = child
       }
@@ -215,19 +219,15 @@ function updateElement(
   }
 
   if (!el) {
-    // Fallback to firstChild (shouldn't happen in normal cases)
+    // Fallback to firstChild (for single-child elements)
     el = parent.firstChild as Element
   }
-
-  console.log('[updateElement] tag:', newVNode.tag, 'parent tagName:', parent.tagName, 'el.tagName:', el?.tagName, 'parent.textContent:', parent.textContent)
 
   // Diff props
   diffProps(el, oldVNode.props, newVNode.props)
 
   // Diff children
   void diffChildren(el, oldVNode.children, newVNode.children)
-
-  console.log('[updateElement] after diffChildren, parent.textContent:', parent.textContent)
 
   // Update mounted node reference
   mountedNodes.set(el, { node: el, vdom: newVNode })
@@ -525,9 +525,9 @@ function getVNodeKey(vnode: VNode, index: number): string {
  * Diff children between old and new VNode using key-based reconciliation
  *
  * This algorithm:
- * 1. Builds a map of old children by key
+ * 1. Builds a map of old children by key, tracking both VNode and DOM node
  * 2. Matches new children to old children by key
- * 3. Handles moves using insertBefore
+ * 3. Moves DOM nodes to correct positions using insertBefore
  * 4. Removes unmatched old children
  */
 async function diffChildren(
@@ -569,16 +569,13 @@ async function diffChildren(
   // Build a map of old children by key for O(1) lookup
   const oldByKey = new Map<string, { vnode: VNode, domNode: Node }>()
   const domChildren = Array.from(parent.childNodes)
-  for (let i = 0; i < oldChildren.length; i++) {
+
+  // Map old children to DOM nodes by position
+  for (let i = 0; i < oldChildren.length && i < domChildren.length; i++) {
     const key = getVNodeKey(oldChildren[i], i)
-    if (i < domChildren.length) {
-      oldByKey.set(key, { vnode: oldChildren[i], domNode: domChildren[i] })
-      console.log('[diffChildren] Mapping key:', key, 'to DOM node:', domChildren[i].textContent)
-    }
+    const domNode = domChildren[i]
+    oldByKey.set(key, { vnode: oldChildren[i], domNode })
   }
-  console.log('[diffChildren] Initial DOM textContent:', parent.textContent)
-  console.log('[diffChildren] oldChildren:', oldChildren.map(c => getVNodeKey(c, oldChildren.indexOf(c))))
-  console.log('[diffChildren] newChildren:', newChildren.map(c => getVNodeKey(c, newChildren.indexOf(c))))
 
   // Track which old children have been matched
   const matched = new Set<string>()
@@ -596,40 +593,36 @@ async function diffChildren(
       // Found a matching old child - reconcile and reuse it
       matched.add(key)
 
-      const { domNode } = match
+      const { vnode: oldChildVNode, domNode } = match
 
       // Reconcile the existing node (update its props/children)
-      // Pass the parent container so updateElement can find the correct element
-      const parentForReconcile = domNode.parentNode ?? parent
-      await reconcile(parentForReconcile, match.vnode, newChild, component)
+      if (domNode instanceof Element && newChild.type === 'element' && oldChildVNode.type === 'element') {
+        // Update props
+        diffProps(domNode, oldChildVNode.props, newChild.props)
+
+        // Recursively diff children
+        await diffChildren(domNode, oldChildVNode.children, newChild.children, component)
+
+        // Update mounted node reference
+        mountedNodes.set(domNode, { node: domNode, vdom: newChild })
+      }
+      else {
+        // For other node types, use standard reconcile
+        const parentForReconcile = domNode.nodeType === Node.TEXT_NODE ? domNode : parent
+        await reconcile(parentForReconcile, oldChildVNode, newChild, component)
+      }
 
       // Check if the node needs to be moved
       // The node should be immediately after lastPlacedNode (or at the beginning if lastPlacedNode is null)
-      let needsMove = false
       if (lastPlacedNode === null) {
         // First node should be at the beginning
-        needsMove = domNode !== parent.firstChild
-        console.log('[diffChildren] First node check - key:', key, 'domNode:', domNode.textContent, 'firstChild:', parent.firstChild?.textContent, 'needsMove:', needsMove)
+        if (domNode !== parent.firstChild) {
+          parent.insertBefore(domNode, parent.firstChild)
+        }
       }
-      else {
+      else if (lastPlacedNode.nextSibling !== domNode) {
         // Node should be immediately after the last placed node
-        needsMove = lastPlacedNode.nextSibling !== domNode
-        console.log('[diffChildren] Subsequent node check - key:', key, 'domNode:', domNode.textContent, 'lastPlacedNode.nextSibling:', lastPlacedNode.nextSibling?.textContent, 'needsMove:', needsMove)
-      }
-
-      if (needsMove) {
-        // Move the node to the correct position (after lastPlacedNode)
-        const targetBeforeNode = lastPlacedNode?.nextSibling ?? null
-        console.log('[diffChildren] Moving key:', key, 'before:', targetBeforeNode?.textContent ?? 'null', 'DOM before:', parent.textContent)
-        try {
-          parent.insertBefore(domNode, targetBeforeNode)
-          console.log('[diffChildren] DOM after move:', parent.textContent)
-        }
-        catch (e) {
-          if ((e as DOMException).name !== 'NotFoundError') {
-            throw e
-          }
-        }
+        parent.insertBefore(domNode, lastPlacedNode.nextSibling)
       }
 
       // Update last placed node
@@ -656,8 +649,7 @@ async function diffChildren(
   }
 
   // Remove unmatched old children
-  for (let i = 0; i < oldChildren.length; i++) {
-    const key = getVNodeKey(oldChildren[i], i)
+  for (const key of oldByKey.keys()) {
     if (!matched.has(key)) {
       const entry = oldByKey.get(key)
       if (entry) {
