@@ -142,3 +142,13 @@ export function useTheme() {
 export function ThemeProvider({ children }: { children: Node }): Node {
   return children
 }
+
+// Test-only: Reset module state between tests
+// Only used in unit tests - should not be called in production code
+export function __resetModuleState() {
+  currentPreference = 'system'
+  currentResolvedTheme = 'dark'
+  initialized = false
+  listeners.clear()
+  initCallbacks.clear()
+}
