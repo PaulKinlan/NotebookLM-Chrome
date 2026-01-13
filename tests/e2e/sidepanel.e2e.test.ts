@@ -167,5 +167,50 @@ describe('Sidepanel', () => {
       );
       expect(isVisible).toBe(true);
     });
+
+    it('should open AI model dropdown when AI Model button is clicked', async () => {
+      const page = await getSidepanelPage(browser);
+
+      // Click the AI Model button in header
+      await page.click('#ai-model-btn');
+
+      // Wait for the dropdown to become visible (remove hidden class)
+      await page.waitForFunction(
+        () => {
+          const dropdown = document.getElementById('ai-model-dropdown');
+          return dropdown && !dropdown.classList.contains('hidden');
+        },
+        { timeout: 5000 }
+      );
+
+      // Verify the dropdown is visible
+      const isVisible = await page.$eval('#ai-model-dropdown',
+        (el) => !el.classList.contains('hidden')
+      );
+      expect(isVisible).toBe(true);
+
+      // Close the dropdown by clicking elsewhere
+      await page.click('.header');
+    });
+
+    it('should open new notebook dialog when New Notebook button is clicked', async () => {
+      const page = await getSidepanelPage(browser);
+
+      // Click the New Notebook button in header
+      await page.click('#new-notebook-btn');
+
+      // Wait for the dialog to appear
+      await page.waitForSelector('#notebook-dialog', { timeout: 5000 });
+
+      // Verify the dialog is visible
+      const dialogExists = await page.$('#notebook-dialog');
+      expect(dialogExists).toBeTruthy();
+
+      // Close the dialog by clicking cancel (if it appeared)
+      const cancelBtn = await page.$('#notebook-dialog-cancel');
+      if (cancelBtn) {
+        await page.evaluate((btn) => (btn as HTMLButtonElement).click(), cancelBtn);
+      }
+    });
   });
 });
