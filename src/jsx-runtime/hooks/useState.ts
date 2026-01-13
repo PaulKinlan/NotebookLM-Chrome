@@ -43,6 +43,15 @@ export function useState<T>(
 
   const hook = component.hooks[index]
 
+  // Defensive check - should never happen if hooks are used correctly
+  if (!hook) {
+    throw new Error(
+      `useState: Hook at index ${index} is undefined. `
+      + `This usually means hooks are being called conditionally or in different orders between renders. `
+      + `Component: ${component.fn.name || 'Anonymous'}`,
+    )
+  }
+
   // Create setter function that schedules re-render
   const setState = (newValue: T | ((prev: T) => T)) => {
     const hookValue = hook.value as T

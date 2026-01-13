@@ -56,6 +56,12 @@ export function useRef<T>(initialValue: T): RefObject<T> {
   const hookIndex = instance.hookIndex++
   const refKey = `ref-${hookIndex}`
 
+  // CRITICAL: Add a placeholder hook to keep hooks array in sync with hookIndex
+  // This is important because other hooks rely on the array length for initialization
+  if (hookIndex >= instance.hooks.length) {
+    instance.hooks.push({ type: 'id', value: refKey })
+  }
+
   const refMap = getRefMap(instance)
 
   if (!refMap.has(refKey)) {
