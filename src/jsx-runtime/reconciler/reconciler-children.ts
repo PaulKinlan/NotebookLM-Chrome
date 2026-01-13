@@ -38,12 +38,6 @@ export async function diffChildren(
   reconcile: ReconcilerFn,
   svgNamespace?: string,
 ): Promise<void> {
-  // Debug logging for select children
-  if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
-    console.log(`[diffChildren] notebook-select: oldChildren=${oldChildren.length}, newChildren=${newChildren.length}`)
-    console.log(`[diffChildren] newChildren types:`, newChildren.map(c => c.type === 'element' ? (c).tag : c.type))
-  }
-
   // Edge case: no old children - mount all new children
   if (oldChildren.length === 0) {
     for (const newChild of newChildren) {
@@ -75,14 +69,36 @@ export async function diffChildren(
   }
 
   // Build a map of old children by key for O(1) lookup
+  // Use identity-based mapping via mountedNodes instead of position-based
+  // This is more reliable when DOM contains comment/text nodes not in VNode children
   const oldByKey = new Map<string, { vnode: VNode, domNode: Node }>()
-  const domChildren = Array.from(parent.childNodes)
 
-  // Map old children to DOM nodes by position
-  for (let i = 0; i < oldChildren.length && i < domChildren.length; i++) {
-    const key = getVNodeKey(oldChildren[i], i)
-    const domNode = domChildren[i]
-    oldByKey.set(key, { vnode: oldChildren[i], domNode })
+  for (let i = 0; i < oldChildren.length; i++) {
+    const oldChild = oldChildren[i]
+    const key = getVNodeKey(oldChild, i)
+
+    // Find the corresponding DOM node by checking mountedNodes
+    let domNode: Node | null = null
+    for (let j = 0; j < parent.childNodes.length; j++) {
+      const childNode = parent.childNodes[j]
+      const mounted = mountedNodes.get(childNode)
+      if (mounted && mounted.vdom === oldChild) {
+        domNode = childNode
+        break
+      }
+    }
+
+    // Fallback to position-based mapping if not found
+    if (!domNode && i < parent.childNodes.length) {
+      domNode = parent.childNodes[i]
+    }
+
+    // Skip if no DOM node found
+    if (!domNode) {
+      continue
+    }
+
+    oldByKey.set(key, { vnode: oldChild, domNode })
   }
 
   // Track which old children have been matched
@@ -97,39 +113,38 @@ export async function diffChildren(
     const key = getVNodeKey(newChild, newIdx)
     const match = oldByKey.get(key)
 
-    if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
-      const childTag = newChild.type === 'element' ? (newChild).tag : newChild.type
-      const childValue = newChild.type === 'element' ? (newChild).props?.value : undefined
-      const childValueStr = (childValue === undefined || typeof childValue === 'string' || typeof childValue === 'number')
-        ? String(childValue ?? 'N/A')
-        : '[object]'
-      console.log(`[diffChildren] Processing new child ${newIdx}: key=${key}, type=${newChild.type}, tag=${String(childTag)}, value=${childValueStr}`)
-    }
-
     if (match && !matched.has(key)) {
       // Found a matching old child - reconcile and reuse it
       matched.add(key)
 
       const { vnode: oldChildVNode, domNode } = match
 
-      if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
-        console.log(`[diffChildren] Found match for key ${key}, reusing DOM node`)
-      }
-
       // Reconcile the existing node (update its props/children)
       if (domNode instanceof Element && newChild.type === 'element' && oldChildVNode.type === 'element') {
-        // Update props
-        diffProps(domNode, oldChildVNode.props, newChild.props)
-
-        // Recursively diff children
-        await diffChildren(domNode, oldChildVNode.children, newChild.children, component, reconcile, svgNamespace)
+        // For <select> elements, we need to diff children BEFORE props.
+        // This is because setting the 'value' prop requires the option to exist in the DOM.
+        // If we set value first, then add the option, the value won't be set correctly.
+        if (newChild.tag === 'select' && domNode instanceof HTMLSelectElement) {
+          // Diff children first (add/update/remove options)
+          await diffChildren(domNode, oldChildVNode.children, newChild.children, component, reconcile, svgNamespace)
+          // Then diff props (set value after options exist)
+          diffProps(domNode, oldChildVNode.props, newChild.props)
+        }
+        else {
+          // Normal order: props first, then children
+          diffProps(domNode, oldChildVNode.props, newChild.props)
+          // Recursively diff children
+          await diffChildren(domNode, oldChildVNode.children, newChild.children, component, reconcile, svgNamespace)
+        }
 
         // Update mounted node reference
         mountedNodes.set(domNode, { node: domNode, vdom: newChild })
       }
       else {
         // For other node types, use standard reconcile
-        const parentForReconcile = domNode.nodeType === Node.TEXT_NODE ? domNode : parent
+        // CRITICAL: Always use the original parent, not domNode
+        // Text nodes don't support appendChild, so we can't use them as parents
+        const parentForReconcile = parent
         await reconcile(parentForReconcile, oldChildVNode, newChild, component, svgNamespace)
       }
 
@@ -151,15 +166,7 @@ export async function diffChildren(
     }
     else {
       // No match (or duplicate key) - create a new node
-      if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
-        console.log(`[diffChildren] No match for key ${key}, creating new node`)
-      }
       const newNode = await reconcile(parent, null, newChild, component, svgNamespace)
-
-      if (parent instanceof HTMLSelectElement && parent.id === 'notebook-select') {
-        console.log(`[diffChildren] Created new node:`, newNode)
-        console.log(`[diffChildren] Select now has ${parent.options.length} options`)
-      }
 
       // Insert after the last placed node
       const targetBeforeNode = lastPlacedNode?.nextSibling ?? null
