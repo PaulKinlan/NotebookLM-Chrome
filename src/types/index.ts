@@ -784,6 +784,30 @@ export interface PermissionStatus {
 }
 
 // ============================================================================
+// Theme / UI Settings
+// ============================================================================
+
+/**
+ * Theme preference options
+ * - 'light': Force light theme
+ * - 'dark': Force dark theme
+ * - 'system': Follow system preference (prefers-color-scheme)
+ */
+export type ThemePreference = 'light' | 'dark' | 'system'
+
+/**
+ * Resolved theme (what's actually applied to the UI)
+ */
+export type ResolvedTheme = 'light' | 'dark'
+
+/**
+ * UI Settings stored in chrome.storage.local
+ */
+export interface UISettings {
+  themePreference: ThemePreference
+}
+
+// ============================================================================
 // Storage Interface
 // ============================================================================
 

@@ -1,33 +1,55 @@
 /* ============================================================================
-   CSS Variables - Dark Theme
+   CSS Variables - Theme System
+   ============================================================================ */
+
+/* Shared variables (don't change with theme) */
+:root {
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --accent-primary: #2563eb;
+  --accent-hover: #1d4ed8;
+}
+
+/* ============================================================================
+   Default Theme (Dark) - Applied to :root
+   This serves as both the default and the dark theme base.
    ============================================================================ */
 
 :root {
+  /* Background Colors */
   --bg-primary: #0d1117;
   --bg-secondary: #161b22;
   --bg-tertiary: #21262d;
   --bg-hover: #30363d;
 
+  /* Border Colors */
   --border-color: #30363d;
   --border-muted: #21262d;
 
+  /* Text Colors */
   --text-primary: #e6edf3;
   --text-secondary: #8b949e;
   --text-muted: #6e7681;
 
-  --accent-primary: #2563eb;
-  --accent-hover: #1d4ed8;
+  /* Accent */
   --accent-muted: rgba(37, 99, 235, 0.2);
 
+  /* Status Colors */
   --success: #3fb950;
+  --success-hover: #2ea043;
   --warning: #d29922;
   --error: #f85149;
+  --error-hover: #da3633;
 
+  /* Icon Colors */
   --icon-tabs: #58a6ff;
   --icon-bookmarks: #f778ba;
   --icon-history: #d2a8ff;
+  --icon-tab-groups: #34d399;
 
-  /* Tab group colors (matching Chrome's colors) */
+  /* Tab Group Colors (Chrome-matching) */
   --tab-group-grey: #5f6368;
   --tab-group-blue: #8ab4f8;
   --tab-group-red: #f28b82;
@@ -38,11 +60,180 @@
   --tab-group-cyan: #78d9ec;
   --tab-group-orange: #fcad70;
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-
+  /* Shadow */
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+  /* Scrollbar */
+  --scrollbar-track: #161b22;
+  --scrollbar-thumb: #30363d;
+  --scrollbar-thumb-hover: #484f58;
+
+  /* Input */
+  --input-bg: #0d1117;
+  --input-border: #30363d;
+  --input-border-focus: #58a6ff;
+
+  /* Code/Cards */
+  --code-bg: #161b22;
+  --card-hover-bg: #21262d;
+
+  /* Error Backgrounds */
+  --error-bg: rgba(248, 81, 73, 0.1);
+  --error-border: rgba(248, 81, 73, 0.3);
+
+  /* Brand */
+  --brand-accent: #6366f1;
+}
+
+/* ============================================================================
+   Light Theme - Explicit Override
+   Applied when data-theme="light" is set on documentElement
+   ============================================================================ */
+
+[data-theme="light"] {
+  /* Background Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --bg-tertiary: #eaeef2;
+  --bg-hover: #d0d7de;
+
+  /* Border Colors */
+  --border-color: #d0d7de;
+  --border-muted: #eaeef2;
+
+  /* Text Colors */
+  --text-primary: #1f2328;
+  --text-secondary: #656d76;
+  --text-muted: #8c959f;
+
+  /* Accent */
+  --accent-muted: rgba(37, 99, 235, 0.1);
+
+  /* Status Colors */
+  --success: #1a7f37;
+  --success-hover: #15652c;
+  --warning: #9a6700;
+  --error: #cf222e;
+  --error-hover: #a71d24;
+
+  /* Icon Colors */
+  --icon-tabs: #0969da;
+  --icon-bookmarks: #bf3989;
+  --icon-history: #8250df;
+  --icon-tab-groups: #059669;
+
+  /* Tab Group Colors (more saturated for light backgrounds) */
+  --tab-group-grey: #6e7781;
+  --tab-group-blue: #0969da;
+  --tab-group-red: #cf222e;
+  --tab-group-yellow: #9a6700;
+  --tab-group-green: #1a7f37;
+  --tab-group-pink: #bf3989;
+  --tab-group-purple: #8250df;
+  --tab-group-cyan: #0891b2;
+  --tab-group-orange: #bc4c00;
+
+  /* Shadow */
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+  /* Scrollbar */
+  --scrollbar-track: #f6f8fa;
+  --scrollbar-thumb: #d0d7de;
+  --scrollbar-thumb-hover: #afb8c1;
+
+  /* Input */
+  --input-bg: #ffffff;
+  --input-border: #d0d7de;
+  --input-border-focus: #0969da;
+
+  /* Code/Cards */
+  --code-bg: #f6f8fa;
+  --card-hover-bg: #f3f4f6;
+
+  /* Error Backgrounds */
+  --error-bg: #fef2f2;
+  --error-border: #fecaca;
+
+  /* Brand */
+  --brand-accent: #4f46e5;
+}
+
+/* ============================================================================
+   System Preference - Light Mode Override
+   Applied when user's OS is set to light mode AND no explicit theme is set.
+   Note: This duplicates [data-theme="light"] intentionally - CSS has no way
+   to reference another selector's values. The duplication ensures system
+   preference detection works correctly via media queries.
+   ============================================================================ */
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    /* Background Colors */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --bg-tertiary: #eaeef2;
+    --bg-hover: #d0d7de;
+
+    /* Border Colors */
+    --border-color: #d0d7de;
+    --border-muted: #eaeef2;
+
+    /* Text Colors */
+    --text-primary: #1f2328;
+    --text-secondary: #656d76;
+    --text-muted: #8c959f;
+
+    /* Accent */
+    --accent-muted: rgba(37, 99, 235, 0.1);
+
+    /* Status Colors */
+    --success: #1a7f37;
+    --success-hover: #15652c;
+    --warning: #9a6700;
+    --error: #cf222e;
+    --error-hover: #a71d24;
+
+    /* Icon Colors */
+    --icon-tabs: #0969da;
+    --icon-bookmarks: #bf3989;
+    --icon-history: #8250df;
+    --icon-tab-groups: #059669;
+
+    /* Tab Group Colors */
+    --tab-group-grey: #6e7781;
+    --tab-group-blue: #0969da;
+    --tab-group-red: #cf222e;
+    --tab-group-yellow: #9a6700;
+    --tab-group-green: #1a7f37;
+    --tab-group-pink: #bf3989;
+    --tab-group-purple: #8250df;
+    --tab-group-cyan: #0891b2;
+    --tab-group-orange: #bc4c00;
+
+    /* Shadow */
+    --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+    /* Scrollbar */
+    --scrollbar-track: #f6f8fa;
+    --scrollbar-thumb: #d0d7de;
+    --scrollbar-thumb-hover: #afb8c1;
+
+    /* Input */
+    --input-bg: #ffffff;
+    --input-border: #d0d7de;
+    --input-border-focus: #0969da;
+
+    /* Code/Cards */
+    --code-bg: #f6f8fa;
+    --card-hover-bg: #f3f4f6;
+
+    /* Error Backgrounds */
+    --error-bg: #fef2f2;
+    --error-border: #fecaca;
+
+    /* Brand */
+    --brand-accent: #4f46e5;
+  }
 }
 
 /* ============================================================================
@@ -726,19 +917,19 @@ input[type="text"]:focus {
 }
 
 .model-refresh-btn.refresh-success {
-  color: #10b981;
+  color: var(--success);
 }
 
 .model-refresh-btn.refresh-success:hover {
-  color: #059669;
+  color: var(--success-hover);
 }
 
 .model-refresh-btn.refresh-error {
-  color: #ef4444;
+  color: var(--error);
 }
 
 .model-refresh-btn.refresh-error:hover {
-  color: #dc2626;
+  color: var(--error-hover);
 }
 
 /* Show only down arrow when dropdown is closed, up arrow when open */
@@ -981,7 +1172,7 @@ input[type="text"]:focus {
 
 .tab-groups-icon {
   background: rgba(52, 211, 153, 0.15);
-  color: #34d399;
+  color: var(--icon-tab-groups);
 }
 
 .import-text {
@@ -1291,7 +1482,7 @@ details.summary-section[open] .summary-chevron {
 }
 
 .summary-error {
-  color: var(--error-color, #ef4444);
+  color: var(--error);
   font-size: 14px;
 }
 
@@ -1573,6 +1764,75 @@ details.suggested-links-section[open] .suggested-links-chevron {
   border-bottom: none;
 }
 
+/* Theme Selector */
+.theme-selector {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.theme-option {
+  flex: 1;
+  cursor: pointer;
+}
+
+.theme-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-option-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: var(--bg-tertiary);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+}
+
+.theme-option input[type="radio"]:checked + .theme-option-content {
+  border-color: var(--accent-primary);
+  background: var(--accent-muted);
+}
+
+.theme-option:hover .theme-option-content {
+  background: var(--bg-hover);
+}
+
+.theme-option input[type="radio"]:checked + .theme-option-content:hover {
+  background: var(--accent-muted);
+}
+
+/* Focus styles for keyboard navigation */
+.theme-option input[type="radio"]:focus-visible + .theme-option-content {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.theme-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-secondary);
+}
+
+.theme-option input[type="radio"]:checked + .theme-option-content .theme-icon {
+  color: var(--accent-primary);
+}
+
+.theme-option-content span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.theme-option input[type="radio"]:checked + .theme-option-content span {
+  color: var(--accent-primary);
+}
+
 .api-key-link {
   display: inline-block;
   margin-top: 8px;
@@ -1657,7 +1917,7 @@ details.suggested-links-section[open] .suggested-links-chevron {
   background: rgba(210, 153, 34, 0.15);
   border-left: 3px solid var(--warning);
   border-radius: var(--radius-sm);
-  color: #f0b72e;
+  color: var(--warning);
 }
 
 /* Tool Permissions */
@@ -1713,22 +1973,22 @@ details.suggested-links-section[open] .suggested-links-chevron {
 
 .tool-permission-status.auto-approved {
   background: rgba(63, 185, 80, 0.15);
-  color: #3fb95c;
+  color: var(--success);
 }
 
 .tool-permission-status.session-approved {
-  background: rgba(105, 161, 255, 0.15);
-  color: #699fff;
+  background: var(--accent-muted);
+  color: var(--accent-primary);
 }
 
 .tool-permission-status.requires-approval {
   background: rgba(210, 153, 34, 0.15);
-  color: #d29922;
+  color: var(--warning);
 }
 
 .tool-permission-status.disabled {
   background: rgba(148, 163, 184, 0.15);
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .tool-permission-controls {
@@ -2281,8 +2541,8 @@ details.suggested-links-section[open] .suggested-links-chevron {
 }
 
 .btn-danger:hover {
-  background: #dc2626;
-  border-color: #dc2626;
+  background: var(--error-hover);
+  border-color: var(--error-hover);
 }
 
 /* ============================================================================
@@ -3140,7 +3400,7 @@ details.suggested-links-section[open] .suggested-links-chevron {
   display: inline-block;
   padding: 2px 6px;
   margin-left: 6px;
-  background: #6366f1;
+  background: var(--brand-accent);
   color: white;
   font-size: 10px;
   font-weight: 600;
@@ -3150,7 +3410,7 @@ details.suggested-links-section[open] .suggested-links-chevron {
 }
 
 .provider-card.official {
-  border-left: 3px solid #6366f1;
+  border-left: 3px solid var(--brand-accent);
 }
 
 /* Disable delete button with visual feedback */
@@ -3291,12 +3551,12 @@ details.suggested-links-section[open] .suggested-links-chevron {
 }
 
 .config-btn.delete {
-  color: #ef4444;
-  border-color: var(--error-border, #fecaca);
+  color: var(--error);
+  border-color: var(--error-border);
 }
 
 .config-btn.delete:hover {
-  background: #fef2f2;
+  background: var(--error-bg);
 }
 
 .config-empty {
