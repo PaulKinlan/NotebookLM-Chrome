@@ -108,34 +108,44 @@ export function mountElement(
   const namespace = tag === 'svg' || isInSvg ? 'http://www.w3.org/2000/svg' : null
   const el = namespace ? document.createElementNS(namespace, tag) : document.createElement(tag)
 
-  // Debug logging for select elements
-  if (tag === 'select' && (props as { id?: string }).id === 'notebook-select') {
-    console.log(`[mountElement] Creating notebook-select, children count: ${children.length}`)
+  // For <select> elements, we need to mount children BEFORE applying props.
+  // This is because setting the 'value' prop requires the option to exist in the DOM.
+  if (tag === 'select') {
+    // Pass SVG namespace context to children
+    const childNamespace = namespace || undefined
+    for (const child of children) {
+      void reconcile(el, null, child, undefined, childNamespace)
+    }
+    // Apply props after children are mounted
+    applyProps(el, props)
+  }
+  else {
+    // Normal order: props first, then children
+    applyProps(el, props)
+
+    // Recursively mount children
+    const childNamespace = namespace || undefined
+    for (const child of children) {
+      void reconcile(el, null, child, undefined, childNamespace)
+    }
   }
 
-  // Debug logging for form elements
-  if (tag === 'form') {
-    console.log('[mountElement] Creating form element with props:', props)
-    console.log('[mountElement] Form has onSubmit?', typeof props.onSubmit === 'function')
+  // Append the element to the parent
+  // Handle edge case where parent is a DocumentFragment that's already been inserted
+  // into the DOM (via replaceChild), in which case we need to append to the fragment's parent
+  try {
+    if (parent.nodeType === Node.DOCUMENT_FRAGMENT_NODE && parent.parentNode) {
+      // DocumentFragment that's already in the DOM - append to its parent instead
+      parent.parentNode.appendChild(el)
+    }
+    else {
+      parent.appendChild(el)
+    }
   }
-
-  // Apply props (attributes, event listeners, style)
-  applyProps(el, props)
-
-  // Recursively mount children
-  // Pass SVG namespace context to children
-  const childNamespace = namespace || undefined
-  for (const child of children) {
-    // Pass svgNamespace as 5th parameter to reconcile
-    void reconcile(el, null, child, undefined, childNamespace)
+  catch (e) {
+    console.error(`[mountElement] Failed to append <${tag}> to parent:`, parent, `parent.nodeType:`, parent.nodeType, `parent.nodeName:`, parent.nodeName, `error:`, e)
+    throw e
   }
-
-  // Debug logging for select options after mounting children
-  if (tag === 'select' && (props as { id?: string }).id === 'notebook-select') {
-    console.log(`[mountElement] After mounting children, notebook-select options count: ${(el as HTMLSelectElement).options.length}`)
-  }
-
-  parent.appendChild(el)
 
   mountedNodes.set(el, { node: el, vdom: vnode })
   return el
@@ -152,9 +162,6 @@ export async function mountComponent(
   svgNamespace?: string,
 ): Promise<Node> {
   const { fn, props } = vnode
-  const compName = (fn as { name?: string }).name || 'Anonymous'
-
-  console.log(`[mountComponent] Creating NEW instance for "${compName}"`)
 
   // Create component instance
   const instance = componentModule.createComponentInstance(fn, props, parentComponent)
@@ -302,14 +309,22 @@ async function renderComponentInner(instance: ComponentInstance, reconcile: Reco
   componentModule.resetHookIndex(instance)
 
   // Get the previous mounted node and vnode
-  const oldNode = instance.mountedNode
+  let oldNode = instance.mountedNode
   const oldVNode = instance.currentVNode
+
+  // SPECIAL CASE: For Fragment-returning components, instance.mountedNode points to the parent.
+  // We need to find the first actual DOM element child to use for reconciliation.
+  if (oldVNode?.type === 'fragment' && oldNode?.nodeType === Node.ELEMENT_NODE) {
+    const firstChild = (oldNode as Element).firstElementChild
+    if (firstChild) {
+      oldNode = firstChild
+    }
+  }
 
   // Run component function to get new vnode
   let newVNode: VNode
   try {
     const result = instance.fn(instance.props)
-    // Wrap raw Node in a text VNode if needed
     newVNode = normalizeVNode(result)
 
     // Reset error state on successful render
@@ -340,6 +355,47 @@ async function renderComponentInner(instance: ComponentInstance, reconcile: Reco
   componentModule.setCurrentComponent(null)
 
   // Reconcile the new tree
+  console.log(`[renderComponent] Reconcile: oldNode=${oldNode?.nodeName}, oldNode.nodeType=${oldNode?.nodeType}, oldNode.parentNode=${oldNode?.parentNode?.nodeName}`)
+
+  // For Fragment-returning components, oldNode might be the parent container with no parentNode
+  // In this case, use oldNode as the parent and find the first actual child element
+  if (
+    oldNode
+    && !oldNode.parentNode
+    && oldVNode?.type === 'fragment'
+    && oldNode.nodeType === Node.ELEMENT_NODE
+  ) {
+    const parent = oldNode
+    const firstElementChild = (parent as Element).firstElementChild
+
+    if (!firstElementChild) {
+      // No children yet, mount the new fragment
+      await reconcile(parent, oldVNode, newVNode, instance, instance.svgNamespace)
+
+      // Update mountedNodes
+      mountedNodes.set(parent, {
+        node: parent,
+        vdom: newVNode,
+        component: instance,
+      })
+      return
+    }
+
+    // Find the mounted data for the first child to use as oldVNode for its children
+    const firstChildData = mountedNodes.get(firstElementChild)
+    const oldChildrenVNode = firstChildData?.vdom || oldVNode
+
+    await reconcile(parent, oldChildrenVNode, newVNode, instance, instance.svgNamespace)
+
+    // Update mountedNodes
+    mountedNodes.set(parent, {
+      node: parent,
+      vdom: newVNode,
+      component: instance,
+    })
+    return
+  }
+
   if (!oldNode || !oldNode.parentNode) {
     // No parent - can't update
     return
@@ -358,11 +414,16 @@ async function renderComponentInner(instance: ComponentInstance, reconcile: Reco
     // Replace the placeholder with the new content
     parent.replaceChild(tempContainer, oldNode)
 
-    // Update instance's mounted node to point to the first real child
-    instance.mountedNode = tempContainer.firstChild || parent.firstChild
+    // CRITICAL: For Fragment-returning components, keep mountedNode pointing to parent
+    // instead of firstChild. This ensures we can find all children during reconciliation.
+    if (newVNode.type === 'fragment') {
+      instance.mountedNode = parent
+    }
+    else {
+      instance.mountedNode = tempContainer.firstChild || parent.firstChild
+    }
 
     // CRITICAL: Update mountedNodes WeakMap with the new node
-    // The old comment node is gone, so we need to map the new node to the instance
     if (instance.mountedNode) {
       mountedNodes.set(instance.mountedNode, {
         node: instance.mountedNode,

@@ -63,6 +63,13 @@ export async function updateElement(
   reconcile: ReconcilerFn,
   svgNamespace?: string,
 ): Promise<Node> {
+  // Debug logging for select
+  if (oldVNode.tag === 'select' || newVNode.tag === 'select') {
+    console.log(`[updateElement] Called for tag=${oldVNode.tag}, oldChildren=${oldVNode.children.length}, newChildren=${newVNode.children.length}`)
+    console.log(`[updateElement] oldVNode===newVNode: ${oldVNode === newVNode}`)
+    console.log(`[updateElement] newVNode.children===newVNode.children: ${newVNode.children === newVNode.children}`)
+  }
+
   // Find the DOM element that corresponds to oldVNode
   let el: Element | null = null
 
@@ -110,11 +117,24 @@ export async function updateElement(
     return newEl
   }
 
-  // Diff props
-  diffProps(el, oldVNode.props, newVNode.props)
-
-  // Diff children
-  await diffChildren(el, oldVNode.children, newVNode.children, undefined, reconcile, svgNamespace)
+  // For <select> elements, we need to diff children BEFORE props.
+  // This is because setting the 'value' prop requires the option to exist in the DOM.
+  // If we set value first, then add the option, the value won't be set correctly.
+  if (el instanceof HTMLSelectElement) {
+    console.log(`[updateElement] SELECT element detected: ${el.id || '(no id)'}, oldChildren=${oldVNode.children.length}, newChildren=${newVNode.children.length}`)
+    // Diff children first (add/update/remove options)
+    await diffChildren(el, oldVNode.children, newVNode.children, undefined, reconcile, svgNamespace)
+    // Then diff props (set value after options exist)
+    console.log(`[updateElement] After diffChildren for ${el.id || '(no id)'}, options count=${el.options.length}`)
+    diffProps(el, oldVNode.props, newVNode.props)
+    console.log(`[updateElement] After diffProps for ${el.id || '(no id)'}, value="${el.value}"`)
+  }
+  else {
+    // Normal order: props first, then children
+    diffProps(el, oldVNode.props, newVNode.props)
+    // Diff children
+    await diffChildren(el, oldVNode.children, newVNode.children, undefined, reconcile, svgNamespace)
+  }
 
   // Update mounted node reference
   mountedNodes.set(el, { node: el, vdom: newVNode })
@@ -197,6 +217,7 @@ export async function updateFragment(
   component: ComponentInstance | undefined,
   reconcile: ReconcilerFn,
 ): Promise<Node> {
+  console.log(`[updateFragment] Called with oldChildren=${oldVNode.children.length}, newChildren=${newVNode.children.length}`)
   // For fragments, we need to diff children in place
   await diffChildren(parent, oldVNode.children, newVNode.children, component, reconcile)
   return parent
