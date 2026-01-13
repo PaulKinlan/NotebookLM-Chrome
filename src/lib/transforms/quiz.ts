@@ -1,35 +1,60 @@
 import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
+import type { QuizConfig } from '../../types/index.ts'
+import { DEFAULT_QUIZ_CONFIG } from '../transform-config.ts'
 
 export async function generateQuiz(
   sources: Source[],
-  questionCount: number = 5,
+  config: Partial<QuizConfig> = {},
 ): Promise<string> {
-  const config = await getModelWithConfig()
-  if (!config) {
+  const modelConfig = await getModelWithConfig()
+  if (!modelConfig) {
     throw new Error(
       'AI provider not configured. Please add your API key in settings.',
     )
   }
 
-  const result = await generateText({
-    model: config.model,
-    system: `You are a helpful AI assistant that creates interactive educational quizzes as self-contained HTML/CSS/JS.
-Generate an interactive quiz with multiple choice questions that test understanding of the key concepts.
-Each question should have 4 options with one correct answer.
+  // Merge with defaults
+  const c = { ...DEFAULT_QUIZ_CONFIG, ...config }
+
+  // Build question type description
+  const questionTypeDesc = c.questionTypes.includes('true-false')
+    ? c.questionTypes.includes('multiple-choice')
+      ? 'a mix of multiple choice and true/false questions'
+      : 'true/false questions'
+    : 'multiple choice questions with 4 options each'
+
+  // Difficulty description
+  const difficultyDesc: Record<typeof c.difficulty, string> = {
+    easy: 'straightforward questions testing basic understanding',
+    medium: 'moderately challenging questions requiring comprehension',
+    hard: 'challenging questions requiring deep understanding and analysis',
+    mixed: 'a mix of easy, medium, and hard questions',
+  }
+
+  const systemPrompt = `You are a helpful AI assistant that creates interactive educational quizzes as self-contained HTML/CSS/JS.
+Generate an interactive quiz with ${questionTypeDesc} that test understanding of the key concepts.
+The difficulty level should be: ${difficultyDesc[c.difficulty]}.
+${c.includeExplanations ? 'Include a brief explanation after each answer is revealed.' : 'Do not include explanations after answers.'}
 The quiz must be fully functional with immediate feedback when answers are selected.
 
 IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No markdown.
-Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.`,
-    prompt: `Create a ${questionCount}-question interactive multiple choice quiz based on these sources:
+Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.${
+  c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
+}`
+
+  const result = await generateText({
+    model: modelConfig.model,
+    system: systemPrompt,
+    prompt: `Create a ${c.questionCount}-question interactive quiz based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
 Generate a self-contained HTML quiz with:
 1. Each question displayed one at a time with a question counter
-2. 4 clickable answer options per question styled as buttons
+2. Clickable answer options styled as buttons
 3. Immediate visual feedback (green for correct, red for incorrect)
-4. Show the correct answer and brief explanation after selection
+${c.includeExplanations ? '4. Show the correct answer and brief explanation after selection' : '4. Show the correct answer after selection'}
 5. Navigation to next question after answering
 6. Final score display at the end with option to restart
 7. Clean, modern styling with good spacing and hover effects
@@ -49,9 +74,9 @@ Structure your response as:
   // Track usage
   if (result.usage) {
     trackUsage({
-      modelConfigId: config.modelConfigId,
-      providerId: config.providerId,
-      model: config.modelId,
+      modelConfigId: modelConfig.modelConfigId,
+      providerId: modelConfig.providerId,
+      model: modelConfig.modelId,
       inputTokens: result.usage.inputTokens ?? 0,
       outputTokens: result.usage.outputTokens ?? 0,
       operation: 'transform',
