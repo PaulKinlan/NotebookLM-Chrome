@@ -17,6 +17,8 @@ export { TransformTabStateful } from './TransformTabStateful.tsx'
 export { SourcesList } from './SourcesList.tsx'
 export { ChatMessages } from './ChatMessages.tsx'
 export { ChatInput } from './ChatInput.tsx'
+export { FuzzyDropdown } from './FuzzyDropdown.tsx'
+export type { FuzzyDropdownProps } from './FuzzyDropdown.tsx'
 
 // Dialog Components
 export { PickerModal, NotebookDialog, ConfirmDialog } from './Modals.tsx'
