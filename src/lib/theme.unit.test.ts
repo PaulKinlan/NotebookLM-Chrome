@@ -11,102 +11,91 @@
  * - onSystemThemeChange: Subscribes to system theme changes
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
-// Global mock storage that will be cleared in beforeEach
-declare global {
-  var __mockThemeStorage: Record<string, unknown>
-}
-globalThis.__mockThemeStorage = globalThis.__mockThemeStorage ?? {}
+// Mock matchMedia state
+let mockIsDark = true
+const matchMediaListeners: Array<(e: MediaQueryListEvent) => void> = []
 
-// Helper to clear the mock storage
-const clearMockStorage = () => {
-  globalThis.__mockThemeStorage = {}
-}
-
-// Type guard to check if value is of type T
-function isType<T>(value: unknown): value is T {
-  return value !== undefined
+// Mock document element
+const mockDocumentElement = {
+  setAttribute: vi.fn(),
+  removeAttribute: vi.fn(),
+  getAttribute: vi.fn(() => null),
 }
 
-// Mock the storage module before importing theme
-vi.mock('./storage.ts', () => ({
-  storage: {
-    getSetting: vi.fn(<T>(key: string): Promise<T | null> => {
-      const value = globalThis.__mockThemeStorage[key]
-      return Promise.resolve(isType<T>(value) ? value : null)
-    }),
-    setSetting: vi.fn(<T>(key: string, value: T): Promise<void> => {
-      globalThis.__mockThemeStorage[key] = value
-      return Promise.resolve(undefined)
-    }),
-  },
+// Mock addEventListener/removeEventListener for matchMedia
+const mockMediaQueryAddEventListener = vi.fn((_event: string, handler: (e: MediaQueryListEvent) => void) => {
+  matchMediaListeners.push(handler)
+})
+const mockMediaQueryRemoveEventListener = vi.fn((_event: string, handler: (e: MediaQueryListEvent) => void) => {
+  const index = matchMediaListeners.indexOf(handler)
+  if (index > -1) {
+    matchMediaListeners.splice(index, 1)
+  }
+})
+
+// Mock matchMedia - returns a consistent object that the assertions can check
+const mockMatchMedia = vi.fn(() => ({
+  matches: mockIsDark,
+  addEventListener: mockMediaQueryAddEventListener,
+  removeEventListener: mockMediaQueryRemoveEventListener,
 }))
 
-// Mock matchMedia for system theme detection
-const createMockMatchMedia = (matches: boolean) => {
-  const listeners: Array<(e: MediaQueryListEvent) => void> = []
-  return {
-    matches,
-    addEventListener: vi.fn((event: string, handler: (e: MediaQueryListEvent) => void) => {
-      if (event === 'change') {
-        listeners.push(handler)
-      }
-    }),
-    removeEventListener: vi.fn((event: string, handler: (e: MediaQueryListEvent) => void) => {
-      if (event === 'change') {
-        const index = listeners.indexOf(handler)
-        if (index > -1) {
-          listeners.splice(index, 1)
-        }
-      }
-    }),
-    // Helper to trigger change events in tests
-    _triggerChange: (newMatches: boolean) => {
-      listeners.forEach(listener => listener({ matches: newMatches } as MediaQueryListEvent))
-    },
-    _listeners: listeners,
+// Mock storage - use a module-level variable that the mock functions can access
+let mockStorageData: Record<string, unknown> = {}
+
+// Helper to reset storage (for test cleanup)
+function resetMockStorage() {
+  // Clear all properties from the existing object instead of creating a new one
+  for (const key in mockStorageData) {
+    delete mockStorageData[key]
   }
 }
 
-// Type for the theme module
-type ThemeModule = typeof import('./theme.ts')
+// Mock modules BEFORE importing theme (using factory function to avoid hoisting issues)
+vi.mock('./storage.ts', () => {
+  return {
+    storage: {
+      getSetting: <T>(key: string): Promise<T | null> => {
+        const value = mockStorageData[key]
+        return Promise.resolve((value !== undefined ? value : null) as T | null)
+      },
+      setSetting: <T>(key: string, value: T): Promise<void> => {
+        mockStorageData[key] = value
+        return Promise.resolve(undefined)
+      },
+    },
+  }
+})
+
+// Mock document and window globals
+vi.stubGlobal('document', { documentElement: mockDocumentElement })
+vi.stubGlobal('window', { matchMedia: mockMatchMedia })
+
+// Now import modules after mocks are set up
+import * as theme from './theme.ts'
 
 describe('theme', () => {
-  let theme: ThemeModule
-  let mockMatchMedia: ReturnType<typeof createMockMatchMedia>
-  let mockSetAttribute: ReturnType<typeof vi.fn>
-  let mockRemoveAttribute: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    // Clear mock storage for each test
+    resetMockStorage()
 
-  beforeEach(async () => {
-    // Clear the mock storage data before each test
-    clearMockStorage()
-    vi.clearAllMocks()
+    // Clear individual mock call counts
+    mockDocumentElement.setAttribute.mockClear()
+    mockDocumentElement.removeAttribute.mockClear()
+    mockDocumentElement.getAttribute.mockClear()
+    mockMatchMedia.mockClear()
+    mockMediaQueryAddEventListener.mockClear()
+    mockMediaQueryRemoveEventListener.mockClear()
 
-    // Reset modules to ensure fresh imports with mocks applied
-    vi.resetModules()
-
-    // Set up mock matchMedia (default to dark system preference)
-    mockMatchMedia = createMockMatchMedia(true)
-    vi.stubGlobal('matchMedia', vi.fn(() => mockMatchMedia))
-
-    // Set up mock document - store references to mock functions
-    mockSetAttribute = vi.fn()
-    mockRemoveAttribute = vi.fn()
-    vi.stubGlobal('document', {
-      documentElement: {
-        setAttribute: mockSetAttribute,
-        removeAttribute: mockRemoveAttribute,
-        getAttribute: vi.fn(() => null),
-      },
-    })
-
-    // Re-import the theme module
-    theme = await import('./theme.ts')
+    // Reset matchMedia to dark (default)
+    mockIsDark = true
+    matchMediaListeners.length = 0
   })
 
   afterEach(() => {
-    vi.unstubAllGlobals()
+    matchMediaListeners.length = 0
   })
 
   describe('getUISettings', () => {
@@ -221,23 +210,20 @@ describe('theme', () => {
     })
 
     it('returns dark when system preference is dark', () => {
-      // mockMatchMedia already set to matches: true (dark)
+      // mockIsDark is true (dark)
       const result = theme.resolveTheme('system')
 
       expect(result).toBe('dark')
     })
 
-    it('returns light when system preference is light', async () => {
-      // Reset modules and set up light system preference
-      vi.resetModules()
-      mockMatchMedia = createMockMatchMedia(false)
-      vi.stubGlobal('matchMedia', vi.fn(() => mockMatchMedia))
-
-      theme = await import('./theme.ts')
-
+    it('returns light when system preference is light', () => {
+      mockIsDark = false
       const result = theme.resolveTheme('system')
 
       expect(result).toBe('light')
+
+      // Reset back to dark for other tests
+      mockIsDark = true
     })
   })
 
@@ -245,81 +231,66 @@ describe('theme', () => {
     it('sets data-theme attribute to light', () => {
       theme.applyTheme('light')
 
-      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'light')
+      expect(mockDocumentElement.setAttribute).toHaveBeenCalledWith('data-theme', 'light')
     })
 
     it('sets data-theme attribute to dark', () => {
       theme.applyTheme('dark')
 
-      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'dark')
+      expect(mockDocumentElement.setAttribute).toHaveBeenCalledWith('data-theme', 'dark')
     })
 
     it('removes data-theme attribute when null', () => {
       theme.applyTheme(null)
 
-      expect(mockRemoveAttribute).toHaveBeenCalledWith('data-theme')
+      expect(mockDocumentElement.removeAttribute).toHaveBeenCalledWith('data-theme')
     })
   })
 
   describe('initializeTheme', () => {
+    beforeEach(() => {
+      // Ensure clean state for these tests - reset any set preference to system (default)
+      delete mockStorageData.uiSettings
+    })
+
     it('applies null theme for system preference (lets CSS handle it)', async () => {
       // Default preference is 'system'
       const result = await theme.initializeTheme()
 
-      expect(mockRemoveAttribute).toHaveBeenCalledWith('data-theme')
-      expect(result).toBe('dark') // Because mockMatchMedia.matches is true
+      expect(mockDocumentElement.removeAttribute).toHaveBeenCalledWith('data-theme')
+      expect(result).toBe('dark') // Because mockIsDark is true
     })
 
     it('applies light theme for light preference', async () => {
+      // Set light preference via the theme API (not direct storage manipulation)
       await theme.setThemePreference('light')
 
-      // Need to re-import to pick up the saved preference
-      vi.resetModules()
-      mockMatchMedia = createMockMatchMedia(true)
-      vi.stubGlobal('matchMedia', vi.fn(() => mockMatchMedia))
-      mockSetAttribute = vi.fn()
-      mockRemoveAttribute = vi.fn()
-      vi.stubGlobal('document', {
-        documentElement: {
-          setAttribute: mockSetAttribute,
-          removeAttribute: mockRemoveAttribute,
-          getAttribute: vi.fn(() => null),
-        },
-      })
-      theme = await import('./theme.ts')
+      // Clear the mock calls to only track what initializeTheme does
+      mockDocumentElement.setAttribute.mockClear()
+      mockDocumentElement.removeAttribute.mockClear()
 
       const result = await theme.initializeTheme()
 
-      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'light')
+      expect(mockDocumentElement.setAttribute).toHaveBeenCalledWith('data-theme', 'light')
       expect(result).toBe('light')
     })
 
     it('applies dark theme for dark preference', async () => {
+      // Set dark preference via the theme API (not direct storage manipulation)
       await theme.setThemePreference('dark')
 
-      // Need to re-import to pick up the saved preference
-      vi.resetModules()
-      mockMatchMedia = createMockMatchMedia(false) // System is light
-      vi.stubGlobal('matchMedia', vi.fn(() => mockMatchMedia))
-      mockSetAttribute = vi.fn()
-      mockRemoveAttribute = vi.fn()
-      vi.stubGlobal('document', {
-        documentElement: {
-          setAttribute: mockSetAttribute,
-          removeAttribute: mockRemoveAttribute,
-          getAttribute: vi.fn(() => null),
-        },
-      })
-      theme = await import('./theme.ts')
+      // Clear the mock calls to only track what initializeTheme does
+      mockDocumentElement.setAttribute.mockClear()
+      mockDocumentElement.removeAttribute.mockClear()
 
       const result = await theme.initializeTheme()
 
-      expect(mockSetAttribute).toHaveBeenCalledWith('data-theme', 'dark')
+      expect(mockDocumentElement.setAttribute).toHaveBeenCalledWith('data-theme', 'dark')
       expect(result).toBe('dark')
     })
 
     it('returns resolved theme based on system preference', async () => {
-      // System preference is dark (mockMatchMedia.matches = true)
+      // System preference is dark (mockIsDark = true)
       const result = await theme.initializeTheme()
 
       expect(result).toBe('dark')
@@ -330,7 +301,7 @@ describe('theme', () => {
     it('adds event listener to matchMedia', () => {
       theme.onSystemThemeChange(() => {})
 
-      expect(mockMatchMedia.addEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+      expect(mockMediaQueryAddEventListener).toHaveBeenCalledWith('change', expect.any(Function))
     })
 
     it('returns cleanup function that removes listener', () => {
@@ -339,7 +310,7 @@ describe('theme', () => {
 
       cleanup()
 
-      expect(mockMatchMedia.removeEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+      expect(mockMediaQueryRemoveEventListener).toHaveBeenCalledWith('change', expect.any(Function))
     })
 
     it('calls callback with true when system changes to dark', () => {
@@ -347,7 +318,7 @@ describe('theme', () => {
       theme.onSystemThemeChange(callback)
 
       // Trigger a change event
-      mockMatchMedia._triggerChange(true)
+      matchMediaListeners.forEach(listener => listener({ matches: true } as MediaQueryListEvent))
 
       expect(callback).toHaveBeenCalledWith(true)
     })
@@ -357,7 +328,7 @@ describe('theme', () => {
       theme.onSystemThemeChange(callback)
 
       // Trigger a change event
-      mockMatchMedia._triggerChange(false)
+      matchMediaListeners.forEach(listener => listener({ matches: false } as MediaQueryListEvent))
 
       expect(callback).toHaveBeenCalledWith(false)
     })
@@ -369,14 +340,18 @@ describe('theme', () => {
       cleanup()
 
       // Manually call the trigger to verify callback isn't called
-      // This verifies the listener was actually removed
-      mockMatchMedia._triggerChange(true)
+      matchMediaListeners.forEach(listener => listener({ matches: true } as MediaQueryListEvent))
 
       expect(callback).not.toHaveBeenCalled()
     })
   })
 
   describe('integration scenarios', () => {
+    beforeEach(() => {
+      // Ensure clean state for integration tests
+      delete mockStorageData.uiSettings
+    })
+
     it('handles complete theme workflow', async () => {
       // Start with default (system preference)
       let preference = await theme.getThemePreference()
