@@ -8,7 +8,6 @@
 
 import type { ConfirmDialogState, NotebookDialogState } from '../hooks/useDialog.ts'
 import type { UsePickerModalReturn } from '../hooks/usePickerModal.ts'
-import { useEffect } from '../../jsx-runtime/hooks/index.ts'
 
 // ============================================================================
 // Picker Modal (imperative wrapper for compatibility)
@@ -168,7 +167,7 @@ export function NotebookDialog(props: NotebookDialogProps) {
 
   // NOTE: For forms inside <dialog>, we need to handle submission specially
   // The dialog should close after successful submission
-  const handleDialogClick = (e: { target: EventTarget; currentTarget: EventTarget }) => {
+  const handleDialogClick = (e: { target: EventTarget, currentTarget: EventTarget }) => {
     const dialog = e.currentTarget as HTMLDialogElement
     if (e.target === dialog) {
       // Clicking backdrop closes the dialog
@@ -176,36 +175,15 @@ export function NotebookDialog(props: NotebookDialogProps) {
     }
   }
 
-  // Call showModal() when dialog becomes visible
-  // Only depend on 'visible' - onConfirm/onCancel are not used in this effect
-  // and including them causes infinite re-renders due to function reference changes
-  useEffect(() => {
-    const dialog = document.getElementById('notebook-dialog') as HTMLDialogElement
-    if (!dialog) return
-
-    if (visible) {
-      dialog.style.display = 'block'
-      if (!dialog.open) {
-        try {
-          dialog.showModal()
-        }
-        catch (e) {
-          console.error('Failed to show modal:', e)
-        }
-      }
-    }
-    else {
-      if (dialog.open) {
-        dialog.close()
-      }
-      dialog.style.display = 'none'
-    }
-  }, [visible])
+  // Note: Use style.display for visibility to avoid re-render loops
+  // The template string className changes on every render and causes issues
+  const dialogStyle = visible ? {} : { display: 'none' }
 
   return (
     <dialog
       id="notebook-dialog"
       className="dialog"
+      style={dialogStyle}
       onClick={handleDialogClick}
     >
       <h3 id="notebook-dialog-title">{title}</h3>
@@ -215,7 +193,10 @@ export function NotebookDialog(props: NotebookDialogProps) {
           id="notebook-name-input"
           placeholder={placeholder}
           value={inputValue}
-          onInput={(e: { target: HTMLInputElement }) => onInput(e.target.value)}
+          onInput={(e: { target: HTMLInputElement }) => {
+            console.log('[NotebookDialog] onInput called with value:', e.target.value)
+            onInput(e.target.value)
+          }}
           autoFocus
         />
         <div className="dialog-actions">

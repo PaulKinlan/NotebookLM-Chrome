@@ -129,6 +129,17 @@ export function useDialog(): UseDialogReturn {
   const confirmResolveRef = useRef<((result: boolean) => void) | null>(null)
   const notebookResolveRef = useRef<((result: string | null) => void) | null>(null)
 
+  // Ref to track current input value (avoids stale closure issues in confirm handler)
+  const inputValueRef = useRef<string>('')
+
+  const hideConfirm = (result: boolean) => {
+    setConfirmDialog(prev => ({ ...prev, visible: false }))
+    if (confirmResolveRef.current) {
+      confirmResolveRef.current(result)
+      confirmResolveRef.current = null
+    }
+  }
+
   const showConfirm: DialogHandlers['showConfirm'] = (options) => {
     return new Promise<boolean>((resolve) => {
       confirmResolveRef.current = resolve
@@ -143,30 +154,9 @@ export function useDialog(): UseDialogReturn {
     })
   }
 
-  const hideConfirm = (result: boolean) => {
-    setConfirmDialog(prev => ({ ...prev, visible: false }))
-    if (confirmResolveRef.current) {
-      confirmResolveRef.current(result)
-      confirmResolveRef.current = null
-    }
-  }
-
-  const showNotebook: DialogHandlers['showNotebook'] = (options = {}) => {
-    return new Promise<string | null>((resolve) => {
-      notebookResolveRef.current = resolve
-      setNotebookDialog({
-        visible: true,
-        title: options.title || 'New Notebook',
-        placeholder: options.placeholder || 'Enter notebook name...',
-        confirmText: options.confirmText || 'Create',
-        inputValue: '',
-      })
-    })
-  }
-
   const hideNotebook = (result: string | null) => {
     console.log('[useDialog] hideNotebook called with result:', result)
-    setNotebookDialog(prev => {
+    setNotebookDialog((prev) => {
       console.log('[useDialog] Setting visible to false, current prev.visible:', prev.visible)
       return { ...prev, visible: false, inputValue: '' }
     })
@@ -175,6 +165,20 @@ export function useDialog(): UseDialogReturn {
       notebookResolveRef.current(result)
       notebookResolveRef.current = null
     }
+  }
+
+  const showNotebook: DialogHandlers['showNotebook'] = (options = {}) => {
+    return new Promise<string | null>((resolve) => {
+      notebookResolveRef.current = resolve
+      inputValueRef.current = '' // Reset ref when showing dialog
+      setNotebookDialog({
+        visible: true,
+        title: options.title || 'New Notebook',
+        placeholder: options.placeholder || 'Enter notebook name...',
+        confirmText: options.confirmText || 'Create',
+        inputValue: '',
+      })
+    })
   }
 
   return {
@@ -186,14 +190,16 @@ export function useDialog(): UseDialogReturn {
     _handleConfirm: () => hideConfirm(true),
     _handleConfirmCancel: () => hideConfirm(false),
     _handleNotebookConfirm: () => {
-      console.log('[useDialog] _handleNotebookConfirm called, current inputValue:', notebookDialog.inputValue)
-      // Read the current inputValue from state, not from closure
-      // This ensures we get the latest value even if handler was created earlier
-      const currentValue = notebookDialog.inputValue
+      // Read from ref to get the latest value (avoids stale closure issues)
+      const currentValue = inputValueRef.current
+      console.log('[useDialog] _handleNotebookConfirm called, inputValue from ref:', currentValue)
       hideNotebook(currentValue || null)
     },
     _handleNotebookCancel: () => hideNotebook(null),
     _setNotebookInput: (value: string) => {
+      console.log('[useDialog] _setNotebookInput called with value:', value)
+      // Update both state and ref to keep them in sync
+      inputValueRef.current = value
       setNotebookDialog(prev => ({ ...prev, inputValue: value }))
     },
   }
