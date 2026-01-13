@@ -166,6 +166,12 @@ export function diffProps(el: Element, oldProps: Record<string, unknown>, newPro
         Object.assign((el as HTMLElement).style, value)
       }
       else if (key === 'className') {
+        // Debug logging for tab-settings element
+        if ((el as HTMLElement).id === 'tab-settings') {
+          const oldValue = typeof oldProps[key] === 'string' ? oldProps[key] : '(none)'
+          const newValue = typeof value === 'string' ? value : '(none)'
+          console.log(`[diffProps] Updating className for tab-settings: from "${oldValue}" to "${newValue}"`)
+        }
         el.setAttribute('class', String(value))
       }
       // Form element properties - must be set as properties, not attributes

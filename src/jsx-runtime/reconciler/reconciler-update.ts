@@ -131,7 +131,16 @@ export async function updateElement(
   }
   else {
     // Normal order: props first, then children
+    // Debug logging for section elements
+    if (el.id === 'tab-settings') {
+      const oldClassName = typeof oldVNode.props.className === 'string' ? oldVNode.props.className : '(none)'
+      const newClassName = typeof newVNode.props.className === 'string' ? newVNode.props.className : '(none)'
+      console.log(`[updateElement] About to diffProps for tab-settings, oldClassName="${oldClassName}", newClassName="${newClassName}"`)
+    }
     diffProps(el, oldVNode.props, newVNode.props)
+    if (el.id === 'tab-settings') {
+      console.log(`[updateElement] After diffProps for tab-settings, element.className="${el.className}"`)
+    }
     // Diff children
     await diffChildren(el, oldVNode.children, newVNode.children, undefined, reconcile, svgNamespace)
   }
@@ -193,6 +202,8 @@ export async function updateComponent(
   // just update props and return. The current render will complete with the new props.
   // This prevents infinite loops when setState is called during render.
   if (currentlyRendering.has(instance)) {
+    console.log(`[updateComponent] ${compName} is currently rendering, updating props and returning (re-entry protection)`)
+    console.log(`[updateComponent] ${compName} new props:`, newVNode.props)
     instance.props = newVNode.props
     return instance.mountedNode!
   }

@@ -113,6 +113,14 @@ export async function diffChildren(
     const key = getVNodeKey(newChild, newIdx)
     const match = oldByKey.get(key)
 
+    // Debug logging for SettingsTabStateful
+    if (newChild.type === 'component' && (newChild.fn as { name?: string }).name === 'SettingsTabStateful') {
+      console.log(`[diffChildren] Processing SettingsTabStateful at index ${newIdx}, key="${key}", match found: ${Boolean(match)}`)
+      if (match) {
+        console.log(`[diffChildren] match.vnode.type: ${(match.vnode as { type?: string }).type}`)
+      }
+    }
+
     if (match && !matched.has(key)) {
       // Found a matching old child - reconcile and reuse it
       matched.add(key)
