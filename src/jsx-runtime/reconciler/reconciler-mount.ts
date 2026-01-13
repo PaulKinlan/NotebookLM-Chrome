@@ -93,11 +93,11 @@ async function mountInner(
 /**
  * Mount an element VNode
  */
-export async function mountElement(
+export function mountElement(
   parent: Node,
   vnode: Extract<VNode, { type: 'element' }>,
   reconcile: ReconcilerFn,
-): Promise<Element> {
+): Element {
   const { tag, props, children } = vnode
 
   // Handle SVG namespace
@@ -118,10 +118,9 @@ export async function mountElement(
   // Apply props (attributes, event listeners, style)
   applyProps(el, props)
 
-  // Recursively mount children - MUST await to ensure all children are mounted
-  // before this element is added to the DOM
+  // Recursively mount children
   for (const child of children) {
-    await reconcile(el, null, child)
+    void reconcile(el, null, child)
   }
 
   // Debug logging for select options after mounting children
@@ -152,9 +151,9 @@ export async function mountComponent(
   // Create component instance
   const instance = componentModule.createComponentInstance(fn, props, parentComponent)
 
-  // Register this instance in the function-based map for reliable lookups
-  // Use microtask to avoid blocking mount but ensure registration happens soon
-  void Promise.resolve().then(() => registerComponentInstance(fn, instance))
+  // Register this instance IMMEDIATELY and SYNCHRONOUSLY
+  // This ensures the instance is available for lookup before any state updates are scheduled
+  registerComponentInstance(fn, instance)
 
   // Check if this is an ErrorBoundary component
   if ((fn as { __isErrorBoundary?: boolean }).__isErrorBoundary) {
@@ -182,15 +181,15 @@ export async function mountComponent(
 /**
  * Mount a fragment VNode
  */
-export async function mountFragment(
+export function mountFragment(
   parent: Node,
   vnode: Extract<VNode, { type: 'fragment' }>,
   component: ComponentInstance | undefined,
   reconcile: ReconcilerFn,
-): Promise<Node> {
-  // Mount all children, awaiting each to ensure complete rendering
+): Node {
+  // Mount all children
   for (const child of vnode.children) {
-    await reconcile(parent, null, child, component)
+    void reconcile(parent, null, child, component)
   }
 
   // Fragments don't have a single DOM node, return parent for chaining
