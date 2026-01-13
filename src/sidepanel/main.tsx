@@ -3,13 +3,27 @@
 // ============================================================================
 // Renders App component and initializes Chrome extension event listeners
 
-import { App } from './App'
+import { App, type AppCallbacks } from './App'
 import { initChromeBridge, checkPendingActions, type ChromeBridgeCallbacks } from './chrome-bridge'
-import { showNotebookDialog } from './services/ui'
 import { createNotebook, saveNotebook, setActiveNotebookId, saveSource, createSource } from '../lib/storage'
-import { showNotification } from './services/ui'
 import { initTheme } from './hooks/useTheme.tsx'
 import type { TabExtractContentResponse } from './chrome-bridge'
+
+// ============================================================================
+// Dialog/Notification State (for Chrome bridge callbacks)
+// ============================================================================
+
+let appCallbacks: AppCallbacks | null = null
+
+/**
+ * Get the app callbacks - used by Chrome bridge callbacks
+ */
+function getAppCallbacks(): AppCallbacks {
+  if (!appCallbacks) {
+    throw new Error('App callbacks not initialized - App component must be rendered first')
+  }
+  return appCallbacks
+}
 
 // ============================================================================
 // Render
@@ -25,11 +39,23 @@ if (!appContainer) {
 // a reasonable default until storage is read
 void initTheme()
 
-// Render the App component (stateful components handle their own logic)
+// Create callback functions that will be passed to App
+const showNotebook: AppCallbacks['showNotebook'] = (options) => {
+  return getAppCallbacks().showNotebook(options)
+}
+
+const showNotification: AppCallbacks['showNotification'] = (message, type) => {
+  getAppCallbacks().showNotification(message, type)
+}
+
+// Render the App component with dialog/notification callbacks
 const appElement = App({
   activeTab: 'add',
   fabHidden: true,
   onboardingHidden: true,
+  onProvideCallbacks: (callbacks: AppCallbacks) => {
+    appCallbacks = callbacks
+  },
 })
 appContainer.appendChild(appElement)
 
@@ -51,7 +77,7 @@ async function createNotebookAndSelect(name: string): Promise<string> {
  * Handle context menu action: CREATE_NOTEBOOK_AND_ADD_PAGE
  */
 async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
-  const name = await showNotebookDialog({
+  const name = await showNotebook({
     title: 'New Folio',
     placeholder: 'Enter folio name...',
     confirmText: 'Create',
@@ -81,7 +107,7 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
   }
   catch (error) {
     console.error('Failed to add page:', error)
-    showNotification('Failed to add page')
+    showNotification('Failed to add page', 'error')
   }
 }
 
@@ -89,7 +115,7 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
  * Handle context menu action: CREATE_NOTEBOOK_AND_ADD_LINK
  */
 async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
-  const name = await showNotebookDialog({
+  const name = await showNotebook({
     title: 'New Folio',
     placeholder: 'Enter folio name...',
     confirmText: 'Create',
@@ -114,7 +140,7 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
  * Handle context menu action: CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS
  */
 async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promise<void> {
-  const name = await showNotebookDialog({
+  const name = await showNotebook({
     title: 'New Folio',
     placeholder: 'Enter folio name...',
     confirmText: 'Create',

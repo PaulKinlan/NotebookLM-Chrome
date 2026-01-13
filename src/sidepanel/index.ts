@@ -50,17 +50,3 @@ export {
   importHistory,
 } from './services/sources'
 export type { AddCurrentTabResult } from './services/sources'
-
-// UI
-export {
-  showNotification,
-  hideNotification,
-  showConfirmDialog,
-  showNotebookDialog,
-  showPickerModal,
-  hidePickerModal,
-  showOnboarding,
-  hideOnboarding,
-  setOnboardingStep,
-} from './services/ui'
-export type { DialogOptions, NotebookDialogOptions, OnboardingStep } from './services/ui'

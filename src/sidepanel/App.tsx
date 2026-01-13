@@ -16,6 +16,7 @@ import { PickerModal, NotebookDialog, ConfirmDialog } from './components/Modals'
 import { NotificationStateful } from './components/NotificationStateful'
 import { Onboarding } from './components/Onboarding'
 import { useDialog } from './hooks/useDialog.ts'
+import { useNotification } from './hooks/useNotification.ts'
 
 // ============================================================================
 // Types
@@ -23,10 +24,16 @@ import { useDialog } from './hooks/useDialog.ts'
 
 type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings'
 
+export interface AppCallbacks {
+  showNotebook: (options?: { title?: string, placeholder?: string, confirmText?: string }) => Promise<string | null>
+  showNotification: (message: string, type?: 'success' | 'error' | 'info') => void
+}
+
 interface AppProps {
   activeTab: TabName
   fabHidden: boolean
   onboardingHidden: boolean
+  onProvideCallbacks?: (callbacks: AppCallbacks) => void
 }
 
 // ============================================================================
@@ -38,7 +45,7 @@ export function App(props: AppProps = {
   fabHidden: true,
   onboardingHidden: true,
 }): Node {
-  const { activeTab: initialTab, fabHidden, onboardingHidden } = props
+  const { activeTab: initialTab, fabHidden, onboardingHidden, onProvideCallbacks } = props
 
   // Use useState for tab management instead of imperative DOM manipulation
   const [activeTab, setActiveTab] = useState<TabName>(initialTab)
@@ -47,7 +54,6 @@ export function App(props: AppProps = {
   const {
     confirmDialog,
     notebookDialog,
-    showConfirm,
     showNotebook,
     _handleConfirm,
     _handleConfirmCancel,
@@ -56,11 +62,16 @@ export function App(props: AppProps = {
     _setNotebookInput,
   } = useDialog()
 
-  // Expose dialog functions globally for backward compatibility with controllers.ts
+  // Use useNotification hook for notification state
+  const { showNotification } = useNotification()
+
+  // Provide callbacks to main.tsx via the onProvideCallbacks prop
+  // This allows main.tsx to trigger dialogs/notifications without global state
   useEffect(() => {
-    ;(window as { showConfirm?: typeof showConfirm }).showConfirm = showConfirm
-    ;(window as { showNotebookDialog?: typeof showNotebook }).showNotebookDialog = showNotebook
-  }, [showConfirm, showNotebook])
+    if (onProvideCallbacks) {
+      onProvideCallbacks({ showNotebook, showNotification })
+    }
+  }, [showNotebook, showNotification, onProvideCallbacks])
 
   // Apply active class to nav items and tab contents via CSS-based rendering
   // The stateful components handle their own visibility based on the `active` prop

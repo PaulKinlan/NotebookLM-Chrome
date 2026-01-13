@@ -11,6 +11,7 @@ import { useNotebook } from '../hooks/useNotebook.ts'
 import { useSources } from '../hooks/useSources.ts'
 import { usePermissions } from '../hooks/usePermissions.ts'
 import { useNavigation } from '../hooks/useNavigation.ts'
+import { useDialog } from '../hooks/useDialog.ts'
 import { SourcesList } from './SourcesList.tsx'
 import { PickerModal } from './PickerModal.tsx'
 import { addCurrentTab } from '../services/sources.ts'
@@ -19,7 +20,6 @@ import {
   createNotebook,
   setActiveNotebookId,
 } from '../../lib/storage.ts'
-import { showNotebookDialog } from '../services/ui.ts'
 import { addSourceToNotebook } from '../services/notebooks.ts'
 import { importTabs, importBookmarks, importHistory } from '../services/sources.ts'
 import type { PickerItem } from '../services/sources.ts'
@@ -43,6 +43,9 @@ export function AddTabStateful({ active }: AddTabStatefulProps): Node {
 
   // Navigation
   const { switchTab } = useNavigation()
+
+  // Dialog state
+  const { showNotebook } = useDialog()
 
   // UI state
   const [showPicker, setShowPicker] = useState(false)
@@ -81,7 +84,7 @@ export function AddTabStateful({ active }: AddTabStatefulProps): Node {
       return currentNotebookId
     }
 
-    const name = await showNotebookDialog({ title: 'Create a notebook first' })
+    const name = await showNotebook({ title: 'Create a notebook first' })
     if (!name) {
       return null
     }
