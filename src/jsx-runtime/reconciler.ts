@@ -194,8 +194,32 @@ function updateElement(
   oldVNode: Extract<VNode, { type: 'element' }>,
   newVNode: Extract<VNode, { type: 'element' }>,
 ): Node {
-  const el = parent.firstChild as Element
-  console.log('[updateElement] tag:', newVNode.tag, 'parent tagName:', parent.tagName, 'el.tagName:', el.tagName, 'parent.textContent:', parent.textContent)
+  // Find the DOM element that corresponds to oldVNode
+  // We can't just use parent.firstChild because the element might not be the first child
+  let el: Element | null = null
+  const oldKey = oldVNode.key
+
+  for (const child of parent.children) {
+    if (child.tagName === oldVNode.tag.toUpperCase()) {
+      // Check if this is the right element by comparing the mounted VNode
+      const mounted = mountedNodes.get(child)
+      if (mounted?.vdom === oldVNode || (oldKey && oldVNode.key === newVNode.key)) {
+        el = child
+        break
+      }
+      // If there's no key, use the first matching tag
+      if (!oldKey && !el) {
+        el = child
+      }
+    }
+  }
+
+  if (!el) {
+    // Fallback to firstChild (shouldn't happen in normal cases)
+    el = parent.firstChild as Element
+  }
+
+  console.log('[updateElement] tag:', newVNode.tag, 'parent tagName:', parent.tagName, 'el.tagName:', el?.tagName, 'parent.textContent:', parent.textContent)
 
   // Diff props
   diffProps(el, oldVNode.props, newVNode.props)
@@ -575,7 +599,9 @@ async function diffChildren(
       const { domNode } = match
 
       // Reconcile the existing node (update its props/children)
-      await reconcile(domNode, match.vnode, newChild, component)
+      // Pass the parent container so updateElement can find the correct element
+      const parentForReconcile = domNode.parentNode ?? parent
+      await reconcile(parentForReconcile, match.vnode, newChild, component)
 
       // Check if the node needs to be moved
       // The node should be immediately after lastPlacedNode (or at the beginning if lastPlacedNode is null)

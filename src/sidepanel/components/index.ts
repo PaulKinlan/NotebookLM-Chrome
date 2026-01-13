@@ -28,6 +28,9 @@ export type { ProviderProfilesProps } from './ProviderProfilesStateful.tsx'
 export type { ProfileCardProps } from './ProfileCard.tsx'
 export type { ProfileFormProps } from './ProfileForm.tsx'
 
+// Tool Approvals Components
+export { ToolApprovalsStateful } from './ToolApprovalsStateful.tsx'
+
 // Dialog Components
 export { PickerModal, NotebookDialog, ConfirmDialog } from './Modals.tsx'
 export type { NotebookDialogProps, ConfirmDialogProps } from './Modals.tsx'

@@ -7,6 +7,7 @@
 
 import type { ChatEvent, Source, Citation } from '../../types/index.ts'
 import { formatMarkdown } from '../dom-utils.ts'
+import { ToolApprovalsStateful } from './ToolApprovalsStateful.tsx'
 
 interface ChatMessagesProps {
   notebookId: string | null
@@ -429,6 +430,7 @@ export function ChatMessages({
         }
         return null
       })}
+      <ToolApprovalsStateful />
     </>
   )
 }

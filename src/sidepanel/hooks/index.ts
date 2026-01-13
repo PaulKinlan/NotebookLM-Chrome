@@ -20,3 +20,4 @@ export { useToolPermissions, type ToolPermissionItem } from './useToolPermission
 export { useTransform, type TransformType, type TransformResult } from './useTransform.ts'
 export { useFuzzyDropdown, type FuzzyDropdownOption, type UseFuzzyDropdownOptions, type UseFuzzyDropdownReturn } from './useFuzzyDropdown.ts'
 export { useProviderProfiles, type AIProfile, type ProfileFormState, type UsageStats, type UseProviderProfilesReturn } from './useProviderProfiles.ts'
+export { useToolApprovals, type UseToolApprovalsReturn } from './useToolApprovals.ts'
