@@ -8,7 +8,9 @@ import {
   getSource,
   getSourcesByNotebook,
 } from './lib/storage.ts'
-import { getLinksInSelection } from './lib/selection-links.ts'
+// Note: getLinksInSelection from './lib/selection-links.ts' is not used here
+// because chrome.scripting.executeScript requires a self-contained function.
+// The function is inlined in extractLinksFromSelection() below.
 
 /**
  * Response from content script's extractContent action
@@ -320,10 +322,22 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     // Type guard for menuItemId
     const menuId = typeof info.menuItemId === 'string' ? info.menuItemId : String(info.menuItemId)
 
-    // Open side panel immediately (must be in direct response to user gesture)
+    // For selection links, we must extract links BEFORE the side panel fully opens
+    // because opening the panel can cause the page to lose focus and clear the selection.
+    // Start the panel opening (required for user gesture), then extract links in parallel.
+    let selectionLinksPromise: Promise<string[]> | null = null
+    if (menuId.startsWith(SELECTION_LINKS_MENU_PREFIX) && tab?.id) {
+      // Start extraction immediately - don't await yet
+      selectionLinksPromise = extractLinksFromSelection(tab.id)
+    }
+
+    // Open side panel (must be called immediately in response to user gesture)
     if (tab?.id) {
       await chrome.sidePanel.open({ tabId: tab.id })
     }
+
+    // Now await the links extraction if we started it
+    const selectionLinks = selectionLinksPromise ? await selectionLinksPromise : null
 
     // Handle page menu clicks
     if (menuId.startsWith(PAGE_MENU_PREFIX) && tab?.id) {
@@ -375,14 +389,11 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       }
     }
 
-    // Handle selection links menu clicks
-    if (menuId.startsWith(SELECTION_LINKS_MENU_PREFIX) && tab?.id) {
+    // Handle selection links menu clicks (links already extracted above)
+    if (menuId.startsWith(SELECTION_LINKS_MENU_PREFIX) && tab?.id && selectionLinks !== null) {
       const notebookIdOrNew = menuId.replace(SELECTION_LINKS_MENU_PREFIX, '')
 
-      // Extract links from the selection using scripting API
-      const links = await extractLinksFromSelection(tab.id)
-
-      if (links.length === 0) {
+      if (selectionLinks.length === 0) {
         console.log('No links found in selection')
         return
       }
@@ -392,19 +403,19 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         await chrome.storage.session.set({
           pendingAction: {
             type: 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS',
-            payload: { links },
+            payload: { links: selectionLinks },
           },
         })
         // Also try sending message in case side panel is already open
         chrome.runtime
           .sendMessage({
             type: 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS',
-            payload: { links },
+            payload: { links: selectionLinks },
           })
           .catch(() => {})
       }
       else {
-        await handleAddSelectionLinksFromContextMenu(links, notebookIdOrNew)
+        await handleAddSelectionLinksFromContextMenu(selectionLinks, notebookIdOrNew)
       }
     }
   })()
@@ -491,7 +502,63 @@ async function extractLinksFromSelection(tabId: number): Promise<string[]> {
   try {
     const result = await chrome.scripting.executeScript({
       target: { tabId },
-      func: getLinksInSelection,
+      // Inline function to avoid issues with module dependencies not being available in page context
+      func: () => {
+        const selection = window.getSelection()
+        if (!selection || selection.rangeCount === 0) {
+          return []
+        }
+
+        const linksSet = new Set<string>()
+        const range = selection.getRangeAt(0)
+
+        // Create a document fragment from the range
+        const fragment = range.cloneContents()
+
+        // Find all anchor elements in the selection
+        const anchorElements = fragment.querySelectorAll('a[href]')
+        anchorElements.forEach((anchor) => {
+          const href = anchor.getAttribute('href')
+          if (href && href.startsWith('http')) {
+            linksSet.add(href)
+          }
+        })
+
+        // Also check if the selection itself starts or ends within an anchor element
+        const container = range.commonAncestorContainer
+        let parentElement: Element | null = null
+
+        if (container.nodeType === Node.TEXT_NODE) {
+          parentElement = container.parentElement
+        }
+        else if (container.nodeType === Node.ELEMENT_NODE) {
+          parentElement = container as Element
+        }
+
+        if (parentElement) {
+          // Check if the selection is within an anchor
+          const closestAnchor = parentElement.closest('a[href]')
+          if (closestAnchor) {
+            const href = closestAnchor.getAttribute('href')
+            if (href && href.startsWith('http')) {
+              linksSet.add(href)
+            }
+          }
+
+          // Find all anchors within the common ancestor
+          const ancestorAnchors = parentElement.querySelectorAll('a[href]')
+          ancestorAnchors.forEach((anchor) => {
+            if (selection.containsNode(anchor, true)) {
+              const href = anchor.getAttribute('href')
+              if (href && href.startsWith('http')) {
+                linksSet.add(href)
+              }
+            }
+          })
+        }
+
+        return Array.from(linksSet)
+      },
     })
 
     if (!result || result.length === 0) {
