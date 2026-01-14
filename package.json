@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "prepare": "husky",
+    "generate-icons": "node scripts/generate-icons.js",
     "dev": "vite",
     "watch": "npm run build -- --watch",
     "build": "tsc && vite build",
@@ -74,6 +75,7 @@
     "jsdom": "^27.4.0",
     "lint-staged": "^16.2.7",
     "puppeteer": "^24.35.0",
+    "sharp": "^0.34.5",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",
     "vitest": "^4.0.16"
