@@ -5,7 +5,7 @@
  * Handles generating content transformations (podcast, quiz, takeaways, etc.) from sources.
  */
 
-import { useRef, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useRef, useEffect } from 'preact/hooks'
 import { useTransform, type TransformType } from '../hooks/useTransform.ts'
 import { SandboxRenderer } from '../../lib/sandbox-renderer.ts'
 import styles from './TransformTab.module.css'

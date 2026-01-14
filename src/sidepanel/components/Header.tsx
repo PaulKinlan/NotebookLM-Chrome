@@ -6,7 +6,7 @@
  */
 
 import { useNotebook } from '../hooks/useNotebook.ts'
-import { useState } from '../../jsx-runtime/hooks/index.ts'
+import { useState } from 'preact/hooks'
 import styles from './Header.module.css'
 
 interface HeaderStatefulProps {
@@ -22,12 +22,15 @@ export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: 
   const { notebooks, currentNotebookId, selectNotebook, createNotebook } = useNotebook()
   const [isAiModelDropdownOpen, setIsAiModelDropdownOpen] = useState(false)
 
-  const handleNotebookChange = async (e: { target: HTMLSelectElement }) => {
-    const notebookId = e.target.value || null
-    if (notebookId) {
-      await selectNotebook(notebookId)
-      if (onNotebookChange) {
-        onNotebookChange(notebookId)
+  const handleNotebookChange = async (e: Event) => {
+    const target = e.currentTarget
+    if (target instanceof HTMLSelectElement) {
+      const notebookId = target.value || null
+      if (notebookId) {
+        await selectNotebook(notebookId)
+        if (onNotebookChange) {
+          onNotebookChange(notebookId)
+        }
       }
     }
   }

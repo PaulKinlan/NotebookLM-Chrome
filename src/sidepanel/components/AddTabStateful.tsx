@@ -6,7 +6,7 @@
  * and permissions.
  */
 
-import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from 'preact/hooks'
 import { useNotebook } from '../hooks/useNotebook.ts'
 import { useSources } from '../hooks/useSources.ts'
 import { usePermissions } from '../hooks/usePermissions.ts'

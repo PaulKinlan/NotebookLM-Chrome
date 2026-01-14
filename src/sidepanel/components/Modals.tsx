@@ -9,7 +9,7 @@
  * fully stateful component integrated with AddTabStateful.
  */
 
-import { useEffect, useRef } from '../../jsx-runtime/hooks/index.ts'
+import { useEffect, useRef } from 'preact/hooks'
 import type { ConfirmDialogState, NotebookDialogState } from '../hooks/useDialog.ts'
 
 // ============================================================================
@@ -36,7 +36,7 @@ export function NotebookDialog(props: NotebookDialogProps) {
 
   // NOTE: For forms inside <dialog>, we need to handle submission specially
   // The dialog should close after successful submission
-  const handleDialogClick = (e: { target: EventTarget, currentTarget: EventTarget }) => {
+  const handleDialogClick = (e: Event) => {
     const dialog = e.currentTarget
     if (dialog instanceof HTMLDialogElement && e.target === dialog) {
       // Clicking backdrop closes the dialog
@@ -86,9 +86,12 @@ export function NotebookDialog(props: NotebookDialogProps) {
           id="notebook-name-input"
           placeholder={placeholder}
           value={inputValue}
-          onInput={(e: { target: HTMLInputElement }) => {
-            console.log('[NotebookDialog] onInput called with value:', e.target.value)
-            onInput(e.target.value)
+          onInput={(e: Event) => {
+            const target = e.currentTarget
+            if (target instanceof HTMLInputElement) {
+              console.log('[NotebookDialog] onInput called with value:', target.value)
+              onInput(target.value)
+            }
           }}
           autoFocus
         />

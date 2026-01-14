@@ -5,6 +5,7 @@
  * Handles citations, tool calls, and streaming updates.
  */
 
+import type { JSX } from 'preact'
 import type { ChatEvent, Source, Citation } from '../../types/index.ts'
 import { formatMarkdown, escapeHtml } from '../dom-utils.ts'
 import { ToolApprovalsStateful } from './ToolApprovalsStateful.tsx'

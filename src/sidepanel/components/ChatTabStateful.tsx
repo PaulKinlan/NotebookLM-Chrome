@@ -6,7 +6,7 @@
  * Handles streaming chat responses with tool support.
  */
 
-import { useState, useRef } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useRef } from 'preact/hooks'
 import { useNotebook } from '../hooks/useNotebook.ts'
 import { useSources } from '../hooks/useSources.ts'
 import { useChatHistory } from '../hooks/useChatHistory.ts'

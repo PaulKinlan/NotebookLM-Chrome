@@ -5,7 +5,7 @@
  * Uses the FuzzyDropdown component for provider selection.
  */
 
-import { useState, useEffect, useRef } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect, useRef } from 'preact/hooks'
 import type { ProfileFormState } from '../hooks/useProviderProfiles.ts'
 import type { ProviderConfig, SelectableModel } from '../../lib/provider-registry.ts'
 import type { FuzzyDropdownOption } from '../hooks/useFuzzyDropdown.ts'
@@ -72,7 +72,7 @@ export function ProfileForm({
   const [modelInputValue, setModelInputValue] = useState(formState.model)
 
   // Refs for dropdown elements
-  const modelDropdownRef = useRef<HTMLElement | null>(null)
+  const modelDropdownRef = useRef<HTMLDivElement>(null)
 
   // Get current provider
   const currentProvider = availableProviders.find(p => p.id === formState.providerId)
@@ -158,7 +158,7 @@ export function ProfileForm({
           className="form-input profile-name-input"
           placeholder="e.g., GPT-4 Turbo (Work)"
           value={formState.name}
-          onInput={(e: InputEvent) => {
+          onInput={(e: Event) => {
             const target = e.currentTarget
             if (target instanceof HTMLInputElement) {
               onChange({ name: target.value })
@@ -185,7 +185,7 @@ export function ProfileForm({
               className="form-input profile-api-key-input"
               placeholder="Required for most providers"
               value={formState.apiKey}
-              onInput={(e: InputEvent) => {
+              onInput={(e: Event) => {
                 const target = e.currentTarget
                 if (target instanceof HTMLInputElement) {
                   onChange({ apiKey: target.value })
@@ -242,7 +242,7 @@ export function ProfileForm({
             autocomplete="off"
             value={modelInputValue}
             onFocus={() => setModelDropdownOpen(true)}
-            onInput={(e: InputEvent) => {
+            onInput={(e: Event) => {
               const target = e.currentTarget
               if (target instanceof HTMLInputElement) {
                 handleModelInput(target.value)
@@ -326,7 +326,7 @@ export function ProfileForm({
               max="2"
               step="0.1"
               value={formState.temperature}
-              onInput={(e: InputEvent) => {
+              onInput={(e: Event) => {
                 const target = e.currentTarget
                 if (target instanceof HTMLInputElement) {
                   onChange({ temperature: parseFloat(target.value) })
@@ -346,7 +346,7 @@ export function ProfileForm({
             step="100"
             placeholder="Default"
             value={formState.maxTokens || ''}
-            onInput={(e: InputEvent) => {
+            onInput={(e: Event) => {
               const target = e.currentTarget
               if (target instanceof HTMLInputElement) {
                 const value = target.value
@@ -359,7 +359,7 @@ export function ProfileForm({
           <label className="input-label">Context Compression</label>
           <select
             className="form-select profile-compression-mode-input"
-            onChange={(e: InputEvent) => {
+            onChange={(e: Event) => {
               const target = e.currentTarget
               if (target instanceof HTMLSelectElement) {
                 const value = target.value

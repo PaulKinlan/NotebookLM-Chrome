@@ -5,7 +5,7 @@
  * Replaces imperative rendering in controllers.ts (loadNotebooksList function).
  */
 
-import { useEffect, useState } from '../../jsx-runtime/hooks/index.ts'
+import { useEffect, useState } from 'preact/hooks'
 import { useNotebook } from '../hooks/useNotebook.ts'
 import { useNotification } from '../hooks/useNotification.ts'
 import { useDialog } from '../hooks/useDialog.ts'

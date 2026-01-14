@@ -5,7 +5,7 @@
  * Replaces imperative provider-config-ui.ts with hooks-based architecture.
  */
 
-import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from 'preact/hooks'
 import { useProviderProfiles, type ProfileFormState } from '../hooks/useProviderProfiles.ts'
 import { ProfileCard } from './ProfileCard.tsx'
 import { ProfileForm } from './ProfileForm.tsx'

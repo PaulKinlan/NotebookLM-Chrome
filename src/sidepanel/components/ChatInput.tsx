@@ -5,7 +5,7 @@
  * Uses the useChat hook for state management.
  */
 
-import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from 'preact/hooks'
 import { escapeHtml } from '../dom-utils.ts'
 
 /**

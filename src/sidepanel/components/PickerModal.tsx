@@ -6,7 +6,8 @@
  */
 
 import { usePickerModal } from '../hooks/usePickerModal.ts'
-import { useState } from '../../jsx-runtime/hooks/index.ts'
+import { useState } from 'preact/hooks'
+import type { JSX } from 'preact'
 import type { PickerItem } from '../services/sources.ts'
 
 /**

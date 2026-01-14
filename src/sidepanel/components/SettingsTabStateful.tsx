@@ -5,7 +5,7 @@
  * Replaces imperative settings rendering in controllers.ts.
  */
 
-import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from 'preact/hooks'
 import { usePermissions } from '../hooks/usePermissions.ts'
 import { useNotification } from '../hooks/useNotification.ts'
 import { useDialog } from '../hooks/useDialog.ts'
@@ -137,7 +137,12 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
             type="checkbox"
             id="tool-based-context"
             checked={isToolBasedContext}
-            onChange={(e: { target: HTMLInputElement }) => void handleContextModeChange(e.target.checked)}
+            onChange={(e: Event) => {
+              const target = e.currentTarget
+              if (target instanceof HTMLInputElement) {
+                void handleContextModeChange(target.checked)
+              }
+            }}
           />
           <span>Tool-based Context - AI queries sources as needed</span>
         </label>
@@ -166,7 +171,12 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
             type="checkbox"
             id="perm-tabs"
             checked={permissions.tabs}
-            onChange={(e: { target: HTMLInputElement }) => void handlePermissionToggle('tabs', e.target.checked)}
+            onChange={(e: Event) => {
+              const target = e.currentTarget
+              if (target instanceof HTMLInputElement) {
+                void handlePermissionToggle('tabs', target.checked)
+              }
+            }}
           />
           <span>Tabs - View all open tabs</span>
         </label>
@@ -175,7 +185,12 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
             type="checkbox"
             id="perm-tab-groups"
             checked={permissions.tabGroups}
-            onChange={(e: { target: HTMLInputElement }) => void handlePermissionToggle('tabGroups', e.target.checked)}
+            onChange={(e: Event) => {
+              const target = e.currentTarget
+              if (target instanceof HTMLInputElement) {
+                void handlePermissionToggle('tabGroups', target.checked)
+              }
+            }}
           />
           <span>Tab Groups - Access tab groups</span>
         </label>
@@ -184,7 +199,12 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
             type="checkbox"
             id="perm-bookmarks"
             checked={permissions.bookmarks}
-            onChange={(e: { target: HTMLInputElement }) => void handlePermissionToggle('bookmarks', e.target.checked)}
+            onChange={(e: Event) => {
+              const target = e.currentTarget
+              if (target instanceof HTMLInputElement) {
+                void handlePermissionToggle('bookmarks', target.checked)
+              }
+            }}
           />
           <span>Bookmarks - Access saved bookmarks</span>
         </label>
@@ -193,7 +213,12 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
             type="checkbox"
             id="perm-history"
             checked={permissions.history}
-            onChange={(e: { target: HTMLInputElement }) => void handlePermissionToggle('history', e.target.checked)}
+            onChange={(e: Event) => {
+              const target = e.currentTarget
+              if (target instanceof HTMLInputElement) {
+                void handlePermissionToggle('history', target.checked)
+              }
+            }}
           />
           <span>History - Access browsing history</span>
         </label>
@@ -223,7 +248,12 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
                           id={`tool-enabled-${tool.name}`}
                           data-tool-name={tool.name}
                           checked={tool.visible}
-                          onChange={(e: { target: HTMLInputElement }) => void toggleToolVisibility(tool.name, e.target.checked)}
+                          onChange={(e: Event) => {
+                            const target = e.currentTarget
+                            if (target instanceof HTMLInputElement) {
+                              void toggleToolVisibility(tool.name, target.checked)
+                            }
+                          }}
                         />
                         <label htmlFor={`tool-enabled-${tool.name}`}>Enabled</label>
                       </div>
@@ -234,7 +264,12 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
                           data-tool-name={tool.name}
                           checked={tool.visible && tool.autoApprove}
                           disabled={!tool.visible}
-                          onChange={(e: { target: HTMLInputElement }) => void toggleToolAutoApprove(tool.name, e.target.checked)}
+                          onChange={(e: Event) => {
+                            const target = e.currentTarget
+                            if (target instanceof HTMLInputElement) {
+                              void toggleToolAutoApprove(tool.name, target.checked)
+                            }
+                          }}
                         />
                         <label htmlFor={`tool-no-approval-${tool.name}`}>Auto approve</label>
                       </div>

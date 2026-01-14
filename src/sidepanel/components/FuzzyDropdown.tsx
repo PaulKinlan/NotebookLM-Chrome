@@ -7,7 +7,7 @@
 
 import type { FuzzyDropdownOption, UseFuzzyDropdownOptions } from '../hooks/useFuzzyDropdown.ts'
 import { useFuzzyDropdown } from '../hooks/useFuzzyDropdown.ts'
-import { useEffect, useRef } from '../../jsx-runtime/hooks/index.ts'
+import { useEffect, useRef } from 'preact/hooks'
 
 export interface FuzzyDropdownProps extends Omit<UseFuzzyDropdownOptions, 'initialValue'> {
   /** Initial selected value */
@@ -94,9 +94,9 @@ export function FuzzyDropdown(props: FuzzyDropdownProps): JSX.Element {
         placeholder={placeholder || 'Type to search...'}
         value={dropdown.inputValue}
         autocomplete="off"
-        aria-expanded={String(dropdown.isOpen)}
+        aria-expanded={dropdown.isOpen}
         onFocus={dropdown.open}
-        onInput={(e: InputEvent) => {
+        onInput={(e: Event) => {
           const target = e.currentTarget
           if (target instanceof HTMLInputElement) {
             dropdown.handleInput(target.value)
@@ -210,7 +210,7 @@ function RenderGroupedOptions({ grouped, highlightedIndex, inputValue, onSelect 
                 data-value={option.id}
                 role="option"
                 style={score === -1 && inputValue ? { opacity: '0.5' } : undefined}
-                onClick={(e: MouseEvent) => {
+                onClick={(e: Event) => {
                   e.stopPropagation()
                   onSelect(option)
                 }}
