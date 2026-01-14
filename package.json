@@ -50,10 +50,12 @@
     "ai": "^6.0.28",
     "dompurify": "^3.3.1",
     "marked": "^17.0.1",
+    "preact": "^10.28.2",
     "turndown": "^7.2.2"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.3.0",
+    "@preact/preset-vite": "^2.10.2",
     "@stylistic/eslint-plugin": "^5.7.0",
     "@types/chrome": "^0.1.33",
     "@types/dompurify": "^3.2.0",
