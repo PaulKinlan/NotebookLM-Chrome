@@ -9,6 +9,27 @@ import { useRef, useEffect } from '../../jsx-runtime/hooks/index.ts'
 import { useTransform, type TransformType } from '../hooks/useTransform.ts'
 import { SandboxRenderer } from '../../lib/sandbox-renderer.ts'
 
+/**
+ * TransformIcon Component - renders SVG icon with innerHTML injection
+ */
+function TransformIcon({ type }: { type: TransformType }): JSX.Element {
+  const svgRef = useRef<SVGSVGElement | null>(null)
+
+  useEffect(() => {
+    if (svgRef.current) {
+      svgRef.current.innerHTML = getIconSvg(type)
+    }
+  }, [type])
+
+  return (
+    <div className="svg-icon-wrapper">
+      <svg ref={svgRef} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        {/* SVG content injected via innerHTML */}
+      </svg>
+    </div>
+  )
+}
+
 interface TransformTabStatefulProps {
   active: boolean
 }
@@ -90,9 +111,7 @@ function TransformCardButton({ transform, disabled, onClick }: {
       type="button"
     >
       <div className={`transform-icon ${transform.icon}`}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          {getIconSvg(transform.type)}
-        </svg>
+        <TransformIcon type={transform.type} />
       </div>
       <div className="transform-info">
         <span className="transform-title">{transform.title}</span>
