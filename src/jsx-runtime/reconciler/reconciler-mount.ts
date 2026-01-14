@@ -108,6 +108,24 @@ export function mountElement(
   const namespace = tag === 'svg' || isInSvg ? 'http://www.w3.org/2000/svg' : null
   const el = namespace ? document.createElementNS(namespace, tag) : document.createElement(tag)
 
+  // CRITICAL: Append the element to the parent BEFORE mounting children.
+  // This ensures the element is in the DOM tree and can be found by lookups.
+  // Handle edge case where parent is a DocumentFragment that's already been inserted
+  // into the DOM (via replaceChild), in which case we need to append to the fragment's parent
+  try {
+    if (parent.nodeType === Node.DOCUMENT_FRAGMENT_NODE && parent.parentNode) {
+      // DocumentFragment that's already in the DOM - append to its parent instead
+      parent.parentNode.appendChild(el)
+    }
+    else {
+      parent.appendChild(el)
+    }
+  }
+  catch (e) {
+    console.error(`[mountElement] Failed to append <${tag}> to parent:`, parent, `parent.nodeType:`, parent.nodeType, `parent.nodeName:`, parent.nodeName, `error:`, e)
+    throw e
+  }
+
   // For <select> elements, we need to mount children BEFORE applying props.
   // This is because setting the 'value' prop requires the option to exist in the DOM.
   if (tag === 'select') {
@@ -128,23 +146,6 @@ export function mountElement(
     for (const child of children) {
       void reconcile(el, null, child, undefined, childNamespace)
     }
-  }
-
-  // Append the element to the parent
-  // Handle edge case where parent is a DocumentFragment that's already been inserted
-  // into the DOM (via replaceChild), in which case we need to append to the fragment's parent
-  try {
-    if (parent.nodeType === Node.DOCUMENT_FRAGMENT_NODE && parent.parentNode) {
-      // DocumentFragment that's already in the DOM - append to its parent instead
-      parent.parentNode.appendChild(el)
-    }
-    else {
-      parent.appendChild(el)
-    }
-  }
-  catch (e) {
-    console.error(`[mountElement] Failed to append <${tag}> to parent:`, parent, `parent.nodeType:`, parent.nodeType, `parent.nodeName:`, parent.nodeName, `error:`, e)
-    throw e
   }
 
   mountedNodes.set(el, { node: el, vdom: vnode })
