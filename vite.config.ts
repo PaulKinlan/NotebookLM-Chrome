@@ -1,18 +1,14 @@
 import { defineConfig } from 'vite';
 import { crx } from '@crxjs/vite-plugin';
+import preact from '@preact/preset-vite';
 import manifest from './manifest.json';
-import path from 'path';
 
 export default defineConfig({
-  plugins: [crx({ manifest })],
-  resolve: {
-    alias: {
-      'jsx-runtime/jsx-runtime': path.resolve(__dirname, './src/jsx-runtime.ts'),
-    },
-  },
+  plugins: [
+    crx({ manifest }),
+    preact(),
+  ],
   esbuild: {
-    jsx: 'automatic',
-    jsxImportSource: 'jsx-runtime',
     // Keep function names for better debugging in production builds
     keepNames: true,
   },
