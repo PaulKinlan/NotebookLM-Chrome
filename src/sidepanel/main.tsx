@@ -1,11 +1,11 @@
 // ============================================================================
 // Main Entry Point
 // ============================================================================
-// Renders App component and initializes Chrome extension event listeners
+// Renders App component using Preact and initializes Chrome extension event listeners
 
 import './global.css'
+import { render } from 'preact'
 import { App, type AppCallbacks } from './App'
-import { render } from '../jsx-runtime'
 import { initTheme } from './hooks/useTheme.tsx'
 import { initChromeBridge, checkPendingActions, type ChromeBridgeCallbacks } from './chrome-bridge'
 import { createNotebook, saveNotebook, setActiveNotebookId, saveSource, createSource } from '../lib/storage'
@@ -52,12 +52,11 @@ const showNotebook: AppCallbacks['showNotebook'] = (options) => {
 }
 
 const showNotification: AppCallbacks['showNotification'] = (message, type) => {
-  getAppCallbacks().showNotification(message, type)
+  return getAppCallbacks().showNotification(message, type)
 }
 
-// Render the App component using the VNode-based render function
-// This ensures hooks work properly by setting up component context
-void render(
+// Render the App component using Preact's render function
+render(
   <App
     activeTab="add"
     fabHidden={true}

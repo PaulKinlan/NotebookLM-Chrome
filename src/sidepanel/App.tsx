@@ -3,7 +3,7 @@
 // ============================================================================
 
 // Import all components
-import { useState, useEffect, useRef } from '../jsx-runtime/hooks/index.ts'
+import { useState, useEffect, useRef } from 'preact/hooks'
 import { HeaderStateful } from './components/Header'
 import { AddTabStateful } from './components/AddTabStateful'
 import { ChatTabStateful } from './components/ChatTabStateful'
@@ -47,12 +47,8 @@ export function App(props: AppProps = {
 }) {
   const { activeTab: initialTab, fabHidden, onboardingHidden, onProvideCallbacks } = props
 
-  console.log('[App] Component function called, initialTab:', initialTab)
-
   // Use useState for tab management instead of imperative DOM manipulation
   const [activeTab, setActiveTab] = useState<TabName>(initialTab)
-
-  console.log('[App] After useState, activeTab:', activeTab)
 
   // Use useDialog hook for dialog state management
   const {
@@ -80,7 +76,6 @@ export function App(props: AppProps = {
   // Provide callbacks to main.tsx via the onProvideCallbacks prop
   // This allows main.tsx to trigger dialogs/notifications without global state
   useEffect(() => {
-    console.log('[App] useEffect running, calling onProvideCallbacks')
     if (onProvideCallbacks) {
       onProvideCallbacks({
         showNotebook: (...args) => showNotebookRef.current(...args),
@@ -90,9 +85,7 @@ export function App(props: AppProps = {
   }, [onProvideCallbacks])
 
   const handleTabClick = (tab: TabName) => {
-    console.log('[App] handleTabClick called with tab:', tab, 'current activeTab:', activeTab)
     setActiveTab(tab)
-    console.log('[App] setActiveTab called, waiting for re-render...')
   }
 
   const handleFabClick = () => {
