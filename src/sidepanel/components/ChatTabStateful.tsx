@@ -495,7 +495,7 @@ ${SLASH_COMMANDS.map(c => `  /${c.command} - ${c.description}`).join('\n')}
             Clear
           </button>
         </div>
-        <div className="chat-messages">
+        <div id="chat-messages" className="chat-messages">
           <ChatMessages
             notebookId={currentNotebookId}
             events={displayEvents}
@@ -519,7 +519,7 @@ ${SLASH_COMMANDS.map(c => `  /${c.command} - ${c.description}`).join('\n')}
           isGenerating={isGenerating}
         />
       </div>
-      <p className="helper-text">{chatStatus}</p>
+      <p id="chat-status" className="helper-text">{chatStatus}</p>
 
       {/* Picker Modal */}
       {showPicker && (

@@ -112,11 +112,6 @@ export function scheduleUpdate(component: ComponentInstance): void {
   // in the next RAF cycle after the previous flush completes.
   if (isBetweenFlushes) {
     isBetweenFlushes = false
-    // Clear all per-flush counters for components that were flushed in the previous RAF
-    console.log(`[scheduleUpdate] Starting new batch, clearing _flushUpdateCount for ${flushedComponents.size} flushed components`)
-    for (const comp of flushedComponents) {
-      delete (comp as { _flushUpdateCount?: number })._flushUpdateCount
-    }
     flushedComponents.clear()
     // Also clear the batch tracker
     console.log(`[scheduleUpdate] Starting new batch, clearing scheduledThisBatch (size: ${scheduledThisBatch.size})`)
@@ -127,10 +122,6 @@ export function scheduleUpdate(component: ComponentInstance): void {
   // This handles the case where a previous RAF completed but scheduledThisBatch wasn't cleared
   if (!updateScheduled && scheduledThisBatch.size > 0) {
     console.log(`[scheduleUpdate] No update scheduled but scheduledThisBatch has ${scheduledThisBatch.size} components, clearing`)
-    // Also clear flush counts for these components since they're no longer in an active batch
-    for (const comp of scheduledThisBatch) {
-      delete (comp as { _flushUpdateCount?: number })._flushUpdateCount
-    }
     scheduledThisBatch.clear()
   }
 
@@ -145,15 +136,12 @@ export function scheduleUpdate(component: ComponentInstance): void {
   // Mark as scheduled in this batch - will be cleared when RAF flush starts
   scheduledThisBatch.add(component)
 
-  // Per-flush update count - prevents the same component from being updated
-  // more than once per RAF cycle.
-  const flushCount = (component as { _flushUpdateCount?: number })._flushUpdateCount || 0
-  ;(component as { _flushUpdateCount?: number })._flushUpdateCount = flushCount + 1
-  if (flushCount > 0) {
-    // Component already updated this flush, skip
-    console.log(`[scheduleUpdate] Component "${component.fn.name || 'Anonymous'}" already updated this flush, skipping`)
-    return
-  }
+  // Note: We NO LONGER skip updates if flushCount > 0.
+  // The previous check prevented legitimate interactive state updates (e.g., clicking
+  // a button to toggle a dropdown) when the component had already been updated once
+  // in the current RAF cycle. The scheduledThisBatch check above provides sufficient
+  // batching for synchronous setState calls, while allowing genuine state changes
+  // triggered by user interactions to be processed immediately.
 
   // Debug logging to detect render loops
   const updateCount = (component as { _updateCount?: number })._updateCount || 0
