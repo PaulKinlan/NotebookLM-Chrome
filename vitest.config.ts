@@ -1,6 +1,17 @@
 import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      'jsx-runtime/jsx-runtime': path.resolve(__dirname, './src/jsx-runtime.ts'),
+      'jsx-runtime/jsx-dev-runtime': path.resolve(__dirname, './src/jsx-runtime.ts'),
+    },
+  },
+  esbuild: {
+    jsx: 'automatic',
+    jsxImportSource: 'jsx-runtime',
+  },
   test: {
     globals: true,
     environment: 'jsdom',
