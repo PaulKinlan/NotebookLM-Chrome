@@ -120,10 +120,14 @@ export async function updateElement(
   // For <select> elements, we need to diff children BEFORE props.
   // This is because setting the 'value' prop requires the option to exist in the DOM.
   // If we set value first, then add the option, the value won't be set correctly.
+  // Special case: foreignObject children should use HTML namespace, not SVG
+  const isForeignObject = newVNode.tag === 'foreignObject'
+  const childNamespace = isForeignObject ? undefined : svgNamespace
+
   if (el instanceof HTMLSelectElement) {
     console.log(`[updateElement] SELECT element detected: ${el.id || '(no id)'}, oldChildren=${oldVNode.children.length}, newChildren=${newVNode.children.length}`)
     // Diff children first (add/update/remove options)
-    await diffChildren(el, oldVNode.children, newVNode.children, undefined, reconcile, svgNamespace)
+    await diffChildren(el, oldVNode.children, newVNode.children, undefined, reconcile, childNamespace)
     // Then diff props (set value after options exist)
     console.log(`[updateElement] After diffChildren for ${el.id || '(no id)'}, options count=${el.options.length}`)
     diffProps(el, oldVNode.props, newVNode.props)
@@ -142,7 +146,7 @@ export async function updateElement(
       console.log(`[updateElement] After diffProps for tab-settings, element.className="${el.className}"`)
     }
     // Diff children
-    await diffChildren(el, oldVNode.children, newVNode.children, undefined, reconcile, svgNamespace)
+    await diffChildren(el, oldVNode.children, newVNode.children, undefined, reconcile, childNamespace)
   }
 
   // Update mounted node reference

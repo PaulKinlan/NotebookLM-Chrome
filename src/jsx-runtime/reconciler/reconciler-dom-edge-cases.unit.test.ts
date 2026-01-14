@@ -645,6 +645,535 @@ describe('JSX Runtime - DOM Edge Cases', () => {
     })
   })
 
+  describe('Attribute updates during reconciliation - BUG EXPOSURE TESTS', () => {
+    it('should correctly update className attribute during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render with one className
+      const initialVNode = jsx('div', { id: 'class-update-test', className: 'initial-class', children: 'Content' })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#class-update-test') as HTMLElement
+      expect(div.className).toBe('initial-class')
+
+      // Re-render with different className
+      const updatedVNode = jsx('div', { id: 'class-update-test', className: 'updated-class', children: 'Content' })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#class-update-test') as HTMLElement
+      // BUG: className doesn't update during reconciliation
+      expect(updatedDiv.className).toBe('updated-class')
+
+      cleanupTestContainer(container)
+    })
+
+    it('should remove className when set to null during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render with className
+      const initialVNode = jsx('div', { id: 'class-remove-test', className: 'my-class', children: 'Content' })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#class-remove-test') as HTMLElement
+      expect(div.className).toBe('my-class')
+
+      // Re-render with className set to null
+      const updatedVNode = jsx('div', { id: 'class-remove-test', className: null, children: 'Content' })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#class-remove-test') as HTMLElement
+      // BUG: className isn't removed when set to null
+      expect(updatedDiv.className).toBe('')
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update id attribute during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render with one id
+      const initialVNode = jsx('div', { id: 'old-id', className: 'test', children: 'Content' })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#old-id') as HTMLElement
+      expect(div.id).toBe('old-id')
+
+      // Re-render with different id
+      const updatedVNode = jsx('div', { id: 'new-id', className: 'test', children: 'Content' })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#new-id') as HTMLElement
+      expect(updatedDiv.id).toBe('new-id')
+      // Old id should not exist
+      expect(container.querySelector('#old-id')).toBeNull()
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update data attributes during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render
+      const initialVNode = jsx('div', { 'id': 'data-update-test', 'data-value': 'old-value', 'children': 'Content' })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#data-update-test') as HTMLElement
+      expect(div.getAttribute('data-value')).toBe('old-value')
+
+      // Re-render with different data attribute value
+      const updatedVNode = jsx('div', { 'id': 'data-update-test', 'data-value': 'new-value', 'children': 'Content' })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#data-update-test') as HTMLElement
+      expect(updatedDiv.getAttribute('data-value')).toBe('new-value')
+
+      cleanupTestContainer(container)
+    })
+
+    it('should remove data attribute when set to null during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render with data attribute
+      const initialVNode = jsx('div', { 'id': 'data-remove-test', 'data-value': 'test-value', 'children': 'Content' })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#data-remove-test') as HTMLElement
+      expect(div.getAttribute('data-value')).toBe('test-value')
+
+      // Re-render with data attribute set to null
+      const updatedVNode = jsx('div', { 'id': 'data-remove-test', 'data-value': null, 'children': 'Content' })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#data-remove-test') as HTMLElement
+      // BUG: attributes aren't removed when set to null
+      expect(updatedDiv.getAttribute('data-value')).toBeNull()
+
+      cleanupTestContainer(container)
+    })
+
+    it('should remove data attribute when set to undefined during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render with data attribute
+      const initialVNode = jsx('div', { 'id': 'data-undefined-test', 'data-value': 'test-value', 'children': 'Content' })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#data-undefined-test') as HTMLElement
+      expect(div.getAttribute('data-value')).toBe('test-value')
+
+      // Re-render with data attribute set to undefined
+      const updatedVNode = jsx('div', { 'id': 'data-undefined-test', 'data-value': undefined, 'children': 'Content' })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#data-undefined-test') as HTMLElement
+      // BUG: attributes aren't removed when set to undefined
+      expect(updatedDiv.getAttribute('data-value')).toBeNull()
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update aria attributes during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render
+      const initialVNode = jsx('button', { 'id': 'aria-update-test', 'aria-label': 'Old label', 'children': 'Click' })
+      await render(initialVNode, container)
+
+      const button = container.querySelector('#aria-update-test') as HTMLElement
+      expect(button.getAttribute('aria-label')).toBe('Old label')
+
+      // Re-render with different aria-label
+      const updatedVNode = jsx('button', { 'id': 'aria-update-test', 'aria-label': 'New label', 'children': 'Click' })
+      await render(updatedVNode, container)
+
+      const updatedButton = container.querySelector('#aria-update-test') as HTMLElement
+      expect(updatedButton.getAttribute('aria-label')).toBe('New label')
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update style object during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render with one style
+      const initialVNode = jsx('div', {
+        id: 'style-update-test',
+        style: { color: 'red', fontSize: '14px' },
+        children: 'Styled content',
+      })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#style-update-test') as HTMLElement
+      expect(div.style.color).toBe('red')
+      expect(div.style.fontSize).toBe('14px')
+
+      // Re-render with different styles
+      const updatedVNode = jsx('div', {
+        id: 'style-update-test',
+        style: { color: 'blue', fontWeight: 'bold' },
+        children: 'Styled content',
+      })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#style-update-test') as HTMLElement
+      expect(updatedDiv.style.color).toBe('blue')
+      expect(updatedDiv.style.fontWeight).toBe('bold')
+      // Old style should be removed
+      expect(updatedDiv.style.fontSize).toBe('')
+
+      cleanupTestContainer(container)
+    })
+
+    it('should clear all styles when style set to null during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render with styles
+      const initialVNode = jsx('div', {
+        id: 'style-clear-test',
+        style: { color: 'red', fontSize: '14px' },
+        children: 'Styled content',
+      })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#style-clear-test') as HTMLElement
+      expect(div.style.color).toBe('red')
+
+      // Re-render with style set to null
+      const updatedVNode = jsx('div', {
+        id: 'style-clear-test',
+        style: null,
+        children: 'Styled content',
+      })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#style-clear-test') as HTMLElement
+      expect(updatedDiv.style.cssText).toBe('')
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update title attribute during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render
+      const initialVNode = jsx('div', { id: 'title-update-test', title: 'Old tooltip', children: 'Content' })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#title-update-test') as HTMLElement
+      expect(div.getAttribute('title')).toBe('Old tooltip')
+
+      // Re-render with different title
+      const updatedVNode = jsx('div', { id: 'title-update-test', title: 'New tooltip', children: 'Content' })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#title-update-test') as HTMLElement
+      expect(updatedDiv.getAttribute('title')).toBe('New tooltip')
+
+      cleanupTestContainer(container)
+    })
+  })
+
+  describe('Boolean attribute updates during reconciliation - BUG EXPOSURE TESTS', () => {
+    it('should correctly update checked attribute during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render with checked=true
+      const initialVNode = jsx('input', { id: 'checked-update-test', type: 'checkbox', checked: true })
+      await render(initialVNode, container)
+
+      const input = container.querySelector('#checked-update-test') as HTMLInputElement
+      expect(input.checked).toBe(true)
+
+      // Re-render with checked=false
+      const updatedVNode = jsx('input', { id: 'checked-update-test', type: 'checkbox', checked: false })
+      await render(updatedVNode, container)
+
+      const updatedInput = container.querySelector('#checked-update-test') as HTMLInputElement
+      // BUG: checked attribute doesn't update during reconciliation
+      expect(updatedInput.checked).toBe(false)
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update disabled attribute during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render with disabled=false
+      const initialVNode = jsx('button', { id: 'disabled-update-test', disabled: false, children: 'Click' })
+      await render(initialVNode, container)
+
+      const button = container.querySelector('#disabled-update-test') as HTMLButtonElement
+      expect(button.disabled).toBe(false)
+
+      // Re-render with disabled=true
+      const updatedVNode = jsx('button', { id: 'disabled-update-test', disabled: true, children: 'Click' })
+      await render(updatedVNode, container)
+
+      const updatedButton = container.querySelector('#disabled-update-test') as HTMLButtonElement
+      // BUG: disabled attribute doesn't update during reconciliation
+      expect(updatedButton.disabled).toBe(true)
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update readonly attribute during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render with readonly=false
+      const initialVNode = jsx('input', { id: 'readonly-update-test', type: 'text', readOnly: false })
+      await render(initialVNode, container)
+
+      const input = container.querySelector('#readonly-update-test') as HTMLInputElement
+      expect(input.readOnly).toBe(false)
+
+      // Re-render with readonly=true
+      const updatedVNode = jsx('input', { id: 'readonly-update-test', type: 'text', readOnly: true })
+      await render(updatedVNode, container)
+
+      const updatedInput = container.querySelector('#readonly-update-test') as HTMLInputElement
+      expect(updatedInput.readOnly).toBe(true)
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update multiple boolean attributes during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render
+      const initialVNode = jsx('input', {
+        id: 'multi-bool-test',
+        type: 'checkbox',
+        checked: true,
+        disabled: true,
+        required: false,
+      })
+      await render(initialVNode, container)
+
+      const input = container.querySelector('#multi-bool-test') as HTMLInputElement
+      expect(input.checked).toBe(true)
+      expect(input.disabled).toBe(true)
+      expect(input.required).toBe(false)
+
+      // Re-render with all booleans flipped
+      const updatedVNode = jsx('input', {
+        id: 'multi-bool-test',
+        type: 'checkbox',
+        checked: false,
+        disabled: false,
+        required: true,
+      })
+      await render(updatedVNode, container)
+
+      const updatedInput = container.querySelector('#multi-bool-test') as HTMLInputElement
+      expect(updatedInput.checked).toBe(false)
+      expect(updatedInput.disabled).toBe(false)
+      expect(updatedInput.required).toBe(true)
+
+      cleanupTestContainer(container)
+    })
+  })
+
+  describe('Text node updates during reconciliation - BUG EXPOSURE TESTS', () => {
+    it('should correctly update text content during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render
+      const initialVNode = jsx('p', { id: 'text-update-test', children: 'Initial text' })
+      await render(initialVNode, container)
+
+      const para = container.querySelector('#text-update-test') as HTMLElement
+      expect(para.textContent).toBe('Initial text')
+
+      // Re-render with different text
+      const updatedVNode = jsx('p', { id: 'text-update-test', children: 'Updated text' })
+      await render(updatedVNode, container)
+
+      const updatedPara = container.querySelector('#text-update-test') as HTMLElement
+      // BUG: text content doesn't update during reconciliation
+      expect(updatedPara.textContent).toBe('Updated text')
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update text when switching from text to element', async () => {
+      const container = createTestContainer()
+
+      // Initial render with text
+      const initialVNode = jsx('div', { id: 'switch-test', children: 'Just text' })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#switch-test') as HTMLElement
+      expect(div.textContent).toBe('Just text')
+
+      // Re-render with element
+      const updatedVNode = jsx('div', { id: 'switch-test', children: [
+        jsx('span', { children: 'Wrapped in span' }),
+      ] })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#switch-test') as HTMLElement
+      expect(updatedDiv.textContent).toBe('Wrapped in span')
+      expect(updatedDiv.firstElementChild?.tagName).toBe('SPAN')
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update text when switching from element to text', async () => {
+      const container = createTestContainer()
+
+      // Initial render with element
+      const initialVNode = jsx('div', { id: 'switch-back-test', children: [
+        jsx('span', { children: 'Wrapped in span' }),
+      ] })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#switch-back-test') as HTMLElement
+      expect(div.firstElementChild?.tagName).toBe('SPAN')
+
+      // Re-render with just text
+      const updatedVNode = jsx('div', { id: 'switch-back-test', children: 'Just text now' })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#switch-back-test') as HTMLElement
+      expect(updatedDiv.textContent).toBe('Just text now')
+      expect(updatedDiv.firstElementChild).toBeNull()
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update empty text to non-empty text', async () => {
+      const container = createTestContainer()
+
+      // Initial render with empty text
+      const initialVNode = jsx('p', { id: 'empty-to-filled-test', children: '' })
+      await render(initialVNode, container)
+
+      const para = container.querySelector('#empty-to-filled-test') as HTMLElement
+      expect(para.textContent).toBe('')
+
+      // Re-render with non-empty text
+      const updatedVNode = jsx('p', { id: 'empty-to-filled-test', children: 'Now has content' })
+      await render(updatedVNode, container)
+
+      const updatedPara = container.querySelector('#empty-to-filled-test') as HTMLElement
+      expect(updatedPara.textContent).toBe('Now has content')
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly update mixed children during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render
+      const initialVNode = jsx('div', { id: 'mixed-update-test', children: [
+        'Text before',
+        jsx('span', { id: 'first-span', children: 'first' }),
+        'Text middle',
+        jsx('span', { id: 'second-span', children: 'second' }),
+        'Text after',
+      ] })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#mixed-update-test') as HTMLElement
+      expect(div.childNodes.length).toBe(5)
+
+      // Re-render with updated mixed children
+      const updatedVNode = jsx('div', { id: 'mixed-update-test', children: [
+        'Updated before',
+        jsx('span', { id: 'first-span', children: 'updated first' }),
+        'Updated middle',
+        jsx('span', { id: 'second-span', children: 'updated second' }),
+        'Updated after',
+      ] })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#mixed-update-test') as HTMLElement
+      expect(updatedDiv.childNodes.length).toBe(5)
+      expect(updatedDiv.childNodes[0].textContent).toBe('Updated before')
+      expect(updatedDiv.childNodes[2].textContent).toBe('Updated middle')
+      expect(updatedDiv.childNodes[4].textContent).toBe('Updated after')
+
+      cleanupTestContainer(container)
+    })
+  })
+
+  describe('foreignObject namespace during reconciliation - BUG EXPOSURE TESTS', () => {
+    it('should correctly update foreignObject content during reconciliation', async () => {
+      const container = createTestContainer()
+
+      // Initial render
+      const initialVNode = jsx('svg', { width: '300', height: '200', children: [
+        jsx('foreignObject', { id: 'foreign-test', x: '20', y: '20', width: '260', height: '160', children: [
+          jsx('div', { id: 'foreign-div', children: 'Initial content' }),
+        ] }),
+      ] })
+      await render(initialVNode, container)
+
+      const div = container.querySelector('#foreign-div') as HTMLElement
+      expect(div.textContent).toBe('Initial content')
+      // Verify the div is in HTML namespace, not SVG namespace
+      expect(div.namespaceURI).toBe('http://www.w3.org/1999/xhtml')
+
+      // Re-render with different content
+      const updatedVNode = jsx('svg', { width: '300', height: '200', children: [
+        jsx('foreignObject', { id: 'foreign-test', x: '20', y: '20', width: '260', height: '160', children: [
+          jsx('div', { id: 'foreign-div', children: 'Updated content' }),
+        ] }),
+      ] })
+      await render(updatedVNode, container)
+
+      const updatedDiv = container.querySelector('#foreign-div') as HTMLElement
+      expect(updatedDiv.textContent).toBe('Updated content')
+      // BUG: Nested HTML elements in foreignObject may not maintain correct namespace
+      expect(updatedDiv.namespaceURI).toBe('http://www.w3.org/1999/xhtml')
+
+      cleanupTestContainer(container)
+    })
+
+    it('should correctly namespace nested elements in updated foreignObject', async () => {
+      const container = createTestContainer()
+
+      // Initial render
+      const initialVNode = jsx('svg', { width: '300', height: '200', children: [
+        jsx('foreignObject', { id: 'foreign-ns-test', children: [
+          jsx('div', { children: [
+            jsx('h3', { children: 'Title' }),
+            jsx('p', { children: 'Paragraph' }),
+          ] }),
+        ] }),
+      ] })
+      await render(initialVNode, container)
+
+      const h3 = container.querySelector('h3') as HTMLElement
+      const p = container.querySelector('p') as HTMLElement
+
+      expect(h3.namespaceURI).toBe('http://www.w3.org/1999/xhtml')
+      expect(p.namespaceURI).toBe('http://www.w3.org/1999/xhtml')
+
+      // Re-render with additional nested element
+      const updatedVNode = jsx('svg', { width: '300', height: '200', children: [
+        jsx('foreignObject', { id: 'foreign-ns-test', children: [
+          jsx('div', { children: [
+            jsx('h3', { children: 'Updated Title' }),
+            jsx('p', { children: 'Updated Paragraph' }),
+            jsx('span', { children: 'New span' }),
+          ] }),
+        ] }),
+      ] })
+      await render(updatedVNode, container)
+
+      const updatedH3 = container.querySelector('h3') as HTMLElement
+      const updatedP = container.querySelector('p') as HTMLElement
+      const span = container.querySelector('span') as HTMLElement
+
+      expect(updatedH3.namespaceURI).toBe('http://www.w3.org/1999/xhtml')
+      expect(updatedP.namespaceURI).toBe('http://www.w3.org/1999/xhtml')
+      expect(span.namespaceURI).toBe('http://www.w3.org/1999/xhtml')
+
+      cleanupTestContainer(container)
+    })
+  })
+
   describe('mountedNodes integrity after edge cases', () => {
     it('should maintain correct mountedNodes after select value update', async () => {
       const container = createTestContainer()

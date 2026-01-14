@@ -71,7 +71,12 @@ export function applyProps(el: Element, props: Record<string, unknown>): void {
 
     // Class name
     if (key === 'className') {
-      el.setAttribute('class', String(value))
+      if (value === null || value === undefined) {
+        el.removeAttribute('class')
+      }
+      else if (typeof value === 'string' || typeof value === 'number') {
+        el.setAttribute('class', String(value))
+      }
       continue
     }
 
@@ -172,7 +177,12 @@ export function diffProps(el: Element, oldProps: Record<string, unknown>, newPro
           const newValue = typeof value === 'string' ? value : '(none)'
           console.log(`[diffProps] Updating className for tab-settings: from "${oldValue}" to "${newValue}"`)
         }
-        el.setAttribute('class', String(value))
+        if (value === null || value === undefined) {
+          el.removeAttribute('class')
+        }
+        else if (typeof value === 'string' || typeof value === 'number') {
+          el.setAttribute('class', String(value))
+        }
       }
       // Form element properties - must be set as properties, not attributes
       else if (key === 'value' && 'value' in el) {

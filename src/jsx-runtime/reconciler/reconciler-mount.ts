@@ -104,8 +104,11 @@ export function mountElement(
   const { tag, props, children } = vnode
 
   // Handle SVG namespace - check if we're explicitly in SVG context or creating an svg element
+  // Special case: foreignObject is an SVG element but its children should use HTML namespace
   const isInSvg = svgNamespace === 'http://www.w3.org/2000/svg'
-  const namespace = tag === 'svg' || isInSvg ? 'http://www.w3.org/2000/svg' : null
+  const isForeignObject = tag === 'foreignObject'
+  // foreignObject itself is an SVG element and needs SVG namespace
+  const namespace = (tag === 'svg' || tag === 'foreignObject' || isInSvg) ? 'http://www.w3.org/2000/svg' : null
   const el = namespace ? document.createElementNS(namespace, tag) : document.createElement(tag)
 
   // CRITICAL: Append the element to the parent BEFORE mounting children.
@@ -142,7 +145,8 @@ export function mountElement(
     applyProps(el, props)
 
     // Recursively mount children
-    const childNamespace = namespace || undefined
+    // Special case: foreignObject children should use HTML namespace, not SVG
+    const childNamespace = (isForeignObject) ? undefined : (namespace || undefined)
     for (const child of children) {
       void reconcile(el, null, child, undefined, childNamespace)
     }
