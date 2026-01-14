@@ -7,6 +7,7 @@
 
 import { describe, it, expect } from 'vitest'
 import { jsx, render } from '../../jsx-runtime'
+import { mountedNodes } from '../reconciler'
 
 // Create a simple test container
 function createTestContainer() {
@@ -166,6 +167,86 @@ describe('JSX Runtime - DOM Corruption Bug', () => {
     // The Add tab should NOT contain the checkbox from Settings
     const addTabCheckbox = addTab?.querySelector('input[type="checkbox"]')
     expect(addTabCheckbox).toBeNull()
+
+    cleanupTestContainer(container)
+  })
+})
+
+describe('JSX Runtime - mountedNodes Integrity', () => {
+  it('should correctly map DOM nodes to parents after mount', async () => {
+    const container = createTestContainer()
+
+    // This test specifically targets the bug where elements mounted before
+    // their parent was in the DOM would have incorrect mountedNodes entries
+    const mainVNode = jsx('main', { id: 'test-main', children: [
+      jsx('section', { id: 'section-1', children: [
+        jsx('h3', { children: 'Title 1' }),
+        jsx('p', { children: 'Content 1' }),
+      ] }),
+      jsx('section', { id: 'section-2', children: [
+        jsx('h3', { children: 'Title 2' }),
+        jsx('p', { children: 'Content 2' }),
+      ] }),
+    ] })
+
+    await render(mainVNode, container)
+
+    const main = container.querySelector('#test-main') as HTMLElement
+    const section1 = container.querySelector('#section-1') as HTMLElement
+    const h3_1 = section1?.querySelector('h3') as HTMLElement
+
+    // Verify mountedNodes has correct parent references
+    const mainMounted = mountedNodes.get(main!)
+    const section1Mounted = mountedNodes.get(section1!)
+    const h3_1Mounted = mountedNodes.get(h3_1!)
+
+    expect(mainMounted).toBeDefined()
+    expect(section1Mounted).toBeDefined()
+    expect(h3_1Mounted).toBeDefined()
+
+    // Critical check: h3's parent in DOM should be section1
+    expect(h3_1?.parentNode).toBe(section1)
+
+    // After mounting, the element should be in the DOM
+    expect(document.body.contains(main)).toBe(true)
+    expect(document.body.contains(section1)).toBe(true)
+    expect(document.body.contains(h3_1)).toBe(true)
+
+    cleanupTestContainer(container)
+  })
+
+  it('should have elements in DOM during child mounting', async () => {
+    const container = createTestContainer()
+
+    // This test verifies the fix for the bug where appendChild happened AFTER
+    // mounting children, causing elements to not be in the DOM during mount
+    const mainVNode = jsx('div', { id: 'parent', children: [
+      jsx('span', { id: 'child-1', children: 'First' }),
+      jsx('span', { id: 'child-2', children: 'Second' }),
+    ] })
+
+    await render(mainVNode, container)
+
+    const parent = container.querySelector('#parent') as HTMLElement
+    const child1 = container.querySelector('#child-1') as HTMLElement
+    const child2 = container.querySelector('#child-2') as HTMLElement
+
+    // Container should be in document.body
+    expect(document.body.contains(container)).toBe(true)
+
+    // Parent and children should be in container (which is in DOM)
+    expect(container.contains(parent!)).toBe(true)
+    expect(container.contains(child1!)).toBe(true)
+    expect(container.contains(child2!)).toBe(true)
+
+    // Children should have correct parent
+    expect(child1?.parentNode).toBe(parent)
+    expect(child2?.parentNode).toBe(parent)
+
+    // mountedNodes should have correct entries
+    expect(mountedNodes.get(parent!)).toBeDefined()
+    expect(mountedNodes.get(child1!)).toBeDefined()
+    expect(mountedNodes.get(child2!)).toBeDefined()
 
     cleanupTestContainer(container)
   })
