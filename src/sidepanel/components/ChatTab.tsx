@@ -67,6 +67,43 @@ export function ChatTab(props: ChatTabProps) {
         Add Current Page
       </button>
 
+      {/* Suggested Links Section (Collapsible) */}
+      <details id="suggested-links-section" className="suggested-links-section" style={{ display: 'none' }}>
+        <summary className="suggested-links-header">
+          <h3 className="section-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            Suggested Links (
+            <span id="suggested-links-count">0</span>
+            )
+          </h3>
+          <div className="suggested-links-header-actions">
+            <button id="refresh-links-btn" className="btn btn-small btn-outline" title="Refresh suggestions">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+            </button>
+            <svg className="suggested-links-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+        </summary>
+        <div id="suggested-links-content" className="suggested-links-content">
+          <div className="suggested-links-loading" style={{ display: 'none' }}>
+            <span className="loading-spinner"></span>
+            <span>Analyzing links...</span>
+          </div>
+          <div id="suggested-links-list" className="suggested-links-list"></div>
+          <div className="suggested-links-empty" style={{ display: 'none' }}>
+            <p>No relevant links found in your sources.</p>
+          </div>
+        </div>
+      </details>
+
       <div className="chat-section">
         <div className="chat-header">
           <h3 className="section-title">
