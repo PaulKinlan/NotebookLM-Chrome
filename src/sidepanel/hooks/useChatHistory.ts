@@ -5,7 +5,7 @@
  * Loads and persists chat events from IndexedDB storage.
  */
 
-import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from 'preact/hooks'
 import type { ChatEvent } from '../../types/index.ts'
 import { getChatHistory, saveChatEvent, clearChatHistory } from '../../lib/storage.ts'
 

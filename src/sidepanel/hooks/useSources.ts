@@ -5,7 +5,7 @@
  * Handles loading, filtering, and managing sources.
  */
 
-import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from 'preact/hooks'
 import type { Source } from '../../types/index.ts'
 import { getSourcesByNotebook, saveSource, deleteSource } from '../../lib/storage.ts'
 

@@ -5,7 +5,7 @@
  * Converts imperative approval-ui.tsx to hooks-based approach.
  */
 
-import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from 'preact/hooks'
 import type { ToolApprovalRequest, ApprovalScope } from '../../types/index.ts'
 import {
   getPendingApprovals,

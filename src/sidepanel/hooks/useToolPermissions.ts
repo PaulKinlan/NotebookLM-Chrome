@@ -6,7 +6,7 @@
  * Replaces imperative renderToolPermissions() in controllers.ts.
  */
 
-import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from 'preact/hooks'
 import { getToolPermissions, saveToolPermissions } from '../../lib/tool-permissions.ts'
 import type { ToolPermissionsConfig } from '../../types/index.ts'
 import { storage } from '../../lib/storage.ts'

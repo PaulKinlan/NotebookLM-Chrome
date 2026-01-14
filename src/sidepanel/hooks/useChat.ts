@@ -5,7 +5,7 @@
  * Handles loading states, chat history, and status messages.
  */
 
-import { useState } from '../../jsx-runtime/hooks/index.ts'
+import { useState } from 'preact/hooks'
 
 export interface ChatMessage {
   id: string

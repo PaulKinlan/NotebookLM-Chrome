@@ -5,7 +5,7 @@
  * Handles requesting and checking optional permissions (tabs, bookmarks, history).
  */
 
-import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from 'preact/hooks'
 import { checkPermissions, requestPermission } from '../../lib/permissions.ts'
 
 export interface PermissionStatus {

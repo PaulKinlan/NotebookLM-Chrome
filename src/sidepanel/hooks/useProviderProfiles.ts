@@ -28,7 +28,7 @@ import {
 } from '../../lib/provider-registry.ts'
 import { testConnectionWithConfig } from '../../lib/ai.ts'
 import { getUsageStats } from '../../lib/usage.ts'
-import { useState, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useEffect } from 'preact/hooks'
 
 /**
  * AI Profile - combined view model (not persisted)

@@ -5,7 +5,7 @@
  * Replaces imperative showNotification() from services/ui.ts.
  */
 
-import { useState } from '../../jsx-runtime/hooks/index.ts'
+import { useState } from 'preact/hooks'
 
 export type NotificationType = 'success' | 'error' | 'info'
 

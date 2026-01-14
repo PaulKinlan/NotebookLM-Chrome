@@ -5,7 +5,8 @@
  * Converts the imperative FuzzyDropdown class to a hooks-based approach.
  */
 
-import { useState, useRef, useEffect } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useRef, useEffect } from 'preact/hooks'
+import type { RefObject } from 'preact'
 
 export interface FuzzyDropdownOption {
   id: string
@@ -47,8 +48,8 @@ export interface UseFuzzyDropdownReturn {
   selectOption: (option: FuzzyDropdownOption) => void
 
   // Internal
-  _inputRef: { current: HTMLInputElement | null }
-  _menuRef: { current: HTMLElement | null }
+  _inputRef: RefObject<HTMLInputElement>
+  _menuRef: RefObject<HTMLDivElement>
 }
 
 /**
@@ -108,8 +109,8 @@ export function useFuzzyDropdown(options: UseFuzzyDropdownOptions): UseFuzzyDrop
   const [selectionMade, setSelectionMade] = useState(false)
 
   // Refs
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const menuRef = useRef<HTMLElement | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // Current filtered options
   const [filteredOptions, setFilteredOptions] = useState<Array<{ option: FuzzyDropdownOption, score: number }>>([])

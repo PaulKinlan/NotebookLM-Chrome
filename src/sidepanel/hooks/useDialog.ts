@@ -5,7 +5,7 @@
  * Replaces imperative showConfirmDialog() and showNotebookDialog() from services/ui.ts.
  */
 
-import { useState, useRef } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useRef } from 'preact/hooks'
 
 export interface ConfirmDialogState {
   visible: boolean

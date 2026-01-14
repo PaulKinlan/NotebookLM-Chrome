@@ -5,7 +5,7 @@
  * Handles loading items, managing selection state, and opening/closing the modal.
  */
 
-import { useState } from '../../jsx-runtime/hooks/index.ts'
+import { useState } from 'preact/hooks'
 import type { PickerItem } from '../services/sources.ts'
 import { getTabs, getBookmarks, getHistory, getTabGroups } from '../services/sources.ts'
 

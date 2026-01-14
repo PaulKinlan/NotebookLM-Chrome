@@ -5,7 +5,7 @@
  * Handles generating content transformations from sources.
  */
 
-import { useState, useRef } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useRef } from 'preact/hooks'
 import { useNotebook } from './useNotebook.ts'
 import { useSources } from './useSources.ts'
 import { useNotification } from './useNotification.ts'

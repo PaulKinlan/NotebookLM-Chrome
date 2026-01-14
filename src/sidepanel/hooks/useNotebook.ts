@@ -5,7 +5,7 @@
  * Reduces duplicate notebook management code in controllers.ts.
  */
 
-import { useState, useCallback, useEffect, useRef } from '../../jsx-runtime/hooks/index.ts'
+import { useState, useCallback, useEffect, useRef } from 'preact/hooks'
 import type { Notebook } from '../../types/index.ts'
 import {
   getNotebooks,
