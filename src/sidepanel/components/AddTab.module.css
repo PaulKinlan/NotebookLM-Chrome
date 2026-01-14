@@ -1,0 +1,167 @@
+/* ============================================================================
+   Tab Content
+   ============================================================================ */
+
+.tabContent {
+  display: none;
+}
+
+.tabContentActive {
+  display: block;
+}
+
+/* ============================================================================
+   Tab Header
+   ============================================================================ */
+
+.tabHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.tabHeader h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* ============================================================================
+   Search Box
+   ============================================================================ */
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-top: 16px;
+}
+
+.searchBox svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.searchBox input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+.searchBox input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+   Import Options
+   ============================================================================ */
+
+.importOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.importOption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.importOption:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--bg-hover);
+}
+
+.importOption:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.importIcon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.tabsIcon {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--icon-tabs);
+}
+
+.bookmarksIcon {
+  background: rgba(247, 120, 186, 0.15);
+  color: var(--icon-bookmarks);
+}
+
+.historyIcon {
+  background: rgba(210, 168, 255, 0.15);
+  color: var(--icon-history);
+}
+
+.tabGroupsIcon {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--icon-tab-groups);
+}
+
+.importText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.importTitle {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.importDesc {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.chevron {
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+   Sources List (basic styles - full styles in LibraryTab.module.css)
+   ============================================================================ */
+
+.sourcesList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sourceItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}

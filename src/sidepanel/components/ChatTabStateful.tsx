@@ -24,6 +24,7 @@ import { getContextMode } from '../../lib/settings.ts'
 import { getSourceTools } from '../../lib/agent-tools.ts'
 import { streamChat, formatErrorForUser } from '../../lib/ai.ts'
 import { generateSummary } from '../../lib/transforms/summary.ts'
+import styles from './ChatTab.module.css'
 
 // Available slash commands
 const SLASH_COMMANDS: SlashCommand[] = [
@@ -477,9 +478,9 @@ ${SLASH_COMMANDS.map(c => `  /${c.command} - ${c.description}`).join('\n')}
       </button>
 
       {/* Chat Section */}
-      <div className="chat-section">
-        <div className="chat-header">
-          <h3 className="section-title">
+      <div className={styles.chatSection}>
+        <div className={styles.chatHeader}>
+          <h3 className={styles.chatHeaderSectionTitle}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
@@ -495,7 +496,7 @@ ${SLASH_COMMANDS.map(c => `  /${c.command} - ${c.description}`).join('\n')}
             Clear
           </button>
         </div>
-        <div id="chat-messages" className="chat-messages">
+        <div id="chat-messages" className={styles.chatMessages}>
           <ChatMessages
             notebookId={currentNotebookId}
             events={displayEvents}

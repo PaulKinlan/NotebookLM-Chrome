@@ -7,6 +7,7 @@
 
 import { useNotebook } from '../hooks/useNotebook.ts'
 import { useState } from '../../jsx-runtime/hooks/index.ts'
+import styles from './Header.module.css'
 
 interface HeaderStatefulProps {
   /** Optional callback when notebook changes (in addition to hook's selectNotebook) */
@@ -63,13 +64,13 @@ export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: 
   }
 
   return (
-    <header className="header">
-      <div className="header-left">
-        <span className="logo">F</span>
-        <h1>FolioLM</h1>
+    <header className={styles.header}>
+      <div className={styles.headerLeft}>
+        <span className={styles.logo}>F</span>
+        <h1 className={styles.headerH1}>FolioLM</h1>
         <button
           id="header-library-btn"
-          className="header-icon-btn"
+          className={styles.iconBtn}
           title="Library"
           onClick={() => onTabChange?.('library')}
         >
@@ -87,7 +88,7 @@ export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: 
         </button>
         <button
           id="header-settings-btn"
-          className="header-icon-btn"
+          className={styles.iconBtn}
           title="Settings"
           onClick={() => onTabChange?.('settings')}
         >
@@ -104,10 +105,10 @@ export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: 
           </svg>
         </button>
       </div>
-      <div className="header-right">
+      <div className={styles.headerRight}>
         <select
           id="notebook-select"
-          className="header-notebook-select"
+          className={styles.notebookSelect}
           value={currentNotebookId ?? ''}
           onChange={handleNotebookChange}
         >
@@ -126,10 +127,10 @@ export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: 
             return mapped
           })()}
         </select>
-        <div className="ai-model-picker">
+        <div className={styles.aiModelPicker}>
           <button
             id="ai-model-btn"
-            className="header-icon-btn"
+            className={`${styles.iconBtn} ${isAiModelDropdownOpen ? styles.iconBtnActive : ''}`}
             title="AI Model"
             onClick={handleAiModelButtonClick}
           >
@@ -147,16 +148,16 @@ export function HeaderStateful({ onNotebookChange, showNotebook, onTabChange }: 
               <path d="M8.5 11V7a3.5 3.5 0 0 1 7 0v4"></path>
             </svg>
           </button>
-          <div id="ai-model-dropdown" className={`ai-model-dropdown${isAiModelDropdownOpen ? '' : ' hidden'}`}>
-            <div className="ai-model-dropdown-content">
-              <div className="ai-model-dropdown-header">Select AI Model</div>
-              <div id="ai-model-list" className="ai-model-list"></div>
+          <div id="ai-model-dropdown" className={`${styles.aiModelDropdown} ${isAiModelDropdownOpen ? '' : styles.aiModelDropdownHidden}`}>
+            <div className={styles.aiModelDropdownContent}>
+              <div className={styles.aiModelDropdownHeader}>Select AI Model</div>
+              <div id="ai-model-list" className={styles.aiModelList}></div>
             </div>
           </div>
         </div>
         <button
           id="new-notebook-btn"
-          className="header-icon-btn"
+          className={styles.iconBtn}
           title="New Folio"
           onClick={handleNewNotebook}
         >

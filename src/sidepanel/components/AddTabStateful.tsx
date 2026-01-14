@@ -22,6 +22,7 @@ import {
 import { addSourceToNotebook } from '../services/notebooks.ts'
 import { importTabs, importBookmarks, importHistory } from '../services/sources.ts'
 import type { PickerItem } from '../services/sources.ts'
+import styles from './AddTab.module.css'
 
 interface AddTabStatefulProps {
   active: boolean
@@ -211,8 +212,8 @@ export function AddTabStateful({ active, onTabChange }: AddTabStatefulProps): JS
   }
 
   return (
-    <section id="tab-add" className={`tab-content ${active ? 'active' : ''}`}>
-      <div className="tab-header">
+    <section id="tab-add" className={`${styles.tabContent} ${active ? styles.tabContentActive : ''}`}>
+      <div className={styles.tabHeader}>
         <h2>Add Sources</h2>
         <button id="close-add-btn" className="icon-btn hidden" type="button">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -247,7 +248,7 @@ export function AddTabStateful({ active, onTabChange }: AddTabStatefulProps): JS
           : 'Captures the active page content immediately.'}
       </p>
 
-      <div className="search-box">
+      <div className={styles.searchBox}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="11" cy="11" r="8">
           </circle>
@@ -262,14 +263,14 @@ export function AddTabStateful({ active, onTabChange }: AddTabStatefulProps): JS
       </div>
 
       <h3 className="section-title">Import Options</h3>
-      <div className="import-options">
+      <div className={styles.importOptions}>
         <button
-          className="import-option"
+          className={styles.importOption}
           id="import-tabs"
           onClick={handleImportClick}
           type="button"
         >
-          <span className="import-icon tabs-icon">
+          <span className={`${styles.importIcon} ${styles.tabsIcon}`}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="18" height="18" rx="2" ry="2">
               </rect>
@@ -277,25 +278,25 @@ export function AddTabStateful({ active, onTabChange }: AddTabStatefulProps): JS
               </line>
             </svg>
           </span>
-          <div className="import-text">
-            <span className="import-title">Select from Open Tabs</span>
-            <span className="import-desc" id="tabs-count">
+          <div className={styles.importText}>
+            <span className={styles.importTitle}>Select from Open Tabs</span>
+            <span className={styles.importDesc} id="tabs-count">
               Choose from active tabs
             </span>
           </div>
-          <svg className="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className={styles.chevron} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="9 18 15 12 9 6">
             </polyline>
           </svg>
         </button>
 
         <button
-          className="import-option"
+          className={styles.importOption}
           id="import-tab-groups"
           onClick={handleImportClick}
           type="button"
         >
-          <span className="import-icon tab-groups-icon">
+          <span className={`${styles.importIcon} ${styles.tabGroupsIcon}`}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="7" height="7" rx="1">
               </rect>
@@ -307,45 +308,45 @@ export function AddTabStateful({ active, onTabChange }: AddTabStatefulProps): JS
               </rect>
             </svg>
           </span>
-          <div className="import-text">
-            <span className="import-title">Add from Tab Groups</span>
-            <span className="import-desc">Import entire tab groups</span>
+          <div className={styles.importText}>
+            <span className={styles.importTitle}>Add from Tab Groups</span>
+            <span className={styles.importDesc}>Import entire tab groups</span>
           </div>
-          <svg className="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className={styles.chevron} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="9 18 15 12 9 6">
             </polyline>
           </svg>
         </button>
 
         <button
-          className="import-option"
+          className={styles.importOption}
           id="import-bookmarks"
           onClick={handleImportClick}
           type="button"
         >
-          <span className="import-icon bookmarks-icon">
+          <span className={`${styles.importIcon} ${styles.bookmarksIcon}`}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z">
               </path>
             </svg>
           </span>
-          <div className="import-text">
-            <span className="import-title">Add from Bookmarks</span>
-            <span className="import-desc">Browse your saved pages</span>
+          <div className={styles.importText}>
+            <span className={styles.importTitle}>Add from Bookmarks</span>
+            <span className={styles.importDesc}>Browse your saved pages</span>
           </div>
-          <svg className="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className={styles.chevron} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="9 18 15 12 9 6">
             </polyline>
           </svg>
         </button>
 
         <button
-          className="import-option"
+          className={styles.importOption}
           id="import-history"
           onClick={handleImportClick}
           type="button"
         >
-          <span className="import-icon history-icon">
+          <span className={`${styles.importIcon} ${styles.historyIcon}`}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="12" r="10">
               </circle>
@@ -353,11 +354,11 @@ export function AddTabStateful({ active, onTabChange }: AddTabStatefulProps): JS
               </polyline>
             </svg>
           </span>
-          <div className="import-text">
-            <span className="import-title">Add from History</span>
-            <span className="import-desc">Find previously visited sites</span>
+          <div className={styles.importText}>
+            <span className={styles.importTitle}>Add from History</span>
+            <span className={styles.importDesc}>Find previously visited sites</span>
           </div>
-          <svg className="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg className={styles.chevron} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="9 18 15 12 9 6">
             </polyline>
           </svg>
@@ -378,7 +379,7 @@ export function AddTabStateful({ active, onTabChange }: AddTabStatefulProps): JS
           View All
         </a>
       </h3>
-      <div id="sources-list" className="sources-list">
+      <div id="sources-list" className={styles.sourcesList}>
         <SourcesList
           notebookId={currentNotebookId}
           onRemoveSource={(sourceId: string): void => {

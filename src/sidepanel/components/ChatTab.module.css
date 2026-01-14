@@ -1,0 +1,355 @@
+/* ============================================================================
+   Chat Section
+   ============================================================================ */
+
+.chatSection {
+  margin-top: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  overflow: hidden;
+}
+
+.chatHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+}
+
+.chatHeaderSectionTitle {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chatMessages {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.chatMessage {
+  margin-bottom: 16px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+}
+
+.chatMessageLastChild {
+  margin-bottom: 0;
+}
+
+.chatMessageUser {
+  background: var(--accent-muted);
+  margin-left: 24px;
+}
+
+.chatMessageAssistant {
+  background: var(--bg-tertiary);
+  margin-right: 24px;
+}
+
+.chatMessageRole {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.chatMessageUserRole {
+  color: var(--accent-primary);
+}
+
+.chatMessageContent {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.chatMessageContentP {
+  margin-bottom: 8px;
+}
+
+.chatMessageContentPLastChild {
+  margin-bottom: 0;
+}
+
+.chatMessageTime {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* Tool Calls (inline in assistant message) */
+.assistantToolCalls {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assistantToolCall {
+  background: rgba(210, 153, 34, 0.08);
+  border: 1px solid rgba(210, 153, 34, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+}
+
+.toolCallHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.toolCallIcon {
+  font-size: 14px;
+}
+
+.toolCallName {
+  font-weight: 600;
+  color: var(--warning);
+  flex: 1;
+}
+
+.toolCallStatus {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
+.toolCallStatusCalling {
+  background: rgba(210, 153, 34, 0.2);
+  color: var(--warning);
+}
+
+.toolCallStatusDone {
+  background: rgba(63, 185, 80, 0.2);
+  color: var(--success);
+}
+
+.toolCallStatusError {
+  background: rgba(248, 81, 73, 0.2);
+  color: var(--error);
+}
+
+.toolCallArgsPre {
+  margin: 0;
+  padding: 8px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  overflow-x: auto;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* Tool Results (separate timeline entries) */
+.chatMessageToolResult {
+  background: rgba(63, 185, 80, 0.1);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  margin-left: 12px;
+  margin-right: 12px;
+}
+
+.chatMessageToolResultRole {
+  color: var(--success);
+}
+
+.toolResultDataPre {
+  margin: 0;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  overflow-x: auto;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.toolResultSource {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+/* Citations */
+.chatCitations {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-muted);
+}
+
+.chatCitationsTitle {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.citationItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.citationItem:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-primary);
+}
+
+.citationItemLastChild {
+  margin-bottom: 0;
+}
+
+.citationNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.citationContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.citationSource {
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.citationExcerpt {
+  color: var(--text-secondary);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Grouped Citations */
+.citationGroup {
+  margin-bottom: 8px;
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.citationGroupLastChild {
+  margin-bottom: 0;
+}
+
+.citationGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.citationGroupHeaderNumber {
+  flex-shrink: 0;
+}
+
+.citationGroupHeaderSource {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.citationExcerptCount {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.citationGroupExcerpts {
+  background: var(--bg-primary);
+}
+
+.citationSubItem {
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--border-muted);
+  margin-bottom: 0;
+}
+
+.citationSubItemLastChild {
+  border-bottom: none;
+}
+
+.citationSubNumber {
+  font-size: 10px;
+  width: 22px;
+  height: 18px;
+}
+
+/* Offline indicator */
+.offlineIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: var(--warning);
+  color: var(--bg-primary);
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+
+/* Cached response indicator */
+.cachedIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.cachedIndicatorSvg {
+  width: 12px;
+  height: 12px;
+}

@@ -1,0 +1,548 @@
+/* ============================================================================
+   TransformTab CSS Module
+   ============================================================================ */
+
+.transformGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.transformCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.transformCard:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-primary);
+}
+
+.transformCard:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.transformCard:disabled:hover {
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.transformIcon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--accent-muted);
+  color: var(--accent-primary);
+  position: relative;
+}
+
+/* Config button on transform cards */
+.transformConfigBtn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s, background 0.2s, color 0.2s;
+  padding: 0;
+}
+
+.transformCard:hover .transformConfigBtn {
+  opacity: 1;
+}
+
+.transformConfigBtn:hover {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: white;
+}
+
+.transformConfigBtn:focusVisible {
+  opacity: 1;
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.transformConfigBtn svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Icon variants */
+.podcastIcon {
+  background: rgba(251, 146, 60, 0.2);
+  color: #fb923c;
+}
+
+.quizIcon {
+  background: rgba(167, 139, 250, 0.2);
+  color: #a78bfa;
+}
+
+.takeawaysIcon {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+}
+
+.emailIcon {
+  background: rgba(96, 165, 250, 0.2);
+  color: #60a5fa;
+}
+
+.slidedeckIcon {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+}
+
+.reportIcon {
+  background: rgba(156, 163, 175, 0.2);
+  color: #9ca3af;
+}
+
+.datatableIcon {
+  background: rgba(45, 212, 191, 0.2);
+  color: #2dd4bf;
+}
+
+.mindmapIcon {
+  background: rgba(244, 63, 94, 0.2);
+  color: #f43f5e;
+}
+
+.flashcardsIcon {
+  background: rgba(249, 115, 22, 0.2);
+  color: #f97316;
+}
+
+.timelineIcon {
+  background: rgba(139, 92, 246, 0.2);
+  color: #8b5cf6;
+}
+
+.glossaryIcon {
+  background: rgba(236, 72, 153, 0.2);
+  color: #ec4899;
+}
+
+.comparisonIcon {
+  background: rgba(20, 184, 166, 0.2);
+  color: #14b8a6;
+}
+
+.faqIcon {
+  background: rgba(234, 179, 8, 0.2);
+  color: #eab308;
+}
+
+.actionitemsIcon {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.executivebriefIcon {
+  background: rgba(99, 102, 241, 0.2);
+  color: #6366f1;
+}
+
+.studyguideIcon {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+}
+
+.prosconsIcon {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.citationsIcon {
+  background: rgba(107, 114, 128, 0.2);
+  color: #6b7280;
+}
+
+.outlineIcon {
+  background: rgba(6, 182, 212, 0.2);
+  color: #06b6d4;
+}
+
+.transformInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.transformTitle {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.transformDesc {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Transform History Container */
+.transformHistory {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.transformResult {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+
+.transformResultHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.transformResultHeader h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.transformResultActions {
+  display: flex;
+  gap: 8px;
+}
+
+.transformContent {
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* When transformContent contains an iframe sandbox, let the iframe handle sizing */
+.transformContent iframe {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Scrollbar styling for transformContent (fallback when no iframe) */
+.transformContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.transformContent::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+}
+
+.transformContent::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+/* Config popover */
+.transformConfigPopover {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 0;
+  margin: auto;
+  max-width: 380px;
+  min-width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.transformConfigPopover::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.configPopoverHeader {
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background: var(--bg-secondary);
+  z-index: 1;
+}
+
+.configPopoverHeader h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.configPopoverForm {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.configField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.configField label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.configField input[type='number'],
+.configField input[type='text'],
+.configField select,
+.configField textarea {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.configField input[type='number']:focus,
+.configField input[type='text']:focus,
+.configField select:focus,
+.configField textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.configField textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.configField select {
+  cursor: pointer;
+}
+
+.checkboxContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkboxContainer input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.checkboxContainer label {
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.multiselectContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+
+.multiselectItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.multiselectItem input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.multiselectItem label {
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.configFieldFull {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Advanced prompt info section */
+.configAdvancedSection {
+  margin: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+}
+
+.configAdvancedSection summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.configAdvancedSection summary::before {
+  content: '▶';
+  font-size: 8px;
+  transition: transform 0.2s;
+}
+
+.configAdvancedSection[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.configAdvancedSection summary::-webkit-details-marker {
+  display: none;
+}
+
+.configAdvancedContent {
+  margin-top: 12px;
+  padding-left: 14px;
+  border-left: 2px solid var(--border-color);
+}
+
+.configAdvancedDesc {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.configAdvancedLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.configAdvancedStructure {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.configPopoverFooter {
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-secondary);
+}
+
+.btnSecondary {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.btnSecondary:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.btnPrimary {
+  background: var(--accent-primary);
+  border: none;
+  color: white;
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btnPrimary:hover {
+  background: var(--accent-hover);
+}
+
+/* Save confirmation toast */
+.configSaveToast {
+  background: var(--success);
+  color: white;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 10000;
+  pointer-events: none;
+  animation: toastIn 0.2s ease-out;
+}
+
+.configSaveToast.fadeOut {
+  animation: toastOut 0.3s ease-out forwards;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+}

@@ -1,0 +1,266 @@
+/* Settings Tab - CSS Module */
+
+.settingsGroup {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.settingsGroup:lastChild {
+  border-bottom: none;
+}
+
+/* Theme Selector */
+.themeSelector {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.themeOption {
+  flex: 1;
+  cursor: pointer;
+}
+
+.themeOption input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.themeOptionContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 12px;
+  background: var(--bg-tertiary);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  transition: all 0.15s ease;
+}
+
+.themeOption input[type="radio"]:checked + .themeOptionContent {
+  border-color: var(--accent-primary);
+  background: var(--accent-muted);
+}
+
+.themeOption:hover .themeOptionContent {
+  background: var(--bg-hover);
+}
+
+.themeOption input[type="radio"]:checked + .themeOptionContent:hover {
+  background: var(--accent-muted);
+}
+
+/* Focus styles for keyboard navigation */
+.themeOption input[type="radio"]:focus-visible + .themeOptionContent {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.themeIcon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-secondary);
+}
+
+.themeOption input[type="radio"]:checked + .themeOptionContent .themeIcon {
+  color: var(--accent-primary);
+}
+
+.themeOptionContent span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.themeOption input[type="radio"]:checked + .themeOptionContent span {
+  color: var(--accent-primary);
+}
+
+.apiKeyLink {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.apiKeyLink:hover {
+  text-decoration: underline;
+}
+
+.advancedSettings {
+  margin-top: 16px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+}
+
+.advancedSettings summary {
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.advancedSettings summary:hover {
+  background: var(--bg-secondary);
+}
+
+.advancedSettings[open] summary {
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.advancedSettingsContent {
+  padding: 12px;
+}
+
+.rangeInputRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rangeInputRow input[type="range"] {
+  flex: 1;
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  appearance: none;
+}
+
+.rangeInputRow input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--primary);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.rangeInputRow span {
+  min-width: 32px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.settingHint {
+  margin-top: 4px;
+  margin-bottom: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.settingWarning {
+  margin-top: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  background: rgba(210, 153, 34, 0.15);
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius-sm);
+  color: var(--warning);
+}
+
+/* Tool Permissions */
+.toolPermissionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.toolPermissionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s ease;
+}
+
+.toolPermissionItem:hover {
+  border-color: var(--border-color);
+}
+
+.toolPermissionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toolPermissionName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.toolPermissionName strong {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.toolPermissionStatus {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.toolPermissionStatusAutoApproved {
+  background: rgba(63, 185, 80, 0.15);
+  color: var(--success);
+}
+
+.toolPermissionStatusSessionApproved {
+  background: var(--accent-muted);
+  color: var(--accent-primary);
+}
+
+.toolPermissionStatusRequiresApproval {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--warning);
+}
+
+.toolPermissionStatusDisabled {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-muted);
+}
+
+.toolPermissionControls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.toolPermissionControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolPermissionControl label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toolPermissionFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-muted);
+}

@@ -1,3 +1,5 @@
+import styles from './BottomNav.module.css'
+
 /**
  * BottomNav component - Bottom navigation bar with Add, Chat, and Transform tabs
  */
@@ -20,9 +22,9 @@ export function BottomNav(props: BottomNavProps) {
   }
 
   return (
-    <nav className="bottom-nav">
+    <nav className={styles.bottomNav}>
       <button
-        className={`nav-item ${activeTab === 'add' ? 'active' : ''}`}
+        className={`${styles.navItem} ${activeTab === 'add' ? styles.navItemActive : ''}`}
         data-tab="add"
         onClick={() => handleTabClick('add')}
       >
@@ -38,10 +40,10 @@ export function BottomNav(props: BottomNavProps) {
           <line x1="12" y1="8" x2="12" y2="16"></line>
           <line x1="8" y1="12" x2="16" y2="12"></line>
         </svg>
-        <span>Add</span>
+        <span className={styles.navItemSpan}>Add</span>
       </button>
       <button
-        className={`nav-item ${activeTab === 'chat' ? 'active' : ''}`}
+        className={`${styles.navItem} ${activeTab === 'chat' ? styles.navItemActive : ''}`}
         data-tab="chat"
         onClick={() => handleTabClick('chat')}
       >
@@ -55,10 +57,10 @@ export function BottomNav(props: BottomNavProps) {
         >
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
-        <span>Chat</span>
+        <span className={styles.navItemSpan}>Chat</span>
       </button>
       <button
-        className={`nav-item ${activeTab === 'transform' ? 'active' : ''}`}
+        className={`${styles.navItem} ${activeTab === 'transform' ? styles.navItemActive : ''}`}
         data-tab="transform"
         onClick={() => handleTabClick('transform')}
       >
@@ -74,7 +76,7 @@ export function BottomNav(props: BottomNavProps) {
           <polyline points="2 17 12 22 22 17"></polyline>
           <polyline points="2 12 12 17 22 12"></polyline>
         </svg>
-        <span>Transform</span>
+        <span className={styles.navItemSpan}>Transform</span>
       </button>
     </nav>
   )

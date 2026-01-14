@@ -11,6 +11,7 @@ import { useNotification } from '../hooks/useNotification.ts'
 import { useDialog } from '../hooks/useDialog.ts'
 import { getSourcesByNotebook } from '../../lib/storage.ts'
 import type { Notebook } from '../../types/index.ts'
+import styles from './LibraryTab.module.css'
 
 interface LibraryTabStatefulProps {
   active: boolean
@@ -105,7 +106,7 @@ export function LibraryTabStateful({ active, onTabChange }: LibraryTabStatefulPr
     <section id="tab-library" className={`tab-content ${active ? 'active' : ''}`}>
       <h2>Library</h2>
       <p className="helper-text">Your notebooks and saved content.</p>
-      <div id="notebooks-list" className="notebooks-list">
+      <div id="notebooks-list" className={styles.notebooksList}>
         {notebooksWithCounts.length === 0
           ? (
               <div className="empty-state">
@@ -116,19 +117,19 @@ export function LibraryTabStateful({ active, onTabChange }: LibraryTabStatefulPr
               notebooksWithCounts.map(notebook => (
                 <div
                   key={notebook.id}
-                  className={`notebook-item ${currentNotebookId === notebook.id ? 'active' : ''}`}
+                  className={`${styles.notebookItem} ${currentNotebookId === notebook.id ? styles.active : ''}`}
                   onClick={() => handleNotebookClick(notebook.id)}
                 >
-                  <div className="notebook-icon">
+                  <div className={styles.notebookIcon}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                     </svg>
                   </div>
 
-                  <div className="notebook-info">
-                    <div className="notebook-name">{notebook.name}</div>
-                    <div className="notebook-meta">
+                  <div className={styles.notebookInfo}>
+                    <div className={styles.notebookName}>{notebook.name}</div>
+                    <div className={styles.notebookMeta}>
                       {notebook.sourceCount}
                       {' '}
                       source
@@ -136,9 +137,9 @@ export function LibraryTabStateful({ active, onTabChange }: LibraryTabStatefulPr
                     </div>
                   </div>
 
-                  <div className="notebook-actions">
+                  <div className={styles.notebookActions}>
                     <button
-                      className="icon-btn btn-export-notebook"
+                      className={`icon-btn ${styles.btnExportNotebook}`}
                       data-id={notebook.id}
                       title="Export notebook"
                       onClick={(e: { stopPropagation: () => void }) => handleExportNotebook(notebook.id, e)}

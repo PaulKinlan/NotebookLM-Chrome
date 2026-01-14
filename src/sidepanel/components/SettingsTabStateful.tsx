@@ -13,6 +13,7 @@ import { useToolPermissions } from '../hooks/useToolPermissions.ts'
 import { getAISettings, setContextMode, getContextMode } from '../../lib/settings.ts'
 import { clearAllData } from '../../lib/storage.ts'
 import { ProviderProfilesStateful } from './ProviderProfilesStateful.tsx'
+import styles from './SettingsTab.module.css'
 
 type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history'
 
@@ -113,23 +114,23 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
     <section id="tab-settings" className={`tab-content ${active ? 'active' : ''}`}>
       <h2>Settings</h2>
 
-      <div className="settings-group">
+      <div className={styles.settingsGroup}>
         <h3 className="section-title">
           AI Profiles
         </h3>
         <ProviderProfilesStateful />
       </div>
 
-      <div className="settings-group" id="notebook-settings-group" style={{ display: 'none' }}>
+      <div className={styles.settingsGroup} id="notebook-settings-group" style={{ display: 'none' }}>
         <h3 className="section-title">Notebook Settings</h3>
         <label className="input-label">Model Configuration</label>
         <select id="notebook-model-select">
           <option value="">Use Default</option>
         </select>
-        <p className="setting-hint">Override the default AI model for this notebook.</p>
+        <p className={styles.settingHint}>Override the default AI model for this notebook.</p>
       </div>
 
-      <div className="settings-group">
+      <div className={styles.settingsGroup}>
         <h3 className="section-title">Source Context Mode</h3>
         <label className="checkbox-label">
           <input
@@ -140,7 +141,7 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
           />
           <span>Tool-based Context - AI queries sources as needed</span>
         </label>
-        <p className="setting-hint">
+        <p className={styles.settingHint}>
           <strong>Pre-loaded (unchecked):</strong>
           {' '}
           All sources bundled into initial context.
@@ -150,7 +151,7 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
           AI uses tools to fetch sources on demand.
         </p>
         {showChromeToolsWarning && (
-          <p id="chrome-tools-warning" className="setting-warning">
+          <p id="chrome-tools-warning" className={styles.settingWarning}>
             <strong>Warning:</strong>
             {' '}
             Chrome Built-in AI has limited tool support. For best results with tool-based context, use a cloud provider like Anthropic or OpenAI.
@@ -158,7 +159,7 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
         )}
       </div>
 
-      <div className="settings-group">
+      <div className={styles.settingsGroup}>
         <h3 className="section-title">Permissions</h3>
         <label className="checkbox-label">
           <input
@@ -198,25 +199,25 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
         </label>
       </div>
 
-      <div className="settings-group">
+      <div className={styles.settingsGroup}>
         <h3 className="section-title">Tool Permissions</h3>
-        <p className="setting-hint">Control which AI tools are visible and require approval before execution.</p>
+        <p className={styles.settingHint}>Control which AI tools are visible and require approval before execution.</p>
         {isLoadingTools
           ? (
               <p>Loading tool permissions...</p>
             )
           : (
-              <div id="tool-permissions-list" className="tool-permissions-list">
+              <div id="tool-permissions-list" className={styles.toolPermissionsList}>
                 {toolPermissions.map(tool => (
-                  <div key={tool.name} className="tool-permission-item">
-                    <div className="tool-permission-header">
-                      <div className="tool-permission-name">
+                  <div key={tool.name} className={styles.toolPermissionItem}>
+                    <div className={styles.toolPermissionHeader}>
+                      <div className={styles.toolPermissionName}>
                         <strong>{tool.displayName}</strong>
-                        <span className={`tool-permission-status ${tool.statusClass}`}>{tool.statusText}</span>
+                        <span className={`${styles.toolPermissionStatus} ${styles[`toolPermissionStatus${tool.statusClass}`]}`}>{tool.statusText}</span>
                       </div>
                     </div>
-                    <div className="tool-permission-controls">
-                      <div className="tool-permission-control">
+                    <div className={styles.toolPermissionControls}>
+                      <div className={styles.toolPermissionControl}>
                         <input
                           type="checkbox"
                           id={`tool-enabled-${tool.name}`}
@@ -226,7 +227,7 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
                         />
                         <label htmlFor={`tool-enabled-${tool.name}`}>Enabled</label>
                       </div>
-                      <div className="tool-permission-control">
+                      <div className={styles.toolPermissionControl}>
                         <input
                           type="checkbox"
                           id={`tool-no-approval-${tool.name}`}
@@ -242,7 +243,7 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
                 ))}
               </div>
             )}
-        <div className="tool-permissions-footer">
+        <div className={styles.toolPermissionFooter}>
           <button
             id="reset-tool-permissions-btn"
             className="btn btn-small btn-outline"
@@ -253,9 +254,9 @@ export function SettingsTabStateful({ active }: SettingsTabStatefulProps) {
         </div>
       </div>
 
-      <div className="settings-group">
+      <div className={styles.settingsGroup}>
         <h3 className="section-title">Data Management</h3>
-        <p className="setting-hint">Clear all notebooks, sources, chat history, and AI profiles. This action cannot be undone.</p>
+        <p className={styles.settingHint}>Clear all notebooks, sources, chat history, and AI profiles. This action cannot be undone.</p>
         <button
           id="clear-all-data-btn"
           className="btn btn-danger btn-small"

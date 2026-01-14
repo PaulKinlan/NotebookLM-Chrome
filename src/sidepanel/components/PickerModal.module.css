@@ -1,0 +1,291 @@
+/* ============================================================================
+   PickerModal Component Styles
+   ============================================================================ */
+
+/* ============================================================================
+   Modal Container
+   ============================================================================ */
+
+.pickerModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pickerBackdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.pickerContent {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  max-height: 80vh;
+  margin: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ============================================================================
+   Picker Header
+   ============================================================================ */
+
+.pickerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.pickerHeader h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* ============================================================================
+   Picker Controls (initial picker type selection)
+   ============================================================================ */
+
+.pickerControls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+}
+
+/* ============================================================================
+   Picker Search
+   ============================================================================ */
+
+.pickerSearch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.pickerSearch input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+}
+
+.pickerSearch input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ============================================================================
+   Picker List/Items
+   ============================================================================ */
+
+.pickerList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  min-height: 200px;
+  max-height: 300px;
+}
+
+.pickerItems {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  min-height: 200px;
+  max-height: 300px;
+}
+
+.pickerItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.pickerItem:hover {
+  background: var(--bg-hover);
+}
+
+.pickerItemSelected {
+  background: var(--accent-muted);
+}
+
+/* ============================================================================
+   Picker Checkbox
+   ============================================================================ */
+
+.pickerCheckbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.1s ease;
+}
+
+.pickerItemSelected .pickerCheckbox {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.pickerCheckbox svg {
+  display: none;
+  color: white;
+}
+
+.pickerItemSelected .pickerCheckbox svg {
+  display: block;
+}
+
+/* Hide default checkbox input */
+.pickerItem input[type="checkbox"] {
+  display: none;
+}
+
+/* ============================================================================
+   Picker Icon (favicon)
+   ============================================================================ */
+
+.pickerIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.pickerIcon img {
+  width: 16px;
+  height: 16px;
+}
+
+.itemFavicon {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+}
+
+.itemFaviconFallback {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+/* ============================================================================
+   Picker Info (title, url, count)
+   ============================================================================ */
+
+.pickerInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.pickerTitle {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemTitle {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pickerUrl {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.itemCount {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* ============================================================================
+   Picker Footer
+   ============================================================================ */
+
+.pickerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+}
+
+.pickerFooter span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pickerActions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ============================================================================
+   Picker Empty/Loading States
+   ============================================================================ */
+
+.pickerEmpty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-secondary);
+}
+
+.pickerLoading {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-secondary);
+}

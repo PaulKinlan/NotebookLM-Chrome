@@ -8,6 +8,7 @@
 import { useRef, useEffect } from '../../jsx-runtime/hooks/index.ts'
 import { useTransform, type TransformType } from '../hooks/useTransform.ts'
 import { SandboxRenderer } from '../../lib/sandbox-renderer.ts'
+import styles from './TransformTab.module.css'
 
 /**
  * SVG child elements for each icon type
@@ -169,50 +170,50 @@ interface TransformCard {
 }
 
 // Transform configuration with icons
-const TRANSFORMS: Array<{ type: TransformType, title: string, description: string, icon: string }> = [
-  { type: 'podcast', title: 'Podcast Script', description: 'Generate a 2-person conversation', icon: 'podcast-icon' },
-  { type: 'quiz', title: 'Study Quiz', description: 'Test your knowledge', icon: 'quiz-icon' },
-  { type: 'takeaways', title: 'Key Takeaways', description: 'Extract main points', icon: 'takeaways-icon' },
-  { type: 'email', title: 'Email Summary', description: 'Professional summary to share', icon: 'email-icon' },
-  { type: 'slidedeck', title: 'Slide Deck', description: 'Presentation outline', icon: 'slidedeck-icon' },
-  { type: 'report', title: 'Report', description: 'Formal document', icon: 'report-icon' },
-  { type: 'datatable', title: 'Data Table', description: 'Organize facts into tables', icon: 'datatable-icon' },
-  { type: 'mindmap', title: 'Mind Map', description: 'Concept hierarchy', icon: 'mindmap-icon' },
-  { type: 'flashcards', title: 'Flashcards', description: 'Q&A study cards', icon: 'flashcards-icon' },
-  { type: 'timeline', title: 'Timeline', description: 'Chronological events', icon: 'timeline-icon' },
-  { type: 'glossary', title: 'Glossary', description: 'Key terms & definitions', icon: 'glossary-icon' },
-  { type: 'comparison', title: 'Comparison', description: 'Side-by-side analysis', icon: 'comparison-icon' },
-  { type: 'faq', title: 'FAQ', description: 'Common questions', icon: 'faq-icon' },
-  { type: 'actionitems', title: 'Action Items', description: 'Tasks & to-dos', icon: 'actionitems-icon' },
-  { type: 'executivebrief', title: 'Executive Brief', description: 'One-page summary', icon: 'executivebrief-icon' },
-  { type: 'studyguide', title: 'Study Guide', description: 'Comprehensive review', icon: 'studyguide-icon' },
-  { type: 'proscons', title: 'Pros & Cons', description: 'Balanced analysis', icon: 'proscons-icon' },
-  { type: 'citations', title: 'Citation List', description: 'Formatted references', icon: 'citations-icon' },
-  { type: 'outline', title: 'Outline', description: 'Document structure', icon: 'outline-icon' },
+const TRANSFORMS: Array<{ type: TransformType, title: string, description: string, iconClass: string }> = [
+  { type: 'podcast', title: 'Podcast Script', description: 'Generate a 2-person conversation', iconClass: styles.podcastIcon },
+  { type: 'quiz', title: 'Study Quiz', description: 'Test your knowledge', iconClass: styles.quizIcon },
+  { type: 'takeaways', title: 'Key Takeaways', description: 'Extract main points', iconClass: styles.takeawaysIcon },
+  { type: 'email', title: 'Email Summary', description: 'Professional summary to share', iconClass: styles.emailIcon },
+  { type: 'slidedeck', title: 'Slide Deck', description: 'Presentation outline', iconClass: styles.slidedeckIcon },
+  { type: 'report', title: 'Report', description: 'Formal document', iconClass: styles.reportIcon },
+  { type: 'datatable', title: 'Data Table', description: 'Organize facts into tables', iconClass: styles.datatableIcon },
+  { type: 'mindmap', title: 'Mind Map', description: 'Concept hierarchy', iconClass: styles.mindmapIcon },
+  { type: 'flashcards', title: 'Flashcards', description: 'Q&A study cards', iconClass: styles.flashcardsIcon },
+  { type: 'timeline', title: 'Timeline', description: 'Chronological events', iconClass: styles.timelineIcon },
+  { type: 'glossary', title: 'Glossary', description: 'Key terms & definitions', iconClass: styles.glossaryIcon },
+  { type: 'comparison', title: 'Comparison', description: 'Side-by-side analysis', iconClass: styles.comparisonIcon },
+  { type: 'faq', title: 'FAQ', description: 'Common questions', iconClass: styles.faqIcon },
+  { type: 'actionitems', title: 'Action Items', description: 'Tasks & to-dos', iconClass: styles.actionitemsIcon },
+  { type: 'executivebrief', title: 'Executive Brief', description: 'One-page summary', iconClass: styles.executivebriefIcon },
+  { type: 'studyguide', title: 'Study Guide', description: 'Comprehensive review', iconClass: styles.studyguideIcon },
+  { type: 'proscons', title: 'Pros & Cons', description: 'Balanced analysis', iconClass: styles.prosconsIcon },
+  { type: 'citations', title: 'Citation List', description: 'Formatted references', iconClass: styles.citationsIcon },
+  { type: 'outline', title: 'Outline', description: 'Document structure', iconClass: styles.outlineIcon },
 ]
 
 /**
  * TransformCardButton Component - renders a single transform button
  */
 function TransformCardButton({ transform, disabled, onClick }: {
-  transform: { type: TransformType, title: string, description: string, icon: string }
+  transform: { type: TransformType, title: string, description: string, iconClass: string }
   disabled: boolean
   onClick: (type: TransformType) => void
 }): JSX.Element {
   return (
     <button
-      className="transform-card"
+      className={styles.transformCard}
       id={`transform-${transform.type}`}
       disabled={disabled}
       onClick={() => onClick(transform.type)}
       type="button"
     >
-      <div className={`transform-icon ${transform.icon}`}>
+      <div className={`${styles.transformIcon} ${transform.iconClass}`}>
         <TransformIcon type={transform.type} />
       </div>
-      <div className="transform-info">
-        <span className="transform-title">{transform.title}</span>
-        <span className="transform-desc">{transform.description}</span>
+      <div className={styles.transformInfo}>
+        <span className={styles.transformTitle}>{transform.title}</span>
+        <span className={styles.transformDesc}>{transform.description}</span>
       </div>
     </button>
   )
@@ -230,7 +231,7 @@ function TransformCardResult({ result, onCopy, onRemove }: {
 
   // Initialize/update sandbox when result changes
   useEffect(() => {
-    const container = document.querySelector(`[data-result-id="${result.id}"] .transform-content`)
+    const container = document.querySelector(`[data-result-id="${result.id}"] .${styles.transformContent}`)
     if (!(container instanceof HTMLElement)) return
 
     // Clean up existing sandbox

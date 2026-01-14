@@ -3,6 +3,7 @@
 // ============================================================================
 // Renders App component and initializes Chrome extension event listeners
 
+import './global.css'
 import { App, type AppCallbacks } from './App'
 import { render } from '../jsx-runtime'
 import { initTheme } from './hooks/useTheme.tsx'
