@@ -19,6 +19,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: process.env.NODE_ENV === 'development',
+    minify: false, // Disable minification for easier debugging
     // Disable modulepreload polyfill - Chrome 66+ supports modulepreload natively
     // and this extension targets Chrome 140+
     modulePreload: false,
