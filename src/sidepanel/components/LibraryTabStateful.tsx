@@ -106,7 +106,7 @@ export function LibraryTabStateful({ active, onTabChange }: LibraryTabStatefulPr
     <section id="tab-library" className={`tab-content ${active ? 'active' : ''}`}>
       <h2>Library</h2>
       <p className="helper-text">Your notebooks and saved content.</p>
-      <div id="notebooks-list" className={styles.notebooksList}>
+      <div id="notebooks-list" className={`notebooks-list ${styles.notebooksList}`}>
         {notebooksWithCounts.length === 0
           ? (
               <div className="empty-state">
@@ -117,7 +117,7 @@ export function LibraryTabStateful({ active, onTabChange }: LibraryTabStatefulPr
               notebooksWithCounts.map(notebook => (
                 <div
                   key={notebook.id}
-                  className={`${styles.notebookItem} ${currentNotebookId === notebook.id ? styles.active : ''}`}
+                  className={`notebook-item ${styles.notebookItem} ${currentNotebookId === notebook.id ? `active ${styles.active}` : ''}`}
                   onClick={() => handleNotebookClick(notebook.id)}
                 >
                   <div className={styles.notebookIcon}>
