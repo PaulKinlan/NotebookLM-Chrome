@@ -1993,9 +1993,9 @@ details.suggested-links-section[open] .suggested-links-chevron {
 
 .tool-permission-controls {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .tool-permission-control {
