@@ -1,5 +1,6 @@
 import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
+import { getSourcesByNotebook, getSummary, saveSummary, createSummary } from '../storage.ts'
 
 export async function generateSummary(sources: Source[]): Promise<string> {
   const config = await getModelWithConfig()
@@ -34,4 +35,44 @@ ${buildSourceContextSimple(sources)}`,
   }
 
   return result.text
+}
+
+/**
+ * Generate and save a summary for a notebook in the background.
+ * This runs asynchronously without blocking the UI.
+ *
+ * @param notebookId - The notebook to generate summary for
+ */
+export async function generateSummaryInBackground(
+  notebookId: string,
+): Promise<void> {
+  try {
+    // Get all sources for the notebook
+    const sources = await getSourcesByNotebook(notebookId)
+
+    if (sources.length === 0) {
+      console.log('[Summary] No sources to summarize')
+      return
+    }
+
+    // Generate summary
+    const summary = await generateSummary(sources)
+
+    // Save summary
+    const existing = await getSummary(notebookId)
+    if (existing) {
+      existing.content = summary
+      existing.sourceIds = sources.map(s => s.id)
+      await saveSummary(existing)
+    }
+    else {
+      const newSummary = createSummary(notebookId, sources.map(s => s.id), summary)
+      await saveSummary(newSummary)
+    }
+
+    console.log(`[Summary] Generated summary for notebook ${notebookId}`)
+  }
+  catch (err) {
+    console.warn('[Summary] Failed to generate:', err)
+  }
 }

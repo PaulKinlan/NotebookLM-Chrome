@@ -8,7 +8,9 @@ import {
   getActiveNotebookId,
   setActiveNotebookId,
 } from './lib/storage.ts'
-import { getLinksInSelection } from './lib/selection-links.ts'
+// Note: getLinksInSelection from './lib/selection-links.ts' is not used here
+// because chrome.scripting.executeScript requires a self-contained function.
+// The function is inlined in extractLinksFromSelection() below.
 
 /**
  * Response from content script's extractContent action
@@ -320,10 +322,22 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     // Type guard for menuItemId
     const menuId = typeof info.menuItemId === 'string' ? info.menuItemId : String(info.menuItemId)
 
-    // Open side panel immediately (must be in direct response to user gesture)
+    // For selection links, we must extract links BEFORE the side panel fully opens
+    // because opening the panel can cause the page to lose focus and clear the selection.
+    // Start the panel opening (required for user gesture), then extract links in parallel.
+    let selectionLinksPromise: Promise<string[]> | null = null
+    if (menuId.startsWith(SELECTION_LINKS_MENU_PREFIX) && tab?.id) {
+      // Start extraction immediately - don't await yet
+      selectionLinksPromise = extractLinksFromSelection(tab.id)
+    }
+
+    // Open side panel (must be called immediately in response to user gesture)
     if (tab?.id) {
       await chrome.sidePanel.open({ tabId: tab.id })
     }
+
+    // Now await the links extraction if we started it
+    const selectionLinks = selectionLinksPromise ? await selectionLinksPromise : null
 
     // Handle page menu clicks
     if (menuId.startsWith(PAGE_MENU_PREFIX) && tab?.id) {
@@ -375,14 +389,11 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       }
     }
 
-    // Handle selection links menu clicks
-    if (menuId.startsWith(SELECTION_LINKS_MENU_PREFIX) && tab?.id) {
+    // Handle selection links menu clicks (links already extracted above)
+    if (menuId.startsWith(SELECTION_LINKS_MENU_PREFIX) && tab?.id && selectionLinks !== null) {
       const notebookIdOrNew = menuId.replace(SELECTION_LINKS_MENU_PREFIX, '')
 
-      // Extract links from the selection using scripting API
-      const links = await extractLinksFromSelection(tab.id)
-
-      if (links.length === 0) {
+      if (selectionLinks.length === 0) {
         console.log('No links found in selection')
         return
       }
@@ -392,19 +403,19 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
         await chrome.storage.session.set({
           pendingAction: {
             type: 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS',
-            payload: { links },
+            payload: { links: selectionLinks },
           },
         })
         // Also try sending message in case side panel is already open
         chrome.runtime
           .sendMessage({
             type: 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS',
-            payload: { links },
+            payload: { links: selectionLinks },
           })
           .catch(() => {})
       }
       else {
-        await handleAddSelectionLinksFromContextMenu(links, notebookIdOrNew)
+        await handleAddSelectionLinksFromContextMenu(selectionLinks, notebookIdOrNew)
       }
     }
   })()
@@ -491,7 +502,99 @@ async function extractLinksFromSelection(tabId: number): Promise<string[]> {
   try {
     const result = await chrome.scripting.executeScript({
       target: { tabId },
-      func: getLinksInSelection,
+      // Inline function to avoid issues with module dependencies not being available in page context
+      func: () => {
+        const selection = window.getSelection()
+        if (!selection || selection.rangeCount === 0) {
+          return []
+        }
+
+        const linksSet = new Set<string>()
+        const range = selection.getRangeAt(0)
+
+        // Strategy 1: Check if selection is inside or contains anchor elements
+        // by walking up from the common ancestor and down through descendants
+        const container = range.commonAncestorContainer
+        let searchRoot: Element | null = null
+
+        if (container.nodeType === Node.TEXT_NODE) {
+          searchRoot = container.parentElement
+        }
+        else if (container.nodeType === Node.ELEMENT_NODE) {
+          searchRoot = container as Element
+        }
+
+        if (searchRoot) {
+          // Check if we're inside an anchor (selection is within link text)
+          const closestAnchor = searchRoot.closest('a[href]')
+          if (closestAnchor instanceof HTMLAnchorElement) {
+            const href = closestAnchor.href // Use .href property for resolved URL
+            if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+              linksSet.add(href)
+            }
+          }
+
+          // Find all anchors within the search root that intersect with the selection
+          const allAnchors = searchRoot.querySelectorAll('a[href]')
+          for (const anchor of allAnchors) {
+            if (!(anchor instanceof HTMLAnchorElement)) continue
+
+            // Check if this anchor intersects with the selection
+            if (selection.containsNode(anchor, true)) {
+              const href = anchor.href // Use .href property for resolved URL
+              if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+                linksSet.add(href)
+              }
+            }
+          }
+        }
+
+        // Strategy 2: Also check parent of search root in case selection spans siblings
+        if (searchRoot?.parentElement) {
+          const parentAnchors = searchRoot.parentElement.querySelectorAll('a[href]')
+          for (const anchor of parentAnchors) {
+            if (!(anchor instanceof HTMLAnchorElement)) continue
+
+            if (selection.containsNode(anchor, true)) {
+              const href = anchor.href
+              if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+                linksSet.add(href)
+              }
+            }
+          }
+        }
+
+        // Strategy 3: Walk through selection ranges and check each text node's ancestors
+        for (let i = 0; i < selection.rangeCount; i++) {
+          const r = selection.getRangeAt(i)
+
+          // Check start container's anchor ancestry
+          let node: Node | null = r.startContainer
+          while (node && node !== document.body) {
+            if (node instanceof HTMLAnchorElement && node.href) {
+              const href = node.href
+              if (href.startsWith('http://') || href.startsWith('https://')) {
+                linksSet.add(href)
+              }
+            }
+            node = node.parentNode
+          }
+
+          // Check end container's anchor ancestry
+          node = r.endContainer
+          while (node && node !== document.body) {
+            if (node instanceof HTMLAnchorElement && node.href) {
+              const href = node.href
+              if (href.startsWith('http://') || href.startsWith('https://')) {
+                linksSet.add(href)
+              }
+            }
+            node = node.parentNode
+          }
+        }
+
+        return Array.from(linksSet)
+      },
     })
 
     if (!result || result.length === 0) {

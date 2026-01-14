@@ -6,7 +6,7 @@
  */
 
 import type { Source, ExtractedLink } from '../../types/index'
-import { addSourceToNotebook, getCurrentNotebookIdState } from './notebooks'
+import { addSourceToNotebook, getCurrentNotebookIdState, generateSummaryInBackground } from './notebooks'
 import { checkPermissions, requestPermission } from '../../lib/permissions'
 import type { PermissionStatus } from '../../types/index'
 
@@ -121,6 +121,11 @@ export async function addCurrentTab(): Promise<Source | null> {
     links,
   )
 
+  // Trigger background summary generation (fire and forget)
+  generateSummaryInBackground(notebookId).catch(err =>
+    console.warn('[Summary] Failed to generate:', err),
+  )
+
   // Notify background script
   chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
 
@@ -192,6 +197,11 @@ export async function addHighlightedTabs(): Promise<AddCurrentTabResult> {
   }
 
   if (sources.length > 0) {
+    // Trigger background summary generation (fire and forget)
+    generateSummaryInBackground(notebookId).catch(err =>
+      console.warn('[Summary] Failed to generate:', err),
+    )
+
     chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
   }
 
@@ -250,6 +260,11 @@ export async function importTabs(tabIds: string[]): Promise<Source[]> {
   }
 
   if (sources.length > 0) {
+    // Trigger background summary generation (fire and forget)
+    generateSummaryInBackground(notebookId).catch(err =>
+      console.warn('[Summary] Failed to generate:', err),
+    )
+
     chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
   }
 
@@ -328,6 +343,11 @@ export async function importTabGroups(groupIds: string[]): Promise<Source[]> {
   }
 
   if (sources.length > 0) {
+    // Trigger background summary generation (fire and forget)
+    generateSummaryInBackground(notebookId).catch(err =>
+      console.warn('[Summary] Failed to generate:', err),
+    )
+
     chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
   }
 
@@ -392,6 +412,11 @@ export async function importBookmarks(bookmarkIds: string[]): Promise<Source[]> 
   }
 
   if (sources.length > 0) {
+    // Trigger background summary generation (fire and forget)
+    generateSummaryInBackground(notebookId).catch(err =>
+      console.warn('[Summary] Failed to generate:', err),
+    )
+
     chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
   }
 
@@ -443,6 +468,11 @@ export async function importHistory(urls: string[]): Promise<Source[]> {
   }
 
   if (sources.length > 0) {
+    // Trigger background summary generation (fire and forget)
+    generateSummaryInBackground(notebookId).catch(err =>
+      console.warn('[Summary] Failed to generate:', err),
+    )
+
     chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
   }
 

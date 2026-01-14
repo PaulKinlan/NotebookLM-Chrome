@@ -25,6 +25,7 @@ function isHTMLAnchorElement(element: Element): element is HTMLAnchorElement {
  * 1. Anchor elements directly within the selection
  * 2. Selections that start/end within an anchor element
  * 3. Anchor elements within a common ancestor that are partially selected
+ * 4. Multiple selection ranges
  *
  * @returns Array of unique HTTP/HTTPS URLs found in the selection
  */
@@ -36,55 +37,88 @@ export function getLinksInSelection(): string[] {
 
   const linksSet = new Set<string>()
 
-  // Get the range of the selection
+  // Get the first range of the selection
   const range = selection.getRangeAt(0)
 
-  // Create a document fragment from the range
-  const fragment = range.cloneContents()
-
-  // Find all anchor elements in the selection
-  const anchorElements = fragment.querySelectorAll('a[href]')
-
-  anchorElements.forEach((anchor) => {
-    if (isHTMLAnchorElement(anchor)) {
-      const href = anchor.href
-      if (href && href.startsWith('http')) {
-        linksSet.add(href)
-      }
-    }
-  })
-
-  // Also check if the selection itself starts or ends within an anchor element
+  // Strategy 1: Check if selection is inside or contains anchor elements
+  // by walking up from the common ancestor and down through descendants
   const container = range.commonAncestorContainer
-  let parentElement: Element | null = null
+  let searchRoot: Element | null = null
 
   if (container.nodeType === Node.TEXT_NODE) {
-    parentElement = container.parentElement
+    searchRoot = container.parentElement
   }
   else if (isElement(container)) {
-    parentElement = container
+    searchRoot = container
   }
 
-  if (parentElement) {
-    // Check if the selection is within an anchor or contains anchors
-    const closestAnchor = parentElement.closest('a[href]')
+  if (searchRoot) {
+    // Check if we're inside an anchor (selection is within link text)
+    const closestAnchor = searchRoot.closest('a[href]')
     if (closestAnchor && isHTMLAnchorElement(closestAnchor)) {
       const href = closestAnchor.href
-      if (href && href.startsWith('http')) {
+      if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
         linksSet.add(href)
       }
     }
 
-    // Find all anchors within the common ancestor to limit scope
-    const ancestorAnchors = parentElement.querySelectorAll('a[href]')
-    ancestorAnchors.forEach((anchor) => {
-      if (selection.containsNode(anchor, true) && isHTMLAnchorElement(anchor)) {
+    // Find all anchors within the search root that intersect with the selection
+    const allAnchors = searchRoot.querySelectorAll('a[href]')
+    for (const anchor of allAnchors) {
+      if (!isHTMLAnchorElement(anchor)) continue
+
+      // Check if this anchor intersects with the selection
+      if (selection.containsNode(anchor, true)) {
         const href = anchor.href
-        if (href && href.startsWith('http')) {
+        if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
           linksSet.add(href)
         }
       }
-    })
+    }
+  }
+
+  // Strategy 2: Also check parent of search root in case selection spans siblings
+  if (searchRoot?.parentElement) {
+    const parentAnchors = searchRoot.parentElement.querySelectorAll('a[href]')
+    for (const anchor of parentAnchors) {
+      if (!isHTMLAnchorElement(anchor)) continue
+
+      if (selection.containsNode(anchor, true)) {
+        const href = anchor.href
+        if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
+          linksSet.add(href)
+        }
+      }
+    }
+  }
+
+  // Strategy 3: Walk through selection ranges and check each text node's ancestors
+  for (let i = 0; i < selection.rangeCount; i++) {
+    const r = selection.getRangeAt(i)
+
+    // Check start container's anchor ancestry
+    let node: Node | null = r.startContainer
+    while (node && node !== document.body) {
+      if (isHTMLAnchorElement(node as Element) && (node as HTMLAnchorElement).href) {
+        const href = (node as HTMLAnchorElement).href
+        if (href.startsWith('http://') || href.startsWith('https://')) {
+          linksSet.add(href)
+        }
+      }
+      node = node.parentNode
+    }
+
+    // Check end container's anchor ancestry
+    node = r.endContainer
+    while (node && node !== document.body) {
+      if (isHTMLAnchorElement(node as Element) && (node as HTMLAnchorElement).href) {
+        const href = (node as HTMLAnchorElement).href
+        if (href.startsWith('http://') || href.startsWith('https://')) {
+          linksSet.add(href)
+        }
+      }
+      node = node.parentNode
+    }
   }
 
   return Array.from(linksSet)

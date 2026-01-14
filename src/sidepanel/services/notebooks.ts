@@ -22,6 +22,7 @@ import {
   saveSummary,
   createSummary,
 } from '../../lib/storage'
+import { generateSummaryInBackground } from '../../lib/transforms/summary'
 import type { ExtractedLink } from '../../types/index'
 
 // ============================================================================
@@ -122,6 +123,9 @@ export async function saveNotebookSummary(notebookId: string, content: string, s
     await saveSummary(summary)
   }
 }
+
+// Re-export background summary generation from transforms
+export { generateSummaryInBackground }
 
 // ============================================================================
 // Helper functions for UI
