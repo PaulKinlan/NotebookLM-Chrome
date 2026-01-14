@@ -1736,8 +1736,10 @@ async function loadSources(): Promise<void> {
   // Render in Add tab (recent sources)
   renderSourcesList(elements.sourcesList, sources.slice(0, 5))
 
-  // Load or generate summary
-  await loadOrGenerateSummary(sources)
+  // Load or generate summary (don't await - let it load in background)
+  loadOrGenerateSummary(sources).catch(err =>
+    console.warn('[Summary] Failed to load:', err),
+  )
 
   // Load suggested links (don't await - let it load in background)
   loadSuggestedLinks(sources).catch(err =>
