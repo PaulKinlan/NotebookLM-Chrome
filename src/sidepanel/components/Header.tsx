@@ -58,10 +58,7 @@ export function Header(props: HeaderProps) {
         <select
           id="notebook-select"
           className="header-notebook-select"
-          onChange={(e) => {
-            void e
-            onNotebookChange()
-          }}
+          onChange={() => onNotebookChange()}
         >
           <option value="">Select a folio...</option>
         </select>

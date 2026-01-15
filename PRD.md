@@ -504,7 +504,7 @@ When multiple tabs are highlighted in the browser:
 
 **Theme:** Light and dark mode UI with blue accent colors. Users can choose light, dark, or system preference.
 
-**Tech Stack:** Vanilla TypeScript (no React), CSS with variables.
+**Tech Stack:** Preact (3kb React-like library) with TypeScript, CSS with variables.
 
 ### Navigation
 Bottom tab bar with five sections:
@@ -590,7 +590,7 @@ Shared modal for tabs, bookmarks, history, and media selection:
 ├─────────────────────────────────────────────────────────┤
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐ │
 │  │ Side Panel  │  │ Background  │  │ Content Script  │ │
-│  │ (Vanilla TS)│◄─┤   Worker    ├─►│  (Turndown)     │ │
+│  │  (Preact)   │◄─┤   Worker    ├─►│  (Turndown)     │ │
 │  │             │  │             │  │                 │ │
 │  └─────────────┘  └──────┬──────┘  └─────────────────┘ │
 │                          │                              │
