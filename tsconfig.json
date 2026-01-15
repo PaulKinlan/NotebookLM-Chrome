@@ -20,6 +20,6 @@
     "jsx": "react-jsx",
     "jsxImportSource": "preact"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "*.config.js", "scripts/**/*.js"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "*.config.js", "scripts/**/*.js", "scripts/**/*.d.ts"],
   "exclude": ["node_modules", "dist"]
 }
