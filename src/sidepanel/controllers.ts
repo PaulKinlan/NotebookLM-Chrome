@@ -86,6 +86,7 @@ import {
 import { initProviderConfigUI, AI_PROFILES_CHANGED_EVENT } from './provider-config-ui.ts'
 import { filterLinksWithAI, hasExtractableLinks } from '../lib/suggested-links.ts'
 import { SandboxRenderer } from '../lib/sandbox-renderer.ts'
+import { getPreference, onThemeChange } from './hooks/useTheme.tsx'
 import {
   exportNotebook,
   type NotebookExport,
@@ -4083,6 +4084,24 @@ async function handleClearChat(): Promise<void> {
 
 // Track sandboxes for proper cleanup when cards are removed
 const cardSandboxes = new WeakMap<HTMLElement, SandboxRenderer>()
+// Track all active sandboxes for theme updates (using a Set for easy iteration)
+const activeSandboxes = new Set<SandboxRenderer>()
+
+// Helper to get the theme value to send to sandbox
+function getSandboxTheme(): 'light' | 'dark' | null {
+  const preference = getPreference()
+  // If system, return null so sandbox uses its own media query detection
+  // Otherwise return the explicit theme
+  return preference === 'system' ? null : preference
+}
+
+// Subscribe to theme changes to update all sandboxes
+onThemeChange(() => {
+  const theme = getSandboxTheme()
+  activeSandboxes.forEach((sandbox) => {
+    sandbox.setTheme(theme)
+  })
+})
 // Track transform metadata for each card (for save/delete operations)
 interface TransformCardMeta {
   id: string | null // null until saved
@@ -4196,6 +4215,12 @@ function createTransformResultCard(
   // Create sandbox renderer for this card
   const sandbox = new SandboxRenderer(contentContainer)
   cardSandboxes.set(card, sandbox)
+  activeSandboxes.add(sandbox)
+
+  // Set the theme when sandbox is ready
+  void sandbox.waitForReady().then(() => {
+    sandbox.setTheme(getSandboxTheme())
+  })
 
   // Initialize metadata (content will be set later)
   const meta: TransformCardMeta = {
@@ -4521,6 +4546,7 @@ function generateFullPageHtml(title: string, content: string): string {
 function removeTransformCard(card: HTMLElement): void {
   const sandbox = cardSandboxes.get(card)
   if (sandbox) {
+    activeSandboxes.delete(sandbox)
     sandbox.destroy()
     cardSandboxes.delete(card)
   }
