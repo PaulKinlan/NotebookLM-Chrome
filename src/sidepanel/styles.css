@@ -561,6 +561,12 @@ body {
   color: var(--text-primary);
 }
 
+.icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .icon-btn.btn-primary {
   background: var(--accent-primary);
   color: white;
