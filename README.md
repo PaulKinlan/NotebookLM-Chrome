@@ -24,6 +24,10 @@ A browser extension that helps you collect sources from tabs, bookmarks, and his
   - Custom Instructions field to add your own prompt additions
   - Advanced section shows how the AI prompt is structured
   - Settings persist across sessions in chrome.storage.local
+- **Transform Management**: Generated transforms can be saved, deleted, or viewed full-screen:
+  - Save transforms to persist them for later access
+  - Open in new tab for full-screen viewing (great for slides, quizzes, mind maps)
+  - Delete saved transforms when no longer needed
 
 ## Installation
 
