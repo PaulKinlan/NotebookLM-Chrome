@@ -20,7 +20,8 @@ import {
   dbDeleteByIndex,
   dbClearAll,
 } from './db.ts'
-import { deleteTransformConfigs } from './transform-config.ts'
+import { postSourcesMessage, postNotebooksMessage, postChatMessage } from '../sidepanel/lib/broadcast'
+import type { SourceCreatedEvent, SourceDeletedEvent, NotebookCreatedEvent, NotebookDeletedEvent, NotebookSelectedEvent, ChatAddedEvent, ChatClearedEvent } from '../sidepanel/lib/broadcast'
 
 // ============================================================================
 // Storage Adapter Implementation
@@ -52,6 +53,10 @@ class IndexedDBStorage implements StorageAdapter {
     }
 
     await dbPut('notebooks', toSave)
+
+    // Notify other contexts about notebook creation/update
+    const event: NotebookCreatedEvent = { type: 'notebook:created', notebookId: notebook.id }
+    postNotebooksMessage(event)
   }
 
   async deleteNotebook(id: string): Promise<void> {
@@ -61,11 +66,12 @@ class IndexedDBStorage implements StorageAdapter {
     await dbDeleteByIndex('transformations', 'notebookId', id)
     await dbDeleteByIndex('summaries', 'notebookId', id)
 
-    // Delete transform configs for this notebook (stored in chrome.storage.local)
-    await deleteTransformConfigs(id)
-
     // Then delete the notebook
     await dbDelete('notebooks', id)
+
+    // Notify other contexts about notebook deletion
+    const event: NotebookDeletedEvent = { type: 'notebook:deleted', notebookId: id }
+    postNotebooksMessage(event)
 
     // Clear active notebook if it was this one
     const activeId = await this.getActiveNotebookId()
@@ -99,10 +105,21 @@ class IndexedDBStorage implements StorageAdapter {
     }
 
     await dbPut('sources', toSave)
+
+    // Notify other contexts about source creation/update
+    const event: SourceCreatedEvent = { type: 'source:created', notebookId: source.notebookId, sourceId: source.id }
+    postSourcesMessage(event)
   }
 
   async deleteSource(id: string): Promise<void> {
+    const source = await this.getSource(id)
     await dbDelete('sources', id)
+
+    // Notify other contexts about source deletion
+    if (source) {
+      const event: SourceDeletedEvent = { type: 'source:deleted', notebookId: source.notebookId, sourceId: id }
+      postSourcesMessage(event)
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -116,10 +133,18 @@ class IndexedDBStorage implements StorageAdapter {
 
   async saveChatEvent(event: ChatEvent): Promise<void> {
     await dbPut('chatEvents', event)
+
+    // Notify other contexts about new chat message
+    const chatEvent: ChatAddedEvent = { type: 'chat:added', notebookId: event.notebookId, messageId: event.id }
+    postChatMessage(chatEvent)
   }
 
   async clearChatHistory(notebookId: string): Promise<void> {
     await dbDeleteByIndex('chatEvents', 'notebookId', notebookId)
+
+    // Notify other contexts about chat clear
+    const event: ChatClearedEvent = { type: 'chat:cleared', notebookId }
+    postChatMessage(event)
   }
 
   // --------------------------------------------------------------------------
@@ -214,6 +239,10 @@ class IndexedDBStorage implements StorageAdapter {
     else {
       await this.setSetting('activeNotebookId', id)
     }
+
+    // Notify other contexts about notebook selection change
+    const event: NotebookSelectedEvent = { type: 'notebook:selected', notebookId: id }
+    postNotebooksMessage(event)
   }
 
   async clearAll(): Promise<void> {

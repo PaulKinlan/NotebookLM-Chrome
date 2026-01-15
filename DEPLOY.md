@@ -12,13 +12,12 @@ This extension is automatically published to the Chrome Web Store when a release
 4. Click the link to generate API credentials
 
 You'll need:
-- **Publisher ID** - Displayed in the Account section of the Developer Dashboard
 - **Extension ID** - Your extension's ID in the Chrome Web Store
 - **Client ID** - From the API credentials
 - **Client Secret** - From the API credentials
 - **Refresh Token** - From the API credentials
 
-See the [Chrome Web Store API documentation](https://developer.chrome.com/docs/webstore/using-api) for detailed instructions.
+See [chrome-extension-deploy documentation](https://github.com/fregante/chrome-extension-deploy#getting-credentials-) for detailed instructions.
 
 ### 2. Configure GitHub Secrets
 
@@ -26,7 +25,6 @@ Add the following secrets to your GitHub repository (**Settings** → **Secrets 
 
 | Secret Name | Description |
 |-------------|-------------|
-| `CWS_PUBLISHER_ID` | Chrome Web Store publisher ID |
 | `CWS_EXTENSION_ID` | Chrome Web Store extension ID |
 | `CWS_CLIENT_ID` | Chrome Web Store API client ID |
 | `CWS_CLIENT_SECRET` | Chrome Web Store API client secret |
@@ -53,19 +51,9 @@ To test Chrome Web Store publishing locally:
 
 ```bash
 CWS_EXTENSION_ID="your-extension-id" \
-CWS_PUBLISHER_ID="your-publisher-id" \
 CWS_CLIENT_ID="your-client-id" \
 CWS_CLIENT_SECRET="your-client-secret" \
 CWS_REFRESH_TOKEN="your-refresh-token" \
-npx tsx scripts/publish-cws.ts
+ZIP_PATH="foliolm-extension-*.zip" \
+node scripts/publish-cws.js
 ```
-
-## Implementation
-
-The publishing is done using the native Chrome Web Store API via `fetch` (built into Node.js 18+). The script `scripts/publish-cws.ts`:
-
-1. Exchanges the refresh token for an access token
-2. Uploads the extension ZIP to the Chrome Web Store
-3. Publishes the extension to the public channel
-
-No external dependencies are required beyond the Chrome Web Store API credentials.

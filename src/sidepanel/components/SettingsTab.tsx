@@ -1,56 +1,45 @@
 import type { ThemePreference } from '../../types/index.ts'
-import { getPreference, setPreference, onThemeChange, onThemeInitialized } from '../hooks/useTheme.tsx'
-
-type PermissionType = 'tabs' | 'tabGroups' | 'bookmarks' | 'history'
+import { setPreference, onThemeChange, onThemeInitialized } from '../hooks/useTheme.tsx'
+import { useToolPermissions } from '../hooks/useToolPermissions'
+import { useState, useEffect } from 'preact/hooks'
 
 interface SettingsTabProps {
   active: boolean
-  onPermissionToggle: (permission: PermissionType) => void
   onClearAllData: () => void
 }
-
-// Store cleanup functions for event listeners
-// Note: This component persists for the app's lifetime, so cleanup
-// is only needed if the component is ever unmounted (currently it isn't)
-const cleanupFunctions: Array<() => void> = []
 
 export function SettingsTab(props: SettingsTabProps) {
   const { active } = props
 
-  // Handle theme change
-  const handleThemeChange = (newPreference: ThemePreference) => {
-    void setPreference(newPreference)
-  }
+  // Track theme preference in state
+  const [themePreference, setThemePreference] = useState<ThemePreference>('system')
 
-  // Set up initial state and listeners after DOM is created
-  requestAnimationFrame(() => {
-    const lightRadio = document.querySelector<HTMLInputElement>('input[name="theme"][value="light"]')
-    const darkRadio = document.querySelector<HTMLInputElement>('input[name="theme"][value="dark"]')
-    const systemRadio = document.querySelector<HTMLInputElement>('input[name="theme"][value="system"]')
+  // Get tool permissions
+  const { config: toolConfig, toggleVisible, toggleRequiresApproval, resetToDefaults } = useToolPermissions()
 
-    // Helper to update radio button states
-    const updateRadioState = (preference: ThemePreference) => {
-      if (lightRadio) lightRadio.checked = preference === 'light'
-      if (darkRadio) darkRadio.checked = preference === 'dark'
-      if (systemRadio) systemRadio.checked = preference === 'system'
-    }
-
-    // Handle async initialization - this fixes the race condition where
-    // the component renders before initTheme() completes
+  // Initialize theme state and listen for changes
+  useEffect(() => {
+    // Handle async initialization - sync state when theme system initializes
     const cleanupInit = onThemeInitialized((preference) => {
-      updateRadioState(preference)
+      setThemePreference(preference)
     })
-    cleanupFunctions.push(cleanupInit)
-
-    // Also update on preference (in case already initialized)
-    updateRadioState(getPreference())
 
     // Listen for theme changes (from other sources or system preference changes)
     const cleanupChange = onThemeChange((preference) => {
-      updateRadioState(preference)
+      setThemePreference(preference)
     })
-    cleanupFunctions.push(cleanupChange)
-  })
+
+    return () => {
+      cleanupInit()
+      cleanupChange()
+    }
+  }, [])
+
+  // Handle theme change
+  const handleThemeChange = (newPreference: ThemePreference) => {
+    setThemePreference(newPreference)
+    void setPreference(newPreference)
+  }
 
   return (
     <section id="tab-settings" className={`tab-content ${active ? 'active' : ''}`}>
@@ -65,6 +54,7 @@ export function SettingsTab(props: SettingsTabProps) {
               name="theme"
               value="light"
               aria-label="Light theme"
+              checked={themePreference === 'light'}
               onChange={() => handleThemeChange('light')}
             />
             <span className="theme-option-content">
@@ -88,6 +78,7 @@ export function SettingsTab(props: SettingsTabProps) {
               name="theme"
               value="dark"
               aria-label="Dark theme"
+              checked={themePreference === 'dark'}
               onChange={() => handleThemeChange('dark')}
             />
             <span className="theme-option-content">
@@ -103,6 +94,7 @@ export function SettingsTab(props: SettingsTabProps) {
               name="theme"
               value="system"
               aria-label="Use system theme preference"
+              checked={themePreference === 'system'}
               onChange={() => handleThemeChange('system')}
             />
             <span className="theme-option-content">
@@ -182,9 +174,44 @@ export function SettingsTab(props: SettingsTabProps) {
       <div className="settings-group">
         <h3 className="section-title">Tool Permissions</h3>
         <p className="setting-hint">Control which AI tools are visible and require approval before execution.</p>
-        <div id="tool-permissions-list" className="tool-permissions-list"></div>
+        <div id="tool-permissions-list" className="tool-permissions-list">
+          {toolConfig && Object.keys(toolConfig.permissions).sort().map((toolName) => {
+            const toolPerm = toolConfig.permissions[toolName]
+            return (
+              <div key={toolName} className="tool-permission-item">
+                <div className="tool-permission-header">
+                  <strong>{toolName}</strong>
+                </div>
+                <label className="tool-permission-checkbox">
+                  <input
+                    type="checkbox"
+                    id={`tool-enabled-${toolName}`}
+                    checked={toolPerm.visible}
+                    onChange={() => void toggleVisible(toolName)}
+                  />
+                  <span> Visible</span>
+                </label>
+                <label className="tool-permission-checkbox">
+                  <input
+                    type="checkbox"
+                    id={`tool-approval-${toolName}`}
+                    checked={toolPerm.requiresApproval}
+                    onChange={() => void toggleRequiresApproval(toolName)}
+                  />
+                  <span> Requires Approval</span>
+                </label>
+              </div>
+            )
+          })}
+        </div>
         <div className="tool-permissions-footer">
-          <button id="reset-tool-permissions-btn" className="btn btn-small btn-outline">Reset to Defaults</button>
+          <button
+            id="reset-tool-permissions-btn"
+            className="btn btn-small btn-outline"
+            onClick={() => void resetToDefaults()}
+          >
+            Reset to Defaults
+          </button>
         </div>
       </div>
 

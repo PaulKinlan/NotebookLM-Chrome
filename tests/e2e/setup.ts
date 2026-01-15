@@ -171,8 +171,17 @@ async function ensureNotebookExists(
     // Wait for the dialog to appear
     await page.waitForSelector('#notebook-name-input', { timeout: 3000 });
 
+    // Wait a bit for the dialog to be fully rendered
+    await new Promise(resolve => setTimeout(resolve, 200));
+
     // Enter a notebook name
     await page.type('#notebook-name-input', 'Test Notebook');
+
+    // Wait for the confirm button to be visible/clickable
+    await page.waitForSelector('#notebook-dialog-confirm', { timeout: 1000 });
+
+    // Wait a bit more for stability
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Click confirm
     await page.click('#notebook-dialog-confirm');
@@ -209,6 +218,13 @@ export async function getSidepanelPage(browser: Browser): Promise<Page> {
 
   // Ensure a notebook exists for testing
   await ensureNotebookExists(page);
+
+  // Wait for Preact to finish rendering after notebook creation
+  // We wait for a key interactive element to be present
+  await page.waitForSelector('#query-btn', { timeout: 5000 });
+
+  // Small stabilization delay to ensure Preact has flushed all updates
+  await new Promise(resolve => setTimeout(resolve, 100));
 
   return page;
 }
