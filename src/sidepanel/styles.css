@@ -2715,10 +2715,6 @@ details.suggested-links-section[open] .suggested-links-chevron {
 }
 
 /* Chat tab specific adjustments */
-#tab-chat .section-title:first-of-type {
-  margin-top: 16px;
-}
-
 #tab-chat .sources-list.compact {
   margin-bottom: 12px;
 }
