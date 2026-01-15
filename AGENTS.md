@@ -115,6 +115,35 @@ This project mandates modern web platform APIs over legacy patterns. Before impl
 
 When in doubt about which API to use, invoke `/modernwebdev` for research and recommendations.
 
+## Type Safety
+
+**CRITICAL:** Always use type guards instead of type coercion or non-null assertions.
+
+### Type Guards vs Assertions
+
+| Use | Avoid |
+|-----|-------|
+| `value === undefined` checks | Non-null assertion (`value!`) |
+| Type guard functions (`assertEnv(value, name)`) | Type assertions (`as Type`) |
+| Proper narrowing with `in` or `instanceof` | Casting without validation |
+
+### Example: Type Guard Function
+
+```typescript
+// ✅ GOOD: Type guard that returns narrowed type
+function assertEnv(value: string | undefined, name: string): string {
+  if (value === undefined) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+const apiKey = assertEnv(process.env.API_KEY, "API_KEY"); // Type: string
+
+// ❌ BAD: Non-null assertion
+const apiKey = process.env.API_KEY!; // No runtime check
+```
+
 ## Build Commands
 
 ```bash
