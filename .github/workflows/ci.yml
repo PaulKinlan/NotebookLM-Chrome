@@ -91,6 +91,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Cache Puppeteer Chrome
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/puppeteer
+          key: ${{ runner.os }}-puppeteer-chrome-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-puppeteer-chrome-
+
+      - name: Cache Vitest E2E
+        uses: actions/cache@v4
+        with:
+          path: .vitest
+          key: ${{ runner.os }}-vitest-e2e-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-vitest-e2e-
+
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
