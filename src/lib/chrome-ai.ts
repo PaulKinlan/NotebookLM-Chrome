@@ -130,11 +130,12 @@ export interface ModelDownloadResult {
  * IMPORTANT: This function MUST be called during a user gesture (click, keypress, etc.)
  * because Chrome requires user activation to start the model download.
  *
- * This function is safe to call multiple times - it will:
- * - Do nothing if the model is already available
- * - Start download if the model is downloadable
- * - Return current status if already downloading
- * - Report unavailable if the API is not supported
+ * This function calls api.create() immediately to preserve user activation.
+ * Chrome's create() handles all states gracefully:
+ * - If model is available, creates session instantly
+ * - If downloadable, triggers download
+ * - If downloading, waits for completion
+ * - If unavailable, throws an error
  *
  * @param onProgress - Optional callback for download progress (0-1)
  * @returns Result indicating success and current status
@@ -142,7 +143,7 @@ export interface ModelDownloadResult {
 export async function triggerModelDownload(
   onProgress?: DownloadProgressCallback,
 ): Promise<ModelDownloadResult> {
-  // Check if API is available
+  // Synchronous check - doesn't consume user activation
   const api = getLanguageModelAPI()
   if (!api) {
     console.log('[ChromeAI] Built-in AI not supported in this browser')
@@ -153,37 +154,13 @@ export async function triggerModelDownload(
     }
   }
 
-  // Check current availability
-  const availability = await checkModelAvailability()
-
-  // If already available, nothing to do
-  if (availability === 'available') {
-    console.log('[ChromeAI] Model already available')
-    return { success: true, status: 'available' }
-  }
-
-  // If unavailable (not just "not downloaded"), can't proceed
-  if (availability === 'unavailable') {
-    console.log('[ChromeAI] Model unavailable (not supported on this device)')
-    return {
-      success: false,
-      status: 'unavailable',
-      error: 'Chrome built-in AI is not available on this device',
-    }
-  }
-
-  // If already downloading, report status but don't start another download
-  if (availability === 'downloading') {
-    console.log('[ChromeAI] Model download already in progress')
-    return { success: true, status: 'downloading' }
-  }
-
-  // Model is 'downloadable' - trigger the download
-  console.log('[ChromeAI] Starting model download...')
+  // Call create() immediately to preserve user activation
+  // Do NOT await checkModelAvailability() before this - it would consume the user gesture
+  console.log('[ChromeAI] Triggering model download/session creation...')
 
   try {
     // Create a session with download monitoring
-    // This triggers the download and we can track progress
+    // This triggers the download if needed and we can track progress
     const session = await api.create({
       monitor: (monitor: DownloadMonitor) => {
         monitor.addEventListener('downloadprogress', (event: DownloadProgressEvent) => {
@@ -198,20 +175,20 @@ export async function triggerModelDownload(
     // Destroy the session since we only wanted to trigger the download
     session.destroy()
 
-    console.log('[ChromeAI] Model download complete and ready')
+    console.log('[ChromeAI] Model ready')
     return { success: true, status: 'available' }
   }
   catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error('[ChromeAI] Failed to download model:', errorMessage)
+    console.error('[ChromeAI] Failed to create session/download model:', errorMessage)
 
-    // Re-check status in case of partial progress
+    // Check status after failure to provide accurate feedback
     const currentStatus = await checkModelAvailability()
 
     return {
       success: false,
       status: currentStatus,
-      error: `Failed to download model: ${errorMessage}`,
+      error: `Failed to initialize model: ${errorMessage}`,
     }
   }
 }

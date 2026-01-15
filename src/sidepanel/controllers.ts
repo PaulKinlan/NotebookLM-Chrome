@@ -4984,7 +4984,7 @@ function triggerChromeAIDownloadOnGesture(): void {
   startModelDownloadAsync(
     // Progress callback
     (progress) => {
-      console.log(`[Onboarding] Chrome AI download progress: ${(progress * 100).toFixed(0)}%`)
+      console.log(`[Onboarding] Chrome AI download progress: ${(progress * 100).toFixed(1)}%`)
     },
     // Completion callback
     (result) => {
@@ -5051,7 +5051,7 @@ async function completeOnboarding(): Promise<void> {
   await markOnboardingComplete()
   elements.onboardingOverlay.classList.add('hidden')
 
-  // Clean up event listeners
+  // Clean up event listeners and state
   if (onboardingSkipHandler) {
     elements.onboardingSkip.removeEventListener('click', onboardingSkipHandler)
     onboardingSkipHandler = null
@@ -5060,6 +5060,8 @@ async function completeOnboarding(): Promise<void> {
     elements.onboardingNext.removeEventListener('click', onboardingNextHandler)
     onboardingNextHandler = null
   }
+  // Reset download flag so it can trigger again if onboarding restarts
+  chromeAIDownloadTriggered = false
 
   // Switch to settings tab to prompt AI setup
   switchTab('settings')
