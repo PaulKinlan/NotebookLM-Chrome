@@ -12,6 +12,7 @@ This extension is automatically published to the Chrome Web Store when a release
 4. Click the link to generate API credentials
 
 You'll need:
+- **Publisher ID** - Displayed in the Account section of the Developer Dashboard
 - **Extension ID** - Your extension's ID in the Chrome Web Store
 - **Client ID** - From the API credentials
 - **Client Secret** - From the API credentials
@@ -25,6 +26,7 @@ Add the following secrets to your GitHub repository (**Settings** → **Secrets 
 
 | Secret Name | Description |
 |-------------|-------------|
+| `CWS_PUBLISHER_ID` | Chrome Web Store publisher ID |
 | `CWS_EXTENSION_ID` | Chrome Web Store extension ID |
 | `CWS_CLIENT_ID` | Chrome Web Store API client ID |
 | `CWS_CLIENT_SECRET` | Chrome Web Store API client secret |
@@ -51,6 +53,7 @@ To test Chrome Web Store publishing locally:
 
 ```bash
 CWS_EXTENSION_ID="your-extension-id" \
+CWS_PUBLISHER_ID="your-publisher-id" \
 CWS_CLIENT_ID="your-client-id" \
 CWS_CLIENT_SECRET="your-client-secret" \
 CWS_REFRESH_TOKEN="your-refresh-token" \
