@@ -4151,23 +4151,26 @@ function createTransformResultCard(
   const actions = document.createElement('div')
   actions.className = 'transform-result-actions'
 
-  // Save button
+  // Save button (hidden until generation completes)
   const saveBtn = document.createElement('button')
   saveBtn.className = 'icon-btn'
   saveBtn.title = 'Save'
   saveBtn.innerHTML = ICONS.save
+  saveBtn.hidden = true
 
-  // Open in new tab button
+  // Open in new tab button (hidden until generation completes)
   const openTabBtn = document.createElement('button')
   openTabBtn.className = 'icon-btn'
   openTabBtn.title = 'Open in new tab'
   openTabBtn.innerHTML = ICONS.openNewTab
+  openTabBtn.hidden = true
 
-  // Copy button
+  // Copy button (hidden until generation completes)
   const copyBtn = document.createElement('button')
   copyBtn.className = 'icon-btn'
   copyBtn.title = 'Copy'
   copyBtn.innerHTML = ICONS.copy
+  copyBtn.hidden = true
 
   // Delete/Close button
   const closeBtn = document.createElement('button')
@@ -4205,10 +4208,14 @@ function createTransformResultCard(
   }
   cardMetadata.set(card, meta)
 
-  // Function to update content after generation
+  // Function to update content after generation and show action buttons
   const setContent = (content: string, isInteractive: boolean) => {
     meta.content = content
     meta.isInteractive = isInteractive
+    // Show the action buttons now that content is ready
+    saveBtn.hidden = false
+    openTabBtn.hidden = false
+    copyBtn.hidden = false
   }
 
   // Wire up save button
