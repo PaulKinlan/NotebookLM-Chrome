@@ -606,6 +606,11 @@ h3 {
   margin-bottom: 12px;
 }
 
+.section-title svg {
+  display: block;
+  flex-shrink: 0;
+}
+
 .link {
   color: var(--accent-primary);
   text-decoration: none;
