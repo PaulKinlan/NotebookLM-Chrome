@@ -23,7 +23,7 @@ A browser extension that helps you collect sources from tabs, bookmarks, and his
   - Type-specific options (e.g., quiz difficulty, report format, podcast tone)
   - Custom Instructions field to add your own prompt additions
   - Advanced section shows how the AI prompt is structured
-  - Settings persist across sessions in chrome.storage.local
+  - Settings are saved per-notebook, allowing different configurations for different folios
 - **Transform Management**: Generated transforms can be saved, deleted, or viewed full-screen:
   - Save transforms to persist them for later access
   - Open in new tab for full-screen viewing (great for slides, quizzes, mind maps)
@@ -206,7 +206,8 @@ Customizable settings for each transformation type:
 - **Default Configs**: Each transformation has sensible default options
 - **CONFIG_LABELS**: UI metadata (field types, labels, options) for dynamic form generation
 - **PROMPT_INFO**: Descriptions of how each transformation's AI prompt works
-- **Storage**: Configurations saved/loaded from `chrome.storage.local`
+- **Per-Notebook Storage**: Configurations saved per-notebook in `chrome.storage.local` (key: `transformConfigs_{notebookId}`)
+- **Cleanup**: Configs are automatically deleted when a notebook is deleted
 - **TransformConfigPopover**: Component using HTML Popover API for settings UI
 
 #### Credential Management (`src/lib/credentials.ts`)

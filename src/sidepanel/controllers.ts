@@ -587,7 +587,8 @@ async function init(): Promise<void> {
   await initProviderConfigUI()
 
   // Initialize transform config buttons (cog icons)
-  initTransformConfigButtons()
+  // Pass a getter function so buttons can access the current notebook ID when clicked
+  initTransformConfigButtons(() => currentNotebookId)
 
   // Listen for AI profile changes to update the AI config select
   window.addEventListener(AI_PROFILES_CHANGED_EVENT, () => {
@@ -4615,61 +4616,61 @@ async function handleTransform(type: TransformationType): Promise<void> {
 
     switch (type) {
       case 'podcast':
-        result = await generatePodcastScript(sources, await getTransformConfig('podcast'))
+        result = await generatePodcastScript(sources, await getTransformConfig('podcast', currentNotebookId))
         break
       case 'quiz':
-        result = await generateQuiz(sources, await getTransformConfig('quiz'))
+        result = await generateQuiz(sources, await getTransformConfig('quiz', currentNotebookId))
         break
       case 'takeaways':
-        result = await generateKeyTakeaways(sources, await getTransformConfig('takeaways'))
+        result = await generateKeyTakeaways(sources, await getTransformConfig('takeaways', currentNotebookId))
         break
       case 'email':
-        result = await generateEmailSummary(sources, await getTransformConfig('email'))
+        result = await generateEmailSummary(sources, await getTransformConfig('email', currentNotebookId))
         break
       case 'slidedeck':
-        result = await generateSlideDeck(sources, await getTransformConfig('slidedeck'))
+        result = await generateSlideDeck(sources, await getTransformConfig('slidedeck', currentNotebookId))
         break
       case 'report':
-        result = await generateReport(sources, await getTransformConfig('report'))
+        result = await generateReport(sources, await getTransformConfig('report', currentNotebookId))
         break
       case 'datatable':
-        result = await generateDataTable(sources, await getTransformConfig('datatable'))
+        result = await generateDataTable(sources, await getTransformConfig('datatable', currentNotebookId))
         break
       case 'mindmap':
-        result = await generateMindMap(sources, await getTransformConfig('mindmap'))
+        result = await generateMindMap(sources, await getTransformConfig('mindmap', currentNotebookId))
         break
       case 'flashcards':
-        result = await generateFlashcards(sources, await getTransformConfig('flashcards'))
+        result = await generateFlashcards(sources, await getTransformConfig('flashcards', currentNotebookId))
         break
       case 'timeline':
-        result = await generateTimeline(sources, await getTransformConfig('timeline'))
+        result = await generateTimeline(sources, await getTransformConfig('timeline', currentNotebookId))
         break
       case 'glossary':
-        result = await generateGlossary(sources, await getTransformConfig('glossary'))
+        result = await generateGlossary(sources, await getTransformConfig('glossary', currentNotebookId))
         break
       case 'comparison':
-        result = await generateComparison(sources, await getTransformConfig('comparison'))
+        result = await generateComparison(sources, await getTransformConfig('comparison', currentNotebookId))
         break
       case 'faq':
-        result = await generateFAQ(sources, await getTransformConfig('faq'))
+        result = await generateFAQ(sources, await getTransformConfig('faq', currentNotebookId))
         break
       case 'actionitems':
-        result = await generateActionItems(sources, await getTransformConfig('actionitems'))
+        result = await generateActionItems(sources, await getTransformConfig('actionitems', currentNotebookId))
         break
       case 'executivebrief':
-        result = await generateExecutiveBrief(sources, await getTransformConfig('executivebrief'))
+        result = await generateExecutiveBrief(sources, await getTransformConfig('executivebrief', currentNotebookId))
         break
       case 'studyguide':
-        result = await generateStudyGuide(sources, await getTransformConfig('studyguide'))
+        result = await generateStudyGuide(sources, await getTransformConfig('studyguide', currentNotebookId))
         break
       case 'proscons':
-        result = await generateProsCons(sources, await getTransformConfig('proscons'))
+        result = await generateProsCons(sources, await getTransformConfig('proscons', currentNotebookId))
         break
       case 'citations':
-        result = await generateCitationList(sources, await getTransformConfig('citations'))
+        result = await generateCitationList(sources, await getTransformConfig('citations', currentNotebookId))
         break
       case 'outline':
-        result = await generateOutline(sources, await getTransformConfig('outline'))
+        result = await generateOutline(sources, await getTransformConfig('outline', currentNotebookId))
         break
     }
 

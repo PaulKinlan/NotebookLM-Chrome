@@ -139,6 +139,7 @@ function renderField(
 export async function openTransformConfigPopover(
   type: TransformationType,
   anchorButton: HTMLElement,
+  notebookId: string,
 ): Promise<void> {
   // Check if popover already exists
   const existingPopover = document.getElementById(`config-popover-${type}`)
@@ -146,8 +147,8 @@ export async function openTransformConfigPopover(
     existingPopover.remove()
   }
 
-  // Get current config
-  const currentConfig = await getTransformConfig(type)
+  // Get current config for this notebook
+  const currentConfig = await getTransformConfig(type, notebookId)
   const configLabels = CONFIG_LABELS[type]
 
   if (!configLabels) {
@@ -252,10 +253,10 @@ export async function openTransformConfigPopover(
   resetBtn.className = 'btn-secondary'
   resetBtn.textContent = 'Reset to Defaults'
   resetBtn.addEventListener('click', () => {
-    void resetTransformConfig(type).then(() => {
+    void resetTransformConfig(type, notebookId).then(() => {
       popover.hidePopover()
       // Re-open to show reset values
-      setTimeout(() => void openTransformConfigPopover(type, anchorButton), 100)
+      setTimeout(() => void openTransformConfigPopover(type, anchorButton, notebookId), 100)
     })
   })
 
@@ -264,7 +265,7 @@ export async function openTransformConfigPopover(
   saveBtn.className = 'btn-primary'
   saveBtn.textContent = 'Save'
   saveBtn.addEventListener('click', () => {
-    void saveTransformConfig(type, values as Partial<TransformConfigMap[typeof type]>).then(() => {
+    void saveTransformConfig(type, values as Partial<TransformConfigMap[typeof type]>, notebookId).then(() => {
       popover.hidePopover()
       // Show brief confirmation
       showSaveConfirmation(anchorButton)
@@ -306,8 +307,13 @@ function showSaveConfirmation(anchor: HTMLElement) {
 
 /**
  * Create a settings button for a transform card
+ * @param type - The transformation type
+ * @param getNotebookId - Function that returns the current notebook ID
  */
-export function createConfigButton(type: TransformationType): HTMLButtonElement {
+export function createConfigButton(
+  type: TransformationType,
+  getNotebookId: () => string | null,
+): HTMLButtonElement {
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.className = 'transform-config-btn'
@@ -324,7 +330,12 @@ export function createConfigButton(type: TransformationType): HTMLButtonElement 
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation() // Prevent triggering the transform
-    void openTransformConfigPopover(type, btn)
+    const notebookId = getNotebookId()
+    if (!notebookId) {
+      console.warn('[TransformConfig] No notebook selected')
+      return
+    }
+    void openTransformConfigPopover(type, btn, notebookId)
   })
 
   return btn
@@ -332,8 +343,9 @@ export function createConfigButton(type: TransformationType): HTMLButtonElement 
 
 /**
  * Initialize config buttons for all transform cards
+ * @param getNotebookId - Function that returns the current notebook ID
  */
-export function initTransformConfigButtons(): void {
+export function initTransformConfigButtons(getNotebookId: () => string | null): void {
   const transformTypes: TransformationType[] = [
     'podcast',
     'quiz',
@@ -359,7 +371,7 @@ export function initTransformConfigButtons(): void {
   for (const type of transformTypes) {
     const card = document.getElementById(`transform-${type}`)
     if (card && !card.querySelector('.transform-config-btn')) {
-      const configBtn = createConfigButton(type)
+      const configBtn = createConfigButton(type, getNotebookId)
       // Insert into the transform-icon div
       const iconDiv = card.querySelector('.transform-icon')
       if (iconDiv) {

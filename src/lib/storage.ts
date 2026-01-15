@@ -20,6 +20,7 @@ import {
   dbDeleteByIndex,
   dbClearAll,
 } from './db.ts'
+import { deleteTransformConfigs } from './transform-config.ts'
 
 // ============================================================================
 // Storage Adapter Implementation
@@ -59,6 +60,9 @@ class IndexedDBStorage implements StorageAdapter {
     await dbDeleteByIndex('chatEvents', 'notebookId', id)
     await dbDeleteByIndex('transformations', 'notebookId', id)
     await dbDeleteByIndex('summaries', 'notebookId', id)
+
+    // Delete transform configs for this notebook (stored in chrome.storage.local)
+    await deleteTransformConfigs(id)
 
     // Then delete the notebook
     await dbDelete('notebooks', id)

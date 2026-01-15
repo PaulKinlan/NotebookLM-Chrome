@@ -326,7 +326,7 @@ Each transformation supports custom configuration through a settings popover:
 - Custom Instructions text area for user-defined prompt additions
 - "Advanced" collapsible section shows prompt structure information
 - Reset to Defaults button restores original settings
-- Settings persist in chrome.storage.local per transformation type
+- Settings persist per-notebook in chrome.storage.local (each folio maintains its own transform configurations)
 
 **Acceptance Criteria:**
 - [x] Each transformation has a config button (cog icon)

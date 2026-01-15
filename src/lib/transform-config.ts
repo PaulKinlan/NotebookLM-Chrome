@@ -736,20 +736,34 @@ export const PROMPT_INFO: Record<TransformationType, { description: string, stru
 // Storage Functions
 // ============================================================================
 
-const STORAGE_KEY = 'transformConfigs'
+const STORAGE_KEY_PREFIX = 'transformConfigs_'
 
 /**
- * Get the configuration for a specific transformation type
+ * Get the storage key for a specific notebook's transform configs
+ */
+function getStorageKey(notebookId: string): string {
+  return `${STORAGE_KEY_PREFIX}${notebookId}`
+}
+
+/**
+ * Get the configuration for a specific transformation type within a notebook
  * Returns the user's saved config merged with defaults
  */
 export async function getTransformConfig<T extends TransformationType>(
   type: T,
+  notebookId: string,
 ): Promise<TransformConfigMap[T]> {
   const defaults = DEFAULT_CONFIGS[type]
 
+  if (!notebookId) {
+    console.warn('[TransformConfig] No notebookId provided, returning defaults')
+    return defaults
+  }
+
   try {
-    const result = await chrome.storage.local.get(STORAGE_KEY)
-    const savedConfigs = result[STORAGE_KEY] as Partial<TransformConfigMap> | undefined
+    const storageKey = getStorageKey(notebookId)
+    const result = await chrome.storage.local.get(storageKey)
+    const savedConfigs = result[storageKey] as Partial<TransformConfigMap> | undefined
 
     if (savedConfigs && savedConfigs[type]) {
       // Merge saved config with defaults (saved values take precedence)
@@ -764,20 +778,27 @@ export async function getTransformConfig<T extends TransformationType>(
 }
 
 /**
- * Save the configuration for a specific transformation type
+ * Save the configuration for a specific transformation type within a notebook
  */
 export async function saveTransformConfig<T extends TransformationType>(
   type: T,
   config: Partial<TransformConfigMap[T]>,
+  notebookId: string,
 ): Promise<void> {
+  if (!notebookId) {
+    console.error('[TransformConfig] Cannot save config without notebookId')
+    throw new Error('notebookId is required to save transform config')
+  }
+
   try {
-    const result = await chrome.storage.local.get(STORAGE_KEY)
-    const savedConfigs = (result[STORAGE_KEY] as Partial<TransformConfigMap>) || {}
+    const storageKey = getStorageKey(notebookId)
+    const result = await chrome.storage.local.get(storageKey)
+    const savedConfigs = (result[storageKey] as Partial<TransformConfigMap>) || {}
 
     // Merge with existing config for this type
     savedConfigs[type] = { ...DEFAULT_CONFIGS[type], ...savedConfigs[type], ...config } as TransformConfigMap[T]
 
-    await chrome.storage.local.set({ [STORAGE_KEY]: savedConfigs })
+    await chrome.storage.local.set({ [storageKey]: savedConfigs })
   }
   catch (err) {
     console.error('[TransformConfig] Failed to save config:', err)
@@ -786,19 +807,26 @@ export async function saveTransformConfig<T extends TransformationType>(
 }
 
 /**
- * Reset configuration for a specific transformation type to defaults
+ * Reset configuration for a specific transformation type to defaults within a notebook
  */
 export async function resetTransformConfig<T extends TransformationType>(
   type: T,
+  notebookId: string,
 ): Promise<TransformConfigMap[T]> {
+  if (!notebookId) {
+    console.warn('[TransformConfig] No notebookId provided, returning defaults')
+    return DEFAULT_CONFIGS[type]
+  }
+
   try {
-    const result = await chrome.storage.local.get(STORAGE_KEY)
-    const savedConfigs = (result[STORAGE_KEY] as Partial<TransformConfigMap>) || {}
+    const storageKey = getStorageKey(notebookId)
+    const result = await chrome.storage.local.get(storageKey)
+    const savedConfigs = (result[storageKey] as Partial<TransformConfigMap>) || {}
 
     // Remove this type's config
     delete savedConfigs[type]
 
-    await chrome.storage.local.set({ [STORAGE_KEY]: savedConfigs })
+    await chrome.storage.local.set({ [storageKey]: savedConfigs })
   }
   catch (err) {
     console.error('[TransformConfig] Failed to reset config:', err)
@@ -808,12 +836,18 @@ export async function resetTransformConfig<T extends TransformationType>(
 }
 
 /**
- * Get all saved configurations
+ * Get all saved configurations for a notebook
  */
-export async function getAllTransformConfigs(): Promise<Partial<TransformConfigMap>> {
+export async function getAllTransformConfigs(notebookId: string): Promise<Partial<TransformConfigMap>> {
+  if (!notebookId) {
+    console.warn('[TransformConfig] No notebookId provided, returning empty configs')
+    return {}
+  }
+
   try {
-    const result = await chrome.storage.local.get(STORAGE_KEY)
-    return (result[STORAGE_KEY] as Partial<TransformConfigMap>) || {}
+    const storageKey = getStorageKey(notebookId)
+    const result = await chrome.storage.local.get(storageKey)
+    return (result[storageKey] as Partial<TransformConfigMap>) || {}
   }
   catch (err) {
     console.warn('[TransformConfig] Failed to load configs:', err)
@@ -822,16 +856,39 @@ export async function getAllTransformConfigs(): Promise<Partial<TransformConfigM
 }
 
 /**
- * Check if a transformation type has custom configuration (differs from defaults)
+ * Check if a transformation type has custom configuration within a notebook
  */
-export async function hasCustomConfig(type: TransformationType): Promise<boolean> {
+export async function hasCustomConfig(type: TransformationType, notebookId: string): Promise<boolean> {
+  if (!notebookId) {
+    return false
+  }
+
   try {
-    const result = await chrome.storage.local.get(STORAGE_KEY)
-    const savedConfigs = result[STORAGE_KEY] as Partial<TransformConfigMap> | undefined
+    const storageKey = getStorageKey(notebookId)
+    const result = await chrome.storage.local.get(storageKey)
+    const savedConfigs = result[storageKey] as Partial<TransformConfigMap> | undefined
 
     return savedConfigs !== null && savedConfigs !== undefined && savedConfigs[type] !== null && savedConfigs[type] !== undefined
   }
   catch {
     return false
+  }
+}
+
+/**
+ * Delete all transform configs for a notebook
+ * Called when a notebook is deleted
+ */
+export async function deleteTransformConfigs(notebookId: string): Promise<void> {
+  if (!notebookId) {
+    return
+  }
+
+  try {
+    const storageKey = getStorageKey(notebookId)
+    await chrome.storage.local.remove(storageKey)
+  }
+  catch (err) {
+    console.error('[TransformConfig] Failed to delete configs:', err)
   }
 }
