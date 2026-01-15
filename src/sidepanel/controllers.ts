@@ -4334,133 +4334,41 @@ function createTransformResultCard(
 
 // Open transform content in a new browser tab
 function openTransformInNewTab(meta: TransformCardMeta): void {
-  let fullHtml: string
+  // For interactive content, use a dedicated sandbox page that is declared in manifest.json.
+  // This avoids CSP issues because:
+  // - Sandbox pages in manifest.json have their own permissive CSP
+  // - Content is sent via BroadcastChannel after the page loads
+  // - The sandbox page renders content in an inner iframe with sandbox="allow-scripts allow-forms"
+  //
+  // For non-interactive (markdown) content, we can use a blob URL since it doesn't need inline scripts.
 
   if (meta.isInteractive) {
-    // For interactive content, use a double-iframe architecture:
-    // 1. Outer page: Contains wrapper UI and JavaScript to create inner blob
-    // 2. Inner iframe: Sandboxed, loads content via blob URL (not srcdoc)
-    //
-    // Using blob URL for inner content (instead of srcdoc) is critical because:
-    // - srcdoc inherits parent's CSP, blocking inline scripts
-    // - blob URLs can have their own CSP via meta tag, allowing inline scripts
-    //
-    // The outer page JavaScript creates the inner blob at runtime, ensuring
-    // the inner content's CSP is independent of the extension's CSP.
-    //
-    // We use Base64 encoding to safely embed content that may contain
-    // template literals, backticks, and other characters that would break
-    // JavaScript string embedding.
+    // Generate unique channel ID for BroadcastChannel communication
+    const channelId = crypto.randomUUID()
+    const channel = new BroadcastChannel(channelId)
 
-    // Base64 encode the content to avoid any escaping issues
-    // Using globalThis for ESLint compatibility
-    const base64Content = globalThis.btoa(unescape(encodeURIComponent(meta.content)))
-
-    fullHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-src blob:;">
-  <title>${escapeHtml(meta.title)} - FolioLM</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: #1a1a2e; }
-    body {
-      display: flex;
-      flex-direction: column;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: #e4e4e7;
-    }
-    header {
-      padding: 16px 24px;
-      background: #252538;
-      border-bottom: 1px solid #3f3f5a;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    h1 { font-size: 20px; color: #fff; font-weight: 500; }
-    .branding { font-size: 12px; color: #9ca3af; }
-    .iframe-container { flex: 1; padding: 24px; min-height: 0; }
-    iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      border-radius: 12px;
-      background: #fff;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>${escapeHtml(meta.title)}</h1>
-    <span class="branding">FolioLM</span>
-  </header>
-  <div class="iframe-container">
-    <iframe id="content-frame" sandbox="allow-scripts allow-forms"></iframe>
-  </div>
-  <script>
-    // This script runs in the outer page and creates a blob URL for the inner content
-    // Security architecture (following generate-html-element pattern):
-    // 1. Outer blob page: Isolated from extension context
-    // 2. Inner iframe: sandbox="allow-scripts allow-forms" is the security boundary
-    // 3. Content loaded via blob URL (not srcdoc to avoid CSP inheritance)
-    // 4. No restrictive CSP in content - sandbox handles security
-    (function() {
-      try {
-        // Decode Base64 content (handles Unicode properly)
-        var base64 = "${base64Content}";
-        var content = decodeURIComponent(escape(atob(base64)));
-
-        // Wrap content in a full HTML document if needed
-        function wrapContent(html) {
-          var trimmed = html.trim();
-          var hasDoctype = trimmed.toLowerCase().indexOf('<!doctype') === 0;
-          var hasHtml = trimmed.toLowerCase().indexOf('<html') === 0;
-
-          if (hasDoctype || hasHtml) {
-            // Content is already a full document
-            return html;
-          }
-
-          // Content is a fragment - wrap in full document with basic styles
-          return '<!DOCTYPE html>\\n' +
-            '<html lang="en">\\n' +
-            '<head>\\n' +
-            '  <meta charset="UTF-8">\\n' +
-            '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\\n' +
-            '  <style>html, body { margin: 0; padding: 0; height: 100%; }</style>\\n' +
-            '</head>\\n' +
-            '<body>\\n' +
-            html +
-            '\\n</body>\\n</html>';
-        }
-
-        var wrappedContent = wrapContent(content);
-        var blob = new Blob([wrappedContent], { type: 'text/html' });
-        var blobUrl = URL.createObjectURL(blob);
-
-        var iframe = document.getElementById('content-frame');
-        iframe.src = blobUrl;
-
-        // Clean up blob URL after load (with delay to ensure content is rendered)
-        iframe.addEventListener('load', function() {
-          setTimeout(function() {
-            URL.revokeObjectURL(blobUrl);
-          }, 1000);
-        }, { once: true });
-      } catch (e) {
-        console.error('Error loading content:', e);
-        var errorDiv = document.createElement('div');
-        errorDiv.style.cssText = 'padding:20px;color:red;';
-        errorDiv.textContent = 'Error loading content: ' + e.message;
-        document.body.appendChild(errorDiv);
+    // Listen for ready signal from the sandbox page
+    channel.onmessage = (event: MessageEvent) => {
+      const data = event.data as { type: string, channelId: string } | undefined
+      if (!data || data.type !== 'FULLSCREEN_READY' || data.channelId !== channelId) {
+        return
       }
-    })();
-  </script>
-</body>
-</html>`
+
+      // Send content to the sandbox page
+      channel.postMessage({
+        type: 'FULLSCREEN_CONTENT',
+        title: meta.title,
+        content: meta.content,
+        isInteractive: true,
+      })
+
+      // Clean up channel after sending
+      channel.close()
+    }
+
+    // Open the fullscreen sandbox page with the channel ID in the hash
+    const sandboxUrl = chrome.runtime.getURL(`src/sandbox/fullscreen-sandbox.html#${channelId}`)
+    void chrome.tabs.create({ url: sandboxUrl })
   }
   else {
     // For markdown content, sanitize with DOMPurify before insertion
@@ -4468,46 +4376,44 @@ function openTransformInNewTab(meta: TransformCardMeta): void {
     const sanitizedContent = DOMPurify.sanitize(renderedContent, {
       USE_PROFILES: { html: true },
     })
-    fullHtml = generateFullPageHtml(meta.title, sanitizedContent)
-  }
+    let fullHtml = generateFullPageHtml(meta.title, sanitizedContent)
 
-  // Sanitize the entire document for non-interactive content
-  if (!meta.isInteractive) {
+    // Sanitize the entire document
     fullHtml = DOMPurify.sanitize(fullHtml, {
       WHOLE_DOCUMENT: true,
       USE_PROFILES: { html: true },
     })
-  }
 
-  const blob = new Blob([fullHtml], { type: 'text/html' })
-  const url = URL.createObjectURL(blob)
+    const blob = new Blob([fullHtml], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
 
-  chrome.tabs.create({ url }, (tab) => {
-    // Clean up blob URL when tab finishes loading (not a fixed timeout)
-    if (!tab?.id) {
-      URL.revokeObjectURL(url)
-      return
-    }
-
-    const tabId = tab.id
-    const listener = (
-      updatedTabId: number,
-      changeInfo: { status?: string },
-    ) => {
-      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+    chrome.tabs.create({ url }, (tab) => {
+      // Clean up blob URL when tab finishes loading (not a fixed timeout)
+      if (!tab?.id) {
         URL.revokeObjectURL(url)
-        chrome.tabs.onUpdated.removeListener(listener)
+        return
       }
-    }
 
-    chrome.tabs.onUpdated.addListener(listener)
+      const tabId = tab.id
+      const listener = (
+        updatedTabId: number,
+        changeInfo: { status?: string },
+      ) => {
+        if (updatedTabId === tabId && changeInfo.status === 'complete') {
+          URL.revokeObjectURL(url)
+          chrome.tabs.onUpdated.removeListener(listener)
+        }
+      }
 
-    // Fallback cleanup after 30 seconds in case onUpdated never fires
-    setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(listener)
-      URL.revokeObjectURL(url)
-    }, 30000)
-  })
+      chrome.tabs.onUpdated.addListener(listener)
+
+      // Fallback cleanup after 30 seconds in case onUpdated never fires
+      setTimeout(() => {
+        chrome.tabs.onUpdated.removeListener(listener)
+        URL.revokeObjectURL(url)
+      }, 30000)
+    })
+  }
 }
 
 // Generate a full HTML page for viewing markdown transforms
