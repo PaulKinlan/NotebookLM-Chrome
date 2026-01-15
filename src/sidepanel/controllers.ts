@@ -4347,12 +4347,14 @@ function openTransformInNewTab(meta: TransformCardMeta): void {
     //
     // The outer page JavaScript creates the inner blob at runtime, ensuring
     // the inner content's CSP is independent of the extension's CSP.
+    //
+    // We use Base64 encoding to safely embed content that may contain
+    // template literals, backticks, and other characters that would break
+    // JavaScript string embedding.
 
-    // Escape content for embedding as a JavaScript string
-    const escapedForJs = meta.content
-      .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`')
-      .replace(/\$/g, '\\$')
+    // Base64 encode the content to avoid any escaping issues
+    // Using globalThis for ESLint compatibility
+    const base64Content = globalThis.btoa(unescape(encodeURIComponent(meta.content)))
 
     fullHtml = `<!DOCTYPE html>
 <html lang="en">
@@ -4402,19 +4404,21 @@ function openTransformInNewTab(meta: TransformCardMeta): void {
     // This script runs in the outer page and creates a blob URL for the inner content
     // The blob URL allows the inner content to have its own CSP
     (function() {
-      const content = \`${escapedForJs}\`;
+      // Decode Base64 content (handles Unicode properly)
+      var base64 = "${base64Content}";
+      var content = decodeURIComponent(escape(atob(base64)));
 
       // Wrap content in a full HTML document with permissive CSP for inline scripts
       function wrapContent(html) {
-        const trimmed = html.trim();
-        const hasDoctype = trimmed.toLowerCase().startsWith('<!doctype');
-        const hasHtml = trimmed.toLowerCase().startsWith('<html');
+        var trimmed = html.trim();
+        var hasDoctype = trimmed.toLowerCase().indexOf('<!doctype') === 0;
+        var hasHtml = trimmed.toLowerCase().indexOf('<html') === 0;
 
         if (hasDoctype || hasHtml) {
           // Content is a full document - inject CSP if not present
-          if (!html.includes('Content-Security-Policy')) {
-            const cspMeta = '<meta http-equiv="Content-Security-Policy" content="default-src \\'none\\'; style-src \\'unsafe-inline\\'; script-src \\'unsafe-inline\\'; img-src data: blob:;">';
-            const headMatch = html.match(/<head[^>]*>/i);
+          if (html.indexOf('Content-Security-Policy') === -1) {
+            var cspMeta = '<meta http-equiv="Content-Security-Policy" content="default-src \\'none\\'; style-src \\'unsafe-inline\\'; script-src \\'unsafe-inline\\'; img-src data: blob:;">';
+            var headMatch = html.match(/<head[^>]*>/i);
             if (headMatch) {
               return html.replace(headMatch[0], headMatch[0] + '\\n  ' + cspMeta);
             }
