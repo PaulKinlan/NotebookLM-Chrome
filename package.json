@@ -27,14 +27,7 @@
     "check": "npm run typecheck && npm run lint && npm run build && npm run test:run",
     "check:e2e": "npm run check && npm run test:e2e -- --run",
     "package:zip": "cd dist && zip -r ../foliolm-extension-v${npm_package_version}.zip .",
-    "package": "npm run package:zip",
-    "version:patch": "node scripts/version.js patch",
-    "version:minor": "node scripts/version.js minor",
-    "version:major": "node scripts/version.js major",
-    "version:set": "node scripts/version.js",
-    "release:patch": "npm run version:patch && npm run build && npm run package",
-    "release:minor": "npm run version:minor && npm run build && npm run package",
-    "release:major": "npm run version:major && npm run build && npm run package"
+    "package": "npm run package:zip"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.12",
@@ -54,7 +47,13 @@
     "turndown": "^7.2.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.3.1",
+    "@commitlint/config-conventional": "^20.3.1",
     "@crxjs/vite-plugin": "^2.0.0-beta.28",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.2",
     "@stylistic/eslint-plugin": "^5.7.0",
     "@types/chrome": "^0.1.33",
     "@types/dompurify": "^3.2.0",
@@ -76,6 +75,7 @@
     "jsdom": "^27.4.0",
     "lint-staged": "^16.2.7",
     "puppeteer": "^24.35.0",
+    "semantic-release": "^25.0.2",
     "sharp": "^0.34.5",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",
