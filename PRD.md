@@ -336,6 +336,34 @@ Each transformation supports custom configuration through a settings popover:
 - [x] Advanced section shows prompt structure details
 - [x] Reset restores default configuration
 
+#### 4.7 Transform Persistence & Management
+
+Each generated transform result can be saved, deleted, or opened in a new tab for full-screen viewing.
+
+**Features:**
+- **Save Transform**: Click the save icon to persist a generated transform to IndexedDB storage. Saved transforms are associated with the notebook and can be accessed later.
+- **Delete Transform**: Click the delete/close icon to remove a transform from the list. If the transform was saved, it is also deleted from storage.
+- **Open in New Tab**: Click the external link icon to open the transform content in a new browser tab, enabling full-screen viewing. This is especially useful for interactive content like slides, quizzes, and mind maps that benefit from more screen space.
+
+**UI Changes:**
+- Transform result card header now includes four action buttons (left to right):
+  - Save (floppy disk icon) - Persists to storage, icon fills when saved
+  - Open in new tab (external link icon) - Opens full-screen view
+  - Copy (clipboard icon) - Copies content to clipboard
+  - Remove/Delete (X or trash icon) - Removes card and deletes from storage if saved
+- Saved transforms show a green border indicator
+- Save button changes to filled icon and "Saved" tooltip after saving
+- Close button changes to trash icon and "Delete" tooltip after saving
+
+**Acceptance Criteria:**
+- [x] Save button persists transform content to IndexedDB storage
+- [x] Saved transforms show visual indicator (green border, filled save icon)
+- [x] Delete button removes from both UI and storage
+- [x] Open in new tab creates blob URL and opens in new Chrome tab
+- [x] Interactive content (quizzes, slides, etc.) renders correctly in new tab
+- [x] Markdown content is rendered with proper styling in new tab
+- [x] Blob URLs are cleaned up after tab opens to prevent memory leaks
+
 ### 5. Multimodal Sources
 
 #### 5.1 PDF Documents (P1)
@@ -558,7 +586,7 @@ Bottom tab bar with five sections:
 | | - **Study Quiz** (purple icon) - "Test your knowledge" |
 | | - **Key Takeaways** (green icon) - "Extract main points" |
 | | - **Email Summary** (blue icon) - "Professional summary to share" |
-| Result Panel | Generated content with copy/close buttons |
+| Result Panel | Generated content with save/open-in-new-tab/copy/delete action buttons |
 
 ### Picker Modal
 Shared modal for tabs, bookmarks, history, and media selection:
@@ -803,6 +831,7 @@ async function getModel(): Promise<LanguageModel | null> {
 - [x] Multi-provider support (Anthropic, OpenAI, Google, Chrome Built-in)
 - [x] Streaming chat responses
 - [x] Transformations (Podcast, Quiz, Takeaways, Email)
+- [x] Transform persistence & management (save, delete, open in new tab)
 - [x] Settings panel with per-provider API keys
 - [x] Tab picker modal with multi-select
 - [x] Bookmark picker modal

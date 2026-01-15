@@ -2307,6 +2307,37 @@ details.suggested-links-section[open] .suggested-links-chevron {
   border-color: var(--border-color);
 }
 
+/* Transform result saved state */
+.transform-result.transform-saved {
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.transform-result-actions .icon-btn.saved {
+  color: #34d399;
+}
+
+.transform-result-actions .icon-btn.saved:hover {
+  background: rgba(52, 211, 153, 0.2);
+}
+
+/* Transform action button hover states */
+.transform-result-actions .icon-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.transform-result-actions .icon-btn[title="Delete"]:hover {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.transform-result-actions .icon-btn[title="Open in new tab"]:hover {
+  color: var(--accent-primary);
+}
+
+.transform-result-actions .icon-btn[title="Save"]:hover {
+  color: #34d399;
+}
+
 /* ============================================================================
    Modal
    ============================================================================ */

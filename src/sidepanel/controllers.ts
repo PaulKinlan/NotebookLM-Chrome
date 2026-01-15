@@ -6,6 +6,7 @@ import type {
   SuggestedLink,
   StreamEvent,
   Message,
+  TransformationType,
 } from '../types/index.ts'
 import DOMPurify from 'dompurify'
 import type { ExtractedLink } from '../types/index.ts'
@@ -42,6 +43,9 @@ import {
   createSummary,
   clearAllData,
   getTransformations,
+  saveTransformation,
+  deleteTransformation,
+  createTransformation,
 } from '../lib/storage.ts'
 import {
   streamChat,
@@ -4075,35 +4079,64 @@ async function handleClearChat(): Promise<void> {
 // Transformations
 // ============================================================================
 
-type TransformType
-  = | 'podcast'
-    | 'quiz'
-    | 'takeaways'
-    | 'email'
-    | 'slidedeck'
-    | 'report'
-    | 'datatable'
-    | 'mindmap'
-    | 'flashcards'
-    | 'timeline'
-    | 'glossary'
-    | 'comparison'
-    | 'faq'
-    | 'actionitems'
-    | 'executivebrief'
-    | 'studyguide'
-    | 'proscons'
-    | 'citations'
-    | 'outline'
-
 // Track sandboxes for proper cleanup when cards are removed
 const cardSandboxes = new WeakMap<HTMLElement, SandboxRenderer>()
+// Track transform metadata for each card (for save/delete operations)
+interface TransformCardMeta {
+  id: string | null // null until saved
+  notebookId: string
+  type: TransformationType
+  title: string
+  content: string
+  sourceIds: string[]
+  isInteractive: boolean
+}
+const cardMetadata = new WeakMap<HTMLElement, TransformCardMeta>()
 const MAX_TRANSFORM_HISTORY = 10
 
+// SVG icons for transform card actions
+const ICONS = {
+  copy: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>`,
+  save: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+    <polyline points="7 3 7 8 15 8"></polyline>
+  </svg>`,
+  saved: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+    <polyline points="7 3 7 8 15 8"></polyline>
+  </svg>`,
+  openNewTab: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+    <polyline points="15 3 21 3 21 9"></polyline>
+    <line x1="10" y1="14" x2="21" y2="3"></line>
+  </svg>`,
+  delete: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    <line x1="10" y1="11" x2="10" y2="17"></line>
+    <line x1="14" y1="11" x2="14" y2="17"></line>
+  </svg>`,
+  close: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>`,
+}
+
 // Helper to create a transform result card element
-function createTransformResultCard(title: string): {
+function createTransformResultCard(
+  title: string,
+  notebookId: string,
+  type: TransformationType,
+  sourceIds: string[],
+): {
   card: HTMLDivElement
   sandbox: SandboxRenderer
+  setContent: (content: string, isInteractive: boolean) => void
 } {
   const card = document.createElement('div')
   card.className = 'transform-result'
@@ -4117,26 +4150,32 @@ function createTransformResultCard(title: string): {
   const actions = document.createElement('div')
   actions.className = 'transform-result-actions'
 
+  // Save button
+  const saveBtn = document.createElement('button')
+  saveBtn.className = 'icon-btn'
+  saveBtn.title = 'Save'
+  saveBtn.innerHTML = ICONS.save
+
+  // Open in new tab button
+  const openTabBtn = document.createElement('button')
+  openTabBtn.className = 'icon-btn'
+  openTabBtn.title = 'Open in new tab'
+  openTabBtn.innerHTML = ICONS.openNewTab
+
+  // Copy button
   const copyBtn = document.createElement('button')
   copyBtn.className = 'icon-btn'
   copyBtn.title = 'Copy'
-  copyBtn.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-    </svg>
-  `
+  copyBtn.innerHTML = ICONS.copy
 
+  // Delete/Close button
   const closeBtn = document.createElement('button')
   closeBtn.className = 'icon-btn'
   closeBtn.title = 'Remove'
-  closeBtn.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <line x1="18" y1="6" x2="6" y2="18"></line>
-      <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
-  `
+  closeBtn.innerHTML = ICONS.close
 
+  actions.appendChild(saveBtn)
+  actions.appendChild(openTabBtn)
   actions.appendChild(copyBtn)
   actions.appendChild(closeBtn)
 
@@ -4153,17 +4192,320 @@ function createTransformResultCard(title: string): {
   const sandbox = new SandboxRenderer(contentContainer)
   cardSandboxes.set(card, sandbox)
 
+  // Initialize metadata (content will be set later)
+  const meta: TransformCardMeta = {
+    id: null,
+    notebookId,
+    type,
+    title,
+    content: '',
+    sourceIds,
+    isInteractive: false,
+  }
+  cardMetadata.set(card, meta)
+
+  // Function to update content after generation
+  const setContent = (content: string, isInteractive: boolean) => {
+    meta.content = content
+    meta.isInteractive = isInteractive
+  }
+
+  // Wire up save button
+  saveBtn.addEventListener('click', () => {
+    (async () => {
+      const cardMeta = cardMetadata.get(card)
+      if (!cardMeta || !cardMeta.content) {
+        showNotification('Nothing to save yet')
+        return
+      }
+
+      if (cardMeta.id) {
+        showNotification('Already saved')
+        return
+      }
+
+      const transformation = createTransformation(
+        cardMeta.notebookId,
+        cardMeta.type,
+        cardMeta.title,
+        cardMeta.content,
+        cardMeta.sourceIds,
+      )
+
+      await saveTransformation(transformation)
+      cardMeta.id = transformation.id
+
+      // Update UI to show saved state
+      saveBtn.innerHTML = ICONS.saved
+      saveBtn.title = 'Saved'
+      saveBtn.classList.add('saved')
+      card.classList.add('transform-saved')
+
+      // Change close button to delete button
+      closeBtn.innerHTML = ICONS.delete
+      closeBtn.title = 'Delete'
+
+      showNotification('Transform saved')
+    })().catch((error) => {
+      console.error('Failed to save transform:', error)
+      showNotification('Failed to save transform')
+    })
+  })
+
+  // Wire up open in new tab button
+  openTabBtn.addEventListener('click', () => {
+    try {
+      const cardMeta = cardMetadata.get(card)
+      if (!cardMeta || !cardMeta.content) {
+        showNotification('Nothing to open yet')
+        return
+      }
+
+      openTransformInNewTab(cardMeta)
+    }
+    catch (error) {
+      console.error('Failed to open in new tab:', error)
+      showNotification('Failed to open in new tab')
+    }
+  })
+
   // Wire up copy button
   copyBtn.addEventListener('click', () => {
     copyToClipboard(contentContainer.textContent || '')
   })
 
-  // Wire up close button to remove this card
+  // Wire up close/delete button
   closeBtn.addEventListener('click', () => {
-    removeTransformCard(card)
+    (async () => {
+      const cardMeta = cardMetadata.get(card)
+
+      // If saved, delete from storage
+      if (cardMeta?.id) {
+        await deleteTransformation(cardMeta.id)
+        showNotification('Transform deleted')
+      }
+
+      removeTransformCard(card)
+    })().catch((error) => {
+      console.error('Failed to delete transform:', error)
+      showNotification('Failed to delete transform')
+    })
   })
 
-  return { card, sandbox }
+  return { card, sandbox, setContent }
+}
+
+// Open transform content in a new browser tab
+function openTransformInNewTab(meta: TransformCardMeta): void {
+  let fullHtml: string
+
+  if (meta.isInteractive) {
+    // For interactive content, embed in a sandboxed iframe for security
+    // This prevents AI-generated scripts from running with extension privileges
+    const escapedContent = meta.content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+
+    fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(meta.title)} - FolioLM</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #1a1a2e; }
+    body {
+      display: flex;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #e4e4e7;
+    }
+    header {
+      padding: 16px 24px;
+      background: #252538;
+      border-bottom: 1px solid #3f3f5a;
+    }
+    h1 { font-size: 20px; color: #fff; }
+    .iframe-container { flex: 1; padding: 24px; }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 12px;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>${escapeHtml(meta.title)}</h1>
+  </header>
+  <div class="iframe-container">
+    <iframe sandbox="allow-scripts" srcdoc="${escapedContent}"></iframe>
+  </div>
+</body>
+</html>`
+  }
+  else {
+    // For markdown content, sanitize with DOMPurify before insertion
+    const renderedContent = renderMarkdown(meta.content)
+    const sanitizedContent = DOMPurify.sanitize(renderedContent, {
+      USE_PROFILES: { html: true },
+    })
+    fullHtml = generateFullPageHtml(meta.title, sanitizedContent)
+  }
+
+  // Sanitize the entire document for non-interactive content
+  if (!meta.isInteractive) {
+    fullHtml = DOMPurify.sanitize(fullHtml, {
+      WHOLE_DOCUMENT: true,
+      USE_PROFILES: { html: true },
+    })
+  }
+
+  const blob = new Blob([fullHtml], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+
+  chrome.tabs.create({ url }, (tab) => {
+    // Clean up blob URL when tab finishes loading (not a fixed timeout)
+    if (!tab?.id) {
+      URL.revokeObjectURL(url)
+      return
+    }
+
+    const tabId = tab.id
+    const listener = (
+      updatedTabId: number,
+      changeInfo: { status?: string },
+    ) => {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        URL.revokeObjectURL(url)
+        chrome.tabs.onUpdated.removeListener(listener)
+      }
+    }
+
+    chrome.tabs.onUpdated.addListener(listener)
+
+    // Fallback cleanup after 30 seconds in case onUpdated never fires
+    setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener)
+      URL.revokeObjectURL(url)
+    }, 30000)
+  })
+}
+
+// Generate a full HTML page for viewing markdown transforms
+function generateFullPageHtml(title: string, content: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)} - FolioLM</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #e4e4e7;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin: 0 0 24px 0;
+      font-size: 28px;
+      color: #fff;
+      border-bottom: 1px solid #3f3f5a;
+      padding-bottom: 12px;
+    }
+    .content {
+      background: #252538;
+      border-radius: 12px;
+      padding: 32px;
+    }
+    .content h1, .content h2, .content h3, .content h4 {
+      color: #fff;
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+    .content h1:first-child, .content h2:first-child {
+      margin-top: 0;
+    }
+    .content p {
+      margin: 0 0 16px 0;
+    }
+    .content ul, .content ol {
+      margin: 0 0 16px 0;
+      padding-left: 24px;
+    }
+    .content li {
+      margin-bottom: 8px;
+    }
+    .content code {
+      background: #1a1a2e;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    }
+    .content pre {
+      background: #1a1a2e;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    .content pre code {
+      background: none;
+      padding: 0;
+    }
+    .content blockquote {
+      border-left: 3px solid #8b5cf6;
+      margin: 0 0 16px 0;
+      padding-left: 16px;
+      color: #a1a1aa;
+    }
+    .content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+    }
+    .content th, .content td {
+      border: 1px solid #3f3f5a;
+      padding: 12px;
+      text-align: left;
+    }
+    .content th {
+      background: #1a1a2e;
+    }
+    .content a {
+      color: #8b5cf6;
+    }
+    @media print {
+      body { background: white; color: black; }
+      .container { max-width: 100%; }
+      .content { background: white; border: 1px solid #ccc; }
+      .content h1, .content h2, .content h3, .content h4 { color: black; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>${escapeHtml(title)}</h1>
+    <div class="content">
+      ${content}
+    </div>
+  </div>
+</body>
+</html>`
 }
 
 // Helper to properly remove a transform card and clean up its sandbox
@@ -4173,6 +4515,7 @@ function removeTransformCard(card: HTMLElement): void {
     sandbox.destroy()
     cardSandboxes.delete(card)
   }
+  cardMetadata.delete(card)
   card.remove()
 }
 
@@ -4187,7 +4530,7 @@ function enforceTransformHistoryLimit(): void {
   }
 }
 
-async function handleTransform(type: TransformType): Promise<void> {
+async function handleTransform(type: TransformationType): Promise<void> {
   if (!currentNotebookId) {
     showNotification('Please select a notebook first')
     return
@@ -4199,7 +4542,7 @@ async function handleTransform(type: TransformType): Promise<void> {
     return
   }
 
-  const titles: Record<TransformType, string> = {
+  const titles: Record<TransformationType, string> = {
     podcast: 'Podcast Script',
     quiz: 'Study Quiz',
     takeaways: 'Key Takeaways',
@@ -4221,8 +4564,16 @@ async function handleTransform(type: TransformType): Promise<void> {
     outline: 'Outline',
   }
 
+  // Get source IDs for saving the transformation later
+  const sourceIds = sources.map(s => s.id)
+
   // Create a new result card and prepend it to the history container
-  const { card, sandbox } = createTransformResultCard(titles[type])
+  const { card, sandbox, setContent } = createTransformResultCard(
+    titles[type],
+    currentNotebookId,
+    type,
+    sourceIds,
+  )
   elements.transformHistory.prepend(card)
 
   // Enforce the history limit (remove oldest cards if over limit)
@@ -4322,7 +4673,7 @@ async function handleTransform(type: TransformType): Promise<void> {
     }
 
     // Determine if this is an interactive transform that returns HTML
-    const interactiveTypes: TransformType[] = [
+    const interactiveTypes: TransformationType[] = [
       'quiz',
       'flashcards',
       'timeline',
@@ -4331,8 +4682,13 @@ async function handleTransform(type: TransformType): Promise<void> {
       'studyguide',
     ]
 
+    const isInteractive = interactiveTypes.includes(type) && isHtmlContent(result)
+
+    // Store the content for save/open-in-new-tab functionality
+    setContent(result, isInteractive)
+
     // Render AI-generated content in sandbox for defense-in-depth
-    if (interactiveTypes.includes(type) && isHtmlContent(result)) {
+    if (isInteractive) {
       // Interactive HTML content (quiz, flashcards, etc.)
       await sandbox.renderInteractive(result)
     }

@@ -424,6 +424,7 @@ export const saveChatMessage = (message: ChatMessage) => {
 
 export const getTransformations = (notebookId: string) => storage.getTransformations(notebookId)
 export const saveTransformation = (transformation: Transformation) => storage.saveTransformation(transformation)
+export const deleteTransformation = (id: string) => storage.deleteTransformation(id)
 
 export const getCachedResponse = (cacheKey: string) => storage.getCachedResponse(cacheKey)
 export const saveCachedResponse = (cached: CachedResponse) => storage.saveCachedResponse(cached)
