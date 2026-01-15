@@ -4606,8 +4606,16 @@ async function loadTransformHistory(notebookId: string | null): Promise<void> {
     elements.transformHistory.appendChild(card)
 
     // Render the content (must be after card is in DOM for sandbox iframe to load)
+    // Use the same rendering path as new transforms to ensure consistent display
     try {
-      await sandbox.render(transformation.content)
+      if (meta?.isInteractive) {
+        // Interactive HTML content (quiz, flashcards, etc.) - needs script execution
+        await sandbox.renderInteractive(transformation.content)
+      }
+      else {
+        // Standard markdown content - render with proper markdown parser
+        await sandbox.render(renderMarkdown(transformation.content))
+      }
       console.log('[loadTransformHistory] Rendered content for:', transformation.title)
     }
     catch (err) {
