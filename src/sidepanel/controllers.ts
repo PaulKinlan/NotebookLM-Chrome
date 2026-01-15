@@ -614,8 +614,8 @@ async function init(): Promise<void> {
   })
 
   // Check for pending tool approvals periodically (every 1 second)
-  setInterval(async () => {
-    await checkAndShowPendingApprovals()
+  setInterval(() => {
+    void checkAndShowPendingApprovals()
   }, 1000)
 
   // Listen for messages from background script
