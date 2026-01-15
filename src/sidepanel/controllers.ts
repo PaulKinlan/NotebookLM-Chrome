@@ -4337,20 +4337,29 @@ function openTransformInNewTab(meta: TransformCardMeta): void {
   let fullHtml: string
 
   if (meta.isInteractive) {
-    // For interactive content, embed in a sandboxed iframe for security
-    // This prevents AI-generated scripts from running with extension privileges
-    const escapedContent = meta.content
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;')
+    // For interactive content, use a double-iframe architecture:
+    // 1. Outer page: Contains wrapper UI and JavaScript to create inner blob
+    // 2. Inner iframe: Sandboxed, loads content via blob URL (not srcdoc)
+    //
+    // Using blob URL for inner content (instead of srcdoc) is critical because:
+    // - srcdoc inherits parent's CSP, blocking inline scripts
+    // - blob URLs can have their own CSP via meta tag, allowing inline scripts
+    //
+    // The outer page JavaScript creates the inner blob at runtime, ensuring
+    // the inner content's CSP is independent of the extension's CSP.
+
+    // Escape content for embedding as a JavaScript string
+    const escapedForJs = meta.content
+      .replace(/\\/g, '\\\\')
+      .replace(/`/g, '\\`')
+      .replace(/\$/g, '\\$')
 
     fullHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; frame-src blob:;">
   <title>${escapeHtml(meta.title)} - FolioLM</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -4365,9 +4374,13 @@ function openTransformInNewTab(meta: TransformCardMeta): void {
       padding: 16px 24px;
       background: #252538;
       border-bottom: 1px solid #3f3f5a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    h1 { font-size: 20px; color: #fff; }
-    .iframe-container { flex: 1; padding: 24px; }
+    h1 { font-size: 20px; color: #fff; font-weight: 500; }
+    .branding { font-size: 12px; color: #9ca3af; }
+    .iframe-container { flex: 1; padding: 24px; min-height: 0; }
     iframe {
       width: 100%;
       height: 100%;
@@ -4380,10 +4393,61 @@ function openTransformInNewTab(meta: TransformCardMeta): void {
 <body>
   <header>
     <h1>${escapeHtml(meta.title)}</h1>
+    <span class="branding">FolioLM</span>
   </header>
   <div class="iframe-container">
-    <iframe sandbox="allow-scripts" srcdoc="${escapedContent}"></iframe>
+    <iframe id="sandbox" sandbox="allow-scripts"></iframe>
   </div>
+  <script>
+    // This script runs in the outer page and creates a blob URL for the inner content
+    // The blob URL allows the inner content to have its own CSP
+    (function() {
+      const content = \`${escapedForJs}\`;
+
+      // Wrap content in a full HTML document with permissive CSP for inline scripts
+      function wrapContent(html) {
+        const trimmed = html.trim();
+        const hasDoctype = trimmed.toLowerCase().startsWith('<!doctype');
+        const hasHtml = trimmed.toLowerCase().startsWith('<html');
+
+        if (hasDoctype || hasHtml) {
+          // Content is a full document - inject CSP if not present
+          if (!html.includes('Content-Security-Policy')) {
+            const cspMeta = '<meta http-equiv="Content-Security-Policy" content="default-src \\'none\\'; style-src \\'unsafe-inline\\'; script-src \\'unsafe-inline\\'; img-src data: blob:;">';
+            const headMatch = html.match(/<head[^>]*>/i);
+            if (headMatch) {
+              return html.replace(headMatch[0], headMatch[0] + '\\n  ' + cspMeta);
+            }
+          }
+          return html;
+        }
+
+        // Content is a fragment - wrap in full document
+        return '<!DOCTYPE html>\\n' +
+          '<html lang="en">\\n' +
+          '<head>\\n' +
+          '  <meta charset="UTF-8">\\n' +
+          '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\\n' +
+          '  <meta http-equiv="Content-Security-Policy" content="default-src \\'none\\'; style-src \\'unsafe-inline\\'; script-src \\'unsafe-inline\\'; img-src data: blob:;">\\n' +
+          '</head>\\n' +
+          '<body>\\n' +
+          html +
+          '\\n</body>\\n</html>';
+      }
+
+      const wrappedContent = wrapContent(content);
+      const blob = new Blob([wrappedContent], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+
+      const iframe = document.getElementById('sandbox');
+      iframe.src = blobUrl;
+
+      // Clean up blob URL after load
+      iframe.addEventListener('load', function() {
+        URL.revokeObjectURL(blobUrl);
+      }, { once: true });
+    })();
+  </script>
 </body>
 </html>`
   }

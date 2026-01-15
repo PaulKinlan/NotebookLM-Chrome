@@ -253,6 +253,14 @@ Defense-in-depth security for AI-generated content:
 2. **Sandboxed Iframe**: Runs without `allow-same-origin` for complete isolation
 3. **postMessage Communication**: Only interaction method with sandbox
 
+#### Fullscreen Transform Security
+
+When opening interactive transforms in a new tab, a double-iframe architecture provides security:
+1. **Outer Page**: Blob URL with own CSP, contains setup script
+2. **Inner Iframe**: `sandbox="allow-scripts"` attribute for security boundary
+3. **Content Blob**: Inner content loaded via blob URL with permissive CSP for scripts
+4. **CSP Isolation**: Using blob URLs instead of `srcdoc` allows each layer to have its own CSP
+
 ### Data Models
 
 ```typescript
@@ -350,6 +358,7 @@ Messages between components (defined in `src/types/index.ts`):
 - **CSP**: Strict Content Security Policy in manifest
 - **XSS Prevention**: Triple-layer defense (escape → format → DOMPurify)
 - **Sandbox Isolation**: AI content rendered in sandboxed iframe
+- **Fullscreen Security**: Double-iframe/blob architecture isolates interactive content CSP
 - **API Key Storage**: Per-provider keys stored in local IndexedDB only
 
 ## Configuration
