@@ -4212,7 +4212,7 @@ function createTransformResultCard(
 
   // Wire up save button
   saveBtn.addEventListener('click', () => {
-    void (async () => {
+    (async () => {
       const cardMeta = cardMetadata.get(card)
       if (!cardMeta || !cardMeta.content) {
         showNotification('Nothing to save yet')
@@ -4246,18 +4246,27 @@ function createTransformResultCard(
       closeBtn.title = 'Delete'
 
       showNotification('Transform saved')
-    })()
+    })().catch((error) => {
+      console.error('Failed to save transform:', error)
+      showNotification('Failed to save transform')
+    })
   })
 
   // Wire up open in new tab button
   openTabBtn.addEventListener('click', () => {
-    const cardMeta = cardMetadata.get(card)
-    if (!cardMeta || !cardMeta.content) {
-      showNotification('Nothing to open yet')
-      return
-    }
+    try {
+      const cardMeta = cardMetadata.get(card)
+      if (!cardMeta || !cardMeta.content) {
+        showNotification('Nothing to open yet')
+        return
+      }
 
-    openTransformInNewTab(cardMeta)
+      openTransformInNewTab(cardMeta)
+    }
+    catch (error) {
+      console.error('Failed to open in new tab:', error)
+      showNotification('Failed to open in new tab')
+    }
   })
 
   // Wire up copy button
@@ -4267,7 +4276,7 @@ function createTransformResultCard(
 
   // Wire up close/delete button
   closeBtn.addEventListener('click', () => {
-    void (async () => {
+    (async () => {
       const cardMeta = cardMetadata.get(card)
 
       // If saved, delete from storage
@@ -4277,7 +4286,10 @@ function createTransformResultCard(
       }
 
       removeTransformCard(card)
-    })()
+    })().catch((error) => {
+      console.error('Failed to delete transform:', error)
+      showNotification('Failed to delete transform')
+    })
   })
 
   return { card, sandbox, setContent }
@@ -4285,76 +4297,109 @@ function createTransformResultCard(
 
 // Open transform content in a new browser tab
 function openTransformInNewTab(meta: TransformCardMeta): void {
-  // If interactive content is already a full HTML document, use it directly
-  // Otherwise, wrap the content in a proper HTML page
-  const fullHtml = meta.isInteractive && isFullHtmlDocument(meta.content)
-    ? meta.content
-    : generateFullPageHtml(meta.title, meta.content, meta.isInteractive)
+  let fullHtml: string
 
-  const blob = new Blob([fullHtml], { type: 'text/html' })
-  const url = URL.createObjectURL(blob)
+  if (meta.isInteractive) {
+    // For interactive content, embed in a sandboxed iframe for security
+    // This prevents AI-generated scripts from running with extension privileges
+    const escapedContent = meta.content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
 
-  chrome.tabs.create({ url }, () => {
-    // Clean up the blob URL after a short delay to ensure the tab has loaded
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-  })
-}
-
-// Check if content is already a full HTML document
-function isFullHtmlDocument(content: string): boolean {
-  const trimmed = content.trim().toLowerCase()
-  return trimmed.startsWith('<!doctype') || trimmed.startsWith('<html')
-}
-
-// Generate a full HTML page for viewing transforms
-function generateFullPageHtml(title: string, content: string, isInteractive: boolean): string {
-  if (isInteractive) {
-    // For interactive content, wrap in a styled container
-    return `<!DOCTYPE html>
+    fullHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(title)} - FolioLM</title>
+  <title>${escapeHtml(meta.title)} - FolioLM</title>
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #1a1a2e; }
     body {
-      margin: 0;
-      padding: 24px;
+      display: flex;
+      flex-direction: column;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1a1a2e;
       color: #e4e4e7;
-      min-height: 100vh;
     }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    h1 {
-      margin: 0 0 24px 0;
-      font-size: 24px;
-      color: #fff;
-    }
-    .content {
+    header {
+      padding: 16px 24px;
       background: #252538;
+      border-bottom: 1px solid #3f3f5a;
+    }
+    h1 { font-size: 20px; color: #fff; }
+    .iframe-container { flex: 1; padding: 24px; }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
       border-radius: 12px;
-      padding: 24px;
+      background: #fff;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>${escapeHtml(title)}</h1>
-    <div class="content">
-      ${content}
-    </div>
+  <header>
+    <h1>${escapeHtml(meta.title)}</h1>
+  </header>
+  <div class="iframe-container">
+    <iframe sandbox="allow-scripts" srcdoc="${escapedContent}"></iframe>
   </div>
 </body>
 </html>`
   }
+  else {
+    // For markdown content, sanitize with DOMPurify before insertion
+    const renderedContent = renderMarkdown(meta.content)
+    const sanitizedContent = DOMPurify.sanitize(renderedContent, {
+      USE_PROFILES: { html: true },
+    })
+    fullHtml = generateFullPageHtml(meta.title, sanitizedContent)
+  }
 
-  // For markdown content, render it properly
-  const renderedContent = renderMarkdown(content)
+  // Sanitize the entire document for non-interactive content
+  if (!meta.isInteractive) {
+    fullHtml = DOMPurify.sanitize(fullHtml, {
+      WHOLE_DOCUMENT: true,
+      USE_PROFILES: { html: true },
+    })
+  }
+
+  const blob = new Blob([fullHtml], { type: 'text/html' })
+  const url = URL.createObjectURL(blob)
+
+  chrome.tabs.create({ url }, (tab) => {
+    // Clean up blob URL when tab finishes loading (not a fixed timeout)
+    if (!tab?.id) {
+      URL.revokeObjectURL(url)
+      return
+    }
+
+    const tabId = tab.id
+    const listener = (
+      updatedTabId: number,
+      changeInfo: { status?: string },
+    ) => {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        URL.revokeObjectURL(url)
+        chrome.tabs.onUpdated.removeListener(listener)
+      }
+    }
+
+    chrome.tabs.onUpdated.addListener(listener)
+
+    // Fallback cleanup after 30 seconds in case onUpdated never fires
+    setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(listener)
+      URL.revokeObjectURL(url)
+    }, 30000)
+  })
+}
+
+// Generate a full HTML page for viewing markdown transforms
+function generateFullPageHtml(title: string, content: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4456,7 +4501,7 @@ function generateFullPageHtml(title: string, content: string, isInteractive: boo
   <div class="container">
     <h1>${escapeHtml(title)}</h1>
     <div class="content">
-      ${renderedContent}
+      ${content}
     </div>
   </div>
 </body>
