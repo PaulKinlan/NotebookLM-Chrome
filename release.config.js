@@ -28,6 +28,12 @@ const config = {
       },
     ],
     [
+      "@semantic-release/exec",
+      {
+        successCmd: "node scripts/publish-cws.js",
+      },
+    ],
+    [
       "@semantic-release/github",
       {
         successComment: false,
