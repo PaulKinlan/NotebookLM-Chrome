@@ -4579,17 +4579,22 @@ const INTERACTIVE_TRANSFORM_TYPES: TransformationType[] = [
 
 // Load saved transforms for a notebook and display them
 async function loadTransformHistory(notebookId: string | null): Promise<void> {
+  console.log('[loadTransformHistory] Called with notebookId:', notebookId)
+
   // Clear existing transforms first
   clearTransformHistory()
 
   if (!notebookId) {
+    console.log('[loadTransformHistory] No notebookId, returning')
     return
   }
 
   const transformations = await getTransformations(notebookId)
+  console.log('[loadTransformHistory] Found transformations:', transformations.length, transformations)
 
   // Create cards for each saved transform (already sorted by createdAt desc)
   for (const transformation of transformations) {
+    console.log('[loadTransformHistory] Creating card for:', transformation.title, transformation.id)
     const { card, sandbox, setContent } = createTransformResultCard(
       transformation.title,
       transformation.notebookId,
@@ -4612,9 +4617,6 @@ async function loadTransformHistory(notebookId: string | null): Promise<void> {
       setContent(transformation.content, isInteractive)
     }
 
-    // Render the content
-    await sandbox.render(transformation.content)
-
     // Mark the card as saved (update UI to show saved state)
     card.classList.add('transform-saved')
 
@@ -4633,8 +4635,17 @@ async function loadTransformHistory(notebookId: string | null): Promise<void> {
       closeBtn.title = 'Delete'
     }
 
-    // Append to history (older ones at the bottom)
+    // Append to DOM BEFORE rendering - the sandbox iframe needs to be in the DOM to load
     elements.transformHistory.appendChild(card)
+
+    // Render the content (must be after card is in DOM for sandbox iframe to load)
+    try {
+      await sandbox.render(transformation.content)
+      console.log('[loadTransformHistory] Rendered content for:', transformation.title)
+    }
+    catch (err) {
+      console.error('[loadTransformHistory] Failed to render:', transformation.title, err)
+    }
   }
 }
 
