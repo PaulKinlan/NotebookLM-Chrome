@@ -1452,7 +1452,7 @@ details.summary-section[open] .summary-chevron {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 14px;
 }
 
@@ -2279,6 +2279,13 @@ details.suggested-links-section[open] .suggested-links-chevron {
   font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
+  color: var(--text-primary);
+}
+
+/* Ensure loading/generating states in transform content are visible */
+.transform-content em {
+  color: var(--text-primary);
+  font-style: italic;
 }
 
 /* When transform-content contains an iframe sandbox, let the iframe handle sizing */
