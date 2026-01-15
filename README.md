@@ -139,13 +139,16 @@ src/
 ├── sandbox/             # Sandboxed iframe for AI content
 │   ├── sandbox.html
 │   └── sandbox.ts
-├── sidepanel/           # Main UI
+├── sidepanel/           # Main UI (Preact components)
 │   ├── index.html
+│   ├── main.tsx         # Preact render entry point
+│   ├── App.tsx          # Root component
 │   ├── index.ts         # Tabs, chat, transforms, library, settings
 │   ├── controllers.ts   # Tab controllers and event handlers
 │   ├── dropdown.ts      # Reusable dropdown component
 │   ├── provider-config-ui.ts  # Provider and model configuration UI
-│   ├── components/      # UI components
+│   ├── components/      # Preact UI components
+│   │   ├── Header.tsx, AddTab.tsx, ChatTab.tsx, etc.
 │   │   └── TransformConfigPopover.tsx  # Transform settings popover
 │   └── styles.css       # UI styling
 └── types/               # TypeScript interfaces
@@ -377,6 +380,7 @@ FolioLM supports 16+ AI providers through a centralized provider registry:
 
 - **Runtime**: Chrome Extension Manifest V3
 - **Language**: TypeScript
+- **UI Framework**: [Preact](https://preactjs.com/) (3kb React alternative)
 - **Build**: Vite 6 + [@crxjs/vite-plugin](https://crxjs.dev/vite-plugin)
 - **AI**: [Vercel AI SDK](https://sdk.vercel.ai/docs) with provider packages:
   - `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/google`
