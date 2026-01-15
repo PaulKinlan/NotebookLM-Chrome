@@ -1,11 +1,26 @@
 /**
  * Side Panel Barrel
  *
- * Re-exports from controllers and services for cleaner import paths.
+ * Re-exports hooks and services for cleaner import paths.
  */
 
-// Business logic controllers (all handlers and state)
-export { handlers, getState, initControllers } from './controllers'
+// Custom Preact hooks (replaces controllers.ts)
+export {
+  useDialog,
+  useNotebook,
+  useSources,
+  useChat,
+  usePermissions,
+  useToolPermissions,
+  useTransform,
+  usePickerModal,
+  useOnboarding,
+  type PermissionType,
+} from './hooks'
+
+// NOTE: useNavigation and useNotification have been replaced by signals
+// Import from store instead:
+// import { activeTab, showNotification, type TabName } from './store'
 
 // Services - selective exports to avoid naming conflicts
 
@@ -49,17 +64,3 @@ export {
   getHistory,
   importHistory,
 } from './services/sources'
-
-// UI
-export {
-  showNotification,
-  hideNotification,
-  showConfirmDialog,
-  showNotebookDialog,
-  showPickerModal,
-  hidePickerModal,
-  showOnboarding,
-  hideOnboarding,
-  setOnboardingStep,
-} from './services/ui'
-export type { DialogOptions, NotebookDialogOptions, OnboardingStep } from './services/ui'
