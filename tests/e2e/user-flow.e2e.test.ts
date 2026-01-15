@@ -107,10 +107,14 @@ describe('User Flow', () => {
       // Wait a moment for storage to update
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Trigger a reload of sources by switching to chat tab and back
-      await page.click('[data-tab="chat"]');
-      await new Promise(resolve => setTimeout(resolve, 200));
-      await page.click('[data-tab="add"]');
+      // Dispatch BroadcastChannel message to trigger reload in useSources hook
+      await page.evaluate((nbId) => {
+        const channel = new BroadcastChannel('foliolm:sources');
+        channel.postMessage({ type: 'source:created', notebookId: nbId, sourceId: 'test-source' });
+        channel.close();
+      }, notebookId);
+
+      // Wait a moment for the hook to reload
       await new Promise(resolve => setTimeout(resolve, 200));
 
       // Wait for source to appear in the list

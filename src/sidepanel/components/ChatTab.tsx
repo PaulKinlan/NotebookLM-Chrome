@@ -1,17 +1,45 @@
+import { useRef } from 'preact/hooks'
+import type { Source } from '../../types/index.ts'
+import { SourceItem } from './SourceItem'
+import { chatMessages } from '../store'
+import { For } from '@preact/signals/utils'
+
 interface ChatTabProps {
   active: boolean
-  onQuery: () => void
+  sources: Source[]
+  onQuery: (question: string) => void
   onClearChat: () => void
   onRegenerateSummary: () => void
   onAddCurrentTab: () => void
+  onRemoveSource?: (sourceId: string) => void
+  summaryContent: string | null
+  showSummary: boolean
 }
 
 export function ChatTab(props: ChatTabProps) {
-  const { active } = props
+  const { active, sources, onQuery, onClearChat, onRegenerateSummary, onAddCurrentTab, onRemoveSource, summaryContent, showSummary } = props
+  const queryInputRef = useRef<HTMLInputElement>(null)
+
+  const handleQuery = () => {
+    const question = queryInputRef.current?.value.trim()
+    if (question) {
+      onQuery(question)
+      if (queryInputRef.current) {
+        queryInputRef.current.value = ''
+      }
+    }
+  }
+
+  const handleKeyPress = (e: Event) => {
+    if (e instanceof KeyboardEvent && e.key === 'Enter') {
+      handleQuery()
+    }
+  }
+
   return (
     <section id="tab-chat" className={`tab-content ${active ? 'active' : ''}`}>
       {/* Summary Section (Collapsible) */}
-      <details id="summary-section" className="summary-section" style={{ display: 'none' }}>
+      <details id="summary-section" className="summary-section" style={{ display: showSummary ? 'block' : 'none' }}>
         <summary className="summary-header">
           <h3 className="section-title">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -22,7 +50,7 @@ export function ChatTab(props: ChatTabProps) {
             Overview
           </h3>
           <div className="summary-header-actions">
-            <button id="regenerate-summary-btn" className="btn btn-small btn-outline" title="Regenerate overview">
+            <button id="regenerate-summary-btn" className="btn btn-small btn-outline" title="Regenerate overview" onClick={() => void onRegenerateSummary()}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M23 4v6h-6"></path>
                 <path d="M1 20v-6h6"></path>
@@ -35,10 +63,16 @@ export function ChatTab(props: ChatTabProps) {
           </div>
         </summary>
         <div id="notebook-summary" className="summary-content">
-          <div className="summary-loading">
-            <span className="loading-spinner"></span>
-            <span>Generating overview...</span>
-          </div>
+          {summaryContent !== null
+            ? (
+                <div dangerouslySetInnerHTML={{ __html: summaryContent }} />
+              )
+            : (
+                <div className="summary-loading">
+                  <span className="loading-spinner"></span>
+                  <span>Generating overview...</span>
+                </div>
+              )}
         </div>
       </details>
 
@@ -54,7 +88,7 @@ export function ChatTab(props: ChatTabProps) {
               <polyline points="10 9 9 9 8 9"></polyline>
             </svg>
             Active Sources (
-            <span id="source-count">0</span>
+            <span id="source-count">{sources.length}</span>
             )
           </h3>
           <div className="sources-section-actions">
@@ -72,8 +106,20 @@ export function ChatTab(props: ChatTabProps) {
           </div>
         </summary>
         <div className="sources-section-content">
-          <div id="active-sources" className="sources-list compact"></div>
-          <button id="add-page-btn" className="btn btn-outline btn-small">
+          <div id="active-sources" className="sources-list compact">
+            {sources.length === 0
+              ? (
+                  <div className="empty-state">
+                    <p>No sources added yet. Add a source to get started.</p>
+                  </div>
+                )
+              : (
+                  sources.map(source => (
+                    <SourceItem key={source.id} source={source} onRemove={onRemoveSource} />
+                  ))
+                )}
+          </div>
+          <button id="add-page-btn" className="btn btn-outline btn-small" onClick={() => void onAddCurrentTab()}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -128,12 +174,58 @@ export function ChatTab(props: ChatTabProps) {
             </svg>
             Chat History
           </h3>
-          <button id="clear-chat-btn" className="btn btn-small btn-outline" title="Clear chat history">Clear</button>
+          <button id="clear-chat-btn" className="btn btn-small btn-outline" title="Clear chat history" onClick={() => void onClearChat()}>Clear</button>
         </div>
         <div id="chat-messages" className="chat-messages">
-          <div className="empty-state">
-            <p>Ask a question to get started.</p>
-          </div>
+          <For each={chatMessages} fallback={<div className="empty-state"><p>Ask a question to get started.</p></div>}>
+            {(msg) => {
+              // Handle different event types
+              if (msg.type === 'user') {
+                return (
+                  <div className="chat-message user">
+                    <div className="chat-message-role">You</div>
+                    <div className="chat-message-content">
+                      {msg.content.split('\n').map((line: string, i: number) => (
+                        <p key={i}>{line || '\u00A0'}</p>
+                      ))}
+                    </div>
+                  </div>
+                )
+              }
+              else if (msg.type === 'assistant') {
+                return (
+                  <div className="chat-message assistant">
+                    <div className="chat-message-role">AI</div>
+                    <div className="chat-message-content">
+                      {msg.content.split('\n').map((line: string, i: number) => (
+                        <p key={i}>{line || '\u00A0'}</p>
+                      ))}
+                    </div>
+                  </div>
+                )
+              }
+              else { // tool-result
+                return (
+                  <div className="chat-message tool-result">
+                    <div className="chat-message-role">
+                      Tool:
+                      {msg.toolName}
+                    </div>
+                    <div className="chat-message-content">
+                      {msg.error
+                        ? (
+                            <p className="error">
+                              Error:
+                              {msg.error}
+                            </p>
+                          )
+                        : <pre>{JSON.stringify(msg.result, null, 2)}</pre>}
+                    </div>
+                  </div>
+                )
+              }
+            }}
+          </For>
         </div>
       </div>
 
@@ -143,10 +235,10 @@ export function ChatTab(props: ChatTabProps) {
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
         <div className="query-input-wrapper">
-          <input type="text" id="query-input" placeholder="Ask a question about your sources..." autoComplete="off" />
+          <input type="text" id="query-input" ref={queryInputRef} placeholder="Ask a question about your sources..." autoComplete="off" onKeyDown={handleKeyPress} />
           <span id="autocomplete-ghost" className="autocomplete-ghost"></span>
         </div>
-        <button id="query-btn" className="icon-btn btn-primary">
+        <button id="query-btn" className="icon-btn btn-primary" onClick={handleQuery}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="12" y1="19" x2="12" y2="5"></line>
             <polyline points="5 12 12 5 19 12"></polyline>

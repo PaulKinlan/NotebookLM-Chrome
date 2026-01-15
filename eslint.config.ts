@@ -117,9 +117,24 @@ export default [
       // '@typescript-eslint/no-unnecessary-type-assertion': 'error',
       // Disallow explicit any types
       '@typescript-eslint/no-explicit-any': 'error',
+      // Disallow unused vars (no underscore prefix exception)
       '@typescript-eslint/no-unused-vars': 'error',
       // Limit file length for AI code analysis (400 lines = ~12-16k tokens)
       'max-lines': ['warn', { max: 400, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
+    // Library files: Higher line limit for complex modules
+    files: ['src/lib/**', 'src/background.ts'],
+    plugins: {
+      '@typescript-eslint': tseslint,
+      'eslint-comments': eslintComments,
+      '@stylistic': stylistic,
+    },
+    rules: {
+      ...tseslint.configs['recommended-type-checked'].rules,
+      ...stylistic.configs.recommended.rules,
+      'max-lines': ['warn', { max: 1000, skipBlankLines: true, skipComments: true }],
     },
   },
   {
@@ -133,22 +148,36 @@ export default [
     rules: {
       ...tseslint.configs['recommended-type-checked'].rules,
       ...stylistic.configs.recommended.rules,
-      // Allow type assertions in tests (needed for mocks)
+      // Allow any types in tests (needed for Chrome API mocks, vi.mocked, etc.)
+      '@typescript-eslint/no-explicit-any': 'off',
+      // Allow unsafe type assertions in tests (needed for mocks)
       '@typescript-eslint/no-unsafe-type-assertion': 'off',
       '@typescript-eslint/no-unnecessary-type-assertion': 'off',
       '@typescript-eslint/no-non-null-assertion': 'off',
+      // Allow unsafe assignments/calls/members/arguments in tests (mocking patterns)
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      // Allow async functions without await (test setup/teardown)
+      '@typescript-eslint/require-await': 'off',
+      // Allow floating promises in tests (intentionally unawaited assertions)
+      '@typescript-eslint/no-floating-promises': 'off',
       // Allow namespaces for global declarations in test setup
       '@typescript-eslint/no-namespace': 'off',
-      // Disallow unused vars (allow underscore prefix in tests)
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-      // Allow global directive for sandbox and other ESLint directives in tests
+      // Disallow unused vars in tests (no underscore prefix - remove them)
+      '@typescript-eslint/no-unused-vars': 'error',
+      // Allow console methods in tests
       'no-console': 'off',
       'eslint-comments/no-use': 'off',
+      // Higher line limit for test files
+      'max-lines': ['warn', { max: 1000, skipBlankLines: true, skipComments: true }],
     },
   },
   {
-    // Apply barrel-only-re-exports rule only to sidepanel index files
-    files: ['src/sidepanel/index.ts'],
+    // Apply barrel-only-re-exports rule to all index.ts/index.tsx files
+    files: ['src/**/index.{ts,tsx}'],
     rules: {
       'foliolm/barrel-only-re-exports': 'error',
     },

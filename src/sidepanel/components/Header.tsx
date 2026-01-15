@@ -2,15 +2,19 @@
  * Header component - Top navigation bar with logo, library/settings buttons, notebook selector, and AI model picker
  */
 
+import type { Notebook } from '../../types/index.ts'
+
 interface HeaderProps {
   onLibraryClick: () => void
   onSettingsClick: () => void
-  onNotebookChange: () => void
+  onNotebookChange: (notebookId: string) => void
   onNewNotebook: () => void
+  notebooks: Notebook[]
+  currentNotebookId: string | null
 }
 
 export function Header(props: HeaderProps) {
-  const { onLibraryClick, onSettingsClick, onNotebookChange, onNewNotebook } = props
+  const { onLibraryClick, onSettingsClick, onNotebookChange, onNewNotebook, notebooks, currentNotebookId } = props
 
   return (
     <header className="header">
@@ -58,9 +62,15 @@ export function Header(props: HeaderProps) {
         <select
           id="notebook-select"
           className="header-notebook-select"
-          onChange={() => onNotebookChange()}
+          value={currentNotebookId ?? ''}
+          onChange={e => onNotebookChange((e.target as HTMLSelectElement).value)}
         >
           <option value="">Select a folio...</option>
+          {notebooks.map(nb => (
+            <option key={nb.id} value={nb.id}>
+              {nb.name}
+            </option>
+          ))}
         </select>
         <div className="ai-model-picker">
           <button

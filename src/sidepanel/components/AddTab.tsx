@@ -1,20 +1,27 @@
+import type { Source } from '../../types/index.ts'
+import { SourceItem } from './SourceItem'
+
 interface AddTabProps {
   active: boolean
+  sources: Source[]
   onAddCurrentTab: () => void
   onImportTabs: () => void
   onImportTabGroups: () => void
   onImportBookmarks: () => void
   onImportHistory: () => void
+  onRemoveSource?: (sourceId: string) => void
 }
 
 export function AddTab(props: AddTabProps) {
   const {
     active,
+    sources,
     onAddCurrentTab,
     onImportTabs,
     onImportTabGroups,
     onImportBookmarks,
     onImportHistory,
+    onRemoveSource,
   } = props
   return (
     <section id="tab-add" className={`tab-content ${active ? 'active' : ''}`}>
@@ -117,7 +124,19 @@ export function AddTab(props: AddTabProps) {
         Recent Sources
         <a href="#" id="view-all-sources" className="link">View All</a>
       </h3>
-      <div id="sources-list" className="sources-list"></div>
+      <div id="sources-list" className="sources-list">
+        {sources.length === 0
+          ? (
+              <div className="empty-state">
+                <p>No sources added yet. Add a source to get started.</p>
+              </div>
+            )
+          : (
+              sources.map(source => (
+                <SourceItem key={source.id} source={source} onRemove={onRemoveSource} />
+              ))
+            )}
+      </div>
     </section>
   )
 }
