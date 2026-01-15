@@ -3,13 +3,12 @@ name: CI
 on:
   push:
     branches: [main, develop]
-    tags:
-      - 'v*.*.*'
   pull_request:
     branches: [main, develop]
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   lint:
@@ -23,7 +22,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -46,7 +45,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -74,7 +73,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -95,7 +94,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -116,9 +115,9 @@ jobs:
           CI: true
 
   release:
-    name: Create Release
+    name: Release
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [build, lint, test, test-e2e]
 
     steps:
@@ -126,11 +125,12 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -142,43 +142,14 @@ jobs:
           name: foliolm-extension-${{ github.sha }}
           path: dist/
 
-      - name: Package extension
+      - name: Package extension for release
         run: npm run package
 
-      - name: Create GitHub Release
+      - name: Create Release (semantic-release)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-
-          NOTES=$(cat <<EOF
-          ## FolioLM v${VERSION}
-
-          ### Installation
-
-          See [INSTALL.md](https://github.com/PaulKinlan/NotebookLM-Chrome/blob/main/INSTALL.md) for detailed instructions.
-
-          ### Quick Install (ZIP)
-
-          1. Download \`foliolm-extension-v${VERSION}.zip\`
-          2. Extract to a folder
-          3. Open \`chrome://extensions/\`
-          4. Enable "Developer mode"
-          5. Click "Load unpacked" and select the extracted folder
-
-          ### What's Changed
-
-          Full Changelog: https://github.com/PaulKinlan/NotebookLM-Chrome/commits/v${VERSION}
-          EOF
-          )
-
-          ZIP_FILES=(foliolm-extension-*.zip)
-          if [ ${#ZIP_FILES[@]} -eq 0 ]; then
-            echo "Error: No foliolm-extension-*.zip files found."
-            exit 1
-          fi
-
-          gh release create "${GITHUB_REF#refs/tags/}" \
-            --title "FolioLM v${VERSION}" \
-            --notes "$NOTES" \
-            "${ZIP_FILES[@]}"
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+        run: npx semantic-release

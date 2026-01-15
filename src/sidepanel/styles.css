@@ -1314,21 +1314,6 @@ input[type="text"]:focus {
   }
 }
 
-.sources-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.sources-header .section-title {
-  margin-bottom: 0;
-}
-
-.sources-header .btn-small {
-  padding: 4px 8px;
-}
-
 #refresh-all-sources-btn {
   display: flex;
   align-items: center;
@@ -1503,6 +1488,80 @@ details.summary-section[open] .summary-chevron {
 .summary-actions {
   display: flex;
   gap: 4px;
+}
+
+/* ============================================================================
+   Sources Section (Collapsible)
+   ============================================================================ */
+
+details.sources-section {
+  margin-top: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+details.sources-section > summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+details.sources-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.sources-section[open] > summary {
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.sources-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sources-section-header .section-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sources-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sources-section-chevron {
+  transition: transform 0.2s ease;
+  color: var(--text-secondary);
+}
+
+details.sources-section[open] .sources-section-chevron {
+  transform: rotate(180deg);
+}
+
+.sources-section .section-title {
+  margin-top: 0;
+  margin-bottom: 0;
+  color: var(--text-primary);
+}
+
+.sources-section-content {
+  padding: 12px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.sources-section-content .sources-list.compact {
+  margin-bottom: 12px;
+}
+
+.sources-section-content #add-page-btn {
+  margin-bottom: 0;
 }
 
 /* ============================================================================
@@ -2248,6 +2307,37 @@ details.suggested-links-section[open] .suggested-links-chevron {
   border-color: var(--border-color);
 }
 
+/* Transform result saved state */
+.transform-result.transform-saved {
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.transform-result-actions .icon-btn.saved {
+  color: #34d399;
+}
+
+.transform-result-actions .icon-btn.saved:hover {
+  background: rgba(52, 211, 153, 0.2);
+}
+
+/* Transform action button hover states */
+.transform-result-actions .icon-btn:hover {
+  background: var(--bg-tertiary);
+}
+
+.transform-result-actions .icon-btn[title="Delete"]:hover {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+}
+
+.transform-result-actions .icon-btn[title="Open in new tab"]:hover {
+  color: var(--accent-primary);
+}
+
+.transform-result-actions .icon-btn[title="Save"]:hover {
+  color: #34d399;
+}
+
 /* ============================================================================
    Modal
    ============================================================================ */
@@ -2630,6 +2720,25 @@ details.suggested-links-section[open] .suggested-links-chevron {
 
 #tab-chat #add-page-btn {
   margin-bottom: 0;
+}
+
+/* Sticky query box at bottom of chat tab */
+#tab-chat .query-box {
+  position: sticky;
+  bottom: 0;
+  margin-top: 16px;
+  background: var(--bg-primary);
+  z-index: 10;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+}
+
+#tab-chat .helper-text {
+  position: sticky;
+  bottom: -24px;
+  background: var(--bg-primary);
+  padding-bottom: 8px;
+  margin-bottom: 0;
+  z-index: 10;
 }
 
 .chat-header {
