@@ -4398,58 +4398,65 @@ function openTransformInNewTab(meta: TransformCardMeta): void {
     <span class="branding">FolioLM</span>
   </header>
   <div class="iframe-container">
-    <iframe id="sandbox" sandbox="allow-scripts"></iframe>
+    <iframe id="content-frame" sandbox="allow-scripts allow-forms"></iframe>
   </div>
   <script>
     // This script runs in the outer page and creates a blob URL for the inner content
-    // The blob URL allows the inner content to have its own CSP
+    // Security architecture (following generate-html-element pattern):
+    // 1. Outer blob page: Isolated from extension context
+    // 2. Inner iframe: sandbox="allow-scripts allow-forms" is the security boundary
+    // 3. Content loaded via blob URL (not srcdoc to avoid CSP inheritance)
+    // 4. No restrictive CSP in content - sandbox handles security
     (function() {
-      // Decode Base64 content (handles Unicode properly)
-      var base64 = "${base64Content}";
-      var content = decodeURIComponent(escape(atob(base64)));
+      try {
+        // Decode Base64 content (handles Unicode properly)
+        var base64 = "${base64Content}";
+        var content = decodeURIComponent(escape(atob(base64)));
 
-      // Wrap content in a full HTML document with permissive CSP for inline scripts
-      function wrapContent(html) {
-        var trimmed = html.trim();
-        var hasDoctype = trimmed.toLowerCase().indexOf('<!doctype') === 0;
-        var hasHtml = trimmed.toLowerCase().indexOf('<html') === 0;
+        // Wrap content in a full HTML document if needed
+        function wrapContent(html) {
+          var trimmed = html.trim();
+          var hasDoctype = trimmed.toLowerCase().indexOf('<!doctype') === 0;
+          var hasHtml = trimmed.toLowerCase().indexOf('<html') === 0;
 
-        if (hasDoctype || hasHtml) {
-          // Content is a full document - inject CSP if not present
-          if (html.indexOf('Content-Security-Policy') === -1) {
-            var cspMeta = '<meta http-equiv="Content-Security-Policy" content="default-src \\'none\\'; style-src \\'unsafe-inline\\'; script-src \\'unsafe-inline\\'; img-src data: blob:;">';
-            var headMatch = html.match(/<head[^>]*>/i);
-            if (headMatch) {
-              return html.replace(headMatch[0], headMatch[0] + '\\n  ' + cspMeta);
-            }
+          if (hasDoctype || hasHtml) {
+            // Content is already a full document
+            return html;
           }
-          return html;
+
+          // Content is a fragment - wrap in full document with basic styles
+          return '<!DOCTYPE html>\\n' +
+            '<html lang="en">\\n' +
+            '<head>\\n' +
+            '  <meta charset="UTF-8">\\n' +
+            '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\\n' +
+            '  <style>html, body { margin: 0; padding: 0; height: 100%; }</style>\\n' +
+            '</head>\\n' +
+            '<body>\\n' +
+            html +
+            '\\n</body>\\n</html>';
         }
 
-        // Content is a fragment - wrap in full document
-        return '<!DOCTYPE html>\\n' +
-          '<html lang="en">\\n' +
-          '<head>\\n' +
-          '  <meta charset="UTF-8">\\n' +
-          '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\\n' +
-          '  <meta http-equiv="Content-Security-Policy" content="default-src \\'none\\'; style-src \\'unsafe-inline\\'; script-src \\'unsafe-inline\\'; img-src data: blob:;">\\n' +
-          '</head>\\n' +
-          '<body>\\n' +
-          html +
-          '\\n</body>\\n</html>';
+        var wrappedContent = wrapContent(content);
+        var blob = new Blob([wrappedContent], { type: 'text/html' });
+        var blobUrl = URL.createObjectURL(blob);
+
+        var iframe = document.getElementById('content-frame');
+        iframe.src = blobUrl;
+
+        // Clean up blob URL after load (with delay to ensure content is rendered)
+        iframe.addEventListener('load', function() {
+          setTimeout(function() {
+            URL.revokeObjectURL(blobUrl);
+          }, 1000);
+        }, { once: true });
+      } catch (e) {
+        console.error('Error loading content:', e);
+        var errorDiv = document.createElement('div');
+        errorDiv.style.cssText = 'padding:20px;color:red;';
+        errorDiv.textContent = 'Error loading content: ' + e.message;
+        document.body.appendChild(errorDiv);
       }
-
-      const wrappedContent = wrapContent(content);
-      const blob = new Blob([wrappedContent], { type: 'text/html' });
-      const blobUrl = URL.createObjectURL(blob);
-
-      const iframe = document.getElementById('sandbox');
-      iframe.src = blobUrl;
-
-      // Clean up blob URL after load
-      iframe.addEventListener('load', function() {
-        URL.revokeObjectURL(blobUrl);
-      }, { once: true });
     })();
   </script>
 </body>
