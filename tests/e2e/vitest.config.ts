@@ -1,6 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // Cache directory for CI and local
+  cache: {
+    dir: '.vitest',
+  },
   test: {
     // E2E test configuration
     testTimeout: 30000,
