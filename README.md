@@ -224,6 +224,14 @@ Flexible model configuration system:
 - **Default Chrome Built-in Profile**: Automatically created on first install
 - **Legacy Migration**: Seamlessly migrates from older AISettings format
 
+#### Chrome AI Utilities (`src/lib/chrome-ai.ts`)
+
+Chrome's built-in AI (Gemini Nano) model management:
+- **Availability Check**: `checkModelAvailability()` returns 'unavailable', 'downloadable', 'downloading', or 'available'
+- **Auto-Download**: `triggerModelDownload()` initiates ~1.5GB model download (requires user gesture)
+- **Progress Monitoring**: Callbacks for download progress tracking
+- **Onboarding Integration**: Model download automatically triggered during first-run onboarding
+
 #### Usage Tracking (`src/lib/usage.ts`)
 
 Per-profile API usage tracking and cost monitoring:
