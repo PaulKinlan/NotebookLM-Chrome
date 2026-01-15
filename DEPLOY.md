@@ -17,7 +17,7 @@ You'll need:
 - **Client Secret** - From the API credentials
 - **Refresh Token** - From the API credentials
 
-See [chrome-extension-deploy documentation](https://github.com/fregante/chrome-extension-deploy#getting-credentials-) for detailed instructions.
+See the [Chrome Web Store API documentation](https://developer.chrome.com/docs/webstore/using-api) for detailed instructions.
 
 ### 2. Configure GitHub Secrets
 
@@ -54,6 +54,15 @@ CWS_EXTENSION_ID="your-extension-id" \
 CWS_CLIENT_ID="your-client-id" \
 CWS_CLIENT_SECRET="your-client-secret" \
 CWS_REFRESH_TOKEN="your-refresh-token" \
-ZIP_PATH="foliolm-extension-*.zip" \
-node scripts/publish-cws.js
+npx tsx scripts/publish-cws.ts
 ```
+
+## Implementation
+
+The publishing is done using the native Chrome Web Store API via `fetch` (built into Node.js 18+). The script `scripts/publish-cws.ts`:
+
+1. Exchanges the refresh token for an access token
+2. Uploads the extension ZIP to the Chrome Web Store
+3. Publishes the extension to the public channel
+
+No external dependencies are required beyond the Chrome Web Store API credentials.
