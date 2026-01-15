@@ -13,6 +13,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/preact'
 import { useNotebook } from './useNotebook'
+import { currentNotebookId, notebooks, notebooksLoading } from '../store'
 import type { Notebook } from '../../types/index.ts'
 
 // ============================================================================
@@ -108,6 +109,11 @@ beforeEach(() => {
       return `test-${Math.random().toString(36).substring(2, 15)}`
     },
   })
+
+  // Reset global signals to initial state
+  currentNotebookId.value = null
+  notebooks.value = []
+  notebooksLoading.value = false
 })
 
 // ============================================================================
