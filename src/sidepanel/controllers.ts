@@ -581,6 +581,7 @@ async function init(): Promise<void> {
   await loadAIConfigs()
   await loadSources()
   await loadChatHistory()
+  await loadTransformHistory(currentNotebookId)
   void updateTabCount()
   void updateAddTabButton()
 
@@ -1703,6 +1704,7 @@ async function handleNotebookChange(): Promise<void> {
   await updateAIConfigForNotebook()
   await loadSources()
   await loadChatHistory()
+  await loadTransformHistory(currentNotebookId)
 }
 
 async function selectNotebook(id: string): Promise<void> {
@@ -1714,6 +1716,7 @@ async function selectNotebook(id: string): Promise<void> {
   switchTab('chat')
   await loadSources()
   await loadChatHistory()
+  await loadTransformHistory(id)
 }
 
 // ============================================================================
@@ -4552,6 +4555,87 @@ function removeTransformCard(card: HTMLElement): void {
   }
   cardMetadata.delete(card)
   card.remove()
+}
+
+// Clear all transform cards from history
+function clearTransformHistory(): void {
+  const cards = [...elements.transformHistory.children]
+  for (const card of cards) {
+    if (card instanceof HTMLElement) {
+      removeTransformCard(card)
+    }
+  }
+}
+
+// Interactive transform types that return HTML
+const INTERACTIVE_TRANSFORM_TYPES: TransformationType[] = [
+  'quiz',
+  'flashcards',
+  'timeline',
+  'slidedeck',
+  'mindmap',
+  'studyguide',
+]
+
+// Load saved transforms for a notebook and display them
+async function loadTransformHistory(notebookId: string | null): Promise<void> {
+  // Clear existing transforms first
+  clearTransformHistory()
+
+  if (!notebookId) {
+    return
+  }
+
+  const transformations = await getTransformations(notebookId)
+
+  // Create cards for each saved transform (already sorted by createdAt desc)
+  for (const transformation of transformations) {
+    const { card, sandbox, setContent } = createTransformResultCard(
+      transformation.title,
+      transformation.notebookId,
+      transformation.type,
+      transformation.sourceIds,
+    )
+
+    // Get the metadata and update it with saved state
+    const meta = cardMetadata.get(card)
+    if (meta) {
+      meta.id = transformation.id
+      meta.content = transformation.content
+
+      // Determine if this is interactive content
+      const isInteractive = INTERACTIVE_TRANSFORM_TYPES.includes(transformation.type)
+        && (transformation.content.trim().startsWith('<!DOCTYPE') || transformation.content.trim().startsWith('<html'))
+      meta.isInteractive = isInteractive
+
+      // Update the setContent tracker
+      setContent(transformation.content, isInteractive)
+    }
+
+    // Render the content
+    await sandbox.render(transformation.content)
+
+    // Mark the card as saved (update UI to show saved state)
+    card.classList.add('transform-saved')
+
+    // Update save button to show saved state
+    const saveBtn = card.querySelector<HTMLButtonElement>('.icon-btn[title="Save"]')
+    if (saveBtn) {
+      saveBtn.innerHTML = ICONS.saved
+      saveBtn.title = 'Saved'
+      saveBtn.classList.add('saved')
+    }
+
+    // Update close button to delete button
+    const closeBtn = card.querySelector<HTMLButtonElement>('.icon-btn[title="Remove"]')
+    if (closeBtn) {
+      closeBtn.innerHTML = ICONS.delete
+      closeBtn.title = 'Delete'
+    }
+
+    // Append to history (older ones at the bottom)
+    elements.transformHistory.appendChild(card)
+  }
 }
 
 // Enforce the max history limit by removing oldest cards
