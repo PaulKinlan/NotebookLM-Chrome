@@ -36,6 +36,8 @@ const config: UserConfig = {
         "permissions",
         "ui",
         "extensions",
+        "release", // For semantic-release automated version commits
+        "commitlint", // For commitlint configuration changes
       ],
     ],
     "subject-case": [0], // Allow any case for subject
