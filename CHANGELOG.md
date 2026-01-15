@@ -1,3 +1,15 @@
+# [0.4.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.3.0...v0.4.0) (2026-01-15)
+
+
+### Bug Fixes
+
+* update Chrome Web Store API endpoints to v2 ([dcaace4](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/dcaace426e2c0cc43ec9facc2c02350969c7db18))
+
+
+### Features
+
+* add TypeScript CWS publish script using native fetch ([720021a](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/720021a43b3c502aa57750ed689e18855b2943f8))
+
 # [0.3.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.2.0...v0.3.0) (2026-01-15)
 
 
