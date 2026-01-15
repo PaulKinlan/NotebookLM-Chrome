@@ -5,7 +5,7 @@
 interface HeaderProps {
   onLibraryClick: () => void
   onSettingsClick: () => void
-  onNotebookChange: (id: string) => void
+  onNotebookChange: () => void
   onNewNotebook: () => void
 }
 
@@ -58,7 +58,7 @@ export function Header(props: HeaderProps) {
         <select
           id="notebook-select"
           className="header-notebook-select"
-          onChange={(e: Event) => onNotebookChange((e.target as HTMLSelectElement).value)}
+          onChange={() => onNotebookChange()}
         >
           <option value="">Select a folio...</option>
         </select>

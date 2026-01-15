@@ -101,12 +101,7 @@ function createHandlers(state: { activeTab: TabName }, businessHandlers: Busines
 // App Component
 // ============================================================================
 
-export function App(props: AppProps = {
-  activeTab: 'add',
-  fabHidden: true,
-  onboardingHidden: true,
-  businessHandlers: null,
-}): Node {
+export function App(props: AppProps) {
   const { activeTab, fabHidden, onboardingHidden, businessHandlers } = props
 
   const state = { activeTab }
@@ -143,26 +138,26 @@ export function App(props: AppProps = {
       <Header
         onLibraryClick={handlers.handleHeaderLibraryClick}
         onSettingsClick={handlers.handleHeaderSettingsClick}
-        onNotebookChange={() => { void businessHandlers?.handleNotebookChange() }}
-        onNewNotebook={() => { void businessHandlers?.handleNewNotebook() }}
+        onNotebookChange={() => void businessHandlers?.handleNotebookChange()}
+        onNewNotebook={() => void businessHandlers?.handleNewNotebook()}
       />
 
       <main className="content">
         <AddTab
           active={activeTab === 'add'}
-          onAddCurrentTab={() => { void businessHandlers?.handleAddCurrentTab() }}
-          onImportTabs={() => { void businessHandlers?.handleImportTabs() }}
-          onImportTabGroups={() => { void businessHandlers?.handleImportTabGroups() }}
-          onImportBookmarks={() => { void businessHandlers?.handleImportBookmarks() }}
-          onImportHistory={() => { void businessHandlers?.handleImportHistory() }}
+          onAddCurrentTab={() => void businessHandlers?.handleAddCurrentTab()}
+          onImportTabs={() => void businessHandlers?.handleImportTabs()}
+          onImportTabGroups={() => void businessHandlers?.handleImportTabGroups()}
+          onImportBookmarks={() => void businessHandlers?.handleImportBookmarks()}
+          onImportHistory={() => void businessHandlers?.handleImportHistory()}
         />
 
         <ChatTab
           active={activeTab === 'chat'}
-          onQuery={() => { void businessHandlers?.handleQuery() }}
-          onClearChat={() => { void businessHandlers?.handleClearChat() }}
-          onRegenerateSummary={() => { void businessHandlers?.handleRegenerateSummary() }}
-          onAddCurrentTab={() => { void businessHandlers?.handleAddCurrentTab() }}
+          onQuery={() => void businessHandlers?.handleQuery()}
+          onClearChat={() => void businessHandlers?.handleClearChat()}
+          onRegenerateSummary={() => void businessHandlers?.handleRegenerateSummary()}
+          onAddCurrentTab={() => void businessHandlers?.handleAddCurrentTab()}
         />
 
         <TransformTab active={activeTab === 'transform'} onTransform={handlers.handleTransform} />
@@ -171,8 +166,8 @@ export function App(props: AppProps = {
 
         <SettingsTab
           active={activeTab === 'settings'}
-          onPermissionToggle={(permission: PermissionType) => { void businessHandlers?.handlePermissionToggle(permission) }}
-          onClearAllData={() => { void businessHandlers?.handleClearAllData() }}
+          onPermissionToggle={(permission: PermissionType) => void businessHandlers?.handlePermissionToggle(permission)}
+          onClearAllData={() => void businessHandlers?.handleClearAllData()}
         />
       </main>
 

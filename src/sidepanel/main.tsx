@@ -3,6 +3,7 @@
 // ============================================================================
 // Renders App component with business logic handlers
 
+import { render } from 'preact'
 import { App } from './App'
 import { handlers, initControllers } from './index'
 import { initTheme } from './hooks/useTheme.tsx'
@@ -22,13 +23,15 @@ if (!appContainer) {
 void initTheme()
 
 // Render with handlers connected
-const appElement = App({
-  activeTab: 'add',
-  fabHidden: true,
-  onboardingHidden: true,
-  businessHandlers: handlers,
-})
-appContainer.appendChild(appElement)
+render(
+  <App
+    activeTab="add"
+    fabHidden={true}
+    onboardingHidden={true}
+    businessHandlers={handlers}
+  />,
+  appContainer,
+)
 
 // Initialize controllers AFTER DOM is rendered
 // This ensures event listeners can find their target elements

@@ -50,6 +50,7 @@
     "ai": "^6.0.33",
     "dompurify": "^3.3.1",
     "marked": "^17.0.1",
+    "preact": "^10.28.2",
     "turndown": "^7.2.0"
   },
   "devDependencies": {

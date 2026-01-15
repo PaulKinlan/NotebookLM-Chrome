@@ -16,11 +16,7 @@
     "allowImportingTsExtensions": true,
     "types": ["chrome"],
     "jsx": "react-jsx",
-    "jsxImportSource": "jsx-runtime",
-    "baseUrl": ".",
-    "paths": {
-      "jsx-runtime/jsx-runtime": ["./src/jsx-runtime.ts"]
-    }
+    "jsxImportSource": "preact"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
