@@ -668,9 +668,13 @@ h3 {
   border-radius: var(--radius-lg);
 }
 
-.query-box svg {
+.query-box > svg {
   color: var(--text-muted);
   flex-shrink: 0;
+}
+
+.query-box .icon-btn.btn-primary svg {
+  color: white;
 }
 
 .query-box input {
