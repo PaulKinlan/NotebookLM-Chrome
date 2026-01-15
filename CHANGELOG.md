@@ -1,3 +1,15 @@
+# [0.2.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.1.0...v0.2.0) (2026-01-15)
+
+
+### Bug Fixes
+
+* address PR review comments for chrome-ai module ([3b68077](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/3b680778499802dd868340b14b30cb8aa2b3b46a)), closes [#1](https://github.com/PaulKinlan/NotebookLM-Chrome/issues/1) [#2](https://github.com/PaulKinlan/NotebookLM-Chrome/issues/2) [#3](https://github.com/PaulKinlan/NotebookLM-Chrome/issues/3) [#4](https://github.com/PaulKinlan/NotebookLM-Chrome/issues/4)
+
+
+### Features
+
+* **onboarding:** auto-download Chrome AI model on user gesture ([40f631c](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/40f631cbf874b80af15bb1f42144b5bfd966b88b))
+
 # [0.1.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.0.1...v0.1.0) (2026-01-15)
 
 
