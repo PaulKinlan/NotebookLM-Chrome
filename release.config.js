@@ -30,7 +30,7 @@ const config = {
     [
       "@semantic-release/exec",
       {
-        successCmd: "node scripts/publish-cws.js",
+        successCmd: "npx tsx scripts/publish-cws.ts",
       },
     ],
     [
