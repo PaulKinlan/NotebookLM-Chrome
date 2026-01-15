@@ -4575,9 +4575,9 @@ async function loadTransformHistory(notebookId: string | null): Promise<void> {
       meta.id = transformation.id
       meta.content = transformation.content
 
-      // Determine if this is interactive content
+      // Determine if this is interactive content (use same check as new transforms)
       const isInteractive = INTERACTIVE_TRANSFORM_TYPES.includes(transformation.type)
-        && (transformation.content.trim().startsWith('<!DOCTYPE') || transformation.content.trim().startsWith('<html'))
+        && isHtmlContent(transformation.content)
       meta.isInteractive = isInteractive
 
       // Update the setContent tracker
