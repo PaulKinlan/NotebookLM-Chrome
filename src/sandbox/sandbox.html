@@ -152,85 +152,44 @@
       margin-right: 0.5em;
     }
 
-    /* Dark mode styles - applied via data-theme attribute or system preference */
-    /* System preference dark mode */
+    /* Dark mode support via CSS custom properties */
     @media (prefers-color-scheme: dark) {
-      body:not([data-theme="light"]) {
+      body {
         color: #e5e5e5;
       }
 
-      body:not([data-theme="light"]) pre {
+      pre {
         background: #2a2a2a;
       }
 
-      body:not([data-theme="light"]) code {
+      code {
         background: #333;
       }
 
-      body:not([data-theme="light"]) blockquote {
+      blockquote {
         background: #1a1a2e;
         color: #b0b0b0;
       }
 
-      body:not([data-theme="light"]) th {
+      th {
         background: #2a2a2a;
       }
 
-      body:not([data-theme="light"]) th,
-      body:not([data-theme="light"]) td {
+      th, td {
         border-color: #444;
       }
 
-      body:not([data-theme="light"]) tr:nth-child(even) {
+      tr:nth-child(even) {
         background: #1f1f1f;
       }
 
-      body:not([data-theme="light"]) tr:hover {
+      tr:hover {
         background: #2a2a2a;
       }
 
-      body:not([data-theme="light"]) hr {
+      hr {
         border-color: #444;
       }
-    }
-
-    /* Explicit dark theme override */
-    body[data-theme="dark"] {
-      color: #e5e5e5;
-    }
-
-    body[data-theme="dark"] pre {
-      background: #2a2a2a;
-    }
-
-    body[data-theme="dark"] code {
-      background: #333;
-    }
-
-    body[data-theme="dark"] blockquote {
-      background: #1a1a2e;
-      color: #b0b0b0;
-    }
-
-    body[data-theme="dark"] th {
-      background: #2a2a2a;
-    }
-
-    body[data-theme="dark"] th,
-    body[data-theme="dark"] td {
-      border-color: #444;
-    }
-
-    body[data-theme="dark"] tr:nth-child(even) {
-      background: #1f1f1f;
-    }
-
-    body[data-theme="dark"] tr:hover {
-      background: #2a2a2a;
-    }
-
-    body[data-theme="dark"] hr {
-      border-color: #444;
     }
 
     /* Container for content */
@@ -254,21 +213,13 @@
     }
 
     @media (prefers-color-scheme: dark) {
-      body:not([data-theme="light"]) ::-webkit-scrollbar-track {
+      ::-webkit-scrollbar-track {
         background: #2a2a2a;
       }
 
-      body:not([data-theme="light"]) ::-webkit-scrollbar-thumb {
+      ::-webkit-scrollbar-thumb {
         background: #444;
       }
-    }
-
-    body[data-theme="dark"] ::-webkit-scrollbar-track {
-      background: #2a2a2a;
-    }
-
-    body[data-theme="dark"] ::-webkit-scrollbar-thumb {
-      background: #444;
     }
   </style>
 </head>
