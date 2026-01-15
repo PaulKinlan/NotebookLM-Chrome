@@ -13,7 +13,8 @@
  * See https://github.com/fregante/chrome-extension-deploy for setup instructions
  */
 
-import { deploy } from "chrome-extension-deploy";
+import cwsDeploy from "chrome-extension-deploy";
+const { deploy } = cwsDeploy;
 
 const extensionId = process.env.CWS_EXTENSION_ID;
 const clientId = process.env.CWS_CLIENT_ID;
