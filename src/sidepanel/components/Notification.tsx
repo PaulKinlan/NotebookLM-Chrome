@@ -1,18 +1,19 @@
-interface NotificationProps {
-  message?: string
-  type?: 'success' | 'error' | 'info'
-}
+/**
+ * Notification component
+ *
+ * Displays toast notifications. Uses the notification signal directly
+ * from the store, so no props are needed.
+ */
 
-export function Notification(props: NotificationProps) {
-  const { message, type = 'info' } = props
+import { notification } from '../store'
 
-  if (!message) {
-    return null
-  }
-
+export function Notification() {
   return (
-    <div id="notification" className={`notification notification--${type}`}>
-      {message}
+    <div
+      id="notification"
+      className={`notification ${notification.value ? 'show' : 'hidden'}`}
+    >
+      {notification.value ?? ''}
     </div>
   )
 }
