@@ -338,12 +338,13 @@ Each transformation supports custom configuration through a settings popover:
 
 #### 4.7 Transform Persistence & Management
 
-Each generated transform result can be saved, deleted, or opened in a new tab for full-screen viewing.
+Each generated transform result can be saved, deleted, or opened in a new tab for full-screen viewing. **Transform history is per-notebook** - when switching between folios, the Transform tab shows only the saved transforms for that specific folio.
 
 **Features:**
 - **Save Transform**: Click the save icon to persist a generated transform to IndexedDB storage. Saved transforms are associated with the notebook and can be accessed later.
 - **Delete Transform**: Click the delete/close icon to remove a transform from the list. If the transform was saved, it is also deleted from storage.
 - **Open in New Tab**: Click the external link icon to open the transform content in a new browser tab, enabling full-screen viewing. This is especially useful for interactive content like slides, quizzes, and mind maps that benefit from more screen space.
+- **Per-Notebook Transform History**: Switching notebooks clears the Transform tab and loads saved transforms for the newly selected notebook. Unsaved transforms are cleared when switching.
 
 **UI Changes:**
 - Transform result card header now includes four action buttons (left to right):
@@ -363,6 +364,7 @@ Each generated transform result can be saved, deleted, or opened in a new tab fo
 - [x] Interactive content (quizzes, slides, etc.) renders correctly in new tab
 - [x] Markdown content is rendered with proper styling in new tab
 - [x] Blob URLs are cleaned up after tab opens to prevent memory leaks
+- [x] Transform history is per-notebook (switching notebooks loads saved transforms for that notebook)
 
 ### 5. Multimodal Sources
 

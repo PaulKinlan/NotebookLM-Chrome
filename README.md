@@ -28,6 +28,7 @@ A browser extension that helps you collect sources from tabs, bookmarks, and his
   - Save transforms to persist them for later access
   - Open in new tab for full-screen viewing (great for slides, quizzes, mind maps)
   - Delete saved transforms when no longer needed
+  - Transform history is per-notebook (switching folios shows that folio's saved transforms)
 
 ## Installation
 
