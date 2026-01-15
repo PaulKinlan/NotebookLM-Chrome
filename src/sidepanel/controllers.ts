@@ -92,6 +92,7 @@ import {
   markOnboardingComplete,
   ONBOARDING_STEPS,
 } from '../lib/onboarding.ts'
+import { startModelDownloadAsync } from '../lib/chrome-ai.ts'
 import {
   initApprovalUI,
   checkAndShowPendingApprovals,
@@ -4960,6 +4961,42 @@ function showConfirmDialog(title: string, message: string): Promise<boolean> {
 // Store handler references for proper cleanup
 let onboardingSkipHandler: (() => void) | null = null
 let onboardingNextHandler: (() => void) | null = null
+let chromeAIDownloadTriggered = false
+
+/**
+ * Trigger Chrome's built-in AI model download during onboarding.
+ * This is called on user gestures (Next/Skip clicks) to start the
+ * ~1.5GB model download in the background.
+ *
+ * The download requires a user gesture to start, so we trigger it
+ * on the first interaction during onboarding. The download continues
+ * in the background without blocking the UI.
+ */
+function triggerChromeAIDownloadOnGesture(): void {
+  // Only trigger once per session
+  if (chromeAIDownloadTriggered) {
+    return
+  }
+  chromeAIDownloadTriggered = true
+
+  console.log('[Onboarding] Triggering Chrome AI model download on user gesture')
+
+  startModelDownloadAsync(
+    // Progress callback
+    (progress) => {
+      console.log(`[Onboarding] Chrome AI download progress: ${(progress * 100).toFixed(0)}%`)
+    },
+    // Completion callback
+    (result) => {
+      if (result.success) {
+        console.log(`[Onboarding] Chrome AI model ready (status: ${result.status})`)
+      }
+      else {
+        console.log(`[Onboarding] Chrome AI model not available: ${result.error || result.status}`)
+      }
+    },
+  )
+}
 
 function showOnboarding(): void {
   onboardingStep = 0
@@ -4968,9 +5005,13 @@ function showOnboarding(): void {
 
   // Setup event listeners
   onboardingSkipHandler = () => {
+    // Trigger Chrome AI download on user gesture
+    triggerChromeAIDownloadOnGesture()
     void completeOnboarding()
   }
   onboardingNextHandler = () => {
+    // Trigger Chrome AI download on user gesture
+    triggerChromeAIDownloadOnGesture()
     nextOnboardingStep()
   }
   elements.onboardingSkip.addEventListener('click', onboardingSkipHandler)

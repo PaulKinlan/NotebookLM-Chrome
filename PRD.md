@@ -847,7 +847,7 @@ async function getModel(): Promise<LanguageModel | null> {
 - [ ] Improved content extraction (Readability.js fallback)
 - [ ] Audio generation for podcast scripts (TTS integration)
 - [ ] Export functionality (markdown, JSON export)
-- [ ] Onboarding flow (first-time user experience)
+- [x] Onboarding flow (first-time user experience, includes Chrome AI model auto-download)
 - [ ] Error handling polish (better messages, retry logic)
 - [ ] Chrome Web Store listing (icons, screenshots, description)
 - [ ] Server sync implementation
@@ -929,3 +929,10 @@ const model = builtInAI();
 - Requires Chrome flags to enable (for now)
 - Not available on all devices
 - Text-only (no multimodal support)
+
+**Model Download:**
+- The Gemini Nano model (~1.5GB) is downloaded on-demand when first used
+- Chrome requires a user gesture (click, keypress) to initiate the download
+- FolioLM automatically triggers the download during onboarding when the user interacts with the UI
+- Download progress is logged to the console; the download continues in the background
+- If the model is already downloaded, no additional action is taken
