@@ -124,6 +124,20 @@ export default [
     },
   },
   {
+    // Library files: Higher line limit for complex modules
+    files: ['src/lib/**', 'src/background.ts'],
+    plugins: {
+      '@typescript-eslint': tseslint,
+      'eslint-comments': eslintComments,
+      '@stylistic': stylistic,
+    },
+    rules: {
+      ...tseslint.configs['recommended-type-checked'].rules,
+      ...stylistic.configs.recommended.rules,
+      'max-lines': ['warn', { max: 1000, skipBlankLines: true, skipComments: true }],
+    },
+  },
+  {
     // Test files: Allow type assertions and other test-specific patterns
     files: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/test/setup.ts', 'src/sandbox/**/*.ts'],
     plugins: {
@@ -157,6 +171,8 @@ export default [
       // Allow console methods in tests
       'no-console': 'off',
       'eslint-comments/no-use': 'off',
+      // Higher line limit for test files
+      'max-lines': ['warn', { max: 1000, skipBlankLines: true, skipComments: true }],
     },
   },
   {
