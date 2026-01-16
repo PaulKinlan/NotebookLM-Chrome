@@ -46,6 +46,28 @@ export type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings'
 /** Currently active tab */
 export const activeTab = signal<TabName>('add')
 
+/**
+ * Navigate to a tab with a view transition (crossfade effect).
+ * Uses the View Transitions API for smooth panel transitions.
+ */
+export function navigateToTab(tab: TabName): void {
+  // Skip if already on this tab
+  if (activeTab.value === tab) {
+    return
+  }
+
+  // Use View Transitions API if available (Chrome 111+)
+  if (document.startViewTransition) {
+    document.startViewTransition(() => {
+      activeTab.value = tab
+    })
+  }
+  else {
+    // Fallback for environments without View Transitions API
+    activeTab.value = tab
+  }
+}
+
 // ============================================================================
 // Notification Signals
 // ============================================================================

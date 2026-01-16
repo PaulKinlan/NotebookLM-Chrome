@@ -44,6 +44,7 @@ import { checkPermissions, requestPermission as requestPerm } from '../lib/permi
 // Import signals from store
 import {
   activeTab,
+  navigateToTab,
   currentNotebookId,
   notebooks,
   sources,
@@ -176,9 +177,9 @@ export function App(props: AppProps) {
     setChatSources(sources.value)
   }, [sources.value, setChatSources])
 
-  // Handle tab switching
+  // Handle tab switching with view transitions
   const handleTabClick = (tab: TabName) => {
-    activeTab.value = tab
+    navigateToTab(tab)
   }
 
   // Handle source removal
@@ -411,8 +412,8 @@ export function App(props: AppProps) {
   return (
     <>
       <Header
-        onLibraryClick={() => { activeTab.value = 'library' }}
-        onSettingsClick={() => { activeTab.value = 'settings' }}
+        onLibraryClick={() => { navigateToTab('library') }}
+        onSettingsClick={() => { navigateToTab('settings') }}
         onNotebookChange={notebookId => void handleNotebookChange(notebookId)}
         onNewNotebook={handleNewNotebook}
         notebooks={notebooks.value}
@@ -440,7 +441,7 @@ export function App(props: AppProps) {
           onClearChat={handleClearChat}
           onRegenerateSummary={() => void handleRegenerateSummary()}
           onAddCurrentTab={() => void handleAddCurrentTab()}
-          onManageSources={() => { activeTab.value = 'add' }}
+          onManageSources={() => { navigateToTab('add') }}
           onRefreshSources={() => {
             void (async () => {
               if (!currentNotebookId.value) {
@@ -529,7 +530,7 @@ export function App(props: AppProps) {
 
       <BottomNav activeTab={activeTab.value} onTabClick={handleTabClick} />
 
-      <Fab hidden={fabHidden} onClick={() => { activeTab.value = 'add' }} />
+      <Fab hidden={fabHidden} onClick={() => { navigateToTab('add') }} />
 
       <PickerModal
         isOpen={pickerIsOpen}
