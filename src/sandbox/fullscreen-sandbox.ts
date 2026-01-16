@@ -7,7 +7,7 @@
  * Security architecture:
  * - This page is declared as a sandbox in manifest.json (permissive CSP for eval/inline scripts)
  * - Content is rendered in an inner iframe with sandbox="allow-scripts allow-forms"
- * - Content is loaded via blob URL (not srcdoc to have independent CSP)
+ * - Content is loaded via srcdoc (inherits sandbox page's permissive CSP)
  * - The sandbox attribute on the inner iframe is the security boundary
  *
  * Communication:
@@ -77,21 +77,10 @@ function renderContent(content: string, isInteractive: boolean): void {
   // Wrap content in a full HTML document if needed
   const wrappedContent = wrapContent(content, isInteractive)
 
-  // Create blob URL for the content
-  // Using blob URL (not srcdoc) ensures content has its own CSP context
-  // The sandbox attribute on the iframe is the security boundary
-  const blob = new Blob([wrappedContent], { type: 'text/html' })
-  const blobUrl = URL.createObjectURL(blob)
-
-  iframe.src = blobUrl
-
-  // Clean up blob URL after load
-  iframe.addEventListener('load', () => {
-    // Delay cleanup to ensure content is fully rendered
-    setTimeout(() => {
-      URL.revokeObjectURL(blobUrl)
-    }, 1000)
-  }, { once: true })
+  // Use srcdoc to load content - this inherits the sandbox page's permissive CSP
+  // which allows inline scripts. The sandbox attribute on the iframe provides
+  // the security boundary (restricts navigation, form submission, etc.)
+  iframe.srcdoc = wrappedContent
 }
 
 function wrapContent(html: string, isInteractive: boolean): string {
