@@ -110,6 +110,13 @@ beforeEach(() => {
     },
   })
 
+  // Mock chrome.runtime.sendMessage for REBUILD_CONTEXT_MENUS
+  vi.stubGlobal('chrome', {
+    runtime: {
+      sendMessage: vi.fn().mockResolvedValue(undefined),
+    },
+  })
+
   // Reset global signals to initial state
   currentNotebookId.value = null
   notebooks.value = []
