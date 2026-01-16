@@ -133,6 +133,10 @@ export function App(props: AppProps) {
   // State for highlighted (multi-selected) tabs in Chrome
   const [highlightedTabCount, setHighlightedTabCount] = useState(0)
 
+  // State for refresh button loading indicators
+  const [isRefreshingSources, setIsRefreshingSources] = useState(false)
+  const [isRegeneratingSummary, setIsRegeneratingSummary] = useState(false)
+
   // Check for highlighted tabs on mount and when tab becomes active
   const checkHighlightedTabs = useCallback(async () => {
     try {
@@ -370,6 +374,7 @@ export function App(props: AppProps) {
       return
     }
 
+    setIsRegeneratingSummary(true)
     try {
       await regenerateOverview()
       showNotification('Overview regenerated successfully')
@@ -377,6 +382,9 @@ export function App(props: AppProps) {
     catch (error) {
       console.error('Failed to regenerate overview:', error)
       showNotification('Failed to regenerate overview')
+    }
+    finally {
+      setIsRegeneratingSummary(false)
     }
   }
 
@@ -447,7 +455,7 @@ export function App(props: AppProps) {
                 showNotification('Please select a notebook first')
                 return
               }
-              showNotification('Refreshing sources...')
+              setIsRefreshingSources(true)
               try {
                 const result: unknown = await chrome.runtime.sendMessage({
                   type: 'REFRESH_ALL_SOURCES',
@@ -469,8 +477,13 @@ export function App(props: AppProps) {
                 console.error('Failed to refresh sources:', error)
                 showNotification('Failed to refresh sources')
               }
+              finally {
+                setIsRefreshingSources(false)
+              }
             })()
           }}
+          isRefreshingSources={isRefreshingSources}
+          isRegeneratingSummary={isRegeneratingSummary}
           onRemoveSource={id => void handleRemoveSource(id)}
           onAddSuggestedLink={(url: string, title: string) => {
             void (async () => {

@@ -17,10 +17,12 @@ interface ChatTabProps {
   onAddSuggestedLink?: (url: string, title: string) => void
   summaryContent: string | null
   showSummary: boolean
+  isRefreshingSources?: boolean
+  isRegeneratingSummary?: boolean
 }
 
 export function ChatTab(props: ChatTabProps) {
-  const { active, sources, onQuery, onClearChat, onRegenerateSummary, onAddCurrentTab, onRefreshSources, onRemoveSource, onAddSuggestedLink, summaryContent, showSummary } = props
+  const { active, sources, onQuery, onClearChat, onRegenerateSummary, onAddCurrentTab, onRefreshSources, onRemoveSource, onAddSuggestedLink, summaryContent, showSummary, isRefreshingSources = false, isRegeneratingSummary = false } = props
   const queryInputRef = useRef<HTMLInputElement>(null)
 
   // Suggested links hook
@@ -63,7 +65,7 @@ export function ChatTab(props: ChatTabProps) {
             Overview
           </h3>
           <div className="summary-header-actions">
-            <button id="regenerate-summary-btn" className="btn btn-small btn-outline" title="Regenerate overview" onClick={() => void onRegenerateSummary()}>
+            <button id="regenerate-summary-btn" className={`btn btn-small btn-outline${isRegeneratingSummary ? ' refreshing' : ''}`} title="Regenerate overview" onClick={() => void onRegenerateSummary()} disabled={isRegeneratingSummary}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M23 4v6h-6"></path>
                 <path d="M1 20v-6h6"></path>
@@ -105,7 +107,7 @@ export function ChatTab(props: ChatTabProps) {
             )
           </h3>
           <div className="sources-section-actions">
-            <button id="refresh-all-sources-btn" className="btn btn-small btn-outline" title="Refresh all sources" onClick={() => void onRefreshSources()}>
+            <button id="refresh-all-sources-btn" className={`btn btn-small btn-outline${isRefreshingSources ? ' refreshing' : ''}`} title="Refresh all sources" onClick={() => void onRefreshSources()} disabled={isRefreshingSources}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M23 4v6h-6"></path>
                 <path d="M1 20v-6h6"></path>
