@@ -129,34 +129,36 @@ export function Header(props: HeaderProps) {
             <div className="ai-model-dropdown-content">
               <div className="ai-model-dropdown-header">Select AI Profile</div>
               <div id="ai-model-list" className="ai-model-list">
-                {modelConfigs.length === 0 ? (
-                  <div className="ai-model-empty">No profiles available</div>
-                ) : (
-                  modelConfigs.map(config => {
-                    const provider = getProviderConfigById(config.providerId)
-                    const isSelected = config.id === defaultModelConfigId
-                    return (
-                      <button
-                        key={config.id}
-                        className={`ai-model-option ${isSelected ? 'selected' : ''}`}
-                        onClick={() => {
-                          void setDefault(config.id)
-                          setDropdownOpen(false)
-                        }}
-                      >
-                        <div className="ai-model-option-name">{config.name}</div>
-                        <div className="ai-model-option-meta">
-                          {provider?.displayName ?? config.providerId} • {config.model}
-                        </div>
-                        {isSelected && (
-                          <svg className="ai-model-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                        )}
-                      </button>
+                {modelConfigs.length === 0
+                  ? (
+                      <div className="ai-model-empty">No profiles available</div>
                     )
-                  })
-                )}
+                  : (
+                      modelConfigs.map((config) => {
+                        const provider = getProviderConfigById(config.providerId)
+                        const isSelected = config.id === defaultModelConfigId
+                        return (
+                          <button
+                            key={config.id}
+                            className={`ai-model-option ${isSelected ? 'selected' : ''}`}
+                            onClick={() => {
+                              void setDefault(config.id)
+                              setDropdownOpen(false)
+                            }}
+                          >
+                            <div className="ai-model-option-name">{config.name}</div>
+                            <div className="ai-model-option-meta">
+                              {`${provider?.displayName ?? config.providerId} • ${config.model}`}
+                            </div>
+                            {isSelected && (
+                              <svg className="ai-model-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                              </svg>
+                            )}
+                          </button>
+                        )
+                      })
+                    )}
               </div>
             </div>
           </div>

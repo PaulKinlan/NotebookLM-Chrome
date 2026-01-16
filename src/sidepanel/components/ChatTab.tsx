@@ -106,7 +106,17 @@ export function ChatTab(props: ChatTabProps) {
             )
           </h3>
           <div className="sources-section-actions">
-            <a href="#" id="manage-sources" className="link" onClick={(e) => { e.preventDefault(); onManageSources() }}>Manage</a>
+            <a
+              href="#"
+              id="manage-sources"
+              className="link"
+              onClick={(e) => {
+                e.preventDefault()
+                onManageSources()
+              }}
+            >
+              Manage
+            </a>
             <button id="refresh-all-sources-btn" className="btn btn-small btn-outline" title="Refresh all sources" onClick={() => void onRefreshSources()}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M23 4v6h-6"></path>
@@ -192,9 +202,10 @@ export function ChatTab(props: ChatTabProps) {
           )}
           {!suggestedLinksLoading && !suggestedLinksError && suggestedLinks.length === 0 && (
             <div className="suggested-links-empty">
-              <p>{hasExtractableLinks
-                ? 'Click the refresh button to find related links in your sources.'
-                : 'No links found in your sources. Try adding sources with links to related content.'}
+              <p>
+                {hasExtractableLinks
+                  ? 'Click the refresh button to find related links in your sources.'
+                  : 'No links found in your sources. Try adding sources with links to related content.'}
               </p>
             </div>
           )}
@@ -207,9 +218,11 @@ export function ChatTab(props: ChatTabProps) {
                     <div className="suggested-link-description">{link.description}</div>
                     <div className="suggested-link-meta">
                       <span className="suggested-link-score">
-                        {Math.round(link.relevanceScore * 100)}% relevant
+                        {`${Math.round(link.relevanceScore * 100)}% relevant`}
                       </span>
-                      <span className="suggested-link-source">from {link.sourceTitle}</span>
+                      <span className="suggested-link-source">
+                        {`from ${link.sourceTitle}`}
+                      </span>
                     </div>
                   </div>
                   <div className="suggested-link-actions">
@@ -219,7 +232,8 @@ export function ChatTab(props: ChatTabProps) {
                       onClick={() => {
                         if (onAddSuggestedLink) {
                           onAddSuggestedLink(link.url, link.title)
-                        } else {
+                        }
+                        else {
                           showNotification('Adding suggested link not available')
                         }
                       }}

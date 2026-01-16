@@ -157,57 +157,59 @@ export function SettingsTab(props: SettingsTabProps) {
           </button>
         </h3>
         <div id="profiles-list" className="profiles-list">
-          {modelConfigs.length === 0 ? (
-            <div className="empty-state-small">
-              <p>No AI profiles configured.</p>
-              <p className="setting-hint">Add a profile to start using AI features.</p>
-            </div>
-          ) : (
-            modelConfigs.map(config => {
-              const provider = getProviderConfigById(config.providerId)
-              const isDefault = config.id === defaultModelConfigId
-              return (
-                <div key={config.id} className={`profile-item ${isDefault ? 'default' : ''}`}>
-                  <div className="profile-info">
-                    <div className="profile-name">
-                      {config.name}
-                      {isDefault && <span className="badge">Default</span>}
-                    </div>
-                    <div className="profile-meta">
-                      {provider?.displayName ?? config.providerId} • {config.model}
-                    </div>
-                  </div>
-                  <div className="profile-actions">
-                    {!isDefault && (
-                      <button
-                        className="btn btn-small btn-outline"
-                        onClick={() => void setDefault(config.id)}
-                        title="Set as default"
-                      >
-                        Set Default
-                      </button>
-                    )}
-                    <button
-                      className="icon-btn"
-                      onClick={() => {
-                        if (modelConfigs.length === 1) {
-                          showNotification('Cannot delete the only profile')
-                          return
-                        }
-                        void deleteConfig(config.id)
-                      }}
-                      title="Delete profile"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                      </svg>
-                    </button>
-                  </div>
+          {modelConfigs.length === 0
+            ? (
+                <div className="empty-state-small">
+                  <p>No AI profiles configured.</p>
+                  <p className="setting-hint">Add a profile to start using AI features.</p>
                 </div>
               )
-            })
-          )}
+            : (
+                modelConfigs.map((config) => {
+                  const provider = getProviderConfigById(config.providerId)
+                  const isDefault = config.id === defaultModelConfigId
+                  return (
+                    <div key={config.id} className={`profile-item ${isDefault ? 'default' : ''}`}>
+                      <div className="profile-info">
+                        <div className="profile-name">
+                          {config.name}
+                          {isDefault && <span className="badge">Default</span>}
+                        </div>
+                        <div className="profile-meta">
+                          {`${provider?.displayName ?? config.providerId} • ${config.model}`}
+                        </div>
+                      </div>
+                      <div className="profile-actions">
+                        {!isDefault && (
+                          <button
+                            className="btn btn-small btn-outline"
+                            onClick={() => void setDefault(config.id)}
+                            title="Set as default"
+                          >
+                            Set Default
+                          </button>
+                        )}
+                        <button
+                          className="icon-btn"
+                          onClick={() => {
+                            if (modelConfigs.length === 1) {
+                              showNotification('Cannot delete the only profile')
+                              return
+                            }
+                            void deleteConfig(config.id)
+                          }}
+                          title="Delete profile"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
         </div>
       </div>
 

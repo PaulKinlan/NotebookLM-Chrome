@@ -53,11 +53,13 @@ export function useSuggestedLinks(sources: Source[]): UseSuggestedLinksReturn {
     try {
       const links = await filterLinksWithAI(sources, 10)
       suggestedLinks.value = links
-    } catch (error) {
+    }
+    catch (error) {
       console.error('[useSuggestedLinks] Failed to load suggested links:', error)
       suggestedLinksError.value = error instanceof Error ? error.message : 'Failed to load suggested links'
       suggestedLinks.value = []
-    } finally {
+    }
+    finally {
       suggestedLinksLoading.value = false
     }
   }, [sources, hasExtractable])
