@@ -182,6 +182,22 @@ export interface NotebookDialogState {
   initialName: string
 }
 
+// ============================================================================
+// Pending Context Menu Action Types
+// ============================================================================
+
+/**
+ * Represents a pending action from context menu that requires notebook creation
+ */
+export type PendingContextMenuAction
+  = | { type: 'ADD_PAGE', tabId: number }
+    | { type: 'ADD_LINK', linkUrl: string }
+    | { type: 'ADD_SELECTION_LINKS', links: string[] }
+    | null
+
+/** Pending context menu action that should execute after notebook creation */
+export const pendingContextMenuAction = signal<PendingContextMenuAction>(null)
+
 export interface ConfirmDialogState {
   isOpen: boolean
   title: string | null

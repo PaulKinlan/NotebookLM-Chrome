@@ -48,9 +48,11 @@ export {
   // Dialog Signals
   type NotebookDialogState,
   type ConfirmDialogState,
+  type PendingContextMenuAction,
   notebookDialog,
   confirmDialog,
   confirmCallback,
+  pendingContextMenuAction,
 
   // Summary Signals
   summaryContent,

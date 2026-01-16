@@ -62,11 +62,11 @@ export interface ChromeBridgeCallbacks {
   /** Called when sources are added (e.g., from background script) */
   onSourceAdded?: () => void
   /** Called when a context menu action needs to create a notebook and add a page */
-  onCreateNotebookAndAddPage?: (tabId: number) => Promise<void>
+  onCreateNotebookAndAddPage?: (tabId: number) => void | Promise<void>
   /** Called when a context menu action needs to create a notebook and add a link */
-  onCreateNotebookAndAddLink?: (linkUrl: string) => Promise<void>
+  onCreateNotebookAndAddLink?: (linkUrl: string) => void | Promise<void>
   /** Called when a context menu action needs to create a notebook and add multiple links */
-  onCreateNotebookAndAddSelectionLinks?: (links: string[]) => Promise<void>
+  onCreateNotebookAndAddSelectionLinks?: (links: string[]) => void | Promise<void>
   /** Called when tabs are highlighted (for updating UI) */
   onTabsHighlighted?: () => void
   /** Called when tabs are created/removed (for updating counts) */

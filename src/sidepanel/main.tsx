@@ -9,13 +9,7 @@ import { initChromeBridge, checkPendingActions } from './chrome-bridge'
 import { initTheme } from './hooks/useTheme.tsx'
 import { initBroadcastListeners } from './lib/broadcast'
 import { migrateLegacyAISettings, initializeDefaultProfile } from '../lib/model-configs.ts'
-import {
-  createNotebook,
-  saveNotebook,
-  getNotebooks,
-  setActiveNotebookId,
-} from '../lib/storage'
-import { currentNotebookId, notebooks } from './store'
+import { notebookDialog, pendingContextMenuAction } from './store'
 
 // ============================================================================
 // Context Menu Callback Helpers
@@ -53,21 +47,21 @@ function isValidUrl(urlString: string): boolean {
 }
 
 /**
- * Creates a new notebook, sets it as active, updates signals, and rebuilds context menus
+ * Opens the notebook dialog with a suggested name and sets up the pending action
  */
-async function createNotebookAndSetActive(name: string): Promise<string> {
-  const notebook = createNotebook(name)
-  await saveNotebook(notebook)
-  await setActiveNotebookId(notebook.id)
+function openDialogWithPendingAction(
+  suggestedName: string,
+  action: NonNullable<typeof pendingContextMenuAction.value>,
+): void {
+  // Set the pending action to execute after notebook creation
+  pendingContextMenuAction.value = action
 
-  // Update signals to refresh UI
-  currentNotebookId.value = notebook.id
-  notebooks.value = await getNotebooks()
-
-  // Rebuild context menus to include the new notebook
-  chrome.runtime.sendMessage({ type: 'REBUILD_CONTEXT_MENUS' }).catch(() => {})
-
-  return notebook.id
+  // Open the dialog with the suggested name
+  notebookDialog.value = {
+    isOpen: true,
+    mode: 'create',
+    initialName: suggestedName,
+  }
 }
 
 /**
@@ -88,19 +82,16 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
       return
     }
 
-    const notebookName = tab.title
-      ? `Folio: ${truncateAtWordBoundary(tab.title, 30)}`
+    // Suggest a name based on the tab title
+    const suggestedName = tab.title
+      ? truncateAtWordBoundary(tab.title, 40)
       : 'New Folio'
 
-    const notebookId = await createNotebookAndSetActive(notebookName)
-
-    await chrome.runtime.sendMessage({
-      type: 'EXTRACT_FROM_URL',
-      payload: { url: tab.url, notebookId },
-    })
+    // Open dialog with pending action
+    openDialogWithPendingAction(suggestedName, { type: 'ADD_PAGE', tabId })
   }
   catch (error) {
-    console.error('Failed to create notebook and add page:', error)
+    console.error('Failed to handle create notebook and add page:', error)
   }
   finally {
     isProcessingContextMenuAction = false
@@ -110,7 +101,7 @@ async function handleCreateNotebookAndAddPage(tabId: number): Promise<void> {
 /**
  * Handle context menu "New Folio + add link" flow
  */
-async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
+function handleCreateNotebookAndAddLink(linkUrl: string): void {
   if (isProcessingContextMenuAction) {
     return
   }
@@ -123,18 +114,15 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
       return
     }
 
+    // Suggest a name based on the hostname
     const urlHost = new URL(linkUrl).hostname
-    const notebookName = `Folio: ${urlHost}`
+    const suggestedName = urlHost
 
-    const notebookId = await createNotebookAndSetActive(notebookName)
-
-    await chrome.runtime.sendMessage({
-      type: 'EXTRACT_FROM_URL',
-      payload: { url: linkUrl, notebookId },
-    })
+    // Open dialog with pending action
+    openDialogWithPendingAction(suggestedName, { type: 'ADD_LINK', linkUrl })
   }
   catch (error) {
-    console.error('Failed to create notebook and add link:', error)
+    console.error('Failed to handle create notebook and add link:', error)
   }
   finally {
     isProcessingContextMenuAction = false
@@ -144,7 +132,7 @@ async function handleCreateNotebookAndAddLink(linkUrl: string): Promise<void> {
 /**
  * Handle context menu "New Folio + add selection links" flow
  */
-async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promise<void> {
+function handleCreateNotebookAndAddSelectionLinks(links: string[]): void {
   if (isProcessingContextMenuAction) {
     return
   }
@@ -158,27 +146,14 @@ async function handleCreateNotebookAndAddSelectionLinks(links: string[]): Promis
       return
     }
 
-    const notebookName = `Folio: ${validLinks.length} link${validLinks.length > 1 ? 's' : ''}`
-    const notebookId = await createNotebookAndSetActive(notebookName)
+    // Suggest a name based on number of links
+    const suggestedName = `${validLinks.length} link${validLinks.length > 1 ? 's' : ''}`
 
-    // Process links in parallel for better performance
-    const results = await Promise.allSettled(
-      validLinks.map(linkUrl =>
-        chrome.runtime.sendMessage({
-          type: 'EXTRACT_FROM_URL',
-          payload: { url: linkUrl, notebookId },
-        }),
-      ),
-    )
-
-    // Log any failures
-    const failures = results.filter(r => r.status === 'rejected')
-    if (failures.length > 0) {
-      console.warn(`Failed to extract ${failures.length} of ${validLinks.length} links`)
-    }
+    // Open dialog with pending action
+    openDialogWithPendingAction(suggestedName, { type: 'ADD_SELECTION_LINKS', links: validLinks })
   }
   catch (error) {
-    console.error('Failed to create notebook and add selection links:', error)
+    console.error('Failed to handle create notebook and add selection links:', error)
   }
   finally {
     isProcessingContextMenuAction = false
