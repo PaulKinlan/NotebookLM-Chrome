@@ -4188,13 +4188,19 @@ details.suggested-links-section[open] .suggested-links-chevron {
 
 .time-range-btn:hover {
   background: var(--bg-hover);
-  border-color: var(--accent);
+  border-color: var(--accent-primary);
 }
 
 .time-range-btn.active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.time-range-btn.active:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .usage-stats-summary {
