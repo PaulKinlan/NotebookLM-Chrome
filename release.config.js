@@ -15,6 +15,12 @@ const config = {
       },
     ],
     [
+      "@semantic-release/npm",
+      {
+        npmPublish: false,
+      },
+    ],
+    [
       "@semantic-release/exec",
       {
         prepareCmd: "node scripts/version.js",
