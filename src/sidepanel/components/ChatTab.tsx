@@ -338,7 +338,6 @@ export function ChatTab(props: ChatTabProps) {
           </button>
           <div id="autocomplete-dropdown" className="autocomplete-dropdown hidden"></div>
         </div>
-        <p className="helper-text" id="chat-status">Ask questions to synthesize information from your sources.</p>
       </div>
     </section>
   )
