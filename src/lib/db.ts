@@ -355,6 +355,23 @@ export async function dbDeleteByIndex(
   })
 }
 
+export async function dbCountByIndex(
+  storeName: string,
+  indexName: string,
+  value: IDBValidKey,
+): Promise<number> {
+  const db = await getDB()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(storeName, 'readonly')
+    const store = transaction.objectStore(storeName)
+    const index = store.index(indexName)
+    const request = index.count(value)
+
+    request.onerror = () => reject(new Error(`Failed to count ${storeName} by ${indexName}`))
+    request.onsuccess = () => resolve(request.result)
+  })
+}
+
 export async function dbClear(storeName: string): Promise<void> {
   const db = await getDB()
   return new Promise((resolve, reject) => {

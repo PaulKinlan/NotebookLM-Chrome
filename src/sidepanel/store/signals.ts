@@ -150,6 +150,9 @@ export const sourceCount = computed(() => sources.value.length)
 /** Whether there are any sources (computed) */
 export const hasSources = computed(() => sources.value.length > 0)
 
+/** Source counts by notebook ID (for library view) */
+export const sourceCountsByNotebook = signal<Record<string, number>>({})
+
 // ============================================================================
 // Chat Signals
 // ============================================================================

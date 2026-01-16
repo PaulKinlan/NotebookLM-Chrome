@@ -27,6 +27,7 @@ export interface StorageAdapter {
   getSource(id: string): Promise<Source | null>
   saveSource(source: Source): Promise<void>
   deleteSource(id: string): Promise<void>
+  getSourceCountByNotebook(notebookId: string): Promise<number>
 
   // Chat Events
   getChatHistory(notebookId: string): Promise<ChatEvent[]>

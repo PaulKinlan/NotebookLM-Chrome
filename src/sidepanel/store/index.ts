@@ -36,6 +36,7 @@ export {
   sourcesLoading,
   sourceCount,
   hasSources,
+  sourceCountsByNotebook,
 
   // Chat Signals
   chatMessages,

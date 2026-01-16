@@ -18,6 +18,7 @@ import {
   dbPut,
   dbDelete,
   dbDeleteByIndex,
+  dbCountByIndex,
   dbClearAll,
 } from './db.ts'
 import { postSourcesMessage, postNotebooksMessage, postChatMessage } from '../sidepanel/lib/broadcast'
@@ -120,6 +121,10 @@ class IndexedDBStorage implements StorageAdapter {
       const event: SourceDeletedEvent = { type: 'source:deleted', notebookId: source.notebookId, sourceId: id }
       postSourcesMessage(event)
     }
+  }
+
+  async getSourceCountByNotebook(notebookId: string): Promise<number> {
+    return dbCountByIndex('sources', 'notebookId', notebookId)
   }
 
   // --------------------------------------------------------------------------
@@ -435,6 +440,7 @@ export const getSourcesByNotebook = (notebookId: string) => storage.getSourcesBy
 export const getSource = (id: string) => storage.getSource(id)
 export const saveSource = (source: Source) => storage.saveSource(source)
 export const deleteSource = (id: string) => storage.deleteSource(id)
+export const getSourceCountByNotebook = (notebookId: string) => storage.getSourceCountByNotebook(notebookId)
 
 export const getChatHistory = (notebookId: string) => storage.getChatHistory(notebookId)
 export const saveChatEvent = (event: ChatEvent) => storage.saveChatEvent(event)

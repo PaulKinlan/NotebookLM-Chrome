@@ -1,5 +1,5 @@
 import type { Notebook } from '../../types/index.ts'
-import { notebooks, currentNotebookId } from '../store'
+import { notebooks, currentNotebookId, sourceCountsByNotebook } from '../store'
 
 interface LibraryTabProps {
   active: boolean
@@ -65,6 +65,12 @@ export function LibraryTab(props: LibraryTabProps) {
                   <div className="notebook-info">
                     <div className="notebook-name">{notebook.name}</div>
                     <div className="notebook-meta">
+                      <span>
+                        {sourceCountsByNotebook.value[notebook.id] ?? 0}
+                        {' '}
+                        sources
+                      </span>
+                      <span className="meta-separator">·</span>
                       <span>{`Updated ${formatDate(notebook.updatedAt)}`}</span>
                     </div>
                   </div>

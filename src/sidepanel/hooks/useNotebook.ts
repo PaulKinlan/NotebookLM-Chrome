@@ -12,6 +12,7 @@ import {
   currentNotebookId,
   notebooks,
   notebooksLoading,
+  sourceCountsByNotebook,
 } from '../store'
 import {
   getNotebooks,
@@ -20,6 +21,7 @@ import {
   saveNotebook,
   deleteNotebook as deleteNb,
   createNotebook as createNb,
+  getSourceCountByNotebook,
 } from '../../lib/storage.ts'
 
 export interface UseNotebookReturn {
@@ -49,16 +51,28 @@ export function useNotebook(): UseNotebookReturn {
     void loadActiveNotebook()
   }, [])
 
+  const loadSourceCounts = useCallback(async (notebookList: Notebook[]) => {
+    const counts: Record<string, number> = {}
+    await Promise.all(
+      notebookList.map(async (notebook) => {
+        counts[notebook.id] = await getSourceCountByNotebook(notebook.id)
+      }),
+    )
+    sourceCountsByNotebook.value = counts
+  }, [])
+
   const loadNotebooks = useCallback(async () => {
     notebooksLoading.value = true
     try {
       const loaded = await getNotebooks()
       notebooks.value = loaded
+      // Load source counts for all notebooks
+      await loadSourceCounts(loaded)
     }
     finally {
       notebooksLoading.value = false
     }
-  }, [])
+  }, [loadSourceCounts])
 
   const loadActiveNotebook = useCallback(async () => {
     const activeId = await getActiveNotebookId()

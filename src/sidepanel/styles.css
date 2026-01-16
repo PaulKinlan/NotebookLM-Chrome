@@ -1920,6 +1920,11 @@ details.suggested-links-section[open] .suggested-links-chevron {
   color: var(--text-secondary);
 }
 
+.notebook-meta .meta-separator {
+  margin: 0 4px;
+  opacity: 0.5;
+}
+
 /* ============================================================================
    Settings
    ============================================================================ */
