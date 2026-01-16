@@ -4635,3 +4635,42 @@ details.suggested-links-section[open] .suggested-links-chevron {
   }
 }
 
+/* ============================================================================
+   View Transitions - Panel Navigation
+   ============================================================================ */
+
+/* Customize the view transition animation for panel switching */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+}
+
+/* Crossfade effect - old view fades out */
+::view-transition-old(root) {
+  animation-name: panel-fade-out;
+}
+
+/* Crossfade effect - new view fades in */
+::view-transition-new(root) {
+  animation-name: panel-fade-in;
+}
+
+@keyframes panel-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes panel-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
