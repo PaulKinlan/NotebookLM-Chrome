@@ -96,10 +96,7 @@ export function SandboxContent(props: SandboxContentProps) {
       )}
       {error && (
         <div className="sandbox-error">
-          <p>
-            Failed to render:
-            {error}
-          </p>
+          <p>{`Failed to render: ${error}`}</p>
         </div>
       )}
     </div>

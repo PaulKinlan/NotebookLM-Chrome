@@ -275,11 +275,7 @@ export function PickerModal(props: PickerModalProps) {
                 )}
         </div>
         <div className="modal-footer">
-          <span id="picker-selected-count">
-            {selectedCount}
-            {' '}
-            selected
-          </span>
+          <span id="picker-selected-count">{`${selectedCount} selected`}</span>
           <div className="modal-actions">
             <button id="picker-cancel" className="btn btn-outline" onClick={onClose}>Cancel</button>
             <button

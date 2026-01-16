@@ -176,10 +176,7 @@ export function SettingsTab(props: SettingsTabProps) {
                           {isDefault && <span className="badge">Default</span>}
                         </div>
                         <div className="profile-meta">
-                          {provider?.displayName ?? config.providerId}
-                          {' '}
-                          •
-                          {config.model}
+                          {`${provider?.displayName ?? config.providerId} • ${config.model}`}
                         </div>
                       </div>
                       <div className="profile-actions">

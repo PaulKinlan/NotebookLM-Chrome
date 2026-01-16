@@ -65,10 +65,7 @@ export function LibraryTab(props: LibraryTabProps) {
                   <div className="notebook-info">
                     <div className="notebook-name">{notebook.name}</div>
                     <div className="notebook-meta">
-                      <span>
-                        Updated
-                        {formatDate(notebook.updatedAt)}
-                      </span>
+                      <span>{`Updated ${formatDate(notebook.updatedAt)}`}</span>
                     </div>
                   </div>
                   <div className="notebook-actions">

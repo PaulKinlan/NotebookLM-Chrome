@@ -148,10 +148,7 @@ export function Header(props: HeaderProps) {
                           >
                             <div className="ai-model-option-name">{config.name}</div>
                             <div className="ai-model-option-meta">
-                              {provider?.displayName ?? config.providerId}
-                              {' '}
-                              •
-                              {config.model}
+                              {`${provider?.displayName ?? config.providerId} • ${config.model}`}
                             </div>
                             {isSelected && (
                               <svg className="ai-model-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

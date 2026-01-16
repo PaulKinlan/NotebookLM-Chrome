@@ -218,12 +218,10 @@ export function ChatTab(props: ChatTabProps) {
                     <div className="suggested-link-description">{link.description}</div>
                     <div className="suggested-link-meta">
                       <span className="suggested-link-score">
-                        {Math.round(link.relevanceScore * 100)}
-                        % relevant
+                        {`${Math.round(link.relevanceScore * 100)}% relevant`}
                       </span>
                       <span className="suggested-link-source">
-                        from
-                        {link.sourceTitle}
+                        {`from ${link.sourceTitle}`}
                       </span>
                     </div>
                   </div>

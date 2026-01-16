@@ -14,6 +14,8 @@ function isRefreshSourcesResponse(value: unknown): value is RefreshSourcesRespon
     && value !== null
     && 'success' in value
     && typeof (value as RefreshSourcesResponse).success === 'boolean'
+    && 'refreshedCount' in value
+    && typeof (value as RefreshSourcesResponse).refreshedCount === 'number'
   )
 }
 
