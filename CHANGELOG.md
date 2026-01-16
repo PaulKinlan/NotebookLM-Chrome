@@ -1,3 +1,20 @@
+# [0.8.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.7.0...v0.8.0) (2026-01-16)
+
+
+### Bug Fixes
+
+* **settings:** format permissions for better readability ([5db03c0](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/5db03c097d5baea510b7a7f8d2d3d571f4e04742))
+* **sidepanel:** improve chat tab UI layout and defaults ([43f9225](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/43f922592cc941f84ae62fc8c97c96fd13a39611))
+
+
+### Features
+
+* **commitlint:** add 'settings' to scope-enum for improved commit message categorization ([062561f](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/062561ff27c40cb07cf261f4c6fc943863770d62))
+* **sidepanel:** restore AI profile creation functionality ([0593100](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/059310090f78b743ac309fc8c97d6dc74bf841fc))
+* **sidepanel:** restore transform configuration options UI ([6f50c9b](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/6f50c9b82ae865c3daf2e7252ed706f4378310ed))
+* **sidepanel:** restore transform configuration options UI ([3ded546](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/3ded54635f8025f1cc5b9d8e7ef00b6e6b616eda))
+* **sidepanel:** support multiple concurrent transformations ([d1f8bef](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/d1f8befa3f5fe37e0d0650384c254613893ae418))
+
 # [0.7.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.6.0...v0.7.0) (2026-01-16)
 
 
