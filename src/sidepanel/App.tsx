@@ -18,17 +18,10 @@ import { Notification } from './components/Notification'
 import { Onboarding } from './components/Onboarding'
 import {
   addCurrentTab as addCurrentTabService,
-  getTabs,
   importTabs,
-  getTabGroups,
-  importTabGroups,
-  getBookmarks,
-  importBookmarks,
-  getHistory,
-  importHistory,
+  addSourceFromUrl,
 } from './services/sources'
-import { clearAllData as clearAllStorage, saveSummary } from '../lib/storage'
-import { generateSummary } from '../lib/ai'
+import { clearAllData as clearAllStorage } from '../lib/storage'
 import { checkPermissions, requestPermission as requestPerm } from '../lib/permissions'
 
 // Import signals from store
@@ -53,8 +46,10 @@ import {
   useChat,
   useToolPermissions,
   useTransform,
+  usePickerModal,
+  useOverview,
 } from './hooks'
-import { useEffect } from 'preact/hooks'
+import { useEffect, useState, useCallback } from 'preact/hooks'
 
 // ============================================================================
 // Types
@@ -88,7 +83,7 @@ export function App(props: AppProps) {
   } = useDialog()
 
   // Notebook hooks (keep for now, will be refactored)
-  const { selectNotebook, createNotebook } = useNotebook()
+  const { selectNotebook, createNotebook, deleteNotebook } = useNotebook()
   const { removeSource } = useSources(currentNotebookId.value)
 
   // Chat hooks
@@ -96,12 +91,67 @@ export function App(props: AppProps) {
 
   // Feature hooks
   const { loadConfig: loadToolConfig } = useToolPermissions()
-  const { transform } = useTransform()
+  const { transform } = useTransform(currentNotebookId.value)
+
+  // Picker modal hook
+  const {
+    isOpen: pickerIsOpen,
+    pickerType,
+    filteredItems: pickerItems,
+    isLoading: pickerLoading,
+    searchQuery: pickerSearchQuery,
+    openPicker,
+    closePicker,
+    setSearchQuery: setPickerSearchQuery,
+    toggleItem: togglePickerItem,
+    selectAll: selectAllPickerItems,
+    deselectAll: deselectAllPickerItems,
+    addSelected: addSelectedPickerItems,
+  } = usePickerModal()
+
+  // Overview hook - loads and caches notebook summary
+  const { regenerateOverview } = useOverview(currentNotebookId.value, sources.value)
+
+  // State for highlighted (multi-selected) tabs in Chrome
+  const [highlightedTabCount, setHighlightedTabCount] = useState(0)
+
+  // Check for highlighted tabs on mount and when tab becomes active
+  const checkHighlightedTabs = useCallback(async () => {
+    try {
+      const tabs = await chrome.tabs.query({ highlighted: true, currentWindow: true })
+      // Subtract 1 because the sidepanel's tab might be highlighted too
+      const count = tabs.filter(t => t.url && !t.url.startsWith('chrome://')).length
+      setHighlightedTabCount(count > 1 ? count : 0)
+    } catch {
+      setHighlightedTabCount(0)
+    }
+  }, [])
 
   // Initialize tool permissions on mount
   useEffect(() => {
     void loadToolConfig()
   }, [loadToolConfig])
+
+  // Check highlighted tabs on mount and periodically
+  useEffect(() => {
+    void checkHighlightedTabs()
+
+    // Also check when the window gains focus
+    const handleFocus = () => void checkHighlightedTabs()
+    window.addEventListener('focus', handleFocus)
+
+    // Check periodically when on Add tab
+    const interval = setInterval(() => {
+      if (activeTab.value === 'add') {
+        void checkHighlightedTabs()
+      }
+    }, 2000)
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      clearInterval(interval)
+    }
+  }, [checkHighlightedTabs])
 
   // Sync sources to chat hook when they change
   useEffect(() => {
@@ -153,7 +203,32 @@ export function App(props: AppProps) {
     }
   }
 
-  const handleImportTabs = async () => {
+  // Handle adding highlighted (multi-selected) tabs
+  const handleAddHighlightedTabs = async () => {
+    if (!currentNotebookId.value) {
+      showNotification('Please select a notebook first')
+      return
+    }
+
+    try {
+      const tabs = await chrome.tabs.query({ highlighted: true, currentWindow: true })
+      const validTabs = tabs.filter(t => t.url && !t.url.startsWith('chrome://') && t.id)
+
+      if (validTabs.length === 0) {
+        showNotification('No valid tabs selected')
+        return
+      }
+
+      const importedSources = await importTabs(validTabs.map(t => String(t.id)))
+      showNotification(`Added ${importedSources.length} tabs`)
+      setHighlightedTabCount(0)
+    } catch (error) {
+      console.error('Failed to add highlighted tabs:', error)
+      showNotification('Failed to add selected tabs')
+    }
+  }
+
+  const handleOpenTabsPicker = async () => {
     if (!currentNotebookId.value) {
       showNotification('Please select a notebook first')
       return
@@ -169,30 +244,24 @@ export function App(props: AppProps) {
       }
     }
 
-    try {
-      const tabs = await getTabs()
-      if (tabs.length === 0) {
-        showNotification('No tabs found to import')
-        return
-      }
-
-      const importedSources = await importTabs(tabs.map(t => t.id))
-      showNotification(`Imported ${importedSources.length} tabs`)
-    }
-    catch (error) {
-      console.error('Failed to import tabs:', error)
-      showNotification('Failed to import tabs')
-    }
+    await openPicker('tabs')
   }
 
-  const handleImportTabGroups = async () => {
+  const handleOpenTabGroupsPicker = async () => {
     if (!currentNotebookId.value) {
       showNotification('Please select a notebook first')
       return
     }
 
-    // Check permission
+    // Check permissions
     const perms = await checkPermissions()
+    if (!perms.tabs) {
+      const granted = await requestPerm('tabs')
+      if (!granted) {
+        showNotification('Tabs permission is required')
+        return
+      }
+    }
     if (!perms.tabGroups) {
       const granted = await requestPerm('tabGroups')
       if (!granted) {
@@ -201,23 +270,10 @@ export function App(props: AppProps) {
       }
     }
 
-    try {
-      const groups = await getTabGroups()
-      if (groups.length === 0) {
-        showNotification('No tab groups found')
-        return
-      }
-
-      const importedSources = await importTabGroups(groups.map(g => g.id))
-      showNotification(`Imported ${importedSources.length} sources from tab groups`)
-    }
-    catch (error) {
-      console.error('Failed to import tab groups:', error)
-      showNotification('Failed to import tab groups')
-    }
+    await openPicker('tabGroups')
   }
 
-  const handleImportBookmarks = async () => {
+  const handleOpenBookmarksPicker = async () => {
     if (!currentNotebookId.value) {
       showNotification('Please select a notebook first')
       return
@@ -233,23 +289,10 @@ export function App(props: AppProps) {
       }
     }
 
-    try {
-      const bookmarks = await getBookmarks()
-      if (bookmarks.length === 0) {
-        showNotification('No bookmarks found')
-        return
-      }
-
-      const importedSources = await importBookmarks(bookmarks.map(b => b.id))
-      showNotification(`Imported ${importedSources.length} bookmarks`)
-    }
-    catch (error) {
-      console.error('Failed to import bookmarks:', error)
-      showNotification('Failed to import bookmarks')
-    }
+    await openPicker('bookmarks')
   }
 
-  const handleImportHistory = async () => {
+  const handleOpenHistoryPicker = async () => {
     if (!currentNotebookId.value) {
       showNotification('Please select a notebook first')
       return
@@ -265,19 +308,25 @@ export function App(props: AppProps) {
       }
     }
 
-    try {
-      const historyItems = await getHistory(100)
-      if (historyItems.length === 0) {
-        showNotification('No history found')
-        return
-      }
+    await openPicker('history')
+  }
 
-      const importedSources = await importHistory(historyItems.map(h => h.id))
-      showNotification(`Imported ${importedSources.length} history items`)
+  // Handle adding selected items from picker
+  const handleAddPickerItems = async () => {
+    const count = await addSelectedPickerItems()
+    if (count > 0) {
+      showNotification(`Added ${count} items`)
     }
-    catch (error) {
-      console.error('Failed to import history:', error)
-      showNotification('Failed to import history')
+  }
+
+  // Get picker title based on type
+  const getPickerTitle = () => {
+    switch (pickerType) {
+      case 'tabs': return 'Select Tabs'
+      case 'tabGroups': return 'Select Tab Groups'
+      case 'bookmarks': return 'Select Bookmarks'
+      case 'history': return 'Select from History'
+      default: return 'Select Items'
     }
   }
 
@@ -302,25 +351,12 @@ export function App(props: AppProps) {
     }
 
     try {
-      const content = await generateSummary(sources.value)
-      await saveSummary({
-        id: crypto.randomUUID(),
-        notebookId: currentNotebookId.value,
-        sourceIds: sources.value.map(s => s.id),
-        content,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      })
-
-      // Update signal state
-      summaryContent.value = content
-      showSummary.value = true
-
-      showNotification('Summary regenerated successfully')
+      await regenerateOverview()
+      showNotification('Overview regenerated successfully')
     }
     catch (error) {
-      console.error('Failed to regenerate summary:', error)
-      showNotification('Failed to regenerate summary')
+      console.error('Failed to regenerate overview:', error)
+      showNotification('Failed to regenerate overview')
     }
   }
 
@@ -368,11 +404,13 @@ export function App(props: AppProps) {
         <AddTab
           active={activeTab.value === 'add'}
           sources={sources.value}
+          highlightedTabCount={highlightedTabCount}
           onAddCurrentTab={() => void handleAddCurrentTab()}
-          onImportTabs={() => void handleImportTabs()}
-          onImportTabGroups={() => void handleImportTabGroups()}
-          onImportBookmarks={() => void handleImportBookmarks()}
-          onImportHistory={() => void handleImportHistory()}
+          onAddHighlightedTabs={() => void handleAddHighlightedTabs()}
+          onImportTabs={() => void handleOpenTabsPicker()}
+          onImportTabGroups={() => void handleOpenTabGroupsPicker()}
+          onImportBookmarks={() => void handleOpenBookmarksPicker()}
+          onImportHistory={() => void handleOpenHistoryPicker()}
           onRemoveSource={id => void handleRemoveSource(id)}
         />
 
@@ -383,14 +421,77 @@ export function App(props: AppProps) {
           onClearChat={handleClearChat}
           onRegenerateSummary={() => void handleRegenerateSummary()}
           onAddCurrentTab={() => void handleAddCurrentTab()}
+          onManageSources={() => { activeTab.value = 'add' }}
+          onRefreshSources={async () => {
+            if (!currentNotebookId.value) {
+              showNotification('Please select a notebook first')
+              return
+            }
+            showNotification('Refreshing sources...')
+            try {
+              const result = await chrome.runtime.sendMessage({
+                type: 'REFRESH_ALL_SOURCES',
+                payload: { notebookId: currentNotebookId.value },
+              })
+              if (result?.success) {
+                if (result.refreshedCount > 0) {
+                  showNotification(`Refreshed ${result.refreshedCount} source${result.refreshedCount > 1 ? 's' : ''}`)
+                } else {
+                  showNotification('No sources to refresh')
+                }
+              } else {
+                showNotification('Failed to refresh sources')
+              }
+            } catch (error) {
+              console.error('Failed to refresh sources:', error)
+              showNotification('Failed to refresh sources')
+            }
+          }}
           onRemoveSource={id => void handleRemoveSource(id)}
+          onAddSuggestedLink={async (url: string, title: string) => {
+            if (!currentNotebookId.value) {
+              showNotification('Please select a notebook first')
+              return
+            }
+            try {
+              const source = await addSourceFromUrl(url, title)
+              if (source) {
+                showNotification(`Added "${title}" to notebook`)
+              } else {
+                showNotification('Failed to add link')
+              }
+            } catch (error) {
+              console.error('Failed to add suggested link:', error)
+              showNotification('Failed to add link')
+            }
+          }}
           summaryContent={summaryContent.value}
           showSummary={showSummary.value}
         />
 
-        <TransformTab active={activeTab.value === 'transform'} onTransform={handleTransform} />
+        <TransformTab active={activeTab.value === 'transform'} onTransform={handleTransform} notebookId={currentNotebookId.value} />
 
-        <LibraryTab active={activeTab.value === 'library'} />
+        <LibraryTab
+          active={activeTab.value === 'library'}
+          onSelectNotebook={notebookId => void handleNotebookChange(notebookId)}
+          onCreateNotebook={handleNewNotebook}
+          onEditNotebook={(notebook) => {
+            notebookDialog.value = {
+              isOpen: true,
+              mode: 'edit',
+              initialName: notebook.name,
+            }
+          }}
+          onDeleteNotebook={(notebookId) => {
+            showConfirmDialog(
+              'Delete Notebook',
+              'Are you sure you want to delete this notebook? This will also delete all sources in the notebook.',
+              () => {
+                void deleteNotebook(notebookId)
+              },
+            )
+          }}
+        />
 
         <SettingsTab
           active={activeTab.value === 'settings'}
@@ -402,7 +503,20 @@ export function App(props: AppProps) {
 
       <Fab hidden={fabHidden} onClick={() => { activeTab.value = 'add' }} />
 
-      <PickerModal />
+      <PickerModal
+        isOpen={pickerIsOpen}
+        title={getPickerTitle()}
+        items={pickerItems}
+        isLoading={pickerLoading}
+        searchQuery={pickerSearchQuery}
+        selectedCount={pickerItems.filter(i => i.selected).length}
+        onClose={closePicker}
+        onSearchChange={setPickerSearchQuery}
+        onToggleItem={togglePickerItem}
+        onSelectAll={selectAllPickerItems}
+        onDeselectAll={deselectAllPickerItems}
+        onAddSelected={() => void handleAddPickerItems()}
+      />
       <NotebookDialog
         isOpen={notebookDialog.value.isOpen}
         mode={notebookDialog.value.mode}

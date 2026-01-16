@@ -8,7 +8,7 @@
  * - Opening transformations in new tabs
  */
 
-import { useState, useCallback } from 'preact/hooks'
+import { useCallback, useEffect } from 'preact/hooks'
 import DOMPurify from 'dompurify'
 import type { Source, TransformationType } from '../../types/index.ts'
 import {
@@ -36,9 +36,11 @@ import {
   saveTransformation,
   deleteTransformation,
   createTransformation,
+  getTransformations,
 } from '../../lib/storage.ts'
 import { renderMarkdown, isHtmlContent } from '../../lib/markdown-renderer.ts'
 import { escapeHtml } from '../dom-utils.ts'
+import { transformHistory, transforming } from '../store'
 
 // Maximum number of transform cards to keep in history
 const MAX_TRANSFORM_HISTORY = 10
@@ -117,6 +119,8 @@ export interface UseTransformReturn {
   deleteResult: (result: TransformResult) => Promise<void>
   /** Open a transform in a new tab */
   openInNewTab: (result: TransformResult) => void
+  /** Reload transform history from storage */
+  reloadHistory: () => Promise<void>
 }
 
 /**
@@ -234,21 +238,57 @@ function generateFullPageHtml(title: string, content: string): string {
 /**
  * Hook for managing content transformations
  */
-export function useTransform(): UseTransformReturn {
-  const [isTransforming, setIsTransforming] = useState(false)
-  const [history, setHistory] = useState<TransformResult[]>([])
+export function useTransform(notebookId: string | null = null): UseTransformReturn {
+  // Load transform history when notebook changes
+  useEffect(() => {
+    if (notebookId) {
+      void loadHistory()
+    }
+    else {
+      transformHistory.value = []
+    }
+  }, [notebookId])
+
+  const loadHistory = useCallback(async () => {
+    if (!notebookId) {
+      transformHistory.value = []
+      return
+    }
+
+    const transformations = await getTransformations(notebookId)
+
+    // Convert stored transformations to TransformResult format
+    const results: TransformResult[] = transformations.map((t) => {
+      // Determine if this is interactive content
+      const isInteractive = INTERACTIVE_TYPES.has(t.type) && isHtmlContent(t.content)
+
+      return {
+        id: t.id,
+        title: t.title,
+        type: t.type,
+        content: t.content,
+        isInteractive,
+        sourceIds: t.sourceIds,
+        notebookId: t.notebookId,
+        timestamp: t.createdAt,
+        savedId: t.id, // Already saved, so savedId = id
+      }
+    })
+
+    transformHistory.value = results
+  }, [notebookId])
 
   const transform = useCallback(async (
     type: TransformationType,
     sources: Source[],
-    notebookId: string,
+    nbId: string,
   ) => {
     if (sources.length === 0) {
       console.warn('[useTransform] No sources to transform')
       return
     }
 
-    setIsTransforming(true)
+    transforming.value = true
     try {
       let output = ''
 
@@ -293,28 +333,26 @@ export function useTransform(): UseTransformReturn {
         content: output,
         isInteractive,
         sourceIds: sources.map(s => s.id),
-        notebookId,
+        notebookId: nbId,
         timestamp: Date.now(),
         savedId: null,
       }
 
       // Add to history (newest first, enforce limit)
-      setHistory((prev) => {
-        const newHistory = [result, ...prev]
-        return newHistory.slice(0, MAX_TRANSFORM_HISTORY)
-      })
+      const newHistory = [result, ...transformHistory.value]
+      transformHistory.value = newHistory.slice(0, MAX_TRANSFORM_HISTORY)
     }
     finally {
-      setIsTransforming(false)
+      transforming.value = false
     }
   }, [])
 
   const removeResult = useCallback((id: string) => {
-    setHistory(prev => prev.filter(r => r.id !== id))
+    transformHistory.value = transformHistory.value.filter((r: TransformResult) => r.id !== id)
   }, [])
 
   const clearHistory = useCallback(() => {
-    setHistory([])
+    transformHistory.value = []
   }, [])
 
   const saveResult = useCallback(async (result: TransformResult) => {
@@ -334,9 +372,9 @@ export function useTransform(): UseTransformReturn {
     await saveTransformation(transformation)
 
     // Update the result with its saved ID
-    setHistory(prev => prev.map(r =>
+    transformHistory.value = transformHistory.value.map((r: TransformResult) =>
       r.id === result.id ? { ...r, savedId: transformation.id } : r,
-    ))
+    )
   }, [])
 
   const deleteResult = useCallback(async (result: TransformResult) => {
@@ -348,57 +386,52 @@ export function useTransform(): UseTransformReturn {
   }, [removeResult])
 
   const openInNewTab = useCallback((result: TransformResult) => {
-    let fullHtml: string
+    // For interactive content, use chrome.tabs message passing:
+    // - Open fullscreen-wrapper.html via chrome.tabs.create() to get tab ID
+    // - Send content via chrome.tabs.sendMessage() once the tab loads
+    // - The wrapper renders content in a sandboxed iframe using blob URLs
+    //
+    // For non-interactive (markdown) content, we can use a blob URL since it doesn't need inline scripts.
 
     if (result.isInteractive) {
-      // For interactive content, embed in a sandboxed iframe for security
-      const escapedContent = result.content
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
+      // Open the wrapper page
+      const wrapperUrl = chrome.runtime.getURL('src/sandbox/fullscreen-wrapper.html')
 
-      fullHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(result.title)} - FolioLM</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: #1a1a2e; }
-    body {
-      display: flex;
-      flex-direction: column;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: #e4e4e7;
-    }
-    header {
-      padding: 16px 24px;
-      background: #252538;
-      border-bottom: 1px solid #3f3f5a;
-    }
-    h1 { font-size: 20px; color: #fff; }
-    .iframe-container { flex: 1; padding: 24px; }
-    iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      border-radius: 12px;
-      background: #fff;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>${escapeHtml(result.title)}</h1>
-  </header>
-  <div class="iframe-container">
-    <iframe sandbox="allow-scripts" srcdoc="${escapedContent}"></iframe>
-  </div>
-</body>
-</html>`
+      chrome.tabs.create({ url: wrapperUrl }, (tab) => {
+        if (!tab?.id) {
+          return
+        }
+
+        const tabId = tab.id
+
+        // Wait for the tab to finish loading before sending content
+        const listener = (
+          updatedTabId: number,
+          changeInfo: { status?: string },
+        ) => {
+          if (updatedTabId !== tabId || changeInfo.status !== 'complete') {
+            return
+          }
+
+          // Tab is ready, send content via chrome.tabs.sendMessage
+          void chrome.tabs.sendMessage(tabId, {
+            type: 'FULLSCREEN_CONTENT',
+            title: result.title,
+            content: result.content,
+            isInteractive: true,
+          })
+
+          // Clean up listener
+          chrome.tabs.onUpdated.removeListener(listener)
+        }
+
+        chrome.tabs.onUpdated.addListener(listener)
+
+        // Fallback: clean up listener after 30 seconds
+        setTimeout(() => {
+          chrome.tabs.onUpdated.removeListener(listener)
+        }, 30000)
+      })
     }
     else {
       // For markdown content, sanitize with DOMPurify before insertion
@@ -406,56 +439,59 @@ export function useTransform(): UseTransformReturn {
       const sanitizedContent = DOMPurify.sanitize(renderedContent, {
         USE_PROFILES: { html: true },
       })
-      fullHtml = generateFullPageHtml(result.title, sanitizedContent)
-    }
+      let fullHtml = generateFullPageHtml(result.title, sanitizedContent)
 
-    // Sanitize the entire document for non-interactive content
-    if (!result.isInteractive) {
+      // Sanitize the entire document
       fullHtml = DOMPurify.sanitize(fullHtml, {
         WHOLE_DOCUMENT: true,
         USE_PROFILES: { html: true },
       })
-    }
 
-    const blob = new Blob([fullHtml], { type: 'text/html' })
-    const url = URL.createObjectURL(blob)
+      const blob = new Blob([fullHtml], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
 
-    chrome.tabs.create({ url }, (tab) => {
-      // Clean up blob URL when tab finishes loading
-      if (!tab?.id) {
-        URL.revokeObjectURL(url)
-        return
-      }
-
-      const tabId = tab.id
-      const listener = (
-        updatedTabId: number,
-        changeInfo: { status?: string },
-      ) => {
-        if (updatedTabId === tabId && changeInfo.status === 'complete') {
+      chrome.tabs.create({ url }, (tab) => {
+        // Clean up blob URL when tab finishes loading (not a fixed timeout)
+        if (!tab?.id) {
           URL.revokeObjectURL(url)
-          chrome.tabs.onUpdated.removeListener(listener)
+          return
         }
-      }
 
-      chrome.tabs.onUpdated.addListener(listener)
+        const tabId = tab.id
+        const listener = (
+          updatedTabId: number,
+          changeInfo: { status?: string },
+        ) => {
+          if (updatedTabId === tabId && changeInfo.status === 'complete') {
+            URL.revokeObjectURL(url)
+            chrome.tabs.onUpdated.removeListener(listener)
+          }
+        }
 
-      // Fallback cleanup after 30 seconds
-      setTimeout(() => {
-        chrome.tabs.onUpdated.removeListener(listener)
-        URL.revokeObjectURL(url)
-      }, 30000)
-    })
+        chrome.tabs.onUpdated.addListener(listener)
+
+        // Fallback cleanup after 30 seconds in case onUpdated never fires
+        setTimeout(() => {
+          chrome.tabs.onUpdated.removeListener(listener)
+          URL.revokeObjectURL(url)
+        }, 30000)
+      })
+    }
   }, [])
 
+  const reloadHistory = useCallback(async () => {
+    await loadHistory()
+  }, [loadHistory])
+
   return {
-    isTransforming,
-    history,
+    isTransforming: transforming.value,
+    history: transformHistory.value,
     transform,
     removeResult,
     clearHistory,
     saveResult,
     deleteResult,
     openInNewTab,
+    reloadHistory,
   }
 }

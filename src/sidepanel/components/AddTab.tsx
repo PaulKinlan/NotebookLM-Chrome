@@ -4,7 +4,9 @@ import { SourceItem } from './SourceItem'
 interface AddTabProps {
   active: boolean
   sources: Source[]
+  highlightedTabCount: number
   onAddCurrentTab: () => void
+  onAddHighlightedTabs: () => void
   onImportTabs: () => void
   onImportTabGroups: () => void
   onImportBookmarks: () => void
@@ -16,7 +18,9 @@ export function AddTab(props: AddTabProps) {
   const {
     active,
     sources,
+    highlightedTabCount,
     onAddCurrentTab,
+    onAddHighlightedTabs,
     onImportTabs,
     onImportTabGroups,
     onImportBookmarks,
@@ -35,14 +39,22 @@ export function AddTab(props: AddTabProps) {
         </button>
       </div>
 
-      <button id="add-current-tab-btn" className="btn btn-primary btn-large" onClick={onAddCurrentTab}>
+      <button
+        id="add-current-tab-btn"
+        className="btn btn-primary btn-large"
+        onClick={highlightedTabCount > 0 ? onAddHighlightedTabs : onAddCurrentTab}
+      >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
-        Add Current Tab
+        {highlightedTabCount > 0 ? `Add ${highlightedTabCount} Tabs` : 'Add Current Tab'}
       </button>
-      <p className="helper-text">Captures the active page content immediately.</p>
+      <p className="helper-text">
+        {highlightedTabCount > 0
+          ? `${highlightedTabCount} tabs selected in Chrome. Click to add all.`
+          : 'Captures the active page content immediately.'}
+      </p>
 
       <div className="search-box">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

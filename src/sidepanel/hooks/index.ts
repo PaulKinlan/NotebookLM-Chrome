@@ -14,6 +14,9 @@ export { useToolPermissions } from './useToolPermissions'
 export { useTransform } from './useTransform'
 export { usePickerModal } from './usePickerModal'
 export { useOnboarding } from './useOnboarding'
+export { useModelConfigs } from './useModelConfigs'
+export { useSuggestedLinks } from './useSuggestedLinks'
+export { useOverview } from './useOverview'
 
 // NOTE: useNavigation and useNotification have been replaced by signals
 // Import from store instead:

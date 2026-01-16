@@ -1,0 +1,444 @@
+diff --git a/src/sandbox/fullscreen-sandbox.html b/src/sandbox/fullscreen-sandbox.html
+new file mode 100644
+index 0000000..40be709
+--- /dev/null
++++ b/src/sandbox/fullscreen-sandbox.html
+@@ -0,0 +1,52 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>FolioLM</title>
++  <style>
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    html, body {
++      height: 100%;
++      /* Transparent background - wrapper handles the styling */
++      background: transparent;
++    }
++
++    body {
++      display: flex;
++      flex-direction: column;
++    }
++
++    .iframe-container {
++      flex: 1;
++      min-height: 0;
++    }
++
++    iframe {
++      width: 100%;
++      height: 100%;
++      border: none;
++      background: #fff;
++    }
++
++    .error {
++      padding: 20px;
++      color: #ef4444;
++      text-align: center;
++      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
++    }
++  </style>
++</head>
++<body>
++  <!-- No header - the wrapper page handles the header/title display -->
++  <div class="iframe-container">
++    <iframe id="content-frame" sandbox="allow-scripts allow-forms"></iframe>
++  </div>
++  <script type="module" src="fullscreen-sandbox.ts"></script>
++</body>
++</html>
+diff --git a/src/sandbox/fullscreen-sandbox.ts b/src/sandbox/fullscreen-sandbox.ts
+new file mode 100644
+index 0000000..0fd9008
+--- /dev/null
++++ b/src/sandbox/fullscreen-sandbox.ts
+@@ -0,0 +1,153 @@
++/**
++ * Fullscreen Sandbox Script
++ *
++ * This script runs in a sandboxed page that is embedded as an iframe
++ * within the fullscreen-wrapper page.
++ *
++ * Security architecture:
++ * - This page is declared as a sandbox in manifest.json (permissive CSP for eval/inline scripts)
++ * - Content is rendered in an inner iframe with sandbox="allow-scripts allow-forms"
++ * - Content is loaded via srcdoc (inherits sandbox page's permissive CSP)
++ * - The sandbox attribute on the inner iframe is the security boundary
++ *
++ * Communication:
++ * - Receives content via postMessage from parent wrapper
++ * - Sandboxed pages cannot use chrome.* APIs, hence the wrapper bridge
++ */
++
++// Make this file an ES module to avoid global scope conflicts
++export {}
++
++// Message types for postMessage communication (from wrapper parent)
++interface SandboxContentMessage {
++  type: 'SANDBOX_CONTENT'
++  title: string
++  content: string
++  isInteractive: boolean
++}
++
++interface SandboxReadyMessage {
++  type: 'SANDBOX_READY'
++}
++
++// Initialize - listen for content from parent wrapper
++initializePostMessageListener()
++
++function showError(message: string): void {
++  const container = document.querySelector('.iframe-container')
++  if (container) {
++    const errorDiv = document.createElement('div')
++    errorDiv.className = 'error'
++    errorDiv.textContent = message
++    container.replaceChildren(errorDiv)
++  }
++}
++
++function initializePostMessageListener(): void {
++  // Listen for content from parent wrapper via postMessage
++  window.addEventListener('message', (event: MessageEvent) => {
++    // Only accept messages from parent window (the wrapper)
++    if (event.source !== window.parent) {
++      return
++    }
++
++    const data = event.data as SandboxContentMessage | undefined
++    if (!data || data.type !== 'SANDBOX_CONTENT') {
++      return
++    }
++
++    // Render content (title is displayed by the wrapper page)
++    renderContent(data.content, data.isInteractive)
++  })
++
++  // Signal to parent that we're ready to receive content
++  window.parent.postMessage({
++    type: 'SANDBOX_READY',
++  } satisfies SandboxReadyMessage, '*')
++}
++
++function renderContent(content: string, isInteractive: boolean): void {
++  const iframe = document.getElementById('content-frame') as HTMLIFrameElement | null
++
++  if (!iframe) {
++    showError('Content frame not found')
++    return
++  }
++
++  // Wrap content in a full HTML document if needed
++  const wrappedContent = wrapContent(content, isInteractive)
++
++  // Use srcdoc to load content - this inherits the sandbox page's permissive CSP
++  // which allows inline scripts. The sandbox attribute on the iframe provides
++  // the security boundary (restricts navigation, form submission, etc.)
++  iframe.srcdoc = wrappedContent
++}
++
++function wrapContent(html: string, isInteractive: boolean): string {
++  const trimmed = html.trim()
++  const hasDoctype = trimmed.toLowerCase().startsWith('<!doctype')
++  const hasHtml = trimmed.toLowerCase().startsWith('<html')
++
++  if (hasDoctype || hasHtml) {
++    // Content is already a full document
++    return html
++  }
++
++  // Content is a fragment - wrap in full document
++  // For interactive content, we don't add restrictive CSP - the sandbox handles security
++  // For non-interactive content, we add basic styling
++  if (isInteractive) {
++    return `<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <style>html, body { margin: 0; padding: 0; height: 100%; }</style>
++</head>
++<body>
++${html}
++</body>
++</html>`
++  }
++
++  // Non-interactive content with styling
++  return `<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <style>
++    * { box-sizing: border-box; margin: 0; padding: 0; }
++    html, body { height: 100%; }
++    body {
++      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
++      font-size: 16px;
++      line-height: 1.6;
++      color: #1a1a1a;
++      padding: 24px;
++      max-width: 800px;
++      margin: 0 auto;
++    }
++    h1, h2, h3, h4, h5, h6 { margin: 1em 0 0.5em; font-weight: 600; line-height: 1.3; }
++    h1 { font-size: 1.8em; }
++    h2 { font-size: 1.5em; }
++    h3 { font-size: 1.25em; }
++    p { margin: 0.75em 0; }
++    pre { background: #f5f5f5; border-radius: 6px; padding: 12px; overflow-x: auto; margin: 1em 0; }
++    code { font-family: 'SF Mono', Monaco, monospace; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
++    pre code { background: transparent; padding: 0; }
++    ul, ol { margin: 0.75em 0; padding-left: 1.5em; }
++    li { margin: 0.25em 0; }
++    blockquote { border-left: 3px solid #6366f1; margin: 1em 0; padding: 0.5em 0 0.5em 1em; color: #666; background: #f8f8ff; border-radius: 0 6px 6px 0; }
++    a { color: #6366f1; text-decoration: none; }
++    table { border-collapse: collapse; width: 100%; margin: 1em 0; }
++    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
++    th { background: #f5f5f5; font-weight: 600; }
++    hr { border: none; border-top: 1px solid #ddd; margin: 1.5em 0; }
++  </style>
++</head>
++<body>
++${html}
++</body>
++</html>`
++}
+diff --git a/src/sandbox/fullscreen-wrapper.html b/src/sandbox/fullscreen-wrapper.html
+new file mode 100644
+index 0000000..9ab0978
+--- /dev/null
++++ b/src/sandbox/fullscreen-wrapper.html
+@@ -0,0 +1,83 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8">
++  <meta name="viewport" content="width=device-width, initial-scale=1.0">
++  <title>FolioLM</title>
++  <style>
++    * {
++      box-sizing: border-box;
++      margin: 0;
++      padding: 0;
++    }
++
++    html, body {
++      height: 100%;
++      background: #1a1a2e;
++    }
++
++    body {
++      display: flex;
++      flex-direction: column;
++      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
++      color: #e4e4e7;
++    }
++
++    header {
++      padding: 16px 24px;
++      background: #252538;
++      border-bottom: 1px solid #3f3f5a;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++
++    h1 {
++      font-size: 20px;
++      color: #fff;
++      font-weight: 500;
++    }
++
++    .branding {
++      font-size: 12px;
++      color: #9ca3af;
++    }
++
++    .iframe-container {
++      flex: 1;
++      min-height: 0;
++    }
++
++    iframe {
++      width: 100%;
++      height: 100%;
++      border: none;
++    }
++
++    .loading {
++      display: flex;
++      align-items: center;
++      justify-content: center;
++      height: 100%;
++      color: #9ca3af;
++    }
++
++    .error {
++      padding: 20px;
++      color: #ef4444;
++      text-align: center;
++    }
++  </style>
++</head>
++<body>
++  <header>
++    <h1 id="title">Loading...</h1>
++    <span class="branding">FolioLM</span>
++  </header>
++  <div class="iframe-container">
++    <!-- Embed the sandboxed page - receives content via postMessage -->
++    <iframe id="sandbox-frame"></iframe>
++  </div>
++  <script type="module" src="fullscreen-wrapper.ts"></script>
++</body>
++</html>
+diff --git a/src/sandbox/fullscreen-wrapper.ts b/src/sandbox/fullscreen-wrapper.ts
+new file mode 100644
+index 0000000..84d0f2e
+--- /dev/null
++++ b/src/sandbox/fullscreen-wrapper.ts
+@@ -0,0 +1,132 @@
++/**
++ * Fullscreen Wrapper Script (Bridge)
++ *
++ * This script runs in a standard extension page (NOT sandboxed).
++ * It acts as a bridge between the side panel and the sandboxed iframe.
++ *
++ * Architecture:
++ * Side Panel ──chrome.tabs.sendMessage──> Wrapper (this page) ──postMessage──> Sandbox (iframe)
++ *
++ * Why this pattern:
++ * - Sandboxed pages cannot use chrome.* APIs
++ * - This wrapper page IS an extension page, so it CAN use chrome.runtime.onMessage
++ * - The wrapper then forwards content to the sandboxed iframe via postMessage
++ * - The sandboxed page has permissive CSP allowing inline scripts in blob URLs
++ */
++
++// Make this file an ES module to avoid global scope conflicts
++export {}
++
++// Message type for content from side panel (via chrome.runtime.onMessage)
++interface FullscreenContentMessage {
++  type: 'FULLSCREEN_CONTENT'
++  title: string
++  content: string
++  isInteractive: boolean
++}
++
++// Message types for postMessage communication (to/from sandbox iframe)
++interface SandboxReadyMessage {
++  type: 'SANDBOX_READY'
++}
++
++interface SandboxContentMessage {
++  type: 'SANDBOX_CONTENT'
++  title: string
++  content: string
++  isInteractive: boolean
++}
++
++// Initialize bridge
++initializeBridge()
++
++function showError(message: string): void {
++  const container = document.querySelector('.iframe-container')
++  if (container) {
++    const errorDiv = document.createElement('div')
++    errorDiv.className = 'error'
++    errorDiv.textContent = message
++    container.replaceChildren(errorDiv)
++  }
++}
++
++function initializeBridge(): void {
++  const sandboxFrame = document.getElementById('sandbox-frame') as HTMLIFrameElement | null
++
++  if (!sandboxFrame) {
++    showError('Sandbox frame not found')
++    return
++  }
++
++  // Set the sandbox frame src to the sandboxed page using absolute URL
++  const sandboxUrl = chrome.runtime.getURL('src/sandbox/fullscreen-sandbox.html')
++  sandboxFrame.src = sandboxUrl
++
++  // Store content until sandbox is ready
++  let pendingContent: FullscreenContentMessage | null = null
++  let sandboxReady = false
++
++  // Listen for messages from the sandboxed iframe via postMessage
++  window.addEventListener('message', (event: MessageEvent) => {
++    // Verify the message is from our iframe
++    if (event.source !== sandboxFrame.contentWindow) {
++      return
++    }
++
++    const data = event.data as SandboxReadyMessage | undefined
++    if (data?.type === 'SANDBOX_READY') {
++      sandboxReady = true
++
++      // If we have pending content, send it now
++      if (pendingContent) {
++        forwardContentToSandbox(sandboxFrame, pendingContent)
++        pendingContent = null
++      }
++    }
++  })
++
++  // Listen for content from the side panel via chrome.runtime.onMessage
++  chrome.runtime.onMessage.addListener((
++    message: unknown,
++    _sender: chrome.runtime.MessageSender,
++    sendResponse: (response?: unknown) => void,
++  ) => {
++    const data = message as FullscreenContentMessage | undefined
++    if (!data || data.type !== 'FULLSCREEN_CONTENT') {
++      return false
++    }
++
++    // Update title in wrapper
++    const titleEl = document.getElementById('title')
++    if (titleEl) {
++      titleEl.textContent = data.title
++    }
++    document.title = `${data.title} - FolioLM`
++
++    // Forward to sandbox or store for later
++    if (sandboxReady) {
++      forwardContentToSandbox(sandboxFrame, data)
++    }
++    else {
++      pendingContent = data
++    }
++
++    // Acknowledge receipt
++    sendResponse({ success: true })
++    return true
++  })
++}
++
++function forwardContentToSandbox(
++  iframe: HTMLIFrameElement,
++  content: FullscreenContentMessage,
++): void {
++  // Forward content to sandbox via postMessage
++  // The sandbox iframe listens for SANDBOX_CONTENT messages
++  iframe.contentWindow?.postMessage({
++    type: 'SANDBOX_CONTENT',
++    title: content.title,
++    content: content.content,
++    isInteractive: content.isInteractive,
++  } satisfies SandboxContentMessage, '*')
++}

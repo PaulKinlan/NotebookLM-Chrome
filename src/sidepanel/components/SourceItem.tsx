@@ -3,10 +3,22 @@ import type { Source } from '../../types/index.ts'
 interface SourceItemProps {
   source: Source
   onRemove?: (sourceId: string) => void
+  onOpenInNewTab?: (url: string) => void
 }
 
 export function SourceItem(props: SourceItemProps) {
-  const { source, onRemove } = props
+  const { source, onRemove, onOpenInNewTab } = props
+
+  const handleOpenInNewTab = () => {
+    if (source.url) {
+      if (onOpenInNewTab) {
+        onOpenInNewTab(source.url)
+      }
+      else {
+        window.open(source.url, '_blank')
+      }
+    }
+  }
 
   const maxLength = 60
   const truncatedTitle = source.title.length > maxLength
@@ -63,19 +75,34 @@ export function SourceItem(props: SourceItemProps) {
         <div className="source-title" title={source.title}>{truncatedTitle}</div>
         <div className="source-url">{source.url}</div>
       </div>
-      {onRemove && (
-        <button
-          className="source-remove-btn"
-          data-source-id={source.id}
-          title="Remove source"
-          onClick={() => void onRemove(source.id)}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      )}
+      <div className="source-actions">
+        {source.url && (
+          <button
+            className="source-action-btn"
+            title="Open in new tab"
+            onClick={handleOpenInNewTab}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+          </button>
+        )}
+        {onRemove && (
+          <button
+            className="source-action-btn source-remove-btn"
+            data-source-id={source.id}
+            title="Remove source"
+            onClick={() => void onRemove(source.id)}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        )}
+      </div>
     </div>
   )
 }

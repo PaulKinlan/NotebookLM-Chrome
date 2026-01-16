@@ -374,6 +374,32 @@ export async function importHistory(urls: string[]): Promise<Source[]> {
 }
 
 // ============================================================================
+// Add from URL (for suggested links)
+// ============================================================================
+
+export async function addSourceFromUrl(url: string, title: string): Promise<Source | null> {
+  const notebookId = await getCurrentNotebookIdState()
+  if (!notebookId) {
+    console.error('No notebook selected')
+    return null
+  }
+
+  // Create a basic source from the URL
+  // Content extraction happens when the user opens it as a tab
+  const source = addSourceToNotebook(
+    notebookId,
+    'manual',
+    url,
+    title || url,
+    `Link: ${url}`,
+  )
+
+  chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
+
+  return source
+}
+
+// ============================================================================
 // Content extraction function (injected into pages)
 // ============================================================================
 

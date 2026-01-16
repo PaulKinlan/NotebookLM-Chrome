@@ -14,6 +14,7 @@ import type {
   ResolvedTheme,
   ChatEvent as ChatEventType,
 } from '../../types/index.ts'
+import type { TransformResult } from '../hooks/useTransform.ts'
 
 // ============================================================================
 // Notebook Signals
@@ -183,6 +184,22 @@ export const onboardingStep = signal(0)
 
 /** Whether onboarding overlay should be hidden */
 export const onboardingHidden = signal(false)
+
+// ============================================================================
+// Transform Signals
+// ============================================================================
+
+/** Transform history for the current notebook */
+export const transformHistory = signal<TransformResult[]>([])
+
+/** Whether a transformation is in progress */
+export const transforming = signal(false)
+
+/** Number of transforms in history (computed) */
+export const transformCount = computed(() => transformHistory.value.length)
+
+/** Whether there are any transforms (computed) */
+export const hasTransforms = computed(() => transformHistory.value.length > 0)
 
 // ============================================================================
 // Initial Tab State (passed from main.tsx)

@@ -1,8 +1,9 @@
 import { useRef } from 'preact/hooks'
 import type { Source } from '../../types/index.ts'
 import { SourceItem } from './SourceItem'
-import { chatMessages } from '../store'
+import { chatMessages, showNotification } from '../store'
 import { For } from '@preact/signals/utils'
+import { useSuggestedLinks } from '../hooks/useSuggestedLinks'
 
 interface ChatTabProps {
   active: boolean
@@ -11,14 +12,27 @@ interface ChatTabProps {
   onClearChat: () => void
   onRegenerateSummary: () => void
   onAddCurrentTab: () => void
+  onManageSources: () => void
+  onRefreshSources: () => void
   onRemoveSource?: (sourceId: string) => void
+  onAddSuggestedLink?: (url: string, title: string) => void
   summaryContent: string | null
   showSummary: boolean
 }
 
 export function ChatTab(props: ChatTabProps) {
-  const { active, sources, onQuery, onClearChat, onRegenerateSummary, onAddCurrentTab, onRemoveSource, summaryContent, showSummary } = props
+  const { active, sources, onQuery, onClearChat, onRegenerateSummary, onAddCurrentTab, onManageSources, onRefreshSources, onRemoveSource, onAddSuggestedLink, summaryContent, showSummary } = props
   const queryInputRef = useRef<HTMLInputElement>(null)
+
+  // Suggested links hook
+  const {
+    suggestedLinks,
+    loading: suggestedLinksLoading,
+    error: suggestedLinksError,
+    count: suggestedLinksCount,
+    hasExtractable: hasExtractableLinks,
+    loadSuggestedLinks,
+  } = useSuggestedLinks(sources)
 
   const handleQuery = () => {
     const question = queryInputRef.current?.value.trim()
@@ -92,8 +106,8 @@ export function ChatTab(props: ChatTabProps) {
             )
           </h3>
           <div className="sources-section-actions">
-            <a href="#" id="manage-sources" className="link">Manage</a>
-            <button id="refresh-all-sources-btn" className="btn btn-small btn-outline" title="Refresh all sources">
+            <a href="#" id="manage-sources" className="link" onClick={(e) => { e.preventDefault(); onManageSources() }}>Manage</a>
+            <button id="refresh-all-sources-btn" className="btn btn-small btn-outline" title="Refresh all sources" onClick={() => void onRefreshSources()}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M23 4v6h-6"></path>
                 <path d="M1 20v-6h6"></path>
@@ -129,8 +143,8 @@ export function ChatTab(props: ChatTabProps) {
         </div>
       </details>
 
-      {/* Suggested Links Section (Collapsible) */}
-      <details id="suggested-links-section" className="suggested-links-section" style={{ display: 'none' }}>
+      {/* Suggested Links Section (Collapsible) - show when there are sources */}
+      <details id="suggested-links-section" className="suggested-links-section" style={{ display: sources.length > 0 ? 'block' : 'none' }}>
         <summary className="suggested-links-header">
           <h3 className="section-title">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -138,12 +152,22 @@ export function ChatTab(props: ChatTabProps) {
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
             </svg>
             Suggested Links (
-            <span id="suggested-links-count">0</span>
+            <span id="suggested-links-count">{suggestedLinksCount}</span>
             )
           </h3>
           <div className="suggested-links-header-actions">
-            <button id="refresh-links-btn" className="btn btn-small btn-outline" title="Refresh suggestions">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <button
+              id="refresh-links-btn"
+              className="btn btn-small btn-outline"
+              title="Find related links"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                void loadSuggestedLinks()
+              }}
+              disabled={suggestedLinksLoading}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={suggestedLinksLoading ? 'spin' : ''}>
                 <path d="M23 4v6h-6"></path>
                 <path d="M1 20v-6h6"></path>
                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
@@ -155,14 +179,75 @@ export function ChatTab(props: ChatTabProps) {
           </div>
         </summary>
         <div id="suggested-links-content" className="suggested-links-content">
-          <div className="suggested-links-loading" style={{ display: 'none' }}>
-            <span className="loading-spinner"></span>
-            <span>Analyzing links...</span>
-          </div>
-          <div id="suggested-links-list" className="suggested-links-list"></div>
-          <div className="suggested-links-empty" style={{ display: 'none' }}>
-            <p>No relevant links found in your sources.</p>
-          </div>
+          {suggestedLinksLoading && (
+            <div className="suggested-links-loading">
+              <span className="loading-spinner"></span>
+              <span>Analyzing links with AI...</span>
+            </div>
+          )}
+          {suggestedLinksError && (
+            <div className="suggested-links-error">
+              <p>{suggestedLinksError}</p>
+            </div>
+          )}
+          {!suggestedLinksLoading && !suggestedLinksError && suggestedLinks.length === 0 && (
+            <div className="suggested-links-empty">
+              <p>{hasExtractableLinks
+                ? 'Click the refresh button to find related links in your sources.'
+                : 'No links found in your sources. Try adding sources with links to related content.'}
+              </p>
+            </div>
+          )}
+          {!suggestedLinksLoading && suggestedLinks.length > 0 && (
+            <div id="suggested-links-list" className="suggested-links-list">
+              {suggestedLinks.map(link => (
+                <div key={link.url} className="suggested-link-item">
+                  <div className="suggested-link-info">
+                    <div className="suggested-link-title">{link.title}</div>
+                    <div className="suggested-link-description">{link.description}</div>
+                    <div className="suggested-link-meta">
+                      <span className="suggested-link-score">
+                        {Math.round(link.relevanceScore * 100)}% relevant
+                      </span>
+                      <span className="suggested-link-source">from {link.sourceTitle}</span>
+                    </div>
+                  </div>
+                  <div className="suggested-link-actions">
+                    <button
+                      className="btn btn-small btn-outline"
+                      title="Add as source"
+                      onClick={() => {
+                        if (onAddSuggestedLink) {
+                          onAddSuggestedLink(link.url, link.title)
+                        } else {
+                          showNotification('Adding suggested link not available')
+                        }
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                      </svg>
+                      Add
+                    </button>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-small btn-outline"
+                      title="Open link"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                      </svg>
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </details>
 

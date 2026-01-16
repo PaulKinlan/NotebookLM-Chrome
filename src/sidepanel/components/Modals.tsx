@@ -142,19 +142,62 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
 }
 
 /**
+ * Picker Modal Props
+ */
+interface PickerModalProps {
+  isOpen: boolean
+  title: string
+  items: Array<{
+    id: string
+    title: string
+    url?: string
+    domain?: string
+    favicon?: string
+    selected: boolean
+  }>
+  isLoading: boolean
+  searchQuery: string
+  selectedCount: number
+  onClose: () => void
+  onSearchChange: (query: string) => void
+  onToggleItem: (id: string) => void
+  onSelectAll: () => void
+  onDeselectAll: () => void
+  onAddSelected: () => void
+}
+
+/**
  * Picker Modal component
  *
- * This modal is managed by the usePickerModal hook which handles
- * DOM manipulation internally. TODO: Refactor to pure Preact.
+ * Modal for selecting items (tabs, bookmarks, history) to add as sources.
  */
-export function PickerModal() {
+export function PickerModal(props: PickerModalProps) {
+  const {
+    isOpen,
+    title,
+    items,
+    isLoading,
+    searchQuery,
+    selectedCount,
+    onClose,
+    onSearchChange,
+    onToggleItem,
+    onSelectAll,
+    onDeselectAll,
+    onAddSelected,
+  } = props
+
+  if (!isOpen) {
+    return null
+  }
+
   return (
-    <div id="picker-modal" className="modal hidden">
-      <div className="modal-backdrop"></div>
+    <div id="picker-modal" className="modal">
+      <div className="modal-backdrop" onClick={onClose}></div>
       <div className="modal-content">
         <div className="modal-header">
-          <h3 id="picker-title">Select Items</h3>
-          <button id="picker-close" className="icon-btn">
+          <h3 id="picker-title">{title}</h3>
+          <button id="picker-close" className="icon-btn" onClick={onClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -166,14 +209,77 @@ export function PickerModal() {
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
           </svg>
-          <input type="text" id="picker-search" placeholder="Search..." />
+          <input
+            type="text"
+            id="picker-search"
+            placeholder="Search..."
+            value={searchQuery}
+            onInput={(e) => onSearchChange((e.target as HTMLInputElement).value)}
+          />
         </div>
-        <div id="picker-list" className="picker-list"></div>
+        <div className="picker-select-actions">
+          <button className="btn btn-small btn-outline" onClick={onSelectAll}>Select All</button>
+          <button className="btn btn-small btn-outline" onClick={onDeselectAll}>Deselect All</button>
+        </div>
+        <div id="picker-list" className="picker-list">
+          {isLoading ? (
+            <div className="picker-loading">
+              <span className="loading-spinner"></span>
+              <span>Loading...</span>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="picker-empty">
+              <p>No items found</p>
+            </div>
+          ) : (
+            items.map(item => (
+              <div
+                key={item.id}
+                className={`picker-item ${item.selected ? 'selected' : ''}`}
+                onClick={() => onToggleItem(item.id)}
+              >
+                <div className="picker-checkbox">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <div className="picker-icon">
+                  {item.favicon ? (
+                    <img
+                      src={item.favicon}
+                      alt=""
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement
+                        img.style.display = 'none'
+                        if (img.parentNode) {
+                          img.parentNode.textContent = item.title.charAt(0).toUpperCase()
+                        }
+                      }}
+                    />
+                  ) : (
+                    item.title.charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="picker-info">
+                  <div className="picker-title">{item.title}</div>
+                  {item.domain && <div className="picker-url">{item.domain}</div>}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
         <div className="modal-footer">
-          <span id="picker-selected-count">0 selected</span>
+          <span id="picker-selected-count">{selectedCount} selected</span>
           <div className="modal-actions">
-            <button id="picker-cancel" className="btn btn-outline">Cancel</button>
-            <button id="picker-add" className="btn btn-primary">Add Selected</button>
+            <button id="picker-cancel" className="btn btn-outline" onClick={onClose}>Cancel</button>
+            <button
+              id="picker-add"
+              className="btn btn-primary"
+              onClick={onAddSelected}
+              disabled={selectedCount === 0}
+            >
+              Add Selected
+            </button>
           </div>
         </div>
       </div>

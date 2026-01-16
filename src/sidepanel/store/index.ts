@@ -62,6 +62,12 @@ export {
   onboardingStep,
   onboardingHidden,
 
+  // Transform Signals
+  transformHistory,
+  transforming,
+  transformCount,
+  hasTransforms,
+
   // Initial Tab State
   initialTab,
 } from './signals.ts'

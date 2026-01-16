@@ -1,0 +1,312 @@
+diff --git a/src/sidepanel/controllers.ts b/src/sidepanel/controllers.ts
+index adeabbd..3664804 100644
+--- a/src/sidepanel/controllers.ts
++++ b/src/sidepanel/controllers.ts
+@@ -581,6 +581,7 @@ async function init(): Promise<void> {
+   await loadAIConfigs()
+   await loadSources()
+   await loadChatHistory()
++  await loadTransformHistory(currentNotebookId)
+   void updateTabCount()
+   void updateAddTabButton()
+ 
+@@ -1703,6 +1704,7 @@ async function handleNotebookChange(): Promise<void> {
+   await updateAIConfigForNotebook()
+   await loadSources()
+   await loadChatHistory()
++  await loadTransformHistory(currentNotebookId)
+ }
+ 
+ async function selectNotebook(id: string): Promise<void> {
+@@ -1714,6 +1716,7 @@ async function selectNotebook(id: string): Promise<void> {
+   switchTab('chat')
+   await loadSources()
+   await loadChatHistory()
++  await loadTransformHistory(id)
+ }
+ 
+ // ============================================================================
+@@ -4331,58 +4334,52 @@ function createTransformResultCard(
+ 
+ // Open transform content in a new browser tab
+ function openTransformInNewTab(meta: TransformCardMeta): void {
+-  let fullHtml: string
++  // For interactive content, use chrome.tabs message passing:
++  // - Open fullscreen-wrapper.html via chrome.tabs.create() to get tab ID
++  // - Send content via chrome.tabs.sendMessage() once the tab loads
++  // - The wrapper renders content in a sandboxed iframe using blob URLs
++  //
++  // For non-interactive (markdown) content, we can use a blob URL since it doesn't need inline scripts.
+ 
+   if (meta.isInteractive) {
+-    // For interactive content, embed in a sandboxed iframe for security
+-    // This prevents AI-generated scripts from running with extension privileges
+-    const escapedContent = meta.content
+-      .replace(/&/g, '&amp;')
+-      .replace(/</g, '&lt;')
+-      .replace(/>/g, '&gt;')
+-      .replace(/"/g, '&quot;')
+-      .replace(/'/g, '&#039;')
+-
+-    fullHtml = `<!DOCTYPE html>
+-<html lang="en">
+-<head>
+-  <meta charset="UTF-8">
+-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-  <title>${escapeHtml(meta.title)} - FolioLM</title>
+-  <style>
+-    * { box-sizing: border-box; margin: 0; padding: 0; }
+-    html, body { height: 100%; background: #1a1a2e; }
+-    body {
+-      display: flex;
+-      flex-direction: column;
+-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+-      color: #e4e4e7;
+-    }
+-    header {
+-      padding: 16px 24px;
+-      background: #252538;
+-      border-bottom: 1px solid #3f3f5a;
+-    }
+-    h1 { font-size: 20px; color: #fff; }
+-    .iframe-container { flex: 1; padding: 24px; }
+-    iframe {
+-      width: 100%;
+-      height: 100%;
+-      border: none;
+-      border-radius: 12px;
+-      background: #fff;
+-    }
+-  </style>
+-</head>
+-<body>
+-  <header>
+-    <h1>${escapeHtml(meta.title)}</h1>
+-  </header>
+-  <div class="iframe-container">
+-    <iframe sandbox="allow-scripts" srcdoc="${escapedContent}"></iframe>
+-  </div>
+-</body>
+-</html>`
++    // Open the wrapper page
++    const wrapperUrl = chrome.runtime.getURL('src/sandbox/fullscreen-wrapper.html')
++
++    chrome.tabs.create({ url: wrapperUrl }, (tab) => {
++      if (!tab?.id) {
++        return
++      }
++
++      const tabId = tab.id
++
++      // Wait for the tab to finish loading before sending content
++      const listener = (
++        updatedTabId: number,
++        changeInfo: { status?: string },
++      ) => {
++        if (updatedTabId !== tabId || changeInfo.status !== 'complete') {
++          return
++        }
++
++        // Tab is ready, send content via chrome.tabs.sendMessage
++        void chrome.tabs.sendMessage(tabId, {
++          type: 'FULLSCREEN_CONTENT',
++          title: meta.title,
++          content: meta.content,
++          isInteractive: true,
++        })
++
++        // Clean up listener
++        chrome.tabs.onUpdated.removeListener(listener)
++      }
++
++      chrome.tabs.onUpdated.addListener(listener)
++
++      // Fallback: clean up listener after 30 seconds
++      setTimeout(() => {
++        chrome.tabs.onUpdated.removeListener(listener)
++      }, 30000)
++    })
+   }
+   else {
+     // For markdown content, sanitize with DOMPurify before insertion
+@@ -4390,46 +4387,44 @@ function openTransformInNewTab(meta: TransformCardMeta): void {
+     const sanitizedContent = DOMPurify.sanitize(renderedContent, {
+       USE_PROFILES: { html: true },
+     })
+-    fullHtml = generateFullPageHtml(meta.title, sanitizedContent)
+-  }
++    let fullHtml = generateFullPageHtml(meta.title, sanitizedContent)
+ 
+-  // Sanitize the entire document for non-interactive content
+-  if (!meta.isInteractive) {
++    // Sanitize the entire document
+     fullHtml = DOMPurify.sanitize(fullHtml, {
+       WHOLE_DOCUMENT: true,
+       USE_PROFILES: { html: true },
+     })
+-  }
+ 
+-  const blob = new Blob([fullHtml], { type: 'text/html' })
+-  const url = URL.createObjectURL(blob)
+-
+-  chrome.tabs.create({ url }, (tab) => {
+-    // Clean up blob URL when tab finishes loading (not a fixed timeout)
+-    if (!tab?.id) {
+-      URL.revokeObjectURL(url)
+-      return
+-    }
++    const blob = new Blob([fullHtml], { type: 'text/html' })
++    const url = URL.createObjectURL(blob)
+ 
+-    const tabId = tab.id
+-    const listener = (
+-      updatedTabId: number,
+-      changeInfo: { status?: string },
+-    ) => {
+-      if (updatedTabId === tabId && changeInfo.status === 'complete') {
++    chrome.tabs.create({ url }, (tab) => {
++      // Clean up blob URL when tab finishes loading (not a fixed timeout)
++      if (!tab?.id) {
+         URL.revokeObjectURL(url)
+-        chrome.tabs.onUpdated.removeListener(listener)
++        return
++      }
++
++      const tabId = tab.id
++      const listener = (
++        updatedTabId: number,
++        changeInfo: { status?: string },
++      ) => {
++        if (updatedTabId === tabId && changeInfo.status === 'complete') {
++          URL.revokeObjectURL(url)
++          chrome.tabs.onUpdated.removeListener(listener)
++        }
+       }
+-    }
+ 
+-    chrome.tabs.onUpdated.addListener(listener)
++      chrome.tabs.onUpdated.addListener(listener)
+ 
+-    // Fallback cleanup after 30 seconds in case onUpdated never fires
+-    setTimeout(() => {
+-      chrome.tabs.onUpdated.removeListener(listener)
+-      URL.revokeObjectURL(url)
+-    }, 30000)
+-  })
++      // Fallback cleanup after 30 seconds in case onUpdated never fires
++      setTimeout(() => {
++        chrome.tabs.onUpdated.removeListener(listener)
++        URL.revokeObjectURL(url)
++      }, 30000)
++    })
++  }
+ }
+ 
+ // Generate a full HTML page for viewing markdown transforms
+@@ -4554,6 +4549,106 @@ function removeTransformCard(card: HTMLElement): void {
+   card.remove()
+ }
+ 
++// Clear all transform cards from history
++function clearTransformHistory(): void {
++  const cards = [...elements.transformHistory.children]
++  for (const card of cards) {
++    if (card instanceof HTMLElement) {
++      removeTransformCard(card)
++    }
++  }
++}
++
++// Interactive transform types that return HTML
++const INTERACTIVE_TRANSFORM_TYPES: TransformationType[] = [
++  'quiz',
++  'flashcards',
++  'timeline',
++  'slidedeck',
++  'mindmap',
++  'studyguide',
++]
++
++// Load saved transforms for a notebook and display them
++async function loadTransformHistory(notebookId: string | null): Promise<void> {
++  console.log('[loadTransformHistory] Called with notebookId:', notebookId)
++
++  // Clear existing transforms first
++  clearTransformHistory()
++
++  if (!notebookId) {
++    console.log('[loadTransformHistory] No notebookId, returning')
++    return
++  }
++
++  const transformations = await getTransformations(notebookId)
++  console.log('[loadTransformHistory] Found transformations:', transformations.length, transformations)
++
++  // Create cards for each saved transform (already sorted by createdAt desc)
++  for (const transformation of transformations) {
++    console.log('[loadTransformHistory] Creating card for:', transformation.title, transformation.id)
++    const { card, sandbox, setContent } = createTransformResultCard(
++      transformation.title,
++      transformation.notebookId,
++      transformation.type,
++      transformation.sourceIds,
++    )
++
++    // Get the metadata and update it with saved state
++    const meta = cardMetadata.get(card)
++    if (meta) {
++      meta.id = transformation.id
++      meta.content = transformation.content
++
++      // Determine if this is interactive content (use same check as new transforms)
++      const isInteractive = INTERACTIVE_TRANSFORM_TYPES.includes(transformation.type)
++        && isHtmlContent(transformation.content)
++      meta.isInteractive = isInteractive
++
++      // Update the setContent tracker
++      setContent(transformation.content, isInteractive)
++    }
++
++    // Mark the card as saved (update UI to show saved state)
++    card.classList.add('transform-saved')
++
++    // Update save button to show saved state
++    const saveBtn = card.querySelector<HTMLButtonElement>('.icon-btn[title="Save"]')
++    if (saveBtn) {
++      saveBtn.innerHTML = ICONS.saved
++      saveBtn.title = 'Saved'
++      saveBtn.classList.add('saved')
++    }
++
++    // Update close button to delete button
++    const closeBtn = card.querySelector<HTMLButtonElement>('.icon-btn[title="Remove"]')
++    if (closeBtn) {
++      closeBtn.innerHTML = ICONS.delete
++      closeBtn.title = 'Delete'
++    }
++
++    // Append to DOM BEFORE rendering - the sandbox iframe needs to be in the DOM to load
++    elements.transformHistory.appendChild(card)
++
++    // Render the content (must be after card is in DOM for sandbox iframe to load)
++    // Use the same rendering path as new transforms to ensure consistent display
++    try {
++      if (meta?.isInteractive) {
++        // Interactive HTML content (quiz, flashcards, etc.) - needs script execution
++        await sandbox.renderInteractive(transformation.content)
++      }
++      else {
++        // Standard markdown content - render with proper markdown parser
++        await sandbox.render(renderMarkdown(transformation.content))
++      }
++      console.log('[loadTransformHistory] Rendered content for:', transformation.title)
++    }
++    catch (err) {
++      console.error('[loadTransformHistory] Failed to render:', transformation.title, err)
++    }
++  }
++}
++
+ // Enforce the max history limit by removing oldest cards
+ function enforceTransformHistoryLimit(): void {
+   const cards = elements.transformHistory.children

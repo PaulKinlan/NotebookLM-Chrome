@@ -3,6 +3,9 @@
  */
 
 import type { Notebook } from '../../types/index.ts'
+import { useModelConfigs } from '../hooks/useModelConfigs'
+import { getProviderConfigById } from '../../lib/provider-registry'
+import { useState, useRef, useEffect } from 'preact/hooks'
 
 interface HeaderProps {
   onLibraryClick: () => void
@@ -15,6 +18,35 @@ interface HeaderProps {
 
 export function Header(props: HeaderProps) {
   const { onLibraryClick, onSettingsClick, onNotebookChange, onNewNotebook, notebooks, currentNotebookId } = props
+
+  // AI model dropdown state
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Get model configs
+  const { modelConfigs, defaultModelConfigId, setDefault, defaultModelConfig } = useModelConfigs()
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [dropdownOpen])
+
+  // Get display name for current model
+  const currentModelName = defaultModelConfig
+    ? defaultModelConfig.name
+    : 'No AI Profile'
 
   return (
     <header className="header">
@@ -72,11 +104,12 @@ export function Header(props: HeaderProps) {
             </option>
           ))}
         </select>
-        <div className="ai-model-picker">
+        <div className="ai-model-picker" ref={dropdownRef}>
           <button
             id="ai-model-btn"
             className="header-icon-btn"
-            title="AI Model"
+            title={`AI Model: ${currentModelName}`}
+            onClick={() => setDropdownOpen(!dropdownOpen)}
           >
             <svg
               width="18"
@@ -92,10 +125,39 @@ export function Header(props: HeaderProps) {
               <path d="M8.5 11V7a3.5 3.5 0 0 1 7 0v4"></path>
             </svg>
           </button>
-          <div id="ai-model-dropdown" className="ai-model-dropdown hidden">
+          <div id="ai-model-dropdown" className={`ai-model-dropdown ${dropdownOpen ? '' : 'hidden'}`}>
             <div className="ai-model-dropdown-content">
-              <div className="ai-model-dropdown-header">Select AI Model</div>
-              <div id="ai-model-list" className="ai-model-list"></div>
+              <div className="ai-model-dropdown-header">Select AI Profile</div>
+              <div id="ai-model-list" className="ai-model-list">
+                {modelConfigs.length === 0 ? (
+                  <div className="ai-model-empty">No profiles available</div>
+                ) : (
+                  modelConfigs.map(config => {
+                    const provider = getProviderConfigById(config.providerId)
+                    const isSelected = config.id === defaultModelConfigId
+                    return (
+                      <button
+                        key={config.id}
+                        className={`ai-model-option ${isSelected ? 'selected' : ''}`}
+                        onClick={() => {
+                          void setDefault(config.id)
+                          setDropdownOpen(false)
+                        }}
+                      >
+                        <div className="ai-model-option-name">{config.name}</div>
+                        <div className="ai-model-option-meta">
+                          {provider?.displayName ?? config.providerId} • {config.model}
+                        </div>
+                        {isSelected && (
+                          <svg className="ai-model-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        )}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
             </div>
           </div>
         </div>

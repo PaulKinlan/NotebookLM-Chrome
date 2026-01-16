@@ -1,0 +1,46 @@
+diff --git a/manifest.json b/manifest.json
+index bb6dbcb..915c682 100644
+--- a/manifest.json
++++ b/manifest.json
+@@ -88,13 +88,16 @@
+   ],
+   "sandbox": {
+     "pages": [
+-      "src/sandbox/sandbox.html"
++      "src/sandbox/sandbox.html",
++      "src/sandbox/fullscreen-sandbox.html"
+     ]
+   },
+   "web_accessible_resources": [
+     {
+       "resources": [
+-        "src/sandbox/sandbox.html"
++        "src/sandbox/sandbox.html",
++        "src/sandbox/fullscreen-sandbox.html",
++        "src/sandbox/fullscreen-wrapper.html"
+       ],
+       "matches": [
+         "<all_urls>"
+diff --git a/vite.config.ts b/vite.config.ts
+index 2d2d8fc..3643fec 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -1,5 +1,6 @@
+ import { defineConfig } from 'vite';
+ import { crx } from '@crxjs/vite-plugin';
++import { resolve } from 'path';
+ import manifest from './manifest.json';
+ 
+ export default defineConfig({
+@@ -16,6 +17,11 @@ export default defineConfig({
+     modulePreload: false,
+     chunkSizeWarningLimit: 1000, // kB - extensions load locally, so 1MB is acceptable
+     rollupOptions: {
++      input: {
++        // Include fullscreen-wrapper.html as an entry point
++        // This is needed because it's in web_accessible_resources but not in manifest sandbox pages
++        'fullscreen-wrapper': resolve(__dirname, 'src/sandbox/fullscreen-wrapper.html'),
++      },
+       output: {
+         manualChunks: {
+           // Split AI SDKs into a separate chunk
