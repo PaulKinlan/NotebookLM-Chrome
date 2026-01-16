@@ -8,6 +8,7 @@ import { requestPermission, revokePermission } from '../../lib/permissions'
 import { getProviderConfigById } from '../../lib/provider-registry'
 import { showNotification } from '../store'
 import { ProfileForm } from './ProfileForm.tsx'
+import { UsageStatsModal } from './UsageStatsModal.tsx'
 
 interface SettingsTabProps {
   active: boolean
@@ -19,6 +20,9 @@ export function SettingsTab(props: SettingsTabProps) {
 
   // Track theme preference in state
   const [themePreference, setThemePreference] = useState<ThemePreference>('system')
+
+  // Track usage stats modal state
+  const [usageStatsProfile, setUsageStatsProfile] = useState<{ id: string, name: string } | null>(null)
 
   // Get tool permissions
   const { config: toolConfig, toggleVisible, toggleRequiresApproval, resetToDefaults } = useToolPermissions()
@@ -246,6 +250,20 @@ export function SettingsTab(props: SettingsTabProps) {
                         )}
                         <button
                           className="icon-btn"
+                          onClick={() => setUsageStatsProfile({
+                            id: profile.modelConfig.id,
+                            name: profile.modelConfig.name,
+                          })}
+                          title="View usage stats"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="12" width="4" height="9"></rect>
+                            <rect x="10" y="8" width="4" height="13"></rect>
+                            <rect x="17" y="4" width="4" height="17"></rect>
+                          </svg>
+                        </button>
+                        <button
+                          className="icon-btn"
                           onClick={() => {
                             if (profiles.length === 1) {
                               showNotification('Cannot delete the only profile')
@@ -388,6 +406,13 @@ export function SettingsTab(props: SettingsTabProps) {
         <p className="setting-hint">Clear all notebooks, sources, chat history, and AI profiles. This action cannot be undone.</p>
         <button id="clear-all-data-btn" className="btn btn-danger btn-small" onClick={onClearAllData}>Clear All Data</button>
       </div>
+
+      <UsageStatsModal
+        isOpen={usageStatsProfile !== null}
+        profileId={usageStatsProfile?.id ?? ''}
+        profileName={usageStatsProfile?.name ?? ''}
+        onClose={() => setUsageStatsProfile(null)}
+      />
     </section>
   )
 }
