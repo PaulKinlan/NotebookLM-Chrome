@@ -1,3 +1,10 @@
+# [0.7.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.6.0...v0.7.0) (2026-01-16)
+
+
+### Features
+
+* **sidepanel:** add view transitions for panel navigation ([#80](https://github.com/PaulKinlan/NotebookLM-Chrome/issues/80)) ([5ee9329](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/5ee93299612f1f3ab179fe3e490481e0e0cb9231))
+
 # [0.6.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.5.0...v0.6.0) (2026-01-16)
 
 
