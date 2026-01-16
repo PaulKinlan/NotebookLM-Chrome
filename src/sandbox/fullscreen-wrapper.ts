@@ -1,27 +1,24 @@
 /**
- * Fullscreen Wrapper Script (Bridge)
+ * Fullscreen Wrapper Script
  *
  * This script runs in a standard extension page (NOT sandboxed).
- * It acts as a bridge between the side panel and the sandboxed iframe.
+ * It receives content via chrome.runtime.onMessage from the side panel
+ * and renders it in a sandboxed iframe using blob URLs.
  *
  * Architecture:
- * Side Panel ──BroadcastChannel──> Wrapper (this page) ──postMessage──> Sandbox (iframe)
+ * Side Panel ──chrome.tabs.sendMessage──> Wrapper (this page) ──blob URL──> Sandboxed iframe
  *
  * Why this pattern:
- * - Sandboxed pages cannot use BroadcastChannel to communicate with extension pages
- * - This wrapper page IS an extension page, so it CAN use BroadcastChannel
- * - The wrapper then forwards content to the sandboxed iframe via postMessage
+ * - Side panel opens this page via chrome.tabs.create() and gets the tab ID
+ * - Side panel sends content via chrome.tabs.sendMessage() using the tab ID
+ * - This wrapper receives content and renders it in a sandboxed iframe
+ * - The sandbox attribute on the iframe is the security boundary
  */
 
 // Make this file an ES module to avoid global scope conflicts
 export {}
 
-// Message types for BroadcastChannel communication (from side panel)
-interface FullscreenReadyMessage {
-  type: 'FULLSCREEN_READY'
-  channelId: string
-}
-
+// Message type for content from side panel
 interface FullscreenContentMessage {
   type: 'FULLSCREEN_CONTENT'
   title: string
@@ -29,27 +26,8 @@ interface FullscreenContentMessage {
   isInteractive: boolean
 }
 
-// Message types for postMessage communication (to/from sandbox iframe)
-interface SandboxReadyMessage {
-  type: 'SANDBOX_READY'
-}
-
-interface SandboxContentMessage {
-  type: 'SANDBOX_CONTENT'
-  title: string
-  content: string
-  isInteractive: boolean
-}
-
-// Get channel ID from URL hash
-const channelId = window.location.hash.slice(1)
-
-if (!channelId) {
-  showError('Missing channel ID in URL')
-}
-else {
-  initializeBridge(channelId)
-}
+// Initialize - listen for content from side panel
+initializeMessageListener()
 
 function showError(message: string): void {
   const container = document.querySelector('.iframe-container')
@@ -61,45 +39,16 @@ function showError(message: string): void {
   }
 }
 
-function initializeBridge(channelId: string): void {
-  const sandboxFrame = document.getElementById('sandbox-frame') as HTMLIFrameElement | null
-
-  if (!sandboxFrame) {
-    showError('Sandbox frame not found')
-    return
-  }
-
-  // Create BroadcastChannel to communicate with side panel
-  const channel = new BroadcastChannel(channelId)
-
-  // Store content until sandbox is ready
-  let pendingContent: FullscreenContentMessage | null = null
-  let sandboxReady = false
-
-  // Listen for messages from the sandboxed iframe via postMessage
-  window.addEventListener('message', (event: MessageEvent) => {
-    // Verify the message is from our iframe
-    if (event.source !== sandboxFrame.contentWindow) {
-      return
-    }
-
-    const data = event.data as SandboxReadyMessage | undefined
-    if (data?.type === 'SANDBOX_READY') {
-      sandboxReady = true
-
-      // If we have pending content, send it now
-      if (pendingContent) {
-        forwardContentToSandbox(sandboxFrame, pendingContent)
-        pendingContent = null
-      }
-    }
-  })
-
-  // Listen for content from the side panel via BroadcastChannel
-  channel.onmessage = (event: MessageEvent) => {
-    const data = event.data as FullscreenContentMessage | undefined
+function initializeMessageListener(): void {
+  // Listen for content from the side panel via chrome.runtime.onMessage
+  chrome.runtime.onMessage.addListener((
+    message: unknown,
+    _sender: chrome.runtime.MessageSender,
+    sendResponse: (response?: unknown) => void,
+  ) => {
+    const data = message as FullscreenContentMessage | undefined
     if (!data || data.type !== 'FULLSCREEN_CONTENT') {
-      return
+      return false
     }
 
     // Update title in wrapper
@@ -109,35 +58,107 @@ function initializeBridge(channelId: string): void {
     }
     document.title = `${data.title} - FolioLM`
 
-    // Forward to sandbox or store for later
-    if (sandboxReady) {
-      forwardContentToSandbox(sandboxFrame, data)
-    }
-    else {
-      pendingContent = data
-    }
+    // Render content in sandboxed iframe
+    renderContent(data.content, data.isInteractive)
 
-    // Clean up channel after receiving content
-    channel.close()
-  }
-
-  // Signal to the side panel that we're ready to receive content
-  channel.postMessage({
-    type: 'FULLSCREEN_READY',
-    channelId,
-  } satisfies FullscreenReadyMessage)
+    // Acknowledge receipt
+    sendResponse({ success: true })
+    return true
+  })
 }
 
-function forwardContentToSandbox(
-  iframe: HTMLIFrameElement,
-  content: FullscreenContentMessage,
-): void {
-  // Forward content to sandbox via postMessage
-  // The sandbox iframe listens for SANDBOX_CONTENT messages
-  iframe.contentWindow?.postMessage({
-    type: 'SANDBOX_CONTENT',
-    title: content.title,
-    content: content.content,
-    isInteractive: content.isInteractive,
-  } satisfies SandboxContentMessage, '*')
+function renderContent(content: string, isInteractive: boolean): void {
+  const iframe = document.getElementById('content-frame') as HTMLIFrameElement | null
+
+  if (!iframe) {
+    showError('Content frame not found')
+    return
+  }
+
+  // Wrap content in a full HTML document if needed
+  const wrappedContent = wrapContent(content, isInteractive)
+
+  // Create blob URL for the content
+  // The sandbox attribute on the iframe is the security boundary
+  const blob = new Blob([wrappedContent], { type: 'text/html' })
+  const blobUrl = URL.createObjectURL(blob)
+
+  iframe.src = blobUrl
+
+  // Clean up blob URL after load
+  iframe.addEventListener('load', () => {
+    // Delay cleanup to ensure content is fully rendered
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl)
+    }, 1000)
+  }, { once: true })
+}
+
+function wrapContent(html: string, isInteractive: boolean): string {
+  const trimmed = html.trim()
+  const hasDoctype = trimmed.toLowerCase().startsWith('<!doctype')
+  const hasHtml = trimmed.toLowerCase().startsWith('<html')
+
+  if (hasDoctype || hasHtml) {
+    // Content is already a full document
+    return html
+  }
+
+  // Content is a fragment - wrap in full document
+  // For interactive content, we don't add restrictive CSP - the sandbox handles security
+  // For non-interactive content, we add basic styling
+  if (isInteractive) {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>html, body { margin: 0; padding: 0; height: 100%; }</style>
+</head>
+<body>
+${html}
+</body>
+</html>`
+  }
+
+  // Non-interactive content with styling
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      color: #1a1a1a;
+      padding: 24px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1, h2, h3, h4, h5, h6 { margin: 1em 0 0.5em; font-weight: 600; line-height: 1.3; }
+    h1 { font-size: 1.8em; }
+    h2 { font-size: 1.5em; }
+    h3 { font-size: 1.25em; }
+    p { margin: 0.75em 0; }
+    pre { background: #f5f5f5; border-radius: 6px; padding: 12px; overflow-x: auto; margin: 1em 0; }
+    code { font-family: 'SF Mono', Monaco, monospace; background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre code { background: transparent; padding: 0; }
+    ul, ol { margin: 0.75em 0; padding-left: 1.5em; }
+    li { margin: 0.25em 0; }
+    blockquote { border-left: 3px solid #6366f1; margin: 1em 0; padding: 0.5em 0 0.5em 1em; color: #666; background: #f8f8ff; border-radius: 0 6px 6px 0; }
+    a { color: #6366f1; text-decoration: none; }
+    table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+    th { background: #f5f5f5; font-weight: 600; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 1.5em 0; }
+  </style>
+</head>
+<body>
+${html}
+</body>
+</html>`
 }

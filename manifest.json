@@ -88,15 +88,13 @@
   ],
   "sandbox": {
     "pages": [
-      "src/sandbox/sandbox.html",
-      "src/sandbox/fullscreen-sandbox.html"
+      "src/sandbox/sandbox.html"
     ]
   },
   "web_accessible_resources": [
     {
       "resources": [
         "src/sandbox/sandbox.html",
-        "src/sandbox/fullscreen-sandbox.html",
         "src/sandbox/fullscreen-wrapper.html"
       ],
       "matches": [

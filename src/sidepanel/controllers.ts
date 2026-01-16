@@ -4334,44 +4334,52 @@ function createTransformResultCard(
 
 // Open transform content in a new browser tab
 function openTransformInNewTab(meta: TransformCardMeta): void {
-  // For interactive content, use a wrapper/bridge architecture:
-  // - fullscreen-wrapper.html is a standard extension page (NOT sandboxed) - CAN use BroadcastChannel
-  // - fullscreen-wrapper.html embeds fullscreen-sandbox.html (sandboxed) in an iframe
-  // - Communication flow:
-  //   Side Panel ──BroadcastChannel──> Wrapper ──postMessage──> Sandbox (iframe)
-  //
-  // This is necessary because sandboxed pages cannot use BroadcastChannel with extension pages.
-  // The wrapper acts as a bridge, forwarding content via postMessage to the sandboxed iframe.
+  // For interactive content, use chrome.tabs message passing:
+  // - Open fullscreen-wrapper.html via chrome.tabs.create() to get tab ID
+  // - Send content via chrome.tabs.sendMessage() once the tab loads
+  // - The wrapper renders content in a sandboxed iframe using blob URLs
   //
   // For non-interactive (markdown) content, we can use a blob URL since it doesn't need inline scripts.
 
   if (meta.isInteractive) {
-    // Generate unique channel ID for BroadcastChannel communication
-    const channelId = crypto.randomUUID()
-    const channel = new BroadcastChannel(channelId)
+    // Open the wrapper page
+    const wrapperUrl = chrome.runtime.getURL('src/sandbox/fullscreen-wrapper.html')
 
-    // Listen for ready signal from the wrapper page
-    channel.onmessage = (event: MessageEvent) => {
-      const data = event.data as { type: string, channelId: string } | undefined
-      if (!data || data.type !== 'FULLSCREEN_READY' || data.channelId !== channelId) {
+    chrome.tabs.create({ url: wrapperUrl }, (tab) => {
+      if (!tab?.id) {
         return
       }
 
-      // Send content to the wrapper page (which forwards to sandbox via postMessage)
-      channel.postMessage({
-        type: 'FULLSCREEN_CONTENT',
-        title: meta.title,
-        content: meta.content,
-        isInteractive: true,
-      })
+      const tabId = tab.id
 
-      // Clean up channel after sending
-      channel.close()
-    }
+      // Wait for the tab to finish loading before sending content
+      const listener = (
+        updatedTabId: number,
+        changeInfo: { status?: string },
+      ) => {
+        if (updatedTabId !== tabId || changeInfo.status !== 'complete') {
+          return
+        }
 
-    // Open the wrapper page (NOT sandbox directly) with the channel ID in the hash
-    const wrapperUrl = chrome.runtime.getURL(`src/sandbox/fullscreen-wrapper.html#${channelId}`)
-    void chrome.tabs.create({ url: wrapperUrl })
+        // Tab is ready, send content via chrome.tabs.sendMessage
+        void chrome.tabs.sendMessage(tabId, {
+          type: 'FULLSCREEN_CONTENT',
+          title: meta.title,
+          content: meta.content,
+          isInteractive: true,
+        })
+
+        // Clean up listener
+        chrome.tabs.onUpdated.removeListener(listener)
+      }
+
+      chrome.tabs.onUpdated.addListener(listener)
+
+      // Fallback: clean up listener after 30 seconds
+      setTimeout(() => {
+        chrome.tabs.onUpdated.removeListener(listener)
+      }, 30000)
+    })
   }
   else {
     // For markdown content, sanitize with DOMPurify before insertion

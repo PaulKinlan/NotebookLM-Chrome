@@ -75,8 +75,8 @@
     <span class="branding">FolioLM</span>
   </header>
   <div class="iframe-container">
-    <!-- Embed the sandboxed page - communication via postMessage -->
-    <iframe id="sandbox-frame" src="fullscreen-sandbox.html"></iframe>
+    <!-- Content is loaded via blob URL into this sandboxed iframe -->
+    <iframe id="content-frame" sandbox="allow-scripts allow-forms"></iframe>
   </div>
   <script type="module" src="fullscreen-wrapper.ts"></script>
 </body>
