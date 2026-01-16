@@ -971,10 +971,6 @@ input[type="text"]:focus {
   opacity: 0.5;
 }
 
-.model-refresh-btn.refreshing .refresh-spinner-icon {
-  animation: spin 1s linear infinite;
-}
-
 .model-refresh-btn.refresh-success {
   color: var(--success);
 }
@@ -1079,6 +1075,18 @@ input[type="text"]:focus {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* RefreshButton component styles */
+.refresh-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.refresh-button.refreshing svg,
+.refresh-button svg.spin {
+  animation: spin 1s linear infinite;
 }
 
 .dropdown-group-header {
@@ -1366,35 +1374,6 @@ input[type="text"]:focus {
   display: block;
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-#refresh-all-sources-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-#refresh-all-sources-btn.refreshing svg {
-  animation: spin 1s linear infinite;
-}
-
-#regenerate-summary-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-#regenerate-summary-btn.refreshing svg {
-  animation: spin 1s linear infinite;
-}
-
 .source-url {
   font-size: 12px;
   color: var(--text-muted);
@@ -1557,12 +1536,6 @@ details.summary-section[open] .summary-chevron {
   border-top-color: var(--accent-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .summary-error {
@@ -2535,15 +2508,6 @@ details.suggested-links-section[open] .suggested-links-chevron {
 .transform-pending-indicator .spinner {
   animation: spin 1s linear infinite;
   color: var(--accent-primary);
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .transform-content.transform-generating {
@@ -3666,15 +3630,6 @@ details.suggested-links-section[open] .suggested-links-chevron {
 
 .profile-test-btn .testing-icon {
   animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .profile-test-btn.btn-success {

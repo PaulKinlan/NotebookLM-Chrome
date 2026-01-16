@@ -1,6 +1,7 @@
 import { useRef } from 'preact/hooks'
 import type { Source } from '../../types/index.ts'
 import { SourceItem } from './SourceItem'
+import { RefreshButton } from './RefreshButton'
 import { chatMessages, showNotification } from '../store'
 import { For } from '@preact/signals/utils'
 import { useSuggestedLinks } from '../hooks/useSuggestedLinks'
@@ -65,13 +66,12 @@ export function ChatTab(props: ChatTabProps) {
             Overview
           </h3>
           <div className="summary-header-actions">
-            <button id="regenerate-summary-btn" className={`btn btn-small btn-outline${isRegeneratingSummary ? ' refreshing' : ''}`} title="Regenerate overview" onClick={() => void onRegenerateSummary()} disabled={isRegeneratingSummary}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M23 4v6h-6"></path>
-                <path d="M1 20v-6h6"></path>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-            </button>
+            <RefreshButton
+              id="regenerate-summary-btn"
+              isLoading={isRegeneratingSummary}
+              onClick={() => void onRegenerateSummary()}
+              title="Regenerate overview"
+            />
             <svg className="summary-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
@@ -107,13 +107,12 @@ export function ChatTab(props: ChatTabProps) {
             )
           </h3>
           <div className="sources-section-actions">
-            <button id="refresh-all-sources-btn" className={`btn btn-small btn-outline${isRefreshingSources ? ' refreshing' : ''}`} title="Refresh all sources" onClick={() => void onRefreshSources()} disabled={isRefreshingSources}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M23 4v6h-6"></path>
-                <path d="M1 20v-6h6"></path>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-            </button>
+            <RefreshButton
+              id="refresh-all-sources-btn"
+              isLoading={isRefreshingSources}
+              onClick={() => void onRefreshSources()}
+              title="Refresh all sources"
+            />
             <svg className="sources-section-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
@@ -156,23 +155,16 @@ export function ChatTab(props: ChatTabProps) {
             )
           </h3>
           <div className="suggested-links-header-actions">
-            <button
+            <RefreshButton
               id="refresh-links-btn"
-              className="btn btn-small btn-outline"
-              title="Find related links"
+              isLoading={suggestedLinksLoading}
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
                 void loadSuggestedLinks()
               }}
-              disabled={suggestedLinksLoading}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={suggestedLinksLoading ? 'spin' : ''}>
-                <path d="M23 4v6h-6"></path>
-                <path d="M1 20v-6h6"></path>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-              </svg>
-            </button>
+              title="Find related links"
+            />
             <svg className="suggested-links-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>

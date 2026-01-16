@@ -10,6 +10,7 @@ import type { ProfileFormState } from '../hooks/useProviderProfiles.ts'
 import type { ProviderConfig, SelectableModel } from '../../lib/provider-registry.ts'
 import type { FuzzyDropdownOption } from '../hooks/useFuzzyDropdown.ts'
 import { FuzzyDropdown } from './FuzzyDropdown.tsx'
+import { RefreshButton } from './RefreshButton.tsx'
 
 export interface ProfileFormProps {
   formState: ProfileFormState
@@ -266,21 +267,15 @@ export function ProfileForm({
             </svg>
           </button>
           {currentProvider && providerSupportsFetching(currentProvider) && (
-            <button
-              type="button"
+            <RefreshButton
+              variant="icon"
               className="model-refresh-btn"
-              aria-label="Refresh model list"
+              ariaLabel="Refresh model list"
               title="Refresh model list"
               onClick={handleRefreshModels}
-              disabled={isFetchingModels}
-            >
-              <svg className="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: isFetchingModels ? 'none' : '' }}>
-                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-              </svg>
-              <svg className="refresh-spinner-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ display: isFetchingModels ? '' : 'none' }}>
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>
-            </button>
+              isLoading={isFetchingModels}
+              size={16}
+            />
           )}
           <div
             ref={modelDropdownRef}
