@@ -4625,6 +4625,13 @@ details.suggested-links-section[open] .suggested-links-chevron {
   background: var(--accent-hover);
 }
 
+.config-popover-loading {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
 /* Save confirmation toast */
 .config-save-toast {
   background: var(--success);

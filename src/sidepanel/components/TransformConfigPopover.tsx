@@ -233,10 +233,6 @@ export function TransformConfigPopover(props: TransformConfigPopoverProps) {
     }
   }
 
-  if (!config) {
-    return null
-  }
-
   const fields = labelConfig.fields as Record<string, FieldConfig>
   const defaults = DEFAULT_CONFIGS[type] as unknown as Record<string, unknown>
 
@@ -250,45 +246,53 @@ export function TransformConfigPopover(props: TransformConfigPopoverProps) {
         <h3>{labelConfig.title}</h3>
       </div>
 
-      <form className="config-popover-form" onSubmit={e => e.preventDefault()}>
-        {Object.entries(fields).map(([fieldKey, fieldConfig]) => {
-          // Skip customInstructions - we render it separately at the bottom
-          if (fieldKey === 'customInstructions') return null
-          const currentValue = (config as unknown as Record<string, unknown>)[fieldKey] ?? defaults[fieldKey]
-          return renderField(fieldKey, fieldConfig, currentValue)
-        })}
+      {!config
+        ? (
+            <div className="config-popover-loading">Loading...</div>
+          )
+        : (
+            <>
+              <form className="config-popover-form" onSubmit={e => e.preventDefault()}>
+                {Object.entries(fields).map(([fieldKey, fieldConfig]) => {
+                  // Skip customInstructions - we render it separately at the bottom
+                  if (fieldKey === 'customInstructions') return null
+                  const currentValue = (config as unknown as Record<string, unknown>)[fieldKey] ?? defaults[fieldKey]
+                  return renderField(fieldKey, fieldConfig, currentValue)
+                })}
 
-        {/* Custom Instructions - always at the bottom */}
-        <div className="config-field config-field-full">
-          <label htmlFor={`config-${type}-customInstructions`}>Custom Instructions</label>
-          <textarea
-            id={`config-${type}-customInstructions`}
-            value={(config as unknown as Record<string, unknown>).customInstructions as string || ''}
-            placeholder="Add any specific instructions to customize the output..."
-            onChange={e =>
-              handleFieldChange('customInstructions', (e.target as HTMLTextAreaElement).value)}
-          />
-        </div>
-      </form>
+                {/* Custom Instructions - always at the bottom */}
+                <div className="config-field config-field-full">
+                  <label htmlFor={`config-${type}-customInstructions`}>Custom Instructions</label>
+                  <textarea
+                    id={`config-${type}-customInstructions`}
+                    value={(config as unknown as Record<string, unknown>).customInstructions as string || ''}
+                    placeholder="Add any specific instructions to customize the output..."
+                    onChange={e =>
+                      handleFieldChange('customInstructions', (e.target as HTMLTextAreaElement).value)}
+                  />
+                </div>
+              </form>
 
-      {/* Advanced: Prompt Information */}
-      <details className="config-advanced-section">
-        <summary>Advanced: How this prompt works</summary>
-        <div className="config-advanced-content">
-          <p className="config-advanced-desc">{promptInfo.description}</p>
-          <span className="config-advanced-label">Prompt Structure</span>
-          <p className="config-advanced-structure">{promptInfo.structure}</p>
-        </div>
-      </details>
+              {/* Advanced: Prompt Information */}
+              <details className="config-advanced-section">
+                <summary>Advanced: How this prompt works</summary>
+                <div className="config-advanced-content">
+                  <p className="config-advanced-desc">{promptInfo.description}</p>
+                  <span className="config-advanced-label">Prompt Structure</span>
+                  <p className="config-advanced-structure">{promptInfo.structure}</p>
+                </div>
+              </details>
 
-      <div className="config-popover-footer">
-        <button type="button" className="btn-secondary" onClick={() => void handleReset()}>
-          Reset to Defaults
-        </button>
-        <button type="button" className="btn-primary" onClick={() => void handleSave()}>
-          {showSaveConfirmation ? 'Saved!' : 'Save'}
-        </button>
-      </div>
+              <div className="config-popover-footer">
+                <button type="button" className="btn-secondary" onClick={() => void handleReset()}>
+                  Reset to Defaults
+                </button>
+                <button type="button" className="btn-primary" onClick={() => void handleSave()}>
+                  {showSaveConfirmation ? 'Saved!' : 'Save'}
+                </button>
+              </div>
+            </>
+          )}
     </dialog>
   )
 }
