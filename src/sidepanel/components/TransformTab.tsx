@@ -432,11 +432,19 @@ export function TransformTab(props: TransformTabProps) {
 
       <div className="transform-grid">
         {TRANSFORM_TYPES.map(transform => (
-          <button
+          <div
             key={transform.type}
             className="transform-card"
             id={`transform-${transform.type}`}
+            role="button"
+            tabIndex={0}
             onClick={() => onTransform(transform.type)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onTransform(transform.type)
+              }
+            }}
           >
             <div className={`transform-icon ${transform.type}-icon`}>
               {transform.icon}
@@ -453,7 +461,7 @@ export function TransformTab(props: TransformTabProps) {
               <span className="transform-title">{transform.title}</span>
               <span className="transform-desc">{transform.desc}</span>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 
