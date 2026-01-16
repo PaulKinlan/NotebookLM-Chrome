@@ -441,7 +441,6 @@ export function App(props: AppProps) {
           onClearChat={handleClearChat}
           onRegenerateSummary={() => void handleRegenerateSummary()}
           onAddCurrentTab={() => void handleAddCurrentTab()}
-          onManageSources={() => { navigateToTab('add') }}
           onRefreshSources={() => {
             void (async () => {
               if (!currentNotebookId.value) {
