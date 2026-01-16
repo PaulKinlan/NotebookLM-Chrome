@@ -57,6 +57,74 @@ This requirement exists because documentation drift causes significant maintenan
 
 ---
 
+## MANDATORY: Git Commits After Major Changes
+
+**CRITICAL REQUIREMENT:** You MUST create a git commit after every major change. Do not batch multiple unrelated changes into a single commit.
+
+### When to Commit
+
+Create a commit after completing any of the following:
+
+- **Feature implementation**: After completing a new feature or significant functionality
+- **Bug fix**: After fixing a bug (include the bug description in the commit message)
+- **Refactoring**: After completing a refactoring effort
+- **Documentation updates**: After updating documentation files
+- **Configuration changes**: After modifying build config, manifest.json, or other config files
+- **Test additions**: After adding or updating tests
+
+### Commit Message Guidelines
+
+Write clear, descriptive commit messages that explain **what** changed and **why**:
+
+1. **Use conventional commit format**:
+   - `feat:` for new features
+   - `fix:` for bug fixes
+   - `refactor:` for code refactoring
+   - `docs:` for documentation changes
+   - `test:` for test additions/changes
+   - `chore:` for maintenance tasks (deps, config, etc.)
+
+2. **First line**: Short summary (50 chars or less), imperative mood
+   - ✅ `feat: add notebook export functionality`
+   - ❌ `added notebook export` or `adding export feature`
+
+3. **Body** (when needed): Explain the "why" and any important details
+   - What problem does this solve?
+   - Why was this approach chosen?
+   - Any side effects or areas affected?
+
+### Example Commit Messages
+
+```
+feat: add source drag-and-drop reordering
+
+Allow users to reorder sources within a notebook by dragging.
+Uses HTML Drag and Drop API for modern browser support.
+```
+
+```
+fix: prevent duplicate sources when adding from bookmarks
+
+Sources were being duplicated when the same bookmark was added
+multiple times. Now checks for existing URL before adding.
+```
+
+```
+refactor: extract permission logic into shared utility
+
+Moves permission checking code from sidepanel to src/lib/permissions.ts
+for reuse across components.
+```
+
+### Enforcement
+
+- **DO NOT** accumulate multiple unrelated changes before committing
+- **DO NOT** use vague messages like "updates" or "fixes"
+- **ALWAYS** commit working code (ensure build passes before committing)
+- **ALWAYS** include related documentation updates in the same commit as code changes
+
+---
+
 ## Project Overview
 
 FolioLM (https://foliolm.com) is a browser extension that helps users collect sources from tabs, bookmarks, and history, then query and transform that content (e.g., create quizzes, podcasts, summaries).
