@@ -124,8 +124,10 @@ export class SandboxRenderer {
 
     // Apply sandbox attribute for additional restrictions
     // allow-scripts is needed for the sandbox.js to run
+    // allow-forms is needed for interactive content (buttons, keyboard events, form inputs)
     // No allow-same-origin to ensure complete isolation
     this.iframe.sandbox.add('allow-scripts')
+    this.iframe.sandbox.add('allow-forms')
 
     // Style the iframe
     this.iframe.style.cssText = `
