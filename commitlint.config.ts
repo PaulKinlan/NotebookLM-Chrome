@@ -36,6 +36,7 @@ const config: UserConfig = {
         "permissions",
         "ui",
         "extensions",
+        "settings",
         "release", // For semantic-release automated version commits
         "commitlint", // For commitlint configuration changes
       ],
