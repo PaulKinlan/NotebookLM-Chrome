@@ -133,7 +133,10 @@ function handleCreateNotebookAndAddLink(linkUrl: string): void {
  * Handle context menu "New Folio + add selection links" flow
  */
 function handleCreateNotebookAndAddSelectionLinks(links: string[]): void {
+  console.log('[SelectionLinks] Handler called with', links.length, 'links')
+
   if (isProcessingContextMenuAction) {
+    console.log('[SelectionLinks] Already processing, returning early')
     return
   }
   isProcessingContextMenuAction = true
@@ -141,6 +144,8 @@ function handleCreateNotebookAndAddSelectionLinks(links: string[]): void {
   try {
     // Filter to valid URLs only
     const validLinks = links.filter(isValidUrl)
+    console.log('[SelectionLinks] Valid links:', validLinks.length)
+
     if (validLinks.length === 0) {
       console.error('No valid links in selection')
       return
@@ -148,9 +153,11 @@ function handleCreateNotebookAndAddSelectionLinks(links: string[]): void {
 
     // Suggest a name based on number of links
     const suggestedName = `${validLinks.length} link${validLinks.length > 1 ? 's' : ''}`
+    console.log('[SelectionLinks] Opening dialog with name:', suggestedName)
 
     // Open dialog with pending action
     openDialogWithPendingAction(suggestedName, { type: 'ADD_SELECTION_LINKS', links: validLinks })
+    console.log('[SelectionLinks] Dialog signal set, isOpen:', notebookDialog.value.isOpen)
   }
   catch (error) {
     console.error('Failed to handle create notebook and add selection links:', error)
