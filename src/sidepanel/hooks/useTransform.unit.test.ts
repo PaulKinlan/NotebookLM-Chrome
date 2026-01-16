@@ -90,7 +90,7 @@ vi.mock('../dom-utils.ts', () => ({
   escapeHtml: (text: string) => text.replace(/</g, '&lt;').replace(/>/g, '&gt;'),
 }))
 
-// Mock chrome.tabs.create
+// Mock chrome APIs
 globalThis.chrome = {
   tabs: {
     create: vi.fn((_options, callback) => {
@@ -100,6 +100,9 @@ globalThis.chrome = {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     },
+  },
+  runtime: {
+    getURL: vi.fn((path: string) => `chrome-extension://test-id/${path}`),
   },
 } as never
 

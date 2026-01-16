@@ -147,6 +147,8 @@ export function initBroadcastListeners(): void {
   ) => {
     // The useNotebook hook will handle notebook selection changes
     window.dispatchEvent(new CustomEvent('foliolm:notebooks-changed', { detail: event.data }))
+    // Note: REBUILD_CONTEXT_MENUS is sent by useNotebook hook and main.tsx callbacks
+    // to avoid duplicate rebuilds when multiple sidepanels are open
   }
 
   // Chat channel - triggers reload in useChat hook
