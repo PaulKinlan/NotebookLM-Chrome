@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { crx } from '@crxjs/vite-plugin';
+import { resolve } from 'path';
 import manifest from './manifest.json';
 
 export default defineConfig({
@@ -16,6 +17,11 @@ export default defineConfig({
     modulePreload: false,
     chunkSizeWarningLimit: 1000, // kB - extensions load locally, so 1MB is acceptable
     rollupOptions: {
+      input: {
+        // Include fullscreen-wrapper.html as an entry point
+        // This is needed because it's in web_accessible_resources but not in manifest sandbox pages
+        'fullscreen-wrapper': resolve(__dirname, 'src/sandbox/fullscreen-wrapper.html'),
+      },
       output: {
         manualChunks: {
           // Split AI SDKs into a separate chunk

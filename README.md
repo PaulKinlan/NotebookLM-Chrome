@@ -142,8 +142,12 @@ src/
 │   │   └── *.ts         # podcast-script.ts, quiz.ts, etc.
 │   └── usage.ts         # Usage tracking and cost calculation
 ├── sandbox/             # Sandboxed iframe for AI content
-│   ├── sandbox.html
-│   └── sandbox.ts
+│   ├── sandbox.html             # In-panel sandbox (embedded in side panel)
+│   ├── sandbox.ts
+│   ├── fullscreen-wrapper.html  # Bridge page for fullscreen (NOT sandboxed)
+│   ├── fullscreen-wrapper.ts    # BroadcastChannel to postMessage bridge
+│   ├── fullscreen-sandbox.html  # Fullscreen sandbox (embedded in wrapper)
+│   └── fullscreen-sandbox.ts
 ├── sidepanel/           # Main UI (Preact components)
 │   ├── index.html
 │   ├── main.tsx         # Preact render entry point
@@ -255,11 +259,23 @@ Defense-in-depth security for AI-generated content:
 
 #### Fullscreen Transform Security
 
-When opening interactive transforms in a new tab, a double-iframe architecture provides security:
-1. **Outer Page**: Blob URL with own CSP, contains setup script
-2. **Inner Iframe**: `sandbox="allow-scripts"` attribute for security boundary
-3. **Content Blob**: Inner content loaded via blob URL with permissive CSP for scripts
-4. **CSP Isolation**: Using blob URLs instead of `srcdoc` allows each layer to have its own CSP
+When opening interactive transforms in a new tab, a wrapper/bridge architecture provides both security and communication:
+
+**Architecture:**
+```
+Side Panel ──BroadcastChannel──> Wrapper (bridge page) ──postMessage──> Sandbox (iframe)
+```
+
+**Components:**
+1. **Wrapper Page** (`fullscreen-wrapper.html`): Standard extension page (NOT sandboxed) that CAN use BroadcastChannel
+2. **Sandbox Iframe** (`fullscreen-sandbox.html`): Sandboxed page embedded within wrapper, has permissive CSP for eval/inline scripts
+3. **Content Iframe**: Inner iframe with `sandbox="allow-scripts allow-forms"` attribute as security boundary
+4. **Content Blob**: Final content loaded via blob URL for CSP isolation
+
+**Why this pattern:**
+- Sandboxed pages cannot use BroadcastChannel to communicate with extension pages
+- The wrapper acts as a bridge, forwarding content via postMessage to the sandboxed iframe
+- The sandbox can run eval/inline scripts needed for interactive content (quizzes, flashcards, etc.)
 
 ### Data Models
 
@@ -358,7 +374,7 @@ Messages between components (defined in `src/types/index.ts`):
 - **CSP**: Strict Content Security Policy in manifest
 - **XSS Prevention**: Triple-layer defense (escape → format → DOMPurify)
 - **Sandbox Isolation**: AI content rendered in sandboxed iframe
-- **Fullscreen Security**: Double-iframe/blob architecture isolates interactive content CSP
+- **Fullscreen Security**: Wrapper/bridge architecture with sandbox iframe isolates interactive content
 - **API Key Storage**: Per-provider keys stored in local IndexedDB only
 
 ## Configuration

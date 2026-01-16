@@ -14,39 +14,17 @@
 
     html, body {
       height: 100%;
-      background: #1a1a2e;
+      /* Transparent background - wrapper handles the styling */
+      background: transparent;
     }
 
     body {
       display: flex;
       flex-direction: column;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: #e4e4e7;
-    }
-
-    header {
-      padding: 16px 24px;
-      background: #252538;
-      border-bottom: 1px solid #3f3f5a;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    h1 {
-      font-size: 20px;
-      color: #fff;
-      font-weight: 500;
-    }
-
-    .branding {
-      font-size: 12px;
-      color: #9ca3af;
     }
 
     .iframe-container {
       flex: 1;
-      padding: 24px;
       min-height: 0;
     }
 
@@ -54,30 +32,19 @@
       width: 100%;
       height: 100%;
       border: none;
-      border-radius: 12px;
       background: #fff;
-    }
-
-    .loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: #9ca3af;
     }
 
     .error {
       padding: 20px;
       color: #ef4444;
       text-align: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1 id="title">Loading...</h1>
-    <span class="branding">FolioLM</span>
-  </header>
+  <!-- No header - the wrapper page handles the header/title display -->
   <div class="iframe-container">
     <iframe id="content-frame" sandbox="allow-scripts allow-forms"></iframe>
   </div>

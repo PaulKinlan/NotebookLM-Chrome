@@ -96,7 +96,8 @@
     {
       "resources": [
         "src/sandbox/sandbox.html",
-        "src/sandbox/fullscreen-sandbox.html"
+        "src/sandbox/fullscreen-sandbox.html",
+        "src/sandbox/fullscreen-wrapper.html"
       ],
       "matches": [
         "<all_urls>"

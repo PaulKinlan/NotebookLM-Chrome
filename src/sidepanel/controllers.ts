@@ -4334,11 +4334,14 @@ function createTransformResultCard(
 
 // Open transform content in a new browser tab
 function openTransformInNewTab(meta: TransformCardMeta): void {
-  // For interactive content, use a dedicated sandbox page that is declared in manifest.json.
-  // This avoids CSP issues because:
-  // - Sandbox pages in manifest.json have their own permissive CSP
-  // - Content is sent via BroadcastChannel after the page loads
-  // - The sandbox page renders content in an inner iframe with sandbox="allow-scripts allow-forms"
+  // For interactive content, use a wrapper/bridge architecture:
+  // - fullscreen-wrapper.html is a standard extension page (NOT sandboxed) - CAN use BroadcastChannel
+  // - fullscreen-wrapper.html embeds fullscreen-sandbox.html (sandboxed) in an iframe
+  // - Communication flow:
+  //   Side Panel ──BroadcastChannel──> Wrapper ──postMessage──> Sandbox (iframe)
+  //
+  // This is necessary because sandboxed pages cannot use BroadcastChannel with extension pages.
+  // The wrapper acts as a bridge, forwarding content via postMessage to the sandboxed iframe.
   //
   // For non-interactive (markdown) content, we can use a blob URL since it doesn't need inline scripts.
 
@@ -4347,14 +4350,14 @@ function openTransformInNewTab(meta: TransformCardMeta): void {
     const channelId = crypto.randomUUID()
     const channel = new BroadcastChannel(channelId)
 
-    // Listen for ready signal from the sandbox page
+    // Listen for ready signal from the wrapper page
     channel.onmessage = (event: MessageEvent) => {
       const data = event.data as { type: string, channelId: string } | undefined
       if (!data || data.type !== 'FULLSCREEN_READY' || data.channelId !== channelId) {
         return
       }
 
-      // Send content to the sandbox page
+      // Send content to the wrapper page (which forwards to sandbox via postMessage)
       channel.postMessage({
         type: 'FULLSCREEN_CONTENT',
         title: meta.title,
@@ -4366,9 +4369,9 @@ function openTransformInNewTab(meta: TransformCardMeta): void {
       channel.close()
     }
 
-    // Open the fullscreen sandbox page with the channel ID in the hash
-    const sandboxUrl = chrome.runtime.getURL(`src/sandbox/fullscreen-sandbox.html#${channelId}`)
-    void chrome.tabs.create({ url: sandboxUrl })
+    // Open the wrapper page (NOT sandbox directly) with the channel ID in the hash
+    const wrapperUrl = chrome.runtime.getURL(`src/sandbox/fullscreen-wrapper.html#${channelId}`)
+    void chrome.tabs.create({ url: wrapperUrl })
   }
   else {
     // For markdown content, sanitize with DOMPurify before insertion

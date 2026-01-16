@@ -1,43 +1,41 @@
 /**
  * Fullscreen Sandbox Script
  *
- * This script runs in a sandboxed page opened as a new tab.
- * It receives content via BroadcastChannel and renders it in a sandboxed iframe.
+ * This script runs in a sandboxed page that is embedded as an iframe
+ * within the fullscreen-wrapper page.
  *
  * Security architecture:
- * - This page is declared as a sandbox in manifest.json (permissive CSP)
+ * - This page is declared as a sandbox in manifest.json (permissive CSP for eval/inline scripts)
  * - Content is rendered in an inner iframe with sandbox="allow-scripts allow-forms"
  * - Content is loaded via blob URL (not srcdoc to have independent CSP)
  * - The sandbox attribute on the inner iframe is the security boundary
+ *
+ * Communication:
+ * - Receives content via postMessage from parent wrapper (not BroadcastChannel)
+ * - Sandboxed pages cannot use BroadcastChannel with extension pages
  */
 
-// Message types for BroadcastChannel communication
-interface FullscreenReadyMessage {
-  type: 'FULLSCREEN_READY'
-  channelId: string
-}
+// Make this file an ES module to avoid global scope conflicts
+export {}
 
-interface FullscreenContentMessage {
-  type: 'FULLSCREEN_CONTENT'
+// Message types for postMessage communication (from wrapper parent)
+interface SandboxContentMessage {
+  type: 'SANDBOX_CONTENT'
   title: string
   content: string
   isInteractive: boolean
 }
 
-// Get channel ID from URL hash
-const channelId = window.location.hash.slice(1)
+interface SandboxReadyMessage {
+  type: 'SANDBOX_READY'
+}
 
-if (!channelId) {
-  showError('Missing channel ID in URL')
-}
-else {
-  initializeChannel(channelId)
-}
+// Initialize - listen for content from parent wrapper
+initializePostMessageListener()
 
 function showError(message: string): void {
   const container = document.querySelector('.iframe-container')
   if (container) {
-    // Create error element safely using DOM methods
     const errorDiv = document.createElement('div')
     errorDiv.className = 'error'
     errorDiv.textContent = message
@@ -45,35 +43,27 @@ function showError(message: string): void {
   }
 }
 
-function initializeChannel(channelId: string): void {
-  const channel = new BroadcastChannel(channelId)
-
-  // Listen for content
-  channel.onmessage = (event: MessageEvent) => {
-    const data = event.data as FullscreenContentMessage | undefined
-    if (!data || data.type !== 'FULLSCREEN_CONTENT') {
+function initializePostMessageListener(): void {
+  // Listen for content from parent wrapper via postMessage
+  window.addEventListener('message', (event: MessageEvent) => {
+    // Only accept messages from parent window (the wrapper)
+    if (event.source !== window.parent) {
       return
     }
 
-    // Update title
-    const titleEl = document.getElementById('title')
-    if (titleEl) {
-      titleEl.textContent = data.title
+    const data = event.data as SandboxContentMessage | undefined
+    if (!data || data.type !== 'SANDBOX_CONTENT') {
+      return
     }
-    document.title = `${data.title} - FolioLM`
 
-    // Render content
+    // Render content (title is displayed by the wrapper page)
     renderContent(data.content, data.isInteractive)
+  })
 
-    // Clean up channel after receiving content
-    channel.close()
-  }
-
-  // Signal that we're ready to receive content
-  channel.postMessage({
-    type: 'FULLSCREEN_READY',
-    channelId,
-  } satisfies FullscreenReadyMessage)
+  // Signal to parent that we're ready to receive content
+  window.parent.postMessage({
+    type: 'SANDBOX_READY',
+  } satisfies SandboxReadyMessage, '*')
 }
 
 function renderContent(content: string, isInteractive: boolean): void {
