@@ -40,7 +40,8 @@ import {
 } from '../../lib/storage.ts'
 import { renderMarkdown, isHtmlContent } from '../../lib/markdown-renderer.ts'
 import { escapeHtml } from '../dom-utils.ts'
-import { transformHistory, transforming } from '../store'
+import { transformHistory, pendingTransforms } from '../store'
+import type { PendingTransform } from '../store'
 
 // Maximum number of transform cards to keep in history
 const MAX_TRANSFORM_HISTORY = 10
@@ -103,11 +104,13 @@ export interface TransformResult {
 }
 
 export interface UseTransformReturn {
-  /** Whether a transform is in progress */
+  /** Whether any transform is in progress */
   isTransforming: boolean
+  /** Pending transforms currently being generated */
+  pending: PendingTransform[]
   /** Transform history (newest first) */
   history: TransformResult[]
-  /** Run a transformation */
+  /** Run a transformation (can be called multiple times concurrently) */
   transform: (type: TransformationType, sources: Source[], notebookId: string) => Promise<void>
   /** Remove a transform from history */
   removeResult: (id: string) => void
@@ -288,7 +291,19 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
       return
     }
 
-    transforming.value = true
+    // Create a pending transform to track this operation
+    const pendingId = crypto.randomUUID()
+    const pending: PendingTransform = {
+      id: pendingId,
+      type,
+      notebookId: nbId,
+      sourceIds: sources.map(s => s.id),
+      startTime: Date.now(),
+    }
+
+    // Add to pending transforms immediately
+    pendingTransforms.value = [...pendingTransforms.value, pending]
+
     try {
       let output = ''
 
@@ -343,7 +358,8 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
       transformHistory.value = newHistory.slice(0, MAX_TRANSFORM_HISTORY)
     }
     finally {
-      transforming.value = false
+      // Remove from pending transforms when done (success or error)
+      pendingTransforms.value = pendingTransforms.value.filter(p => p.id !== pendingId)
     }
   }, [])
 
@@ -484,7 +500,8 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
   }, [loadHistory])
 
   return {
-    isTransforming: transforming.value,
+    isTransforming: pendingTransforms.value.length > 0,
+    pending: pendingTransforms.value,
     history: transformHistory.value,
     transform,
     removeResult,

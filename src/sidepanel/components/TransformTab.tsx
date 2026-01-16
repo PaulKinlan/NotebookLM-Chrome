@@ -1,7 +1,31 @@
-import { transformHistory, transforming } from '../store'
+import { transformHistory, pendingTransforms } from '../store'
+import type { PendingTransform } from '../store'
 import { useTransform } from '../hooks/useTransform'
 import type { TransformResult } from '../hooks/useTransform'
 import { SandboxContent } from './SandboxContent'
+
+// Transform type titles for display in pending cards
+const TRANSFORM_TITLES: Record<string, string> = {
+  podcast: 'Podcast Script',
+  quiz: 'Study Quiz',
+  takeaways: 'Key Takeaways',
+  email: 'Email Summary',
+  slidedeck: 'Slide Deck',
+  report: 'Report',
+  datatable: 'Data Table',
+  mindmap: 'Mind Map',
+  flashcards: 'Flashcards',
+  timeline: 'Timeline',
+  glossary: 'Glossary',
+  comparison: 'Comparison',
+  faq: 'FAQ',
+  actionitems: 'Action Items',
+  executivebrief: 'Executive Brief',
+  studyguide: 'Study Guide',
+  proscons: 'Pros and Cons',
+  citations: 'Citation List',
+  outline: 'Outline',
+}
 
 interface TransformTabProps {
   active: boolean
@@ -20,6 +44,34 @@ export function TransformTab(props: TransformTabProps) {
       hour: '2-digit',
       minute: '2-digit',
     })
+  }
+
+  const renderPendingCard = (pending: PendingTransform) => {
+    const title = TRANSFORM_TITLES[pending.type] || pending.type
+    return (
+      <div key={pending.id} className="transform-result transform-pending" data-transform-id={pending.id}>
+        <div className="transform-result-header">
+          <h3>{title}</h3>
+          <div className="transform-pending-indicator">
+            <svg className="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" strokeOpacity="0.25"></circle>
+              <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round"></path>
+            </svg>
+          </div>
+        </div>
+        <div className="transform-content transform-generating">
+          <div className="generating-message">
+            Generating
+            {' '}
+            {title.toLowerCase()}
+            ...
+          </div>
+        </div>
+        <div className="transform-meta">
+          <span className="transform-date">{formatDate(pending.startTime)}</span>
+        </div>
+      </div>
+    )
   }
 
   const renderTransformCard = (result: TransformResult) => {
@@ -391,19 +443,19 @@ export function TransformTab(props: TransformTabProps) {
         </button>
       </div>
 
-      {/* Transform History */}
-      {transformHistory.value.length > 0 && (
+      {/* Transform History (includes pending transforms) */}
+      {(pendingTransforms.value.length > 0 || transformHistory.value.length > 0) && (
         <div className="transform-history">
-          <h3 className="section-title">Recent Transforms</h3>
-          {transforming.value && (
-            <div className="transform-loading">Generating transform...</div>
-          )}
+          <h3 className="section-title">
+            {pendingTransforms.value.length > 0
+              ? `Transforms (${pendingTransforms.value.length} generating...)`
+              : 'Recent Transforms'}
+          </h3>
+          {/* Show pending transforms first */}
+          {pendingTransforms.value.map(pending => renderPendingCard(pending))}
+          {/* Then show completed transforms */}
           {transformHistory.value.map(result => renderTransformCard(result))}
         </div>
-      )}
-
-      {transforming.value && transformHistory.value.length === 0 && (
-        <div className="transform-loading">Generating transform...</div>
       )}
     </section>
   )

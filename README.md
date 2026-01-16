@@ -373,6 +373,16 @@ interface ModelConfig {
   createdAt: number;
   updatedAt: number;
 }
+
+// Transform State (from src/sidepanel/store/signals.ts)
+
+interface PendingTransform {
+  id: string;             // Unique ID for tracking
+  type: TransformationType;  // Transform type being generated
+  notebookId: string;     // Notebook this transform belongs to
+  sourceIds: string[];    // Source IDs being transformed
+  startTime: number;      // When the transform started
+}
 ```
 
 ### Message Passing

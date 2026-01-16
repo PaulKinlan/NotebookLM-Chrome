@@ -13,8 +13,29 @@ import type {
   ThemePreference,
   ResolvedTheme,
   ChatEvent as ChatEventType,
+  TransformationType,
 } from '../../types/index.ts'
 import type { TransformResult } from '../hooks/useTransform.ts'
+
+// ============================================================================
+// Pending Transform Types
+// ============================================================================
+
+/**
+ * Represents a transformation that is currently in progress
+ */
+export interface PendingTransform {
+  /** Unique ID for this pending transform */
+  id: string
+  /** Transform type being generated */
+  type: TransformationType
+  /** Notebook this transform belongs to */
+  notebookId: string
+  /** Source IDs being transformed */
+  sourceIds: string[]
+  /** When the transform started */
+  startTime: number
+}
 
 // ============================================================================
 // Notebook Signals
@@ -214,14 +235,20 @@ export const onboardingHidden = signal(false)
 /** Transform history for the current notebook */
 export const transformHistory = signal<TransformResult[]>([])
 
-/** Whether a transformation is in progress */
-export const transforming = signal(false)
+/** Pending transforms currently being generated */
+export const pendingTransforms = signal<PendingTransform[]>([])
+
+/** Whether any transformation is in progress (computed for backwards compat) */
+export const transforming = computed(() => pendingTransforms.value.length > 0)
 
 /** Number of transforms in history (computed) */
 export const transformCount = computed(() => transformHistory.value.length)
 
 /** Whether there are any transforms (computed) */
 export const hasTransforms = computed(() => transformHistory.value.length > 0)
+
+/** Number of pending transforms (computed) */
+export const pendingTransformCount = computed(() => pendingTransforms.value.length)
 
 // ============================================================================
 // Initial Tab State (passed from main.tsx)

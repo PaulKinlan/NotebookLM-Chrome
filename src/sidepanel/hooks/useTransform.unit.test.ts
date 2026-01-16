@@ -156,6 +156,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.resetModules()
 
+  // Reset global signals
+  transformHistory.value = []
+  pendingTransforms.value = []
+
   // Reset all mock functions
   mockGeneratePodcastScript.mockReset()
   mockGenerateQuiz.mockReset()
@@ -184,8 +188,9 @@ beforeEach(() => {
   consoleErrorSpy.mockClear()
 })
 
-// Import hook after mocks are set up
+// Import hook and signals after mocks are set up
 import { useTransform } from './useTransform.ts'
+import { transformHistory, pendingTransforms } from '../store'
 
 // ============================================================================
 // Tests
@@ -197,6 +202,7 @@ describe('useTransform', () => {
       const { result } = renderHook(() => useTransform())
 
       expect(result.current.isTransforming).toBe(false)
+      expect(result.current.pending).toEqual([])
       expect(result.current.history).toEqual([])
     })
   })
@@ -828,6 +834,127 @@ describe('useTransform', () => {
       })
 
       expect(result.current.history[0].sourceIds).toEqual(['single'])
+    })
+  })
+
+  describe('concurrent transforms', () => {
+    it('allows multiple transforms to run concurrently', async () => {
+      // Create promises that we can control
+      let resolvePodcast: (value: string) => void
+      let resolveQuiz: (value: string) => void
+
+      const podcastPromise = new Promise<string>((resolve) => {
+        resolvePodcast = resolve
+      })
+      const quizPromise = new Promise<string>((resolve) => {
+        resolveQuiz = resolve
+      })
+
+      mockGeneratePodcastScript.mockReturnValue(podcastPromise)
+      mockGenerateQuiz.mockReturnValue(quizPromise)
+
+      const { result } = renderHook(() => useTransform())
+
+      // Start both transforms concurrently (don't await)
+      act(() => {
+        void result.current.transform('podcast', mockSources, mockNotebookId)
+        void result.current.transform('quiz', mockSources, mockNotebookId)
+      })
+
+      // Both should be pending
+      expect(result.current.pending).toHaveLength(2)
+      expect(result.current.isTransforming).toBe(true)
+      expect(result.current.pending[0].type).toBe('podcast')
+      expect(result.current.pending[1].type).toBe('quiz')
+
+      // Complete the first transform
+      await act(async () => {
+        resolvePodcast!('Podcast result')
+        await podcastPromise
+      })
+
+      // Only one should still be pending
+      expect(result.current.pending).toHaveLength(1)
+      expect(result.current.pending[0].type).toBe('quiz')
+      expect(result.current.isTransforming).toBe(true)
+      expect(result.current.history).toHaveLength(1)
+
+      // Complete the second transform
+      await act(async () => {
+        resolveQuiz!('Quiz result')
+        await quizPromise
+      })
+
+      // No more pending, both in history
+      expect(result.current.pending).toHaveLength(0)
+      expect(result.current.isTransforming).toBe(false)
+      expect(result.current.history).toHaveLength(2)
+    })
+
+    it('pending transforms contain correct metadata', async () => {
+      let resolvePodcast: (value: string) => void
+      const podcastPromise = new Promise<string>((resolve) => {
+        resolvePodcast = resolve
+      })
+
+      mockGeneratePodcastScript.mockReturnValue(podcastPromise)
+
+      const { result } = renderHook(() => useTransform())
+
+      act(() => {
+        void result.current.transform('podcast', mockSources, mockNotebookId)
+      })
+
+      // Check pending transform has correct properties
+      expect(result.current.pending).toHaveLength(1)
+      const pending = result.current.pending[0]
+      expect(pending.id).toBeDefined()
+      expect(pending.type).toBe('podcast')
+      expect(pending.notebookId).toBe(mockNotebookId)
+      expect(pending.sourceIds).toEqual(['source-1', 'source-2'])
+      expect(pending.startTime).toBeDefined()
+      expect(pending.startTime).toBeLessThanOrEqual(Date.now())
+
+      // Clean up
+      await act(async () => {
+        resolvePodcast!('Podcast result')
+        await podcastPromise
+      })
+    })
+
+    it('removes pending transform on error', async () => {
+      let rejectPodcast: (error: Error) => void
+      const podcastPromise = new Promise<string>((_, reject) => {
+        rejectPodcast = reject
+      })
+
+      mockGeneratePodcastScript.mockReturnValue(podcastPromise)
+
+      const { result } = renderHook(() => useTransform())
+
+      // Store the transform promise so we can await it later
+      let transformPromise: Promise<void>
+      act(() => {
+        transformPromise = result.current.transform('podcast', mockSources, mockNotebookId)
+      })
+
+      expect(result.current.pending).toHaveLength(1)
+
+      // Reject the transform and await it to completion
+      await act(async () => {
+        rejectPodcast!(new Error('API Error'))
+        try {
+          await transformPromise
+        }
+        catch {
+          // Expected - the transform should reject
+        }
+      })
+
+      // Pending should be cleared even on error
+      expect(result.current.pending).toHaveLength(0)
+      expect(result.current.isTransforming).toBe(false)
+      expect(result.current.history).toHaveLength(0)
     })
   })
 })

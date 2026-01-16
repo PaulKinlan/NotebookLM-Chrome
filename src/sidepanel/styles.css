@@ -2505,6 +2505,47 @@ details.suggested-links-section[open] .suggested-links-chevron {
   color: var(--text-secondary);
 }
 
+/* Pending transform cards */
+.transform-result.transform-pending {
+  border-color: var(--accent-primary);
+  border-style: dashed;
+  opacity: 0.9;
+}
+
+.transform-pending-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.transform-pending-indicator .spinner {
+  animation: spin 1s linear infinite;
+  color: var(--accent-primary);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.transform-content.transform-generating {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.generating-message {
+  color: var(--text-secondary);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ============================================================================
    Modal
    ============================================================================ */

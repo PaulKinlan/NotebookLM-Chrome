@@ -64,10 +64,13 @@ export {
   onboardingHidden,
 
   // Transform Signals
+  type PendingTransform,
   transformHistory,
+  pendingTransforms,
   transforming,
   transformCount,
   hasTransforms,
+  pendingTransformCount,
 
   // Initial Tab State
   initialTab,

@@ -366,6 +366,32 @@ Each generated transform result can be saved, deleted, or opened in a new tab fo
 - [x] Blob URLs are cleaned up after tab opens to prevent memory leaks
 - [x] Transform history is per-notebook (switching notebooks loads saved transforms for that notebook)
 
+#### 4.8 Concurrent Transforms
+
+Users can start multiple transformations simultaneously without waiting for previous ones to complete. Each transform runs independently and displays its progress in the transform history.
+
+**Features:**
+- **Queue Multiple Transforms**: Users can click on multiple transform type buttons without waiting for previous transforms to finish
+- **Pending Transform Display**: Each in-progress transform shows in the transform history with a spinning indicator and "Generating..." message
+- **Independent Completion**: Each transform completes independently and is added to history when done
+- **Error Isolation**: If one transform fails, others continue running unaffected
+
+**UI Changes:**
+- Section title shows count of generating transforms when any are pending (e.g., "Transforms (2 generating...)")
+- Pending transform cards appear at the top of the history list with:
+  - Dashed purple border to distinguish from completed transforms
+  - Spinning progress indicator in the header
+  - "Generating [type]..." message in the content area
+  - Start time displayed in the metadata
+
+**Acceptance Criteria:**
+- [x] Multiple transforms can be initiated while others are in progress
+- [x] Each pending transform displays with loading indicator
+- [x] Completed transforms are added to history in completion order
+- [x] Failed transforms are removed from pending without affecting others
+- [x] `pendingTransforms` signal tracks all in-progress transforms
+- [x] `pending` property exposed from useTransform hook
+
 ### 5. Multimodal Sources
 
 #### 5.1 PDF Documents (P1)
