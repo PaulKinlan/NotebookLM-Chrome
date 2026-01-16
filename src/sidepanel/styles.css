@@ -1385,6 +1385,16 @@ input[type="text"]:focus {
   animation: spin 1s linear infinite;
 }
 
+#regenerate-summary-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#regenerate-summary-btn.refreshing svg {
+  animation: spin 1s linear infinite;
+}
+
 .source-url {
   font-size: 12px;
   color: var(--text-muted);
