@@ -204,6 +204,7 @@ export function App(props: AppProps) {
   /**
    * Handle notebook creation with optional pending context menu action.
    * If there's a pending action (from context menu), execute it after creating the notebook.
+   * The extraction happens in the background - dialog closes immediately.
    */
   const handleCreateNotebookWithPendingAction = async (name: string): Promise<void> => {
     // Create the notebook first
@@ -215,48 +216,51 @@ export function App(props: AppProps) {
       // Clear the pending action first
       pendingContextMenuAction.value = null
 
-      // Execute the pending action
-      try {
-        switch (pendingAction.type) {
-          case 'ADD_PAGE': {
-            const tab = await chrome.tabs.get(pendingAction.tabId)
-            if (tab.url) {
+      // Execute the pending action in the background (don't await)
+      // This allows the dialog to close immediately while sources are added
+      void (async () => {
+        try {
+          switch (pendingAction.type) {
+            case 'ADD_PAGE': {
+              const tab = await chrome.tabs.get(pendingAction.tabId)
+              if (tab.url) {
+                await chrome.runtime.sendMessage({
+                  type: 'EXTRACT_FROM_URL',
+                  payload: { url: tab.url, notebookId: notebook.id },
+                })
+              }
+              break
+            }
+            case 'ADD_LINK': {
               await chrome.runtime.sendMessage({
                 type: 'EXTRACT_FROM_URL',
-                payload: { url: tab.url, notebookId: notebook.id },
+                payload: { url: pendingAction.linkUrl, notebookId: notebook.id },
               })
+              break
             }
-            break
-          }
-          case 'ADD_LINK': {
-            await chrome.runtime.sendMessage({
-              type: 'EXTRACT_FROM_URL',
-              payload: { url: pendingAction.linkUrl, notebookId: notebook.id },
-            })
-            break
-          }
-          case 'ADD_SELECTION_LINKS': {
-            // Process links in parallel
-            const results = await Promise.allSettled(
-              pendingAction.links.map(linkUrl =>
-                chrome.runtime.sendMessage({
-                  type: 'EXTRACT_FROM_URL',
-                  payload: { url: linkUrl, notebookId: notebook.id },
-                }),
-              ),
-            )
-            const failures = results.filter(r => r.status === 'rejected')
-            if (failures.length > 0) {
-              console.warn(`Failed to extract ${failures.length} of ${pendingAction.links.length} links`)
+            case 'ADD_SELECTION_LINKS': {
+              // Process links in parallel in the background
+              const results = await Promise.allSettled(
+                pendingAction.links.map(linkUrl =>
+                  chrome.runtime.sendMessage({
+                    type: 'EXTRACT_FROM_URL',
+                    payload: { url: linkUrl, notebookId: notebook.id },
+                  }),
+                ),
+              )
+              const failures = results.filter(r => r.status === 'rejected')
+              if (failures.length > 0) {
+                console.warn(`Failed to extract ${failures.length} of ${pendingAction.links.length} links`)
+              }
+              break
             }
-            break
           }
         }
-      }
-      catch (error) {
-        console.error('Failed to execute pending action:', error)
-        showNotification('Failed to add sources to notebook')
-      }
+        catch (error) {
+          console.error('Failed to execute pending action:', error)
+          showNotification('Failed to add sources to notebook')
+        }
+      })()
     }
   }
 

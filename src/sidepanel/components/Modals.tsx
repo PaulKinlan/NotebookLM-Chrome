@@ -81,6 +81,13 @@ export function NotebookDialog(props: NotebookDialogProps) {
     onClose()
   }
 
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      void handleConfirm()
+    }
+  }
+
   return (
     <dialog id="notebook-dialog" ref={dialogRef} className="dialog">
       <h3 id="notebook-dialog-title">{mode === 'create' ? 'New Notebook' : 'Edit Notebook'}</h3>
@@ -90,6 +97,7 @@ export function NotebookDialog(props: NotebookDialogProps) {
         ref={inputRef}
         placeholder="Enter notebook name..."
         defaultValue={initialName}
+        onKeyDown={handleKeyDown}
       />
       <div className="dialog-actions">
         <button id="notebook-dialog-cancel" className="btn btn-outline" onClick={handleCancel}>
