@@ -55,15 +55,18 @@ export function SandboxContent(props: SandboxContentProps) {
         if (isInteractive) {
           // Interactive content (quiz, flashcards, etc.)
           await renderer.renderInteractive(content)
-        } else {
+        }
+        else {
           // Markdown content - convert to HTML first
           const html = renderMarkdown(content)
           await renderer.render(html)
         }
-      } catch (err) {
+      }
+      catch (err) {
         console.error('[SandboxContent] Render error:', err)
         setError(err instanceof Error ? err.message : 'Failed to render content')
-      } finally {
+      }
+      finally {
         setLoading(false)
       }
     }
@@ -93,7 +96,10 @@ export function SandboxContent(props: SandboxContentProps) {
       )}
       {error && (
         <div className="sandbox-error">
-          <p>Failed to render: {error}</p>
+          <p>
+            Failed to render:
+            {error}
+          </p>
         </div>
       )}
     </div>

@@ -53,9 +53,11 @@ export function useModelConfigs(): UseModelConfigsReturn {
       const settings = await getModelConfigSettings()
       modelConfigs.value = settings.modelConfigs
       defaultModelConfigId.value = settings.defaultModelConfigId
-    } catch (error) {
+    }
+    catch (error) {
       console.error('[useModelConfigs] Failed to load configs:', error)
-    } finally {
+    }
+    finally {
       loadingConfigs.value = false
     }
   }, [])

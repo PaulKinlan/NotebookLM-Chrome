@@ -214,7 +214,7 @@ export function PickerModal(props: PickerModalProps) {
             id="picker-search"
             placeholder="Search..."
             value={searchQuery}
-            onInput={(e) => onSearchChange((e.target as HTMLInputElement).value)}
+            onInput={e => onSearchChange((e.target as HTMLInputElement).value)}
           />
         </div>
         <div className="picker-select-actions">
@@ -222,54 +222,64 @@ export function PickerModal(props: PickerModalProps) {
           <button className="btn btn-small btn-outline" onClick={onDeselectAll}>Deselect All</button>
         </div>
         <div id="picker-list" className="picker-list">
-          {isLoading ? (
-            <div className="picker-loading">
-              <span className="loading-spinner"></span>
-              <span>Loading...</span>
-            </div>
-          ) : items.length === 0 ? (
-            <div className="picker-empty">
-              <p>No items found</p>
-            </div>
-          ) : (
-            items.map(item => (
-              <div
-                key={item.id}
-                className={`picker-item ${item.selected ? 'selected' : ''}`}
-                onClick={() => onToggleItem(item.id)}
-              >
-                <div className="picker-checkbox">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
+          {isLoading
+            ? (
+                <div className="picker-loading">
+                  <span className="loading-spinner"></span>
+                  <span>Loading...</span>
                 </div>
-                <div className="picker-icon">
-                  {item.favicon ? (
-                    <img
-                      src={item.favicon}
-                      alt=""
-                      onError={(e) => {
-                        const img = e.target as HTMLImageElement
-                        img.style.display = 'none'
-                        if (img.parentNode) {
-                          img.parentNode.textContent = item.title.charAt(0).toUpperCase()
-                        }
-                      }}
-                    />
-                  ) : (
-                    item.title.charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div className="picker-info">
-                  <div className="picker-title">{item.title}</div>
-                  {item.domain && <div className="picker-url">{item.domain}</div>}
-                </div>
-              </div>
-            ))
-          )}
+              )
+            : items.length === 0
+              ? (
+                  <div className="picker-empty">
+                    <p>No items found</p>
+                  </div>
+                )
+              : (
+                  items.map(item => (
+                    <div
+                      key={item.id}
+                      className={`picker-item ${item.selected ? 'selected' : ''}`}
+                      onClick={() => onToggleItem(item.id)}
+                    >
+                      <div className="picker-checkbox">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      </div>
+                      <div className="picker-icon">
+                        {item.favicon
+                          ? (
+                              <img
+                                src={item.favicon}
+                                alt=""
+                                onError={(e) => {
+                                  const img = e.target as HTMLImageElement
+                                  img.style.display = 'none'
+                                  if (img.parentNode) {
+                                    img.parentNode.textContent = item.title.charAt(0).toUpperCase()
+                                  }
+                                }}
+                              />
+                            )
+                          : (
+                              item.title.charAt(0).toUpperCase()
+                            )}
+                      </div>
+                      <div className="picker-info">
+                        <div className="picker-title">{item.title}</div>
+                        {item.domain && <div className="picker-url">{item.domain}</div>}
+                      </div>
+                    </div>
+                  ))
+                )}
         </div>
         <div className="modal-footer">
-          <span id="picker-selected-count">{selectedCount} selected</span>
+          <span id="picker-selected-count">
+            {selectedCount}
+            {' '}
+            selected
+          </span>
           <div className="modal-actions">
             <button id="picker-cancel" className="btn btn-outline" onClick={onClose}>Cancel</button>
             <button

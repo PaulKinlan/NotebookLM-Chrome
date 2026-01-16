@@ -2,6 +2,21 @@
 // App Root Component
 // ============================================================================
 
+// Type guard for refresh sources response
+interface RefreshSourcesResponse {
+  success: boolean
+  refreshedCount: number
+}
+
+function isRefreshSourcesResponse(value: unknown): value is RefreshSourcesResponse {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'success' in value
+    && typeof (value as RefreshSourcesResponse).success === 'boolean'
+  )
+}
+
 // Import all components
 import { Header } from './components/Header'
 import { AddTab } from './components/AddTab'
@@ -122,7 +137,8 @@ export function App(props: AppProps) {
       // Subtract 1 because the sidepanel's tab might be highlighted too
       const count = tabs.filter(t => t.url && !t.url.startsWith('chrome://')).length
       setHighlightedTabCount(count > 1 ? count : 0)
-    } catch {
+    }
+    catch {
       setHighlightedTabCount(0)
     }
   }, [])
@@ -222,7 +238,8 @@ export function App(props: AppProps) {
       const importedSources = await importTabs(validTabs.map(t => String(t.id)))
       showNotification(`Added ${importedSources.length} tabs`)
       setHighlightedTabCount(0)
-    } catch (error) {
+    }
+    catch (error) {
       console.error('Failed to add highlighted tabs:', error)
       showNotification('Failed to add selected tabs')
     }
@@ -422,48 +439,57 @@ export function App(props: AppProps) {
           onRegenerateSummary={() => void handleRegenerateSummary()}
           onAddCurrentTab={() => void handleAddCurrentTab()}
           onManageSources={() => { activeTab.value = 'add' }}
-          onRefreshSources={async () => {
-            if (!currentNotebookId.value) {
-              showNotification('Please select a notebook first')
-              return
-            }
-            showNotification('Refreshing sources...')
-            try {
-              const result = await chrome.runtime.sendMessage({
-                type: 'REFRESH_ALL_SOURCES',
-                payload: { notebookId: currentNotebookId.value },
-              })
-              if (result?.success) {
-                if (result.refreshedCount > 0) {
-                  showNotification(`Refreshed ${result.refreshedCount} source${result.refreshedCount > 1 ? 's' : ''}`)
-                } else {
-                  showNotification('No sources to refresh')
+          onRefreshSources={() => {
+            void (async () => {
+              if (!currentNotebookId.value) {
+                showNotification('Please select a notebook first')
+                return
+              }
+              showNotification('Refreshing sources...')
+              try {
+                const result: unknown = await chrome.runtime.sendMessage({
+                  type: 'REFRESH_ALL_SOURCES',
+                  payload: { notebookId: currentNotebookId.value },
+                })
+                if (isRefreshSourcesResponse(result) && result.success) {
+                  if (result.refreshedCount > 0) {
+                    showNotification(`Refreshed ${result.refreshedCount} source${result.refreshedCount > 1 ? 's' : ''}`)
+                  }
+                  else {
+                    showNotification('No sources to refresh')
+                  }
                 }
-              } else {
+                else {
+                  showNotification('Failed to refresh sources')
+                }
+              }
+              catch (error) {
+                console.error('Failed to refresh sources:', error)
                 showNotification('Failed to refresh sources')
               }
-            } catch (error) {
-              console.error('Failed to refresh sources:', error)
-              showNotification('Failed to refresh sources')
-            }
+            })()
           }}
           onRemoveSource={id => void handleRemoveSource(id)}
-          onAddSuggestedLink={async (url: string, title: string) => {
-            if (!currentNotebookId.value) {
-              showNotification('Please select a notebook first')
-              return
-            }
-            try {
-              const source = await addSourceFromUrl(url, title)
-              if (source) {
-                showNotification(`Added "${title}" to notebook`)
-              } else {
+          onAddSuggestedLink={(url: string, title: string) => {
+            void (async () => {
+              if (!currentNotebookId.value) {
+                showNotification('Please select a notebook first')
+                return
+              }
+              try {
+                const source = await addSourceFromUrl(url, title)
+                if (source) {
+                  showNotification(`Added "${title}" to notebook`)
+                }
+                else {
+                  showNotification('Failed to add link')
+                }
+              }
+              catch (error) {
+                console.error('Failed to add suggested link:', error)
                 showNotification('Failed to add link')
               }
-            } catch (error) {
-              console.error('Failed to add suggested link:', error)
-              showNotification('Failed to add link')
-            }
+            })()
           }}
           summaryContent={summaryContent.value}
           showSummary={showSummary.value}
