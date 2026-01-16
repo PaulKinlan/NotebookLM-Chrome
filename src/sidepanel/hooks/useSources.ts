@@ -77,6 +77,20 @@ export function useSources(notebookId: string | null): UseSourcesReturn {
     }
   }, [notebookId, loadSources])
 
+  // Listen for sources-changed event (from chrome-bridge when background adds sources)
+  useEffect(() => {
+    const handleSourcesChanged = () => {
+      if (notebookId) {
+        void loadSources()
+      }
+    }
+
+    window.addEventListener('foliolm:sources-changed', handleSourcesChanged)
+    return () => {
+      window.removeEventListener('foliolm:sources-changed', handleSourcesChanged)
+    }
+  }, [notebookId, loadSources])
+
   const addSource = useCallback(async (
     sourceData: Omit<Source, 'id' | 'createdAt' | 'updatedAt'>,
   ): Promise<Source> => {
