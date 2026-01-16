@@ -147,6 +147,13 @@ export function initBroadcastListeners(): void {
   ) => {
     // The useNotebook hook will handle notebook selection changes
     window.dispatchEvent(new CustomEvent('foliolm:notebooks-changed', { detail: event.data }))
+
+    // When notebooks are created or deleted, rebuild context menus
+    if (event.data.type === 'notebook:created' || event.data.type === 'notebook:deleted') {
+      chrome.runtime.sendMessage({ type: 'REBUILD_CONTEXT_MENUS' }).catch(() => {
+        // Background script may not be ready yet
+      })
+    }
   }
 
   // Chat channel - triggers reload in useChat hook

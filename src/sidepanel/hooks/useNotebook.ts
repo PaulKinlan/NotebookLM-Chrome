@@ -86,6 +86,11 @@ export function useNotebook(): UseNotebookReturn {
     // Select the new notebook (this also reloads the notebooks list)
     await selectNotebook(newNotebook.id)
 
+    // Rebuild context menus to include the new notebook
+    chrome.runtime.sendMessage({ type: 'REBUILD_CONTEXT_MENUS' }).catch(() => {
+      // Background script may not be ready yet
+    })
+
     return newNotebook
   }, [selectNotebook])
 
@@ -100,6 +105,11 @@ export function useNotebook(): UseNotebookReturn {
 
     // Reload notebooks
     await loadNotebooks()
+
+    // Rebuild context menus to remove the deleted notebook
+    chrome.runtime.sendMessage({ type: 'REBUILD_CONTEXT_MENUS' }).catch(() => {
+      // Background script may not be ready yet
+    })
   }, [loadNotebooks])
 
   const reloadNotebooks = async (): Promise<void> => {
