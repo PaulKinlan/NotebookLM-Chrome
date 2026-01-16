@@ -1,3 +1,29 @@
+# [0.6.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.5.0...v0.6.0) (2026-01-16)
+
+
+### Bug Fixes
+
+* **release:** sync versions with git tags and fix semantic-release config ([#77](https://github.com/PaulKinlan/NotebookLM-Chrome/issues/77)) ([e98760e](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/e98760ef53cc84f08d2d166a5ff910edd316a292))
+* **sidepanel:** append transform cards to DOM before rendering content ([9c4a8c4](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/9c4a8c402849736c9a9d999925852408f7736f0e))
+* **sidepanel:** auto-fix all stylistic linting errors ([#78](https://github.com/PaulKinlan/NotebookLM-Chrome/issues/78)) ([d6123cd](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/d6123cda9cb64151b4cf04032fa67b31bff7bbd4))
+* **sidepanel:** rebuild context menus when notebooks are created/deleted ([#75](https://github.com/PaulKinlan/NotebookLM-Chrome/issues/75)) ([60d5e60](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/60d5e6050e18fd7a23baa0530e20bb7c2a862ab0))
+* **sidepanel:** render restored transforms using correct rendering path ([5219d6c](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/5219d6c8c1b827d2cb0bece0b94bb4828627ae5d))
+* **sidepanel:** restore complete onboarding flow with AI setup ([#76](https://github.com/PaulKinlan/NotebookLM-Chrome/issues/76)) ([a342563](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/a3425632c9cc283881facc5265425cf364e6ff7e))
+* **sidepanel:** restore sandbox layer for inline script CSP support ([5b6a4a4](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/5b6a4a464414b7bf3c9011c806df85c9aa41d59a))
+* **sidepanel:** use Base64 encoding for fullscreen content embedding ([4634df0](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/4634df06126cb7f5f7f29ed49b224eebd45c9084))
+* **sidepanel:** use chrome.tabs.sendMessage for fullscreen content delivery ([7c2a75e](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/7c2a75e4678241ea140c95fa1b1259a1db4aeae3))
+* **sidepanel:** use dedicated sandbox page for fullscreen transforms ([5517b72](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/5517b7292ddce46637e489f59d91b8be9c2361ae))
+* **sidepanel:** use double-iframe/blob architecture for fullscreen transforms ([455bfb5](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/455bfb5019b00b82454a64e36db40f8dbde55caa))
+* **sidepanel:** use isHtmlContent() for restored transform detection ([075395f](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/075395f6b0603498b2654686ff387d266e8fb37e))
+* **sidepanel:** use sandbox attribute as security boundary for fullscreen ([f81cc1d](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/f81cc1d4c1e9e9b34a2dc5ba06f14deedb9e639d))
+* **sidepanel:** use srcdoc instead of blob URL for content rendering ([11c4940](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/11c4940eecbfe8aeceb5ecf8440f707733284868))
+* **sidepanel:** use wrapper/bridge pattern for fullscreen sandbox communication ([f1bb641](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/f1bb64159445d6a864ee63a5e4eeea5cd105409a))
+
+
+### Features
+
+* **sidepanel:** load per-notebook transform history when switching folios ([26b0ffd](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/26b0ffd288baa6533e9a54abecfed1cd04f64f94))
+
 # [0.5.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.4.0...v0.5.0) (2026-01-15)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "foliolm",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "FolioLM - Collect and query content from tabs, bookmarks, and history. Your AI research companion.",
   "type": "module",
   "scripts": {
