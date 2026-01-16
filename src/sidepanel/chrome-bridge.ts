@@ -101,6 +101,8 @@ export function initChromeBridge(bridgeCallbacks: ChromeBridgeCallbacks): void {
 export async function checkPendingActions(): Promise<void> {
   try {
     const result = await chrome.storage.session.get('pendingAction')
+    console.log('[ChromeBridge] checkPendingActions result:', result)
+
     if (result.pendingAction) {
       // Clear the pending action first to prevent duplicate processing
       await chrome.storage.session.remove('pendingAction')
@@ -110,6 +112,8 @@ export async function checkPendingActions(): Promise<void> {
         payload: { tabId?: number, linkUrl?: string, links?: string[] }
       }
 
+      console.log('[ChromeBridge] Processing pending action:', type, payload)
+
       if (type === 'CREATE_NOTEBOOK_AND_ADD_PAGE' && payload.tabId) {
         await callbacks.onCreateNotebookAndAddPage?.(payload.tabId)
       }
@@ -117,6 +121,7 @@ export async function checkPendingActions(): Promise<void> {
         await callbacks.onCreateNotebookAndAddLink?.(payload.linkUrl)
       }
       else if (type === 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS' && payload.links) {
+        console.log('[ChromeBridge] Calling onCreateNotebookAndAddSelectionLinks with', payload.links.length, 'links')
         await callbacks.onCreateNotebookAndAddSelectionLinks?.(payload.links)
       }
     }
@@ -132,6 +137,8 @@ export async function checkPendingActions(): Promise<void> {
 
 function setupMessageListener(): void {
   chrome.runtime.onMessage.addListener((message: Message) => {
+    console.log('[ChromeBridge] Message received:', message.type)
+
     if (message.type === 'SOURCE_ADDED') {
       callbacks.onSourceAdded?.()
     }
@@ -150,9 +157,11 @@ function setupMessageListener(): void {
       }
     }
     else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS') {
+      console.log('[ChromeBridge] Selection links message received')
       chrome.storage.session.remove('pendingAction').catch(() => {})
       const payload = message.payload as { links?: string[] } | undefined
       if (payload?.links !== undefined) {
+        console.log('[ChromeBridge] Calling handler with', payload.links.length, 'links')
         void callbacks.onCreateNotebookAndAddSelectionLinks?.(payload.links)
       }
     }
