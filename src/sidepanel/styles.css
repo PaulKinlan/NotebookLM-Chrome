@@ -561,12 +561,6 @@ body {
   color: var(--text-primary);
 }
 
-.icon-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
 .icon-btn.btn-primary {
   background: var(--accent-primary);
   color: white;
@@ -610,11 +604,6 @@ h3 {
   color: var(--text-secondary);
   margin-top: 24px;
   margin-bottom: 12px;
-}
-
-.section-title svg {
-  display: block;
-  flex-shrink: 0;
 }
 
 .link {
@@ -674,13 +663,9 @@ h3 {
   border-radius: var(--radius-lg);
 }
 
-.query-box > svg {
+.query-box svg {
   color: var(--text-muted);
   flex-shrink: 0;
-}
-
-.query-box .icon-btn.btn-primary svg {
-  color: white;
 }
 
 .query-box input {
@@ -1462,7 +1447,7 @@ details.summary-section[open] .summary-chevron {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -2289,13 +2274,6 @@ details.suggested-links-section[open] .suggested-links-chevron {
   font-size: 14px;
   line-height: 1.6;
   white-space: pre-wrap;
-  color: var(--text-primary);
-}
-
-/* Ensure loading/generating states in transform content are visible */
-.transform-content em {
-  color: var(--text-primary);
-  font-style: italic;
 }
 
 /* When transform-content contains an iframe sandbox, let the iframe handle sizing */
@@ -2732,6 +2710,10 @@ details.suggested-links-section[open] .suggested-links-chevron {
 }
 
 /* Chat tab specific adjustments */
+#tab-chat .section-title:first-of-type {
+  margin-top: 16px;
+}
+
 #tab-chat .sources-list.compact {
   margin-bottom: 12px;
 }

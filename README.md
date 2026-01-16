@@ -23,7 +23,7 @@ A browser extension that helps you collect sources from tabs, bookmarks, and his
   - Type-specific options (e.g., quiz difficulty, report format, podcast tone)
   - Custom Instructions field to add your own prompt additions
   - Advanced section shows how the AI prompt is structured
-  - Settings are saved per-notebook, allowing different configurations for different folios
+  - Settings persist across sessions in chrome.storage.local
 - **Transform Management**: Generated transforms can be saved, deleted, or viewed full-screen:
   - Save transforms to persist them for later access
   - Open in new tab for full-screen viewing (great for slides, quizzes, mind maps)
@@ -152,13 +152,28 @@ src/
 │   ├── index.html
 │   ├── main.tsx         # Preact render entry point
 │   ├── App.tsx          # Root component
-│   ├── index.ts         # Tabs, chat, transforms, library, settings
-│   ├── controllers.ts   # Tab controllers and event handlers
-│   ├── dropdown.ts      # Reusable dropdown component
-│   ├── provider-config-ui.ts  # Provider and model configuration UI
+│   ├── index.ts         # Re-exports hooks and services
+│   ├── hooks/           # Custom Preact hooks for state management
+│   │   ├── index.ts     # Hooks barrel export
+│   │   ├── useNavigation.ts    # Tab navigation state
+│   │   ├── useNotification.ts  # Toast notifications
+│   │   ├── useDialog.ts        # Modal dialogs (confirm, notebook)
+│   │   ├── useNotebook.ts      # Notebook CRUD operations
+│   │   ├── useSources.ts       # Source management
+│   │   ├── useChat.ts          # Chat interface with streaming
+│   │   ├── usePermissions.ts   # Chrome permissions state
+│   │   ├── useToolPermissions.ts # AI tool permission requests
+│   │   ├── useTransform.ts     # AI transformations
+│   │   ├── usePickerModal.ts   # Source picker modal
+│   │   └── useOnboarding.ts    # First-run onboarding
+│   ├── services/        # Business logic layer
+│   │   ├── notebooks.ts # Notebook CRUD
+│   │   ├── permissions.ts # Chrome permissions helpers
+│   │   ├── sources.ts    # Source import (tabs, bookmarks, history)
+│   │   └── ui.ts        # UI helpers (notifications, dialogs)
 │   ├── components/      # Preact UI components
 │   │   ├── Header.tsx, AddTab.tsx, ChatTab.tsx, etc.
-│   │   └── TransformConfigPopover.tsx  # Transform settings popover
+│   │   └── TransformConfigPopover.tsx
 │   └── styles.css       # UI styling
 └── types/               # TypeScript interfaces
     └── index.ts         # Notebook, Source, ChatMessage, Credential, ModelConfig, etc.
@@ -180,9 +195,28 @@ Injected into every web page to extract content:
 - Custom rules to filter noise (nav, footer, ads) and simplify links/images
 - Tries semantic selectors (`<article>`, `<main>`, `[role="main"]`) before falling back to `<body>`
 
-#### Side Panel (`src/sidepanel/index.ts`)
+#### Side Panel (`src/sidepanel/`)
 
-The main user interface with five tabs:
+The main user interface built with Preact, using a hooks-based architecture:
+
+**Architecture:**
+- **Hooks (`hooks/`)**: Custom Preact hooks manage state and side effects
+  - `useNavigation`: Tab switching and active tab state
+  - `useNotification`: Toast notifications with auto-dismiss
+  - `useDialog`: Modal dialogs (confirm, notebook create/edit)
+  - `useNotebook`: Notebook CRUD operations with optimistic updates
+  - `useSources`: Source management with import functions
+  - `useChat`: Chat interface with streaming responses and history
+  - `usePermissions`: Chrome optional permissions management
+  - `useTransform`: AI transformation generation with config
+  - `usePickerModal`: Source picker UI for tabs/bookmarks/history
+
+- **Services (`services/`)**: Business logic layer
+  - Pure functions for data operations (notebooks, sources, permissions)
+  - Reusable across hooks and components
+  - Separate from UI state management
+
+**Five Main Tabs:**
 1. **Add Sources**: Import from current tab, tabs, bookmarks, or history
 2. **Chat**: Query sources with AI, streaming responses with citations
 3. **Transform**: Generate 19 different content formats
@@ -211,8 +245,7 @@ Customizable settings for each transformation type:
 - **Default Configs**: Each transformation has sensible default options
 - **CONFIG_LABELS**: UI metadata (field types, labels, options) for dynamic form generation
 - **PROMPT_INFO**: Descriptions of how each transformation's AI prompt works
-- **Per-Notebook Storage**: Configurations saved per-notebook in `chrome.storage.local` (key: `transformConfigs_{notebookId}`)
-- **Cleanup**: Configs are automatically deleted when a notebook is deleted
+- **Storage**: Configurations saved/loaded from `chrome.storage.local`
 - **TransformConfigPopover**: Component using HTML Popover API for settings UI
 
 #### Credential Management (`src/lib/credentials.ts`)

@@ -326,7 +326,7 @@ Each transformation supports custom configuration through a settings popover:
 - Custom Instructions text area for user-defined prompt additions
 - "Advanced" collapsible section shows prompt structure information
 - Reset to Defaults button restores original settings
-- Settings persist per-notebook in chrome.storage.local (each folio maintains its own transform configurations)
+- Settings persist in chrome.storage.local per transformation type
 
 **Acceptance Criteria:**
 - [x] Each transformation has a config button (cog icon)
@@ -657,7 +657,28 @@ src/
 │   └── storage.ts        # StorageAdapter implementation
 ├── sidepanel/
 │   ├── index.html        # Side panel UI structure
-│   ├── index.ts          # UI logic, event handling
+│   ├── main.tsx          # Preact render entry point
+│   ├── App.tsx           # Root component with hooks
+│   ├── index.ts          # Re-exports hooks and services
+│   ├── hooks/            # Custom Preact hooks for state management
+│   │   ├── index.ts      # Hooks barrel export
+│   │   ├── useNavigation.ts
+│   │   ├── useNotification.ts
+│   │   ├── useDialog.ts
+│   │   ├── useNotebook.ts
+│   │   ├── useSources.ts
+│   │   ├── useChat.ts
+│   │   ├── usePermissions.ts
+│   │   ├── useToolPermissions.ts
+│   │   ├── useTransform.ts
+│   │   ├── usePickerModal.ts
+│   │   └── useOnboarding.ts
+│   ├── services/         # Business logic layer
+│   │   ├── notebooks.ts  # Notebook CRUD operations
+│   │   ├── permissions.ts # Chrome permissions helpers
+│   │   ├── sources.ts     # Source import functions
+│   │   └── ui.ts         # UI helpers
+│   ├── components/       # Preact UI components
 │   └── styles.css        # Dark theme CSS
 └── types/
     └── index.ts          # TypeScript type definitions
@@ -822,6 +843,8 @@ async function getModel(): Promise<LanguageModel | null> {
 ### Completed (P0)
 - [x] Project setup (TypeScript, Vite, CRXJS)
 - [x] Manifest V3 with optional permissions
+- [x] **Hooks-based architecture** (Preact hooks for state management)
+- [x] **Service layer** (business logic separated from UI)
 - [x] Side panel UI with light/dark theme support (user preference)
 - [x] Bottom tab navigation (Add, Chat, Transform, Library, Settings)
 - [x] IndexedDB storage with StorageAdapter
@@ -850,6 +873,7 @@ async function getModel(): Promise<LanguageModel | null> {
 - [x] Basic markdown rendering in chat responses
 - [x] Keyboard shortcuts for quick actions (Ctrl+Shift+F/S/N/E)
 - [x] Source refresh (individual and batch) to re-extract content from URLs
+- [x] **Unit tests** (useDialog hook with promise resolution and listener cleanup)
 
 ### Phase 2 - PDF Support (P1)
 - [ ] PDF.js integration for text extraction

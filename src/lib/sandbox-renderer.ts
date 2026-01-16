@@ -24,7 +24,6 @@ type SandboxMessage
   = | RenderContentMessage
     | RenderInteractiveMessage
     | ClearContentMessage
-    | SetThemeMessage
     | SandboxReadyMessage
     | RenderCompleteMessage
     | HeightResponseMessage
@@ -44,11 +43,6 @@ interface RenderInteractiveMessage {
 
 interface ClearContentMessage {
   type: 'CLEAR_CONTENT'
-}
-
-interface SetThemeMessage {
-  type: 'SET_THEME'
-  theme: 'light' | 'dark' | null
 }
 
 interface SandboxReadyMessage {
@@ -324,19 +318,6 @@ export class SandboxRenderer {
    */
   waitForReady(): Promise<void> {
     return this.readyPromise
-  }
-
-  /**
-   * Set the theme for the sandbox content
-   * @param theme - 'light', 'dark', or null for system preference
-   */
-  setTheme(theme: 'light' | 'dark' | null): void {
-    if (this.iframe?.contentWindow) {
-      this.iframe.contentWindow.postMessage({
-        type: 'SET_THEME',
-        theme,
-      } satisfies SetThemeMessage, '*')
-    }
   }
 }
 

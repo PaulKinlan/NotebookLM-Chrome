@@ -1,3 +1,12 @@
+# [0.5.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.4.0...v0.5.0) (2026-01-15)
+
+
+### Features
+
+* add BroadcastChannel notifications to storage operations ([2741c93](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/2741c934d1a5ba002a6568eef2999b730736ef93))
+* add BroadcastChannel utility for cross-context sync ([cda6d87](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/cda6d87a13a6ab91b5e8d97ce05e7542952d6bf9))
+* add global signals store for app state ([9ef32cd](https://github.com/PaulKinlan/NotebookLM-Chrome/commit/9ef32cdd2220dfec38fb4b75d4d73cc6ed40efb7))
+
 # [0.2.0](https://github.com/PaulKinlan/NotebookLM-Chrome/compare/v0.1.0...v0.2.0) (2026-01-15)
 
 

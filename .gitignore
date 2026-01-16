@@ -9,3 +9,4 @@ extension.pem
 *.crx
 .worktrees/
 tests/.chrome-profile/
+.vitest/
