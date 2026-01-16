@@ -525,6 +525,26 @@ body {
   display: block;
 }
 
+/* Chat tab uses flex layout to anchor query box at bottom */
+#tab-chat.tab-content.active {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 140px); /* Account for header and tabs */
+}
+
+#tab-chat .chat-scrollable-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0; /* Required for flex overflow to work */
+}
+
+#tab-chat .chat-bottom-bar {
+  flex-shrink: 0;
+  background: var(--bg-primary);
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+}
+
 .tab-header {
   display: flex;
   align-items: center;
@@ -2938,23 +2958,13 @@ details.suggested-links-section[open] .suggested-links-chevron {
   margin-bottom: 0;
 }
 
-/* Sticky query box at bottom of chat tab */
-#tab-chat .query-box {
-  position: sticky;
-  bottom: 0;
-  margin-top: 16px;
-  background: var(--bg-primary);
-  z-index: 10;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+/* Query box in chat bottom bar */
+#tab-chat .chat-bottom-bar .query-box {
+  margin-top: 0;
 }
 
-#tab-chat .helper-text {
-  position: sticky;
-  bottom: -24px;
-  background: var(--bg-primary);
-  padding-bottom: 8px;
+#tab-chat .chat-bottom-bar .helper-text {
   margin-bottom: 0;
-  z-index: 10;
 }
 
 .chat-header {
