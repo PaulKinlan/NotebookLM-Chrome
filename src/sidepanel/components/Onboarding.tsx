@@ -8,7 +8,14 @@ interface OnboardingProps {
  * Onboarding component
  *
  * Displays the onboarding flow with step content, navigation dots,
- * and next/skip buttons. Uses the useOnboarding hook to manage state.
+ * icons, and next/skip buttons. Uses the useOnboarding hook to manage state.
+ *
+ * The onboarding includes 5 steps:
+ * 1. Welcome - Introduction to FolioLM
+ * 2. Collect Sources - How to add content
+ * 3. Ask Questions - Using the chat feature
+ * 4. Transform Content - Creating podcasts, quizzes, etc.
+ * 5. Set Up AI - Configure AI provider (Chrome Built-in default)
  */
 export function Onboarding(props: OnboardingProps) {
   const { hidden } = props
@@ -24,15 +31,20 @@ export function Onboarding(props: OnboardingProps) {
     <div id="onboarding-overlay" className={`onboarding-overlay ${shouldHide ? 'hidden' : ''}`}>
       <div className="onboarding-content">
         <div className="onboarding-step" id="onboarding-step">
-          <div className="onboarding-icon" id="onboarding-icon"></div>
+          {/* Render the SVG icon for the current step */}
+          <div
+            className="onboarding-icon"
+            id="onboarding-icon"
+            dangerouslySetInnerHTML={{ __html: step.icon }}
+          />
           <h2 id="onboarding-title">{step.title}</h2>
           <p id="onboarding-description">{step.description}</p>
         </div>
         <div className="onboarding-progress">
           <div className="onboarding-dots" id="onboarding-dots">
-            {steps.map((_, index) => (
+            {steps.map((s, index) => (
               <div
-                key={index}
+                key={s.id}
                 className={`onboarding-dot${index === currentStep ? ' active' : ''}`}
               />
             ))}

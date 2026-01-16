@@ -3,55 +3,38 @@
  *
  * Manages onboarding flow state including:
  * - Step progression
- * - Step content (titles, descriptions)
+ * - Step content (titles, descriptions, icons)
  * - Completion tracking
  * - Chrome AI model download trigger on user gesture
+ * - Default AI profile initialization
  */
 
 import { useState, useCallback, useRef, useEffect } from 'preact/hooks'
-import { isOnboardingComplete, markOnboardingComplete } from '../../lib/onboarding.ts'
+import {
+  isOnboardingComplete,
+  markOnboardingComplete,
+  ONBOARDING_STEPS as LIB_ONBOARDING_STEPS,
+  type OnboardingStep,
+} from '../../lib/onboarding.ts'
 import { startModelDownloadAsync } from '../../lib/chrome-ai.ts'
 
-export interface OnboardingStep {
-  title: string
-  description: string
-}
-
-const ONBOARDING_STEPS: OnboardingStep[] = [
-  {
-    title: 'Welcome to FolioLM',
-    description: 'Collect web content from tabs, bookmarks, and history. Query and transform your sources using AI.',
-  },
-  {
-    title: 'Add Your First Source',
-    description: 'Click "Add Current Tab" to capture the active page. You can also import from tabs, bookmarks, or history.',
-  },
-  {
-    title: 'Ask Questions',
-    description: 'Type a question in the chat box to query your sources. Get intelligent answers powered by AI.',
-  },
-  {
-    title: 'Transform Content',
-    description: 'Create podcasts, quizzes, summaries, and more from your sources using AI transformations.',
-  },
-  {
-    title: 'Ready to Explore!',
-    description: 'You\'re all set! Start collecting sources and exploring what AI can do with your content.',
-  },
-]
+export type { OnboardingStep }
 
 export interface UseOnboardingReturn {
   /** Current step index (0-4) */
   currentStep: number
   /** Whether onboarding has been completed */
   isComplete: boolean
-  /** All onboarding steps */
+  /** All onboarding steps (with id, title, description, icon) */
   steps: OnboardingStep[]
   /** Advance to the next step (triggers Chrome AI download on gesture) */
   onNext: () => void
   /** Skip onboarding (triggers Chrome AI download on gesture) */
   onSkip: () => void
 }
+
+// Use the rich step definitions from lib/onboarding.ts
+const ONBOARDING_STEPS = LIB_ONBOARDING_STEPS
 
 /**
  * Hook for managing onboarding state
