@@ -2,11 +2,12 @@ import type { ThemePreference } from '../../types/index.ts'
 import { setPreference, onThemeChange, onThemeInitialized } from '../hooks/useTheme.tsx'
 import { useToolPermissions } from '../hooks/useToolPermissions'
 import { usePermissions } from '../hooks/usePermissions'
-import { useModelConfigs } from '../hooks/useModelConfigs'
+import { useProviderProfiles } from '../hooks/useProviderProfiles'
 import { useState, useEffect } from 'preact/hooks'
 import { requestPermission, revokePermission } from '../../lib/permissions'
 import { getProviderConfigById } from '../../lib/provider-registry'
 import { showNotification } from '../store'
+import { ProfileForm } from './ProfileForm.tsx'
 
 interface SettingsTabProps {
   active: boolean
@@ -25,13 +26,25 @@ export function SettingsTab(props: SettingsTabProps) {
   // Get browser permissions
   const { permissions, refreshPermissions } = usePermissions()
 
-  // Get model configs (AI profiles)
+  // Get provider profiles (AI profiles with full CRUD)
   const {
-    modelConfigs,
-    defaultModelConfigId,
-    deleteConfig,
-    setDefault,
-  } = useModelConfigs()
+    profiles,
+    isNewProfile,
+    formState,
+    availableProviders,
+    availableModels,
+    isFetchingModels,
+    testStatus,
+    testMessage,
+    startNewProfile,
+    cancelEdit,
+    updateFormState,
+    saveProfile,
+    deleteProfile,
+    setDefaultProfile,
+    testConnection,
+    fetchModels,
+  } = useProviderProfiles()
 
   // Initialize permissions on mount
   useEffect(() => {
@@ -71,6 +84,31 @@ export function SettingsTab(props: SettingsTabProps) {
   const handleThemeChange = (newPreference: ThemePreference) => {
     setThemePreference(newPreference)
     void setPreference(newPreference)
+  }
+
+  // Fetch models when provider changes
+  useEffect(() => {
+    if (isNewProfile && formState.providerId) {
+      const provider = getProviderConfigById(formState.providerId)
+      if (provider?.features.supportsModelFetching) {
+        void fetchModels(formState.providerId, formState.apiKey)
+      }
+    }
+  }, [formState.providerId, formState.apiKey, isNewProfile, fetchModels])
+
+  // Handle form state changes and model fetching
+  const handleFormChange = (updates: Partial<typeof formState>) => {
+    updateFormState(updates)
+
+    // Fetch models when provider or API key changes
+    if (updates.providerId !== undefined || updates.apiKey !== undefined) {
+      const newProviderId = updates.providerId ?? formState.providerId
+      const newApiKey = updates.apiKey ?? formState.apiKey
+      const provider = getProviderConfigById(newProviderId)
+      if (provider?.features.supportsModelFetching) {
+        void fetchModels(newProviderId, newApiKey)
+      }
+    }
   }
 
   return (
@@ -145,19 +183,36 @@ export function SettingsTab(props: SettingsTabProps) {
       <div className="settings-group">
         <h3 className="section-title">
           AI Profiles
-          <button
-            id="add-profile-btn"
-            className="btn btn-small btn-outline"
-            onClick={() => {
-              // TODO: Open profile creation dialog
-              showNotification('Profile creation coming soon. For now, profiles are auto-created from Chrome Built-in AI.')
-            }}
-          >
-            + Add
-          </button>
+          {!isNewProfile && (
+            <button
+              id="add-profile-btn"
+              className="btn btn-small btn-outline"
+              onClick={startNewProfile}
+            >
+              + Add
+            </button>
+          )}
         </h3>
+
+        {/* Profile creation form */}
+        {isNewProfile && (
+          <ProfileForm
+            formState={formState}
+            availableProviders={availableProviders}
+            availableModels={availableModels}
+            isFetchingModels={isFetchingModels}
+            testStatus={testStatus}
+            testMessage={testMessage}
+            isNewProfile={true}
+            onChange={handleFormChange}
+            onSave={saveProfile}
+            onCancel={cancelEdit}
+            onTest={testConnection}
+          />
+        )}
+
         <div id="profiles-list" className="profiles-list">
-          {modelConfigs.length === 0
+          {profiles.length === 0 && !isNewProfile
             ? (
                 <div className="empty-state-small">
                   <p>No AI profiles configured.</p>
@@ -165,25 +220,25 @@ export function SettingsTab(props: SettingsTabProps) {
                 </div>
               )
             : (
-                modelConfigs.map((config) => {
-                  const provider = getProviderConfigById(config.providerId)
-                  const isDefault = config.id === defaultModelConfigId
+                profiles.map((profile) => {
+                  const provider = getProviderConfigById(profile.modelConfig.providerId)
+                  const isDefault = profile.modelConfig.isDefault
                   return (
-                    <div key={config.id} className={`profile-item ${isDefault ? 'default' : ''}`}>
+                    <div key={profile.modelConfig.id} className={`profile-item ${isDefault ? 'default' : ''}`}>
                       <div className="profile-info">
                         <div className="profile-name">
-                          {config.name}
+                          {profile.modelConfig.name}
                           {isDefault && <span className="badge">Default</span>}
                         </div>
                         <div className="profile-meta">
-                          {`${provider?.displayName ?? config.providerId} • ${config.model}`}
+                          {`${provider?.displayName ?? profile.modelConfig.providerId} • ${profile.modelConfig.model}`}
                         </div>
                       </div>
                       <div className="profile-actions">
                         {!isDefault && (
                           <button
                             className="btn btn-small btn-outline"
-                            onClick={() => void setDefault(config.id)}
+                            onClick={() => void setDefaultProfile(profile.modelConfig.id)}
                             title="Set as default"
                           >
                             Set Default
@@ -192,11 +247,11 @@ export function SettingsTab(props: SettingsTabProps) {
                         <button
                           className="icon-btn"
                           onClick={() => {
-                            if (modelConfigs.length === 1) {
+                            if (profiles.length === 1) {
                               showNotification('Cannot delete the only profile')
                               return
                             }
-                            void deleteConfig(config.id)
+                            void deleteProfile(profile.modelConfig.id)
                           }}
                           title="Delete profile"
                         >

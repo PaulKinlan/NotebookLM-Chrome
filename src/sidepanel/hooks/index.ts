@@ -17,6 +17,8 @@ export { useOnboarding } from './useOnboarding'
 export { useModelConfigs } from './useModelConfigs'
 export { useSuggestedLinks } from './useSuggestedLinks'
 export { useOverview } from './useOverview'
+export { useFuzzyDropdown, type FuzzyDropdownOption, type UseFuzzyDropdownOptions, type UseFuzzyDropdownReturn } from './useFuzzyDropdown'
+export { useProviderProfiles, type AIProfile, type ProfileFormState, type UseProviderProfilesReturn } from './useProviderProfiles'
 
 // NOTE: useNavigation and useNotification have been replaced by signals
 // Import from store instead:
