@@ -334,7 +334,10 @@ export function AddNoteDialog(props: AddNoteDialogProps) {
       })
     }
     else {
-      dialog.close()
+      // Guard against closing unmounted dialogs
+      if (dialog.open) {
+        dialog.close()
+      }
     }
   }, [isOpen])
 

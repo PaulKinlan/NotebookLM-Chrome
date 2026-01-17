@@ -80,6 +80,8 @@ export function SourceItem(props: SourceItemProps) {
             <polyline points="21 15 16 10 5 21"></polyline>
           </svg>
         )
+      default:
+        return null
     }
   }
 

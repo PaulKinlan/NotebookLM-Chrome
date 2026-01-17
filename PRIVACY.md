@@ -1,6 +1,6 @@
 # Privacy Policy for FolioLM
 
-**Last Updated:** January 11, 2026
+**Last Updated:** January 17, 2026
 
 ## Overview
 
@@ -17,6 +17,14 @@ All data you create within FolioLM (notebooks, sources, and extracted content) i
 - Never leaves your device unless you explicitly use AI features
 - Is not accessible to the extension author
 - Can be cleared at any time by removing the extension or clearing extension data
+
+### Types of Data Stored
+
+- **Web page content**: Text extracted from tabs, bookmarks, and history entries
+- **User notes**: Custom text notes you create within the extension
+- **Images**: Image URLs and metadata (dimensions, alt text) from web pages you choose to save
+- **Notebooks**: Organization containers for your sources
+- **AI configurations**: Your API keys and model preferences (stored locally only)
 
 ### Usage Analytics Data
 

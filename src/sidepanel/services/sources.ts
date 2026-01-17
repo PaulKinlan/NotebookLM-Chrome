@@ -392,6 +392,10 @@ export async function addNote(title: string, content: string): Promise<Source | 
     content,
   )
 
+  // Persist the source to storage
+  const { saveSource } = await import('../../lib/storage')
+  await saveSource(source)
+
   chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
 
   return source
@@ -642,7 +646,8 @@ function extractPageImages(): ExtractedImage[] {
     const height = img.naturalHeight || img.height
 
     // Filter out small images (likely icons, buttons, etc.)
-    if (width < MIN_SIZE && height < MIN_SIZE) return
+    // Use || to filter if EITHER dimension is too small
+    if (width < MIN_SIZE || height < MIN_SIZE) return
 
     seenUrls.add(src)
 
@@ -654,22 +659,27 @@ function extractPageImages(): ExtractedImage[] {
     })
   })
 
-  // Also check for background images in CSS (common for hero images)
-  document.querySelectorAll('[style*="background-image"]').forEach((el) => {
+  // Check for background images in CSS (query all elements, check computed styles)
+  document.querySelectorAll('*').forEach((el) => {
     const style = window.getComputedStyle(el)
     const bgImage = style.backgroundImage
+    // Skip if no background image or if it's "none"
+    if (!bgImage || bgImage === 'none') return
     const match = bgImage.match(/url\(['"]?([^'"()]+)['"]?\)/)
     if (match) {
       const src = getAbsoluteUrl(match[1])
       if (!seenUrls.has(src) && src.startsWith('http')) {
-        seenUrls.add(src)
         const rect = el.getBoundingClientRect()
-        images.push({
-          src,
-          alt: '',
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
-        })
+        // Only add if element has reasonable size
+        if (rect.width >= MIN_SIZE && rect.height >= MIN_SIZE) {
+          seenUrls.add(src)
+          images.push({
+            src,
+            alt: '',
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          })
+        }
       }
     }
   })
