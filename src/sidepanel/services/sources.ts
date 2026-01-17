@@ -7,6 +7,7 @@
 
 import type { Source, ExtractedLink } from '../../types/index'
 import { addSourceToNotebook, getCurrentNotebookIdState } from './notebooks'
+import { saveSource } from '../../lib/storage'
 import { checkPermissions, requestPermission } from '../../lib/permissions'
 import type { PermissionStatus } from '../../types/index'
 import { postSourcesMessage } from '../lib/broadcast'
@@ -22,6 +23,21 @@ export interface PickerItem {
   favicon?: string
   color?: string
   tabCount?: number
+}
+
+// Type guard for EXTRACT_FROM_URL response
+interface ExtractFromUrlResponse {
+  success: boolean
+  source?: Source
+}
+
+function isExtractFromUrlResponse(value: unknown): value is ExtractFromUrlResponse {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'success' in value
+    && typeof (value as ExtractFromUrlResponse).success === 'boolean'
+  )
 }
 
 export interface PickerState {
@@ -117,8 +133,12 @@ export async function addCurrentTab(): Promise<Source | null> {
     links,
   )
 
-  // Notify background script
-  chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
+  // Save to storage
+  await saveSource(source)
+
+  // Broadcast the change for cross-context sync and trigger local UI update
+  postSourcesMessage({ type: 'source:created', notebookId, sourceId: source.id })
+  window.dispatchEvent(new CustomEvent('foliolm:sources-changed'))
 
   return source
 }
@@ -170,12 +190,17 @@ export async function importTabs(tabIds: string[]): Promise<Source[]> {
         content,
         links,
       )
+
+      // Save to storage
+      await saveSource(source)
       sources.push(source)
     }
   }
 
   if (sources.length > 0) {
-    chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
+    // Broadcast the change for cross-context sync and trigger local UI update
+    postSourcesMessage({ type: 'source:created', notebookId, sourceId: sources[sources.length - 1].id })
+    window.dispatchEvent(new CustomEvent('foliolm:sources-changed'))
   }
 
   return sources
@@ -247,13 +272,18 @@ export async function importTabGroups(groupIds: string[]): Promise<Source[]> {
           content,
           links,
         )
+
+        // Save to storage
+        await saveSource(source)
         sources.push(source)
       }
     }
   }
 
   if (sources.length > 0) {
-    chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
+    // Broadcast the change for cross-context sync and trigger local UI update
+    postSourcesMessage({ type: 'source:created', notebookId, sourceId: sources[sources.length - 1].id })
+    window.dispatchEvent(new CustomEvent('foliolm:sources-changed'))
   }
 
   return sources
@@ -305,19 +335,34 @@ export async function importBookmarks(bookmarkIds: string[]): Promise<Source[]> 
 
     if (!bookmark?.url) continue
 
-    // For bookmarks, we can't execute scripts, so use the URL as content
-    const source = addSourceToNotebook(
-      notebookId,
-      'bookmark',
-      bookmark.url,
-      bookmark.title || bookmark.url,
-      `Bookmark: ${bookmark.url}`,
-    )
-    sources.push(source)
+    // Use background script to extract content (opens tab in background, extracts, closes)
+    const result: unknown = await chrome.runtime.sendMessage({
+      type: 'EXTRACT_FROM_URL',
+      payload: { url: bookmark.url, notebookId },
+    })
+
+    if (isExtractFromUrlResponse(result) && result.success && result.source) {
+      sources.push(result.source)
+    }
+    else {
+      // Fallback: create stub source if extraction failed
+      console.warn('Content extraction failed for bookmark:', bookmark.url)
+      const source = addSourceToNotebook(
+        notebookId,
+        'bookmark',
+        bookmark.url,
+        bookmark.title || bookmark.url,
+        `Bookmark: ${bookmark.url} (content extraction failed)`,
+      )
+      await saveSource(source)
+      sources.push(source)
+    }
   }
 
   if (sources.length > 0) {
-    chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
+    // Broadcast the change for cross-context sync and trigger local UI update
+    postSourcesMessage({ type: 'source:created', notebookId, sourceId: sources[sources.length - 1].id })
+    window.dispatchEvent(new CustomEvent('foliolm:sources-changed'))
   }
 
   return sources
@@ -341,13 +386,13 @@ export async function getHistory(limit: number = 100): Promise<PickerItem[]> {
   return historyItems
     .filter(item => item.url !== undefined && item.url !== null)
     .map(item => ({
-      id: String(Date.now() + Math.random()), // History items don't have stable IDs
+      id: item.url!, // Use URL as ID since that's what importHistory needs
       url: item.url!,
       title: item.title || item.url!,
     }))
 }
 
-export async function importHistory(urls: string[]): Promise<Source[]> {
+export async function importHistory(ids: string[]): Promise<Source[]> {
   const notebookId = await getCurrentNotebookIdState()
   if (!notebookId) {
     throw new Error('No notebook selected')
@@ -355,20 +400,39 @@ export async function importHistory(urls: string[]): Promise<Source[]> {
 
   const sources: Source[] = []
 
-  for (const url of urls) {
-    // For history items, use the URL as content
-    const source = addSourceToNotebook(
-      notebookId,
-      'history',
-      url,
-      url,
-      `History: ${url}`,
-    )
-    sources.push(source)
+  // History picker uses IDs that are not URLs, so we need to look up the items
+  // The id is generated as `Date.now() + Math.random()`, but we also store the URL in the url field
+  // Actually, the picker uses the item's url field, so ids here are actually URLs
+
+  for (const url of ids) {
+    // Use background script to extract content (opens tab in background, extracts, closes)
+    const result: unknown = await chrome.runtime.sendMessage({
+      type: 'EXTRACT_FROM_URL',
+      payload: { url, notebookId },
+    })
+
+    if (isExtractFromUrlResponse(result) && result.success && result.source) {
+      sources.push(result.source)
+    }
+    else {
+      // Fallback: create stub source if extraction failed
+      console.warn('Content extraction failed for history URL:', url)
+      const source = addSourceToNotebook(
+        notebookId,
+        'history',
+        url,
+        url,
+        `History: ${url} (content extraction failed)`,
+      )
+      await saveSource(source)
+      sources.push(source)
+    }
   }
 
   if (sources.length > 0) {
-    chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
+    // Broadcast the change for cross-context sync and trigger local UI update
+    postSourcesMessage({ type: 'source:created', notebookId, sourceId: sources[sources.length - 1].id })
+    window.dispatchEvent(new CustomEvent('foliolm:sources-changed'))
   }
 
   return sources
@@ -394,7 +458,6 @@ export async function addNote(title: string, content: string): Promise<Source | 
   )
 
   // Persist the source to storage
-  const { saveSource } = await import('../../lib/storage')
   await saveSource(source)
 
   // Broadcast the change for cross-context sync and trigger local UI update
@@ -466,7 +529,6 @@ export async function addImage(
   }
 
   // Save the updated source with metadata
-  const { saveSource } = await import('../../lib/storage')
   await saveSource(source)
 
   // Broadcast the change for cross-context sync and trigger local UI update
@@ -548,21 +610,6 @@ function extractFilenameFromUrl(url: string): string {
 // Add from URL (for suggested links)
 // ============================================================================
 
-// Type guard for EXTRACT_FROM_URL response
-interface ExtractFromUrlResponse {
-  success: boolean
-  source?: Source
-}
-
-function isExtractFromUrlResponse(value: unknown): value is ExtractFromUrlResponse {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && 'success' in value
-    && typeof (value as ExtractFromUrlResponse).success === 'boolean'
-  )
-}
-
 export async function addSourceFromUrl(url: string, title: string): Promise<Source | null> {
   const notebookId = await getCurrentNotebookIdState()
   if (!notebookId) {
@@ -594,7 +641,6 @@ export async function addSourceFromUrl(url: string, title: string): Promise<Sour
   )
 
   // Persist the source to storage
-  const { saveSource } = await import('../../lib/storage')
   await saveSource(source)
 
   // Broadcast the change for cross-context sync and trigger local UI update
@@ -629,7 +675,6 @@ export async function addTextSource(text: string, title?: string): Promise<Sourc
   )
 
   // Persist the source to storage
-  const { saveSource } = await import('../../lib/storage')
   await saveSource(source)
 
   // Broadcast the change for cross-context sync and trigger local UI update
