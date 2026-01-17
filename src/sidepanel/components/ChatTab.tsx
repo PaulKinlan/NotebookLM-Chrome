@@ -1,10 +1,134 @@
 import { useRef } from 'preact/hooks'
-import type { Source } from '../../types/index.ts'
+import type { Source, Citation } from '../../types/index.ts'
 import { SourceItem } from './SourceItem'
 import { RefreshButton } from './RefreshButton'
 import { chatMessages, showNotification } from '../store'
 import { For } from '@preact/signals/utils'
 import { useSuggestedLinks } from '../hooks/useSuggestedLinks'
+import { formatMarkdown } from '../dom-utils'
+
+// ============================================================================
+// Citations Component
+// ============================================================================
+
+interface GroupedCitation {
+  sourceId: string
+  sourceTitle: string
+  sourceUrl: string
+  excerpts: string[]
+}
+
+function CitationsList({ citations, sources }: { citations: Citation[], sources: Source[] }) {
+  if (!citations || citations.length === 0) return null
+
+  // Group citations by sourceId
+  const groupedMap = new Map<string, GroupedCitation>()
+
+  for (const citation of citations) {
+    const source = sources.find(s => s.id === citation.sourceId)
+    const sourceUrl = source?.url || ''
+
+    if (groupedMap.has(citation.sourceId)) {
+      const group = groupedMap.get(citation.sourceId)
+      if (group && !group.excerpts.includes(citation.excerpt)) {
+        group.excerpts.push(citation.excerpt)
+      }
+    }
+    else {
+      groupedMap.set(citation.sourceId, {
+        sourceId: citation.sourceId,
+        sourceTitle: citation.sourceTitle,
+        sourceUrl,
+        excerpts: [citation.excerpt],
+      })
+    }
+  }
+
+  const grouped = Array.from(groupedMap.values())
+
+  return (
+    <div className="chat-citations">
+      <div className="chat-citations-title">
+        Sources cited (
+        {grouped.length}
+        {' '}
+        source
+        {grouped.length !== 1 ? 's' : ''}
+        )
+      </div>
+      {grouped.map((group, sourceIndex) => {
+        const sourceNumber = sourceIndex + 1
+
+        if (group.excerpts.length === 1) {
+          return (
+            <div
+              key={group.sourceId}
+              className="citation-item"
+              data-source-id={group.sourceId}
+              onClick={() => {
+                if (group.sourceUrl) {
+                  window.open(group.sourceUrl, '_blank', 'noopener,noreferrer')
+                }
+              }}
+              style={{ cursor: group.sourceUrl ? 'pointer' : 'default' }}
+            >
+              <div className="citation-number">{sourceNumber}</div>
+              <div className="citation-content">
+                <div className="citation-source">{group.sourceTitle}</div>
+                <div className="citation-excerpt">{group.excerpts[0]}</div>
+              </div>
+            </div>
+          )
+        }
+        else {
+          return (
+            <div key={group.sourceId} className="citation-group">
+              <div className="citation-group-header">
+                <div className="citation-number">{sourceNumber}</div>
+                <div className="citation-source">{group.sourceTitle}</div>
+                <div className="citation-excerpt-count">
+                  {group.excerpts.length}
+                  {' '}
+                  references
+                </div>
+              </div>
+              <div className="citation-group-excerpts">
+                {group.excerpts.map((excerpt, excerptIndex) => {
+                  const subLabel = String.fromCharCode(97 + excerptIndex)
+                  return (
+                    <div
+                      key={excerptIndex}
+                      className="citation-item citation-sub-item"
+                      data-source-id={group.sourceId}
+                      onClick={() => {
+                        if (group.sourceUrl) {
+                          window.open(group.sourceUrl, '_blank', 'noopener,noreferrer')
+                        }
+                      }}
+                      style={{ cursor: group.sourceUrl ? 'pointer' : 'default' }}
+                    >
+                      <div className="citation-number citation-sub-label">
+                        {sourceNumber}
+                        {subLabel}
+                      </div>
+                      <div className="citation-content">
+                        <div className="citation-excerpt">{excerpt}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        }
+      })}
+    </div>
+  )
+}
+
+// ============================================================================
+// ChatTab Component
+// ============================================================================
 
 interface ChatTabProps {
   active: boolean
@@ -276,26 +400,31 @@ export function ChatTab(props: ChatTabProps) {
             {(msg) => {
               // Handle different event types
               if (msg.type === 'user') {
+                // formatMarkdown sanitizes with DOMPurify before returning
+                const sanitizedContent = formatMarkdown(msg.content)
                 return (
                   <div className="chat-message user">
                     <div className="chat-message-role">You</div>
-                    <div className="chat-message-content">
-                      {msg.content.split('\n').map((line: string, i: number) => (
-                        <p key={i}>{line || '\u00A0'}</p>
-                      ))}
-                    </div>
+                    <div
+                      className="chat-message-content"
+                      dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+                    />
                   </div>
                 )
               }
               else if (msg.type === 'assistant') {
+                // formatMarkdown sanitizes with DOMPurify before returning
+                const sanitizedContent = formatMarkdown(msg.content)
                 return (
                   <div className="chat-message assistant">
                     <div className="chat-message-role">AI</div>
-                    <div className="chat-message-content">
-                      {msg.content.split('\n').map((line: string, i: number) => (
-                        <p key={i}>{line || '\u00A0'}</p>
-                      ))}
-                    </div>
+                    <div
+                      className="chat-message-content"
+                      dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+                    />
+                    {msg.citations && msg.citations.length > 0 && (
+                      <CitationsList citations={msg.citations} sources={sources} />
+                    )}
                   </div>
                 )
               }
