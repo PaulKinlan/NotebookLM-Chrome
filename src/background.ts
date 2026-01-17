@@ -1071,9 +1071,24 @@ function injectContentScript(): void {
 function waitForTabLoad(tabId: number, timeoutMs: number = 30000): Promise<void> {
   return new Promise((resolve, reject) => {
     let resolved = false
+    let pollInterval: ReturnType<typeof setInterval> | null = null
 
-    const cleanup = () => {
+    const finish = () => {
+      if (resolved) return
+      resolved = true
       chrome.tabs.onUpdated.removeListener(listener)
+      if (pollInterval) clearInterval(pollInterval)
+      clearTimeout(timeout)
+      resolve()
+    }
+
+    const fail = (error: Error) => {
+      if (resolved) return
+      resolved = true
+      chrome.tabs.onUpdated.removeListener(listener)
+      if (pollInterval) clearInterval(pollInterval)
+      clearTimeout(timeout)
+      reject(error)
     }
 
     const listener = (
@@ -1081,44 +1096,36 @@ function waitForTabLoad(tabId: number, timeoutMs: number = 30000): Promise<void>
       changeInfo: { status?: string },
     ) => {
       if (updatedTabId === tabId && changeInfo.status === 'complete') {
-        if (!resolved) {
-          resolved = true
-          cleanup()
-          resolve()
-        }
+        finish()
       }
     }
 
+    // Add listener FIRST to avoid race condition
+    chrome.tabs.onUpdated.addListener(listener)
+
     // Set up timeout
     const timeout = setTimeout(() => {
-      if (!resolved) {
-        resolved = true
-        cleanup()
-        reject(new Error(`Tab load timed out after ${timeoutMs}ms`))
-      }
+      fail(new Error(`Tab load timed out after ${timeoutMs}ms`))
     }, timeoutMs)
 
-    // Check if tab is already loaded before adding listener
+    // Poll every 500ms as a fallback in case we miss the event
+    pollInterval = setInterval(() => {
+      chrome.tabs.get(tabId).then((tab) => {
+        if (tab.status === 'complete') {
+          finish()
+        }
+      }).catch(() => {
+        fail(new Error('Tab no longer exists'))
+      })
+    }, 500)
+
+    // Also check immediately in case tab is already loaded
     chrome.tabs.get(tabId).then((tab) => {
       if (tab.status === 'complete') {
-        if (!resolved) {
-          resolved = true
-          clearTimeout(timeout)
-          cleanup()
-          resolve()
-        }
-      }
-      else {
-        // Only add listener if tab isn't already complete
-        chrome.tabs.onUpdated.addListener(listener)
+        finish()
       }
     }).catch(() => {
-      // Tab might not exist anymore
-      if (!resolved) {
-        resolved = true
-        clearTimeout(timeout)
-        reject(new Error('Tab no longer exists'))
-      }
+      fail(new Error('Tab no longer exists'))
     })
   })
 }
