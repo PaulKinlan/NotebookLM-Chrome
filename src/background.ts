@@ -1,4 +1,4 @@
-import type { Message, ContentExtractionResult, ExtractedLink } from './types/index.ts'
+import type { Message, ContentExtractionResult, ExtractedLink, Source } from './types/index.ts'
 import {
   createSource,
   saveSource,
@@ -614,7 +614,7 @@ async function extractLinksFromSelection(tabId: number): Promise<string[]> {
 /**
  * Handle adding multiple links from a text selection to a notebook.
  * Extracts content from each link and saves them as sources.
- * Processes links in parallel for faster extraction.
+ * Processes links with limited concurrency to avoid overwhelming Chrome.
  */
 async function handleAddSelectionLinksFromContextMenu(
   links: string[],
@@ -623,34 +623,41 @@ async function handleAddSelectionLinksFromContextMenu(
   // Set as active notebook first
   await setActiveNotebookId(notebookId)
 
-  // Process all links in parallel for much faster extraction
-  const results = await Promise.allSettled(
-    links.map(async (linkUrl) => {
-      const result = await extractContentFromUrl(linkUrl)
-      if (result) {
-        const source = createSource(
-          notebookId,
-          'tab',
-          result.url,
-          result.title,
-          result.content,
-          result.links,
-        )
-        await saveSource(source)
+  // Process links with limited concurrency (3 at a time) to avoid overwhelming Chrome
+  const CONCURRENCY_LIMIT = 3
+  const allResults: PromiseSettledResult<Source | null>[] = []
 
-        // Notify the side panel to refresh its source list
-        chrome.runtime
-          .sendMessage({ type: 'SOURCE_ADDED', payload: source })
-          .catch(() => {
-            // Side panel may not be listening yet
-          })
-        return source
-      }
-      return null
-    }),
-  )
+  for (let i = 0; i < links.length; i += CONCURRENCY_LIMIT) {
+    const batch = links.slice(i, i + CONCURRENCY_LIMIT)
+    const batchResults = await Promise.allSettled(
+      batch.map(async (linkUrl) => {
+        const result = await extractContentFromUrl(linkUrl)
+        if (result) {
+          const source = createSource(
+            notebookId,
+            'tab',
+            result.url,
+            result.title,
+            result.content,
+            result.links,
+          )
+          await saveSource(source)
 
-  const failures = results.filter(r => r.status === 'rejected')
+          // Notify the side panel to refresh its source list
+          chrome.runtime
+            .sendMessage({ type: 'SOURCE_ADDED', payload: source })
+            .catch(() => {
+              // Side panel may not be listening yet
+            })
+          return source
+        }
+        return null
+      }),
+    )
+    allResults.push(...batchResults)
+  }
+
+  const failures = allResults.filter(r => r.status === 'rejected')
   if (failures.length > 0) {
     console.warn(`Failed to extract ${failures.length} of ${links.length} links`)
   }
