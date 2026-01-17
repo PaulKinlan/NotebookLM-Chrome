@@ -33,10 +33,12 @@ import { NotebookDialog } from './components/Modals'
 import { ConfirmDialog } from './components/Modals'
 import { Notification } from './components/Notification'
 import { Onboarding } from './components/Onboarding'
+import { DropZone } from './components/DropZone'
 import {
   addCurrentTab as addCurrentTabService,
   importTabs,
   addSourceFromUrl,
+  addTextSource,
 } from './services/sources'
 import { clearAllData as clearAllStorage } from '../lib/storage'
 import { checkPermissions, requestPermission as requestPerm } from '../lib/permissions'
@@ -481,6 +483,57 @@ export function App(props: AppProps) {
     )
   }
 
+  // Handle dropped links from drag-and-drop
+  const handleDropLinks = async (links: Array<{ url: string, title: string }>) => {
+    if (!currentNotebookId.value) {
+      showNotification('Please select a notebook first')
+      return
+    }
+
+    try {
+      let addedCount = 0
+      for (const link of links) {
+        const source = await addSourceFromUrl(link.url, link.title)
+        if (source) {
+          addedCount++
+        }
+      }
+
+      if (addedCount > 0) {
+        showNotification(`Added ${addedCount} link${addedCount > 1 ? 's' : ''} to notebook`)
+      }
+      else {
+        showNotification('Failed to add links')
+      }
+    }
+    catch (error) {
+      console.error('Failed to add dropped links:', error)
+      showNotification('Failed to add links')
+    }
+  }
+
+  // Handle dropped text from drag-and-drop
+  const handleDropText = async (text: string) => {
+    if (!currentNotebookId.value) {
+      showNotification('Please select a notebook first')
+      return
+    }
+
+    try {
+      const source = await addTextSource(text)
+      if (source) {
+        showNotification(`Added text to notebook`)
+      }
+      else {
+        showNotification('Failed to add text')
+      }
+    }
+    catch (error) {
+      console.error('Failed to add dropped text:', error)
+      showNotification('Failed to add text')
+    }
+  }
+
   return (
     <>
       <Header
@@ -638,6 +691,11 @@ export function App(props: AppProps) {
       />
       <Notification />
       <Onboarding hidden={onboardingHidden} />
+      <DropZone
+        onDropLinks={links => void handleDropLinks(links)}
+        onDropText={text => void handleDropText(text)}
+        disabled={!currentNotebookId.value}
+      />
     </>
   )
 }

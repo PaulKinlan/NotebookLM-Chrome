@@ -72,6 +72,38 @@ Users frequently encounter valuable information across multiple web pages but la
 - [x] User can browse and select bookmarks
 - [x] User can search and select from history
 - [x] Sources display title (with external link icon), URL, and initial icon
+- [x] User can drag and drop links or text from web pages to add sources
+
+#### 1.2.1 Drag and Drop Sources
+
+Users can drag content from web pages directly into the side panel to add sources to their notebook:
+
+**Supported Drop Content:**
+| Content Type | Source Type Created | Description |
+|--------------|---------------------|-------------|
+| Links | `manual` | URLs dragged from web pages (preserves link title if available) |
+| Text with URLs | `manual` | Text containing URLs - each URL is extracted and added as a link |
+| Plain text | `text` | Text without URLs is added as a text source |
+
+**Visual Feedback:**
+- Full-screen drop zone overlay appears when dragging content over the side panel
+- Pulsing border animation with accent color indicates valid drop target
+- Upload icon bounces to provide clear visual guidance
+- Overlay displays "Drop to add source" with helper text
+
+**Behavior:**
+- Multiple links can be dropped at once (e.g., from a selection containing multiple anchor tags)
+- HTML content is parsed to extract links with their anchor text
+- `text/uri-list` MIME type is supported for direct link drops
+- Plain text URLs are automatically detected and extracted
+- Drop is disabled when no notebook is selected (shows notification)
+
+**Acceptance Criteria:**
+- [x] User can drag a link from a web page and drop it in the side panel
+- [x] User can drag multiple links (selected text with links) to add them all
+- [x] User can drag plain text to add it as a text source
+- [x] Visual drop zone overlay appears during drag
+- [x] Notification confirms successful addition of sources
 
 #### 1.3 Content Extraction
 Uses **Turndown** library in a content script to convert HTML to clean markdown:
