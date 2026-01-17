@@ -29,7 +29,7 @@ export function DropZone({ onDropLinks, onDropText, disabled = false }: DropZone
     if (matches) {
       for (const url of matches) {
         // Clean up trailing punctuation that might have been captured
-        const cleanUrl = url.replace(/[.,;:!?)]+$/, '')
+        const cleanUrl = url.replace(/[.,;:!?]+$/, '')
         if (!urls.some(u => u.url === cleanUrl)) {
           urls.push({ url: cleanUrl, title: cleanUrl })
         }
@@ -173,10 +173,24 @@ export function DropZone({ onDropLinks, onDropText, disabled = false }: DropZone
   }
 
   return (
-    <div className="drop-zone-overlay">
+    <div
+      className="drop-zone-overlay"
+      role="dialog"
+      aria-label="Drop zone for adding sources to notebook"
+      aria-live="polite"
+    >
       <div className="drop-zone-content">
         <div className="drop-zone-icon">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg
+            width="48"
+            height="48"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            role="img"
+            aria-hidden="true"
+          >
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />

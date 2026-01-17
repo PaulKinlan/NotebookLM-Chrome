@@ -411,7 +411,7 @@ export async function addTextSource(text: string, title?: string): Promise<Sourc
   }
 
   // Generate a title from the first line or truncated text
-  const generatedTitle = title || text.split('\n')[0].slice(0, 50) || 'Dropped Text'
+  const generatedTitle = title || text.split('\n')[0].trim().slice(0, 50) || 'Dropped Text'
 
   const source = addSourceToNotebook(
     notebookId,

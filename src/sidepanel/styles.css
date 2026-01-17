@@ -4749,11 +4749,11 @@ details.suggested-links-section[open] .suggested-links-chevron {
 @keyframes drop-zone-pulse {
   0%, 100% {
     border-color: var(--accent-primary);
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-primary) 40%, transparent);
   }
   50% {
     border-color: var(--accent-hover);
-    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+    box-shadow: 0 0 0 8px transparent;
   }
 }
 
