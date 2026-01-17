@@ -926,19 +926,12 @@ async function handleRefreshAllSources(notebookId: string): Promise<{ success: b
 }
 
 async function ensureContentScript(tabId: number): Promise<void> {
-  try {
-    // Try to ping the content script
-    await chrome.tabs.sendMessage<ContentScriptMessage, { status: string }>(tabId, {
-      action: 'ping',
-    })
-  }
-  catch {
-    // Content script not loaded - inject inline extraction function
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      func: injectContentScript,
-    })
-  }
+  // Inject directly without ping - much faster for parallel operations
+  // The injectContentScript function is idempotent (checks if already extracted)
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    func: injectContentScript,
+  })
 }
 
 // Inline content script injection for pages loaded before extension install
