@@ -1,6 +1,6 @@
 # Privacy Policy for FolioLM
 
-**Last Updated:** January 11, 2026
+**Last Updated:** January 17, 2026
 
 ## Overview
 
@@ -50,6 +50,7 @@ FolioLM requests certain browser permissions to function:
 
 ### Required Permissions
 - **storage**: To save your notebooks and settings locally
+- **unlimitedStorage**: To store large amounts of data locally without hitting Chrome's default storage limits. As you collect more sources and notebooks, storage needs can grow significantly beyond the default 5MB limit.
 - **sidePanel**: To display the extension interface
 - **activeTab**: To extract content from the currently active tab
 - **scripting**: To extract text content from web pages
