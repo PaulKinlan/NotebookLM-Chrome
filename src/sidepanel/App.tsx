@@ -42,7 +42,6 @@ import {
   importImages,
 } from './services/sources'
 import type { ImageInfo } from './services/sources'
-import type { Source } from '../types/index'
 import { clearAllData as clearAllStorage } from '../lib/storage'
 import { checkPermissions, requestPermission as requestPerm } from '../lib/permissions'
 
@@ -585,17 +584,10 @@ export function App(props: AppProps) {
     }
 
     try {
-      // Process links with limited concurrency (3 at a time) to avoid overwhelming Chrome
-      const CONCURRENCY_LIMIT = 3
-      const results: PromiseSettledResult<Source | null>[] = []
-
-      for (let i = 0; i < links.length; i += CONCURRENCY_LIMIT) {
-        const batch = links.slice(i, i + CONCURRENCY_LIMIT)
-        const batchResults = await Promise.allSettled(
-          batch.map(link => addSourceFromUrl(link.url, link.title)),
-        )
-        results.push(...batchResults)
-      }
+      // Process all links in parallel - each completes independently
+      const results = await Promise.allSettled(
+        links.map(link => addSourceFromUrl(link.url, link.title)),
+      )
 
       const addedCount = results.filter(
         r => r.status === 'fulfilled' && r.value !== null,

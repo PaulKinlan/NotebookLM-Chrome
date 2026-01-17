@@ -1,4 +1,4 @@
-import type { Message, ContentExtractionResult, ExtractedLink, Source } from './types/index.ts'
+import type { Message, ContentExtractionResult, ExtractedLink } from './types/index.ts'
 import {
   createSource,
   saveSource,
@@ -614,7 +614,7 @@ async function extractLinksFromSelection(tabId: number): Promise<string[]> {
 /**
  * Handle adding multiple links from a text selection to a notebook.
  * Extracts content from each link and saves them as sources.
- * Processes links with limited concurrency to avoid overwhelming Chrome.
+ * Processes all links in parallel - each completes independently.
  */
 async function handleAddSelectionLinksFromContextMenu(
   links: string[],
@@ -623,41 +623,34 @@ async function handleAddSelectionLinksFromContextMenu(
   // Set as active notebook first
   await setActiveNotebookId(notebookId)
 
-  // Process links with limited concurrency (3 at a time) to avoid overwhelming Chrome
-  const CONCURRENCY_LIMIT = 3
-  const allResults: PromiseSettledResult<Source | null>[] = []
+  // Process all links in parallel - each completes independently
+  const results = await Promise.allSettled(
+    links.map(async (linkUrl) => {
+      const result = await extractContentFromUrl(linkUrl)
+      if (result) {
+        const source = createSource(
+          notebookId,
+          'tab',
+          result.url,
+          result.title,
+          result.content,
+          result.links,
+        )
+        await saveSource(source)
 
-  for (let i = 0; i < links.length; i += CONCURRENCY_LIMIT) {
-    const batch = links.slice(i, i + CONCURRENCY_LIMIT)
-    const batchResults = await Promise.allSettled(
-      batch.map(async (linkUrl) => {
-        const result = await extractContentFromUrl(linkUrl)
-        if (result) {
-          const source = createSource(
-            notebookId,
-            'tab',
-            result.url,
-            result.title,
-            result.content,
-            result.links,
-          )
-          await saveSource(source)
+        // Notify the side panel to refresh its source list
+        chrome.runtime
+          .sendMessage({ type: 'SOURCE_ADDED', payload: source })
+          .catch(() => {
+            // Side panel may not be listening yet
+          })
+        return source
+      }
+      return null
+    }),
+  )
 
-          // Notify the side panel to refresh its source list
-          chrome.runtime
-            .sendMessage({ type: 'SOURCE_ADDED', payload: source })
-            .catch(() => {
-              // Side panel may not be listening yet
-            })
-          return source
-        }
-        return null
-      }),
-    )
-    allResults.push(...batchResults)
-  }
-
-  const failures = allResults.filter(r => r.status === 'rejected')
+  const failures = results.filter(r => r.status === 'rejected')
   if (failures.length > 0) {
     console.warn(`Failed to extract ${failures.length} of ${links.length} links`)
   }
@@ -1075,65 +1068,36 @@ function injectContentScript(): void {
   })
 }
 
+/**
+ * Wait for a tab to be ready for content script injection.
+ * Uses aggressive polling (100ms) since status === 'complete' can be unreliable
+ * for background tabs.
+ */
 function waitForTabLoad(tabId: number, timeoutMs: number = 30000): Promise<void> {
   return new Promise((resolve, reject) => {
-    let resolved = false
-    let pollInterval: ReturnType<typeof setInterval> | null = null
+    const startTime = Date.now()
 
-    const finish = () => {
-      if (resolved) return
-      resolved = true
-      chrome.tabs.onUpdated.removeListener(listener)
-      if (pollInterval) clearInterval(pollInterval)
-      clearTimeout(timeout)
-      resolve()
-    }
-
-    const fail = (error: Error) => {
-      if (resolved) return
-      resolved = true
-      chrome.tabs.onUpdated.removeListener(listener)
-      if (pollInterval) clearInterval(pollInterval)
-      clearTimeout(timeout)
-      reject(error)
-    }
-
-    const listener = (
-      updatedTabId: number,
-      changeInfo: { status?: string },
-    ) => {
-      if (updatedTabId === tabId && changeInfo.status === 'complete') {
-        finish()
+    const checkTab = () => {
+      if (Date.now() - startTime > timeoutMs) {
+        reject(new Error(`Tab load timed out after ${timeoutMs}ms`))
+        return
       }
-    }
 
-    // Add listener FIRST to avoid race condition
-    chrome.tabs.onUpdated.addListener(listener)
-
-    // Set up timeout
-    const timeout = setTimeout(() => {
-      fail(new Error(`Tab load timed out after ${timeoutMs}ms`))
-    }, timeoutMs)
-
-    // Poll every 500ms as a fallback in case we miss the event
-    pollInterval = setInterval(() => {
       chrome.tabs.get(tabId).then((tab) => {
         if (tab.status === 'complete') {
-          finish()
+          resolve()
+        }
+        else {
+          // Poll again quickly (100ms)
+          setTimeout(checkTab, 100)
         }
       }).catch(() => {
-        fail(new Error('Tab no longer exists'))
+        reject(new Error('Tab no longer exists'))
       })
-    }, 500)
+    }
 
-    // Also check immediately in case tab is already loaded
-    chrome.tabs.get(tabId).then((tab) => {
-      if (tab.status === 'complete') {
-        finish()
-      }
-    }).catch(() => {
-      fail(new Error('Tab no longer exists'))
-    })
+    // Start checking immediately
+    checkTab()
   })
 }
 
