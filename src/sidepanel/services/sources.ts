@@ -548,6 +548,21 @@ function extractFilenameFromUrl(url: string): string {
 // Add from URL (for suggested links)
 // ============================================================================
 
+// Type guard for EXTRACT_FROM_URL response
+interface ExtractFromUrlResponse {
+  success: boolean
+  source?: Source
+}
+
+function isExtractFromUrlResponse(value: unknown): value is ExtractFromUrlResponse {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'success' in value
+    && typeof (value as ExtractFromUrlResponse).success === 'boolean'
+  )
+}
+
 export async function addSourceFromUrl(url: string, title: string): Promise<Source | null> {
   const notebookId = await getCurrentNotebookIdState()
   if (!notebookId) {
@@ -555,14 +570,27 @@ export async function addSourceFromUrl(url: string, title: string): Promise<Sour
     return null
   }
 
-  // Create a basic source from the URL
-  // Content extraction happens when the user opens it as a tab
+  // Use background script to extract content (opens tab in background, extracts, closes)
+  const result: unknown = await chrome.runtime.sendMessage({
+    type: 'EXTRACT_FROM_URL',
+    payload: { url, notebookId },
+  })
+
+  if (isExtractFromUrlResponse(result) && result.success && result.source) {
+    // Broadcast the change for cross-context sync and trigger local UI update
+    postSourcesMessage({ type: 'source:created', notebookId, sourceId: result.source.id })
+    window.dispatchEvent(new CustomEvent('foliolm:sources-changed'))
+    return result.source
+  }
+
+  // Fallback: create stub source if extraction failed
+  console.warn('Content extraction failed, creating stub source for:', url)
   const source = addSourceToNotebook(
     notebookId,
     'manual',
     url,
     title || url,
-    `Link: ${url}`,
+    `Link: ${url} (content extraction failed)`,
   )
 
   // Persist the source to storage
