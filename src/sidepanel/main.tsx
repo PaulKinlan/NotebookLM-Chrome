@@ -9,7 +9,7 @@ import { initChromeBridge, checkPendingActions } from './chrome-bridge'
 import { initTheme } from './hooks/useTheme.tsx'
 import { initBroadcastListeners } from './lib/broadcast'
 import { migrateLegacyAISettings, initializeDefaultProfile } from '../lib/model-configs.ts'
-import { notebookDialog, pendingContextMenuAction } from './store'
+import { notebookDialog, pendingContextMenuAction, initActiveTab } from './store'
 
 // ============================================================================
 // Context Menu Callback Helpers
@@ -169,10 +169,10 @@ if (!appContainer) {
   throw new Error('App container #app not found')
 }
 
-// Initialize theme BEFORE rendering to prevent flash of wrong theme
-// This is async but we don't await it - the CSS media queries provide
-// a reasonable default until storage is read
+// Initialize theme and active tab BEFORE rendering to prevent flash of wrong state
+// These are async but we don't await them - reasonable defaults exist until storage is read
 void initTheme()
+void initActiveTab()
 
 // Initialize AI profiles (migrate legacy settings and/or create default profile)
 // This runs async in the background - the app can render while this completes
@@ -195,10 +195,9 @@ void (async () => {
   }
 })()
 
-// Render App without businessHandlers (now using hooks internally)
+// Render App (active tab is initialized from storage via initActiveTab)
 render(
   <App
-    initialTab="add"
     fabHidden={true}
     onboardingHidden={false}
   />,

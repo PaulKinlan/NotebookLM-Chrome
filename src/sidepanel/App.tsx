@@ -79,7 +79,6 @@ import { useEffect, useState, useCallback } from 'preact/hooks'
 // ============================================================================
 
 interface AppProps {
-  initialTab: TabName
   fabHidden: boolean
   onboardingHidden: boolean
 }
@@ -89,12 +88,7 @@ interface AppProps {
 // ============================================================================
 
 export function App(props: AppProps) {
-  const { initialTab, fabHidden, onboardingHidden } = props
-
-  // Initialize active tab from props
-  useEffect(() => {
-    activeTab.value = initialTab
-  }, [initialTab])
+  const { fabHidden, onboardingHidden } = props
 
   // Dialog hooks
   const {

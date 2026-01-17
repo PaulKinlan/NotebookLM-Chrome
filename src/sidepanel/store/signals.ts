@@ -64,12 +64,36 @@ export const hasNotebook = computed(() => currentNotebookId.value !== null)
 
 export type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings'
 
+/** Valid tab names for type checking */
+const validTabs: TabName[] = ['add', 'chat', 'transform', 'library', 'settings']
+
+function isValidTab(value: unknown): value is TabName {
+  return typeof value === 'string' && validTabs.includes(value as TabName)
+}
+
 /** Currently active tab */
 export const activeTab = signal<TabName>('add')
 
 /**
+ * Initialize the active tab from storage.
+ * Call this on app startup to restore the previous tab.
+ */
+export async function initActiveTab(): Promise<void> {
+  try {
+    const result = await chrome.storage.local.get('activeTab')
+    if (isValidTab(result.activeTab)) {
+      activeTab.value = result.activeTab
+    }
+  }
+  catch (error) {
+    console.error('Failed to load active tab from storage:', error)
+  }
+}
+
+/**
  * Navigate to a tab with a view transition (crossfade effect).
  * Uses the View Transitions API for smooth panel transitions.
+ * Persists the tab selection to storage.
  */
 export function navigateToTab(tab: TabName): void {
   // Skip if already on this tab
@@ -87,6 +111,9 @@ export function navigateToTab(tab: TabName): void {
     // Fallback for environments without View Transitions API
     activeTab.value = tab
   }
+
+  // Persist to storage (fire and forget)
+  chrome.storage.local.set({ activeTab: tab }).catch(console.error)
 }
 
 // ============================================================================

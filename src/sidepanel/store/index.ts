@@ -17,6 +17,7 @@ export {
   type TabName,
   activeTab,
   navigateToTab,
+  initActiveTab,
 
   // Notification Signals
   notification,
