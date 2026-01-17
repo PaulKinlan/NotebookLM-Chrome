@@ -402,6 +402,7 @@ Messages between components (defined in `src/types/index.ts`):
 | Permission | Type | Purpose |
 |------------|------|---------|
 | `storage` | Required | IndexedDB access |
+| `unlimitedStorage` | Required | Store large amounts of sources beyond default 5MB limit |
 | `sidePanel` | Required | Side panel UI |
 | `activeTab` | Required | Current tab extraction |
 | `scripting` | Required | Content script injection |

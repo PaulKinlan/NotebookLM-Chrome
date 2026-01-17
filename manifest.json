@@ -6,6 +6,7 @@
   "description": "Collect and query content from tabs, bookmarks, and history - your AI research companion",
   "permissions": [
     "storage",
+    "unlimitedStorage",
     "sidePanel",
     "activeTab",
     "scripting",

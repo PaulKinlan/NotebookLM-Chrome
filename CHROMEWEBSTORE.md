@@ -1,6 +1,6 @@
 # Chrome Web Store Listing
 
-**Last Updated:** January 13, 2026
+**Last Updated:** January 17, 2026
 
 This file contains all information needed for the Chrome Web Store listing. Update this file whenever the product changes, especially for permission changes, new features, or description updates.
 
@@ -74,6 +74,7 @@ Copy these justifications when submitting to the Chrome Web Store. Each permissi
 | Permission | Justification |
 |------------|---------------|
 | `storage` | Required to save user notebooks, sources, chat history, and settings locally in the browser. All data is stored on-device using IndexedDB. |
+| `unlimitedStorage` | Required to store large amounts of collected sources and notebooks without hitting Chrome's default 5MB storage limit. Users can collect many sources with substantial text content, and this permission ensures the extension can scale with their research needs. |
 | `sidePanel` | Required to display the main extension interface as a Chrome side panel, where users manage notebooks, chat with AI, and configure settings. |
 | `activeTab` | Required to extract text content from the currently active tab when the user clicks "Add current page" to add it as a source. |
 | `scripting` | Required to inject the content extraction script into web pages to convert HTML to Markdown for source collection. |
