@@ -18,6 +18,14 @@ All data you create within FolioLM (notebooks, sources, and extracted content) i
 - Is not accessible to the extension author
 - Can be cleared at any time by removing the extension or clearing extension data
 
+### Types of Data Stored
+
+- **Web page content**: Text extracted from tabs, bookmarks, and history entries
+- **User notes**: Custom text notes you create within the extension
+- **Images**: Image URLs and metadata (dimensions, alt text) from web pages you choose to save
+- **Notebooks**: Organization containers for your sources
+- **AI configurations**: Your API keys and model preferences (stored locally only)
+
 ### Usage Analytics Data
 
 FolioLM stores usage analytics data locally to help you understand your AI usage:

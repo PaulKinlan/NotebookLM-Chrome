@@ -300,3 +300,232 @@ export function PickerModal(props: PickerModalProps) {
     </div>
   )
 }
+
+/**
+ * Add Note Dialog Props
+ */
+interface AddNoteDialogProps {
+  isOpen: boolean
+  onClose: () => void
+  onAddNote: (title: string, content: string) => Promise<void>
+}
+
+/**
+ * Add Note Dialog component
+ *
+ * Modal dialog for creating a user note source.
+ */
+export function AddNoteDialog(props: AddNoteDialogProps) {
+  const { isOpen, onClose, onAddNote } = props
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const titleRef = useRef<HTMLInputElement>(null)
+  const contentRef = useRef<HTMLTextAreaElement>(null)
+
+  // Show/hide dialog when isOpen changes
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    if (isOpen) {
+      dialog.showModal()
+      // Focus title input after dialog opens
+      requestAnimationFrame(() => {
+        titleRef.current?.focus()
+      })
+    }
+    else {
+      // Guard against closing unmounted dialogs
+      if (dialog.open) {
+        dialog.close()
+      }
+    }
+  }, [isOpen])
+
+  const handleConfirm = async () => {
+    const title = titleRef.current?.value.trim() || 'Untitled Note'
+    const content = contentRef.current?.value.trim()
+
+    if (!content) {
+      contentRef.current?.focus()
+      return
+    }
+
+    await onAddNote(title, content)
+
+    // Clear inputs
+    if (titleRef.current) titleRef.current.value = ''
+    if (contentRef.current) contentRef.current.value = ''
+    onClose()
+  }
+
+  const handleCancel = () => {
+    if (titleRef.current) titleRef.current.value = ''
+    if (contentRef.current) contentRef.current.value = ''
+    onClose()
+  }
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      e.preventDefault()
+      void handleConfirm()
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      handleCancel()
+    }
+  }
+
+  return (
+    <dialog id="add-note-dialog" ref={dialogRef} className="dialog dialog-large">
+      <h3>Add Note</h3>
+      <input
+        type="text"
+        ref={titleRef}
+        placeholder="Note title (optional)"
+        onKeyDown={handleKeyDown}
+        className="note-title-input"
+      />
+      <textarea
+        ref={contentRef}
+        placeholder="Write your note content here..."
+        rows={8}
+        onKeyDown={handleKeyDown}
+        className="note-content-input"
+      />
+      <p className="dialog-hint">Press Ctrl+Enter to save</p>
+      <div className="dialog-actions">
+        <button className="btn btn-outline" onClick={handleCancel}>
+          Cancel
+        </button>
+        <button className="btn btn-primary" onClick={() => void handleConfirm()}>
+          Add Note
+        </button>
+      </div>
+    </dialog>
+  )
+}
+
+/**
+ * Image Picker Modal Props
+ */
+interface ImagePickerModalProps {
+  isOpen: boolean
+  images: Array<{
+    src: string
+    alt: string
+    width: number
+    height: number
+    selected: boolean
+  }>
+  isLoading: boolean
+  selectedCount: number
+  onClose: () => void
+  onToggleImage: (src: string) => void
+  onSelectAll: () => void
+  onDeselectAll: () => void
+  onAddSelected: () => void
+}
+
+/**
+ * Image Picker Modal component
+ *
+ * Modal for selecting images from the current page to add as sources.
+ */
+export function ImagePickerModal(props: ImagePickerModalProps) {
+  const {
+    isOpen,
+    images,
+    isLoading,
+    selectedCount,
+    onClose,
+    onToggleImage,
+    onSelectAll,
+    onDeselectAll,
+    onAddSelected,
+  } = props
+
+  if (!isOpen) {
+    return null
+  }
+
+  return (
+    <div id="image-picker-modal" className="modal">
+      <div className="modal-backdrop" onClick={onClose}></div>
+      <div className="modal-content modal-content-large">
+        <div className="modal-header">
+          <h3>Select Images from Page</h3>
+          <button className="icon-btn" onClick={onClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div className="picker-select-actions">
+          <button className="btn btn-small btn-outline" onClick={onSelectAll}>Select All</button>
+          <button className="btn btn-small btn-outline" onClick={onDeselectAll}>Deselect All</button>
+        </div>
+        <div className="image-picker-grid">
+          {isLoading
+            ? (
+                <div className="picker-loading">
+                  <span className="loading-spinner"></span>
+                  <span>Scanning page for images...</span>
+                </div>
+              )
+            : images.length === 0
+              ? (
+                  <div className="picker-empty">
+                    <p>No images found on this page</p>
+                  </div>
+                )
+              : (
+                  images.map(image => (
+                    <div
+                      key={image.src}
+                      className={`image-picker-item ${image.selected ? 'selected' : ''}`}
+                      onClick={() => onToggleImage(image.src)}
+                      title={image.alt || 'Image'}
+                    >
+                      <div className="image-picker-checkbox">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      </div>
+                      <img
+                        src={image.src}
+                        alt={image.alt}
+                        loading="lazy"
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement
+                          img.parentElement?.classList.add('image-error')
+                        }}
+                      />
+                      <div className="image-picker-info">
+                        <span className="image-dimensions">
+                          {image.width}
+                          ×
+                          {image.height}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+        </div>
+        <div className="modal-footer">
+          <span>{`${selectedCount} image${selectedCount !== 1 ? 's' : ''} selected`}</span>
+          <div className="modal-actions">
+            <button className="btn btn-outline" onClick={onClose}>Cancel</button>
+            <button
+              className="btn btn-primary"
+              onClick={onAddSelected}
+              disabled={selectedCount === 0}
+            >
+              Add Selected
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

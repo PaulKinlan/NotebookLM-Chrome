@@ -327,13 +327,21 @@ interface Notebook {
 interface Source {
   id: string;
   notebookId: string;
-  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text';
+  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'note' | 'image';
   url: string;
   title: string;
-  textContent: string;  // Extracted markdown content
-  favicon?: string;
-  description?: string;
-  wordCount?: number;
+  content: string;  // Extracted markdown content
+  metadata?: {
+    favicon?: string;
+    description?: string;
+    wordCount?: number;
+    // Image-specific metadata (for type: 'image')
+    imageUrl?: string;
+    thumbnailUrl?: string;
+    dimensions?: { width: number; height: number };
+    altText?: string;
+    sourcePageUrl?: string;
+  };
   // ... timestamps, sync fields
 }
 

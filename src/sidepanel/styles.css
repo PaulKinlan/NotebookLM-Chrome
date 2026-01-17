@@ -4684,3 +4684,187 @@ details.suggested-links-section[open] .suggested-links-chevron {
   }
 }
 
+/* ============================================================================
+   Note Dialog
+   ============================================================================ */
+
+.dialog-large {
+  max-width: 400px;
+}
+
+.note-title-input {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.note-content-input {
+  width: 100%;
+  min-height: 150px;
+  resize: vertical;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.note-content-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.dialog-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* ============================================================================
+   Image Picker Modal
+   ============================================================================ */
+
+.modal-content-large {
+  max-width: 600px;
+  width: 95%;
+}
+
+.image-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.image-picker-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: var(--bg-tertiary);
+}
+
+.image-picker-item:hover {
+  border-color: var(--accent-primary);
+}
+
+.image-picker-item.selected {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-muted);
+}
+
+.image-picker-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-picker-item.image-error img {
+  display: none;
+}
+
+.image-picker-item.image-error::after {
+  content: 'Failed to load';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+}
+
+.image-picker-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 1;
+}
+
+.image-picker-item:hover .image-picker-checkbox,
+.image-picker-item.selected .image-picker-checkbox {
+  opacity: 1;
+}
+
+.image-picker-item.selected .image-picker-checkbox {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.image-picker-checkbox svg {
+  display: none;
+  stroke: white;
+}
+
+.image-picker-item.selected .image-picker-checkbox svg {
+  display: block;
+}
+
+.image-picker-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 8px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  color: white;
+  font-size: 10px;
+}
+
+.image-dimensions {
+  opacity: 0.9;
+}
+
+/* ============================================================================
+   Source Item with Thumbnail
+   ============================================================================ */
+
+.source-item-with-thumbnail {
+  flex-wrap: wrap;
+}
+
+.source-thumbnail {
+  width: 100%;
+  margin-bottom: 8px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-tertiary);
+  max-height: 80px;
+}
+
+.source-thumbnail img {
+  width: 100%;
+  height: 100%;
+  max-height: 80px;
+  object-fit: cover;
+}
+
+/* Note icon color */
+.import-icon.note-icon {
+  color: var(--accent-primary);
+}
+
+/* Image icon color */
+.import-icon.image-icon {
+  color: var(--success);
+}
+

@@ -20,7 +20,7 @@ FolioLM helps you collect sources from tabs, bookmarks, and history, then query 
 
 **Features:**
 
-• Source Collection - Gather content from open tabs, bookmarks, browser history, or paste text manually
+• Source Collection - Gather content from open tabs, bookmarks, browser history, custom notes, or images from web pages
 
 • AI-Powered Chat - Query your collected sources with natural language, with citations back to original content
 

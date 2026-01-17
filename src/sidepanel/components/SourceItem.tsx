@@ -65,15 +65,67 @@ export function SourceItem(props: SourceItemProps) {
             <polyline points="10 9 9 9 8 9"></polyline>
           </svg>
         )
+      case 'note':
+        return (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+        )
+      case 'image':
+        return (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+        )
+      default:
+        return null
     }
   }
 
+  // Render thumbnail for image sources
+  const renderThumbnail = () => {
+    if (source.type !== 'image') return null
+
+    const thumbnailUrl = source.metadata?.thumbnailUrl || source.metadata?.imageUrl || source.url
+    if (!thumbnailUrl) return null
+
+    return (
+      <div className="source-thumbnail">
+        <img
+          src={thumbnailUrl}
+          alt={source.title}
+          loading="lazy"
+          onError={(e) => {
+            const img = e.target as HTMLImageElement
+            img.style.display = 'none'
+          }}
+        />
+      </div>
+    )
+  }
+
+  // Get subtitle text (URL for links, type label for notes)
+  const getSubtitle = () => {
+    if (source.type === 'note') {
+      return 'Note'
+    }
+    if (source.type === 'image') {
+      const dims = source.metadata?.dimensions
+      return dims ? `Image (${dims.width}×${dims.height})` : 'Image'
+    }
+    return source.url
+  }
+
   return (
-    <div className="source-item" data-source-id={source.id}>
+    <div className={`source-item ${source.type === 'image' ? 'source-item-with-thumbnail' : ''}`} data-source-id={source.id}>
+      {renderThumbnail()}
       <div className="source-icon">{renderIcon()}</div>
       <div className="source-content">
         <div className="source-title" title={source.title}>{truncatedTitle}</div>
-        <div className="source-url">{source.url}</div>
+        <div className="source-url">{getSubtitle()}</div>
       </div>
       <div className="source-actions">
         {source.url && (
