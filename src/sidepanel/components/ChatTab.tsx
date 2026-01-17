@@ -15,6 +15,7 @@ interface ChatTabProps {
   onAddCurrentTab: () => void
   onRefreshSources: () => void
   onRemoveSource?: (sourceId: string) => void
+  onClearAllSources?: () => void
   onAddSuggestedLink?: (url: string, title: string) => void
   summaryContent: string | null
   showSummary: boolean
@@ -23,7 +24,7 @@ interface ChatTabProps {
 }
 
 export function ChatTab(props: ChatTabProps) {
-  const { active, sources, onQuery, onClearChat, onRegenerateSummary, onAddCurrentTab, onRefreshSources, onRemoveSource, onAddSuggestedLink, summaryContent, showSummary, isRefreshingSources = false, isRegeneratingSummary = false } = props
+  const { active, sources, onQuery, onClearChat, onRegenerateSummary, onAddCurrentTab, onRefreshSources, onRemoveSource, onClearAllSources, onAddSuggestedLink, summaryContent, showSummary, isRefreshingSources = false, isRegeneratingSummary = false } = props
   const queryInputRef = useRef<HTMLInputElement>(null)
 
   // Suggested links hook
@@ -107,6 +108,19 @@ export function ChatTab(props: ChatTabProps) {
             )
           </h3>
           <div className="sources-section-actions">
+            {sources.length > 0 && onClearAllSources && (
+              <button
+                className="btn btn-small btn-outline"
+                title="Clear all sources"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  onClearAllSources()
+                }}
+              >
+                Clear All
+              </button>
+            )}
             <RefreshButton
               id="refresh-all-sources-btn"
               isLoading={isRefreshingSources}

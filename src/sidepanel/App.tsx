@@ -201,6 +201,27 @@ export function App(props: AppProps) {
     }
   }
 
+  // Handle clearing all sources
+  const handleClearAllSources = () => {
+    if (!currentNotebookId.value || sources.value.length === 0) {
+      return
+    }
+
+    showConfirmDialog(
+      'Clear All Sources',
+      `Are you sure you want to remove all ${sources.value.length} sources from this notebook?`,
+      () => {
+        void (async () => {
+          // Remove all sources one by one
+          for (const source of sources.value) {
+            await removeSource(source.id)
+          }
+          showNotification('All sources cleared')
+        })()
+      },
+    )
+  }
+
   // Handle notebook operations
   const handleNotebookChange = async (notebookId: string) => {
     if (notebookId) {
@@ -698,6 +719,7 @@ export function App(props: AppProps) {
           isRefreshingSources={isRefreshingSources}
           isRegeneratingSummary={isRegeneratingSummary}
           onRemoveSource={id => void handleRemoveSource(id)}
+          onClearAllSources={handleClearAllSources}
           onAddSuggestedLink={(url: string, title: string) => {
             void (async () => {
               if (!currentNotebookId.value) {
