@@ -219,6 +219,7 @@ export interface NotebookDialogState {
 export type PendingContextMenuAction
   = | { type: 'ADD_PAGE', tabId: number }
     | { type: 'ADD_LINK', linkUrl: string }
+    | { type: 'ADD_IMAGE', imageUrl: string, pageUrl?: string, pageTitle?: string }
     | { type: 'ADD_SELECTION_LINKS', links: string[] }
     | null
 

@@ -270,6 +270,17 @@ export function App(props: AppProps) {
               })
               break
             }
+            case 'ADD_IMAGE': {
+              // Create image source using addImage service
+              const { addImage } = await import('./services/sources')
+              const urlObj = new URL(pendingAction.imageUrl)
+              const filename = urlObj.pathname.split('/').pop() || 'image'
+              const title = pendingAction.pageTitle ? `Image from ${pendingAction.pageTitle}` : filename
+              await addImage(pendingAction.imageUrl, title, {
+                sourcePageUrl: pendingAction.pageUrl,
+              })
+              break
+            }
             case 'ADD_SELECTION_LINKS': {
               // Process links in parallel in the background
               const results = await Promise.allSettled(

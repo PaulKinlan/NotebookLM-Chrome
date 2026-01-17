@@ -197,6 +197,7 @@ async function extractSelectionText(tabId: number): Promise<{ text: string, url:
 // Menu ID prefixes
 const PAGE_MENU_PREFIX = 'add-page-to-'
 const LINK_MENU_PREFIX = 'add-link-to-'
+const IMAGE_MENU_PREFIX = 'add-image-to-'
 const SELECTION_LINKS_MENU_PREFIX = 'add-selection-links-to-'
 const NEW_NOTEBOOK_SUFFIX = 'new-notebook'
 
@@ -280,6 +281,40 @@ async function buildContextMenus(): Promise<void> {
     parentId: 'add-link-parent',
     title: '+ New Folio...',
     contexts: ['link'],
+  })
+
+  // Create parent menu for images
+  chrome.contextMenus.create({
+    id: 'add-image-parent',
+    title: 'Add image to Folio',
+    contexts: ['image'],
+  })
+
+  // Add notebook items for images
+  for (const notebook of notebooks) {
+    chrome.contextMenus.create({
+      id: `${IMAGE_MENU_PREFIX}${notebook.id}`,
+      parentId: 'add-image-parent',
+      title: notebook.name,
+      contexts: ['image'],
+    })
+  }
+
+  // Add separator and "New Notebook" for images
+  if (notebooks.length > 0) {
+    chrome.contextMenus.create({
+      id: 'image-separator',
+      parentId: 'add-image-parent',
+      type: 'separator',
+      contexts: ['image'],
+    })
+  }
+
+  chrome.contextMenus.create({
+    id: `${IMAGE_MENU_PREFIX}${NEW_NOTEBOOK_SUFFIX}`,
+    parentId: 'add-image-parent',
+    title: '+ New Folio...',
+    contexts: ['image'],
   })
 
   // Create parent menu for selection links
@@ -389,6 +424,31 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       }
     }
 
+    // Handle image menu clicks
+    if (menuId.startsWith(IMAGE_MENU_PREFIX) && info.srcUrl) {
+      const notebookIdOrNew = menuId.replace(IMAGE_MENU_PREFIX, '')
+
+      if (notebookIdOrNew === NEW_NOTEBOOK_SUFFIX) {
+        // Store pending action in session storage for side panel to pick up
+        await chrome.storage.session.set({
+          pendingAction: {
+            type: 'CREATE_NOTEBOOK_AND_ADD_IMAGE',
+            payload: { imageUrl: info.srcUrl, pageUrl: info.pageUrl, pageTitle: tab?.title },
+          },
+        })
+        // Also try sending message in case side panel is already open
+        chrome.runtime
+          .sendMessage({
+            type: 'CREATE_NOTEBOOK_AND_ADD_IMAGE',
+            payload: { imageUrl: info.srcUrl, pageUrl: info.pageUrl, pageTitle: tab?.title },
+          })
+          .catch(() => {})
+      }
+      else {
+        await handleAddImageFromContextMenu(info.srcUrl, notebookIdOrNew, info.pageUrl, tab?.title)
+      }
+    }
+
     // Handle selection links menu clicks (links already extracted above)
     if (menuId.startsWith(SELECTION_LINKS_MENU_PREFIX) && tab?.id && selectionLinks !== null) {
       const notebookIdOrNew = menuId.replace(SELECTION_LINKS_MENU_PREFIX, '')
@@ -491,6 +551,47 @@ async function handleAddLinkFromContextMenu(
   }
   catch (error) {
     console.error('Failed to add link from context menu:', error)
+  }
+}
+
+async function handleAddImageFromContextMenu(
+  imageUrl: string,
+  notebookId: string,
+  pageUrl?: string,
+  pageTitle?: string,
+): Promise<void> {
+  try {
+    // Extract a title from the image URL filename
+    const urlObj = new URL(imageUrl)
+    const filename = urlObj.pathname.split('/').pop() || 'image'
+    const title = pageTitle ? `Image from ${pageTitle}` : filename
+
+    // Create content description for the image
+    const content = pageUrl
+      ? `Image: ${filename}\nSource page: ${pageUrl}`
+      : `Image: ${filename}`
+
+    const source = createSource(
+      notebookId,
+      'image',
+      imageUrl,
+      title,
+      content,
+    )
+    await saveSource(source)
+
+    // Set as active notebook
+    await setActiveNotebookId(notebookId)
+
+    // Notify the side panel to refresh its source list
+    chrome.runtime
+      .sendMessage({ type: 'SOURCE_ADDED', payload: source })
+      .catch(() => {
+        // Side panel may not be listening yet
+      })
+  }
+  catch (error) {
+    console.error('Failed to add image from context menu:', error)
   }
 }
 

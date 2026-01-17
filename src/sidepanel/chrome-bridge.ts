@@ -65,6 +65,8 @@ export interface ChromeBridgeCallbacks {
   onCreateNotebookAndAddPage?: (tabId: number) => void | Promise<void>
   /** Called when a context menu action needs to create a notebook and add a link */
   onCreateNotebookAndAddLink?: (linkUrl: string) => void | Promise<void>
+  /** Called when a context menu action needs to create a notebook and add an image */
+  onCreateNotebookAndAddImage?: (imageUrl: string, pageUrl?: string, pageTitle?: string) => void | Promise<void>
   /** Called when a context menu action needs to create a notebook and add multiple links */
   onCreateNotebookAndAddSelectionLinks?: (links: string[]) => void | Promise<void>
   /** Called when tabs are highlighted (for updating UI) */
@@ -107,7 +109,7 @@ export async function checkPendingActions(): Promise<void> {
 
       const { type, payload } = result.pendingAction as {
         type: string
-        payload: { tabId?: number, linkUrl?: string, links?: string[] }
+        payload: { tabId?: number, linkUrl?: string, imageUrl?: string, pageUrl?: string, pageTitle?: string, links?: string[] }
       }
 
       if (type === 'CREATE_NOTEBOOK_AND_ADD_PAGE' && payload.tabId) {
@@ -115,6 +117,9 @@ export async function checkPendingActions(): Promise<void> {
       }
       else if (type === 'CREATE_NOTEBOOK_AND_ADD_LINK' && payload.linkUrl) {
         await callbacks.onCreateNotebookAndAddLink?.(payload.linkUrl)
+      }
+      else if (type === 'CREATE_NOTEBOOK_AND_ADD_IMAGE' && payload.imageUrl) {
+        await callbacks.onCreateNotebookAndAddImage?.(payload.imageUrl, payload.pageUrl, payload.pageTitle)
       }
       else if (type === 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS' && payload.links) {
         await callbacks.onCreateNotebookAndAddSelectionLinks?.(payload.links)
@@ -147,6 +152,13 @@ function setupMessageListener(): void {
       const payload = message.payload as { linkUrl?: string } | undefined
       if (payload?.linkUrl !== undefined) {
         void callbacks.onCreateNotebookAndAddLink?.(payload.linkUrl)
+      }
+    }
+    else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_IMAGE') {
+      chrome.storage.session.remove('pendingAction').catch(() => {})
+      const payload = message.payload as { imageUrl?: string, pageUrl?: string, pageTitle?: string } | undefined
+      if (payload?.imageUrl !== undefined) {
+        void callbacks.onCreateNotebookAndAddImage?.(payload.imageUrl, payload.pageUrl, payload.pageTitle)
       }
     }
     else if (message.type === 'CREATE_NOTEBOOK_AND_ADD_SELECTION_LINKS') {

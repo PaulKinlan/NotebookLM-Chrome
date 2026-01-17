@@ -130,6 +130,45 @@ function handleCreateNotebookAndAddLink(linkUrl: string): void {
 }
 
 /**
+ * Handle context menu "New Folio + add image" flow
+ */
+function handleCreateNotebookAndAddImage(imageUrl: string, pageUrl?: string, pageTitle?: string): void {
+  if (isProcessingContextMenuAction) {
+    return
+  }
+  isProcessingContextMenuAction = true
+
+  try {
+    // Validate URL before processing
+    if (!isValidUrl(imageUrl)) {
+      console.error('Invalid image URL:', imageUrl)
+      return
+    }
+
+    // Suggest a name based on the page title or image filename
+    let suggestedName: string
+    if (pageTitle) {
+      suggestedName = truncateAtWordBoundary(pageTitle, 40)
+    }
+    else {
+      // Use filename from URL
+      const urlObj = new URL(imageUrl)
+      const filename = urlObj.pathname.split('/').pop() || 'image'
+      suggestedName = truncateAtWordBoundary(filename, 40)
+    }
+
+    // Open dialog with pending action
+    openDialogWithPendingAction(suggestedName, { type: 'ADD_IMAGE', imageUrl, pageUrl, pageTitle })
+  }
+  catch (error) {
+    console.error('Failed to handle create notebook and add image:', error)
+  }
+  finally {
+    isProcessingContextMenuAction = false
+  }
+}
+
+/**
  * Handle context menu "New Folio + add selection links" flow
  */
 function handleCreateNotebookAndAddSelectionLinks(links: string[]): void {
@@ -212,6 +251,7 @@ initChromeBridge({
   },
   onCreateNotebookAndAddPage: handleCreateNotebookAndAddPage,
   onCreateNotebookAndAddLink: handleCreateNotebookAndAddLink,
+  onCreateNotebookAndAddImage: handleCreateNotebookAndAddImage,
   onCreateNotebookAndAddSelectionLinks: handleCreateNotebookAndAddSelectionLinks,
 })
 
