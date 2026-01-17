@@ -20,7 +20,7 @@ export interface ExtractedLink {
 
 export interface Source extends SyncableEntity {
   notebookId: string
-  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text'
+  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'note' | 'image'
   url: string
   title: string
   content: string
@@ -30,6 +30,12 @@ export interface Source extends SyncableEntity {
     favicon?: string
     description?: string
     wordCount?: number
+    // Image-specific metadata
+    imageUrl?: string // Original image URL
+    thumbnailUrl?: string // Data URL for thumbnail (base64)
+    dimensions?: { width: number, height: number }
+    altText?: string
+    sourcePageUrl?: string // URL of the page the image was taken from
   }
   aiSummary?: {
     content: string // 2-3 sentence summary

@@ -284,7 +284,7 @@ export interface SourceMetadata {
   id: string
   title: string
   url: string
-  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text'
+  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'note' | 'image'
   wordCount: number
 }
 
@@ -295,7 +295,7 @@ export interface SourceContent {
   id: string
   title: string
   url: string
-  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text'
+  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'note' | 'image'
   content: string
   metadata?: {
     favicon?: string

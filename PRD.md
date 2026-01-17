@@ -63,6 +63,8 @@ Users frequently encounter valuable information across multiple web pages but la
 | Bookmarks | `bookmarks` (optional) | Browse and select from bookmarks via picker |
 | History | `history` (optional) | Search and select from browsing history via picker |
 | Context Menu | `contextMenus` (required) | Right-click to add page or link |
+| Notes | None | User-created text content |
+| Page Images | `activeTab` (required) | Select and add images from the current page |
 
 **Acceptance Criteria:**
 - [x] User can add the current tab with one click
@@ -72,6 +74,8 @@ Users frequently encounter valuable information across multiple web pages but la
 - [x] User can browse and select bookmarks
 - [x] User can search and select from history
 - [x] Sources display title (with external link icon), URL, and initial icon
+- [x] User can create custom text notes as sources
+- [x] User can select and add images from the current page via picker
 
 #### 1.3 Content Extraction
 Uses **Turndown** library in a content script to convert HTML to clean markdown:
@@ -744,7 +748,7 @@ interface SuggestedLink {
 
 interface Source extends SyncableEntity {
   notebookId: string;
-  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'pdf' | 'image' | 'video' | 'audio';
+  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'note' | 'pdf' | 'image' | 'video' | 'audio';
   url: string;
   title: string;
   content: string; // Text content (empty for media-only sources)
