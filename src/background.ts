@@ -614,6 +614,7 @@ async function extractLinksFromSelection(tabId: number): Promise<string[]> {
 /**
  * Handle adding multiple links from a text selection to a notebook.
  * Extracts content from each link and saves them as sources.
+ * Processes links in parallel for faster extraction.
  */
 async function handleAddSelectionLinksFromContextMenu(
   links: string[],
@@ -622,9 +623,9 @@ async function handleAddSelectionLinksFromContextMenu(
   // Set as active notebook first
   await setActiveNotebookId(notebookId)
 
-  // Process each link and add as a source
-  for (const linkUrl of links) {
-    try {
+  // Process all links in parallel for much faster extraction
+  const results = await Promise.allSettled(
+    links.map(async (linkUrl) => {
       const result = await extractContentFromUrl(linkUrl)
       if (result) {
         const source = createSource(
@@ -643,12 +644,15 @@ async function handleAddSelectionLinksFromContextMenu(
           .catch(() => {
             // Side panel may not be listening yet
           })
+        return source
       }
-    }
-    catch (error) {
-      console.error(`Failed to add link ${linkUrl} from selection:`, error)
-      // Continue with other links even if one fails
-    }
+      return null
+    }),
+  )
+
+  const failures = results.filter(r => r.status === 'rejected')
+  if (failures.length > 0) {
+    console.warn(`Failed to extract ${failures.length} of ${links.length} links`)
   }
 }
 

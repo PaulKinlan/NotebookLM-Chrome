@@ -584,13 +584,14 @@ export function App(props: AppProps) {
     }
 
     try {
-      let addedCount = 0
-      for (const link of links) {
-        const source = await addSourceFromUrl(link.url, link.title)
-        if (source) {
-          addedCount++
-        }
-      }
+      // Process all links in parallel for much faster extraction
+      const results = await Promise.allSettled(
+        links.map(link => addSourceFromUrl(link.url, link.title)),
+      )
+
+      const addedCount = results.filter(
+        r => r.status === 'fulfilled' && r.value !== null,
+      ).length
 
       if (addedCount > 0) {
         showNotification(`Added ${addedCount} link${addedCount > 1 ? 's' : ''} to notebook`)
