@@ -1,4 +1,4 @@
-import { transforming, transformHistory, pendingTransforms } from '../store'
+import { transformHistory, pendingTransforms } from '../store'
 import type { PendingTransform } from '../store'
 import type { JSX } from 'preact'
 import { useState, useCallback } from 'preact/hooks'
@@ -478,10 +478,6 @@ export function TransformTab(props: TransformTabProps) {
           {/* Then show completed transforms */}
           {transformHistory.value.map(result => renderTransformCard(result))}
         </div>
-      )}
-
-      {transforming.value && transformHistory.value.length === 0 && (
-        <div className="transform-loading">Generating transform...</div>
       )}
 
       {/* Config Popover */}
