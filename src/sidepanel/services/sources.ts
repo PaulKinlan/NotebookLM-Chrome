@@ -562,6 +562,33 @@ export async function addSourceFromUrl(url: string, title: string): Promise<Sour
 }
 
 // ============================================================================
+// Add Text Source (for drag-and-drop text)
+// ============================================================================
+
+export async function addTextSource(text: string, title?: string): Promise<Source | null> {
+  const notebookId = await getCurrentNotebookIdState()
+  if (!notebookId) {
+    console.error('No notebook selected')
+    return null
+  }
+
+  // Generate a title from the first line or truncated text
+  const generatedTitle = title || text.split('\n')[0].trim().slice(0, 50) || 'Dropped Text'
+
+  const source = addSourceToNotebook(
+    notebookId,
+    'text',
+    '', // No URL for text sources
+    generatedTitle,
+    text,
+  )
+
+  chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
+
+  return source
+}
+
+// ============================================================================
 // Content extraction function (injected into pages)
 // ============================================================================
 
