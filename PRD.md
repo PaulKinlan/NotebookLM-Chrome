@@ -952,7 +952,8 @@ async function getModel(): Promise<LanguageModel | null> {
 ## Architecture Decisions
 
 ### Storage: IndexedDB
-All data stored in IndexedDB for unlimited local storage capacity:
+All data stored in IndexedDB with `unlimitedStorage` permission for unlimited local storage capacity:
+- `unlimitedStorage` permission removes Chrome's default 5MB storage limit
 - Notebooks and sources stored separately (sources reference notebookId)
 - Settings stored as key-value pairs
 - Designed for future sync with SyncableEntity base type
