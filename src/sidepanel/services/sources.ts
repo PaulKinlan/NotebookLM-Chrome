@@ -374,6 +374,168 @@ export async function importHistory(urls: string[]): Promise<Source[]> {
 }
 
 // ============================================================================
+// Add Note (user-created text content)
+// ============================================================================
+
+export async function addNote(title: string, content: string): Promise<Source | null> {
+  const notebookId = await getCurrentNotebookIdState()
+  if (!notebookId) {
+    console.error('No notebook selected')
+    return null
+  }
+
+  const source = addSourceToNotebook(
+    notebookId,
+    'note',
+    '', // Notes don't have a URL
+    title || 'Untitled Note',
+    content,
+  )
+
+  // Persist the source to storage
+  const { saveSource } = await import('../../lib/storage')
+  await saveSource(source)
+
+  chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
+
+  return source
+}
+
+// ============================================================================
+// Add Image (from page or drag-drop)
+// ============================================================================
+
+export interface ImageInfo {
+  src: string
+  alt: string
+  width: number
+  height: number
+  thumbnailDataUrl?: string
+}
+
+export async function addImage(
+  imageUrl: string,
+  title: string,
+  options?: {
+    altText?: string
+    dimensions?: { width: number, height: number }
+    thumbnailDataUrl?: string
+    sourcePageUrl?: string
+  },
+): Promise<Source | null> {
+  const notebookId = await getCurrentNotebookIdState()
+  if (!notebookId) {
+    console.error('No notebook selected')
+    return null
+  }
+
+  // Create a description for the image content
+  const contentDescription = options?.altText
+    ? `Image: ${title}\n\nDescription: ${options.altText}`
+    : `Image: ${title}`
+
+  const source = addSourceToNotebook(
+    notebookId,
+    'image',
+    imageUrl,
+    title || 'Untitled Image',
+    contentDescription,
+  )
+
+  // Add image-specific metadata
+  if (source.metadata) {
+    source.metadata.imageUrl = imageUrl
+    source.metadata.altText = options?.altText
+    source.metadata.dimensions = options?.dimensions
+    source.metadata.thumbnailUrl = options?.thumbnailDataUrl
+    source.metadata.sourcePageUrl = options?.sourcePageUrl
+  }
+  else {
+    source.metadata = {
+      imageUrl,
+      altText: options?.altText,
+      dimensions: options?.dimensions,
+      thumbnailUrl: options?.thumbnailDataUrl,
+      sourcePageUrl: options?.sourcePageUrl,
+    }
+  }
+
+  // Save the updated source with metadata
+  const { saveSource } = await import('../../lib/storage')
+  await saveSource(source)
+
+  chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
+
+  return source
+}
+
+export async function getImagesFromCurrentPage(): Promise<ImageInfo[]> {
+  // Get the current active tab
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.id) {
+    console.error('No active tab found')
+    return []
+  }
+
+  // Extract images from the tab
+  const results = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: extractPageImages,
+  })
+
+  const result = results?.[0]?.result
+  if (!result) {
+    console.error('Failed to extract images from tab')
+    return []
+  }
+
+  return result
+}
+
+export async function importImages(images: ImageInfo[]): Promise<Source[]> {
+  const notebookId = await getCurrentNotebookIdState()
+  if (!notebookId) {
+    throw new Error('No notebook selected')
+  }
+
+  // Get source page URL
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  const sourcePageUrl = tab?.url
+
+  const sources: Source[] = []
+
+  for (const image of images) {
+    const source = await addImage(
+      image.src,
+      image.alt || extractFilenameFromUrl(image.src),
+      {
+        altText: image.alt,
+        dimensions: { width: image.width, height: image.height },
+        thumbnailDataUrl: image.thumbnailDataUrl,
+        sourcePageUrl,
+      },
+    )
+    if (source) {
+      sources.push(source)
+    }
+  }
+
+  return sources
+}
+
+function extractFilenameFromUrl(url: string): string {
+  try {
+    const pathname = new URL(url).pathname
+    const filename = pathname.split('/').pop() || 'image'
+    // Remove extension and clean up
+    return filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ')
+  }
+  catch {
+    return 'Image'
+  }
+}
+
+// ============================================================================
 // Add from URL (for suggested links)
 // ============================================================================
 
@@ -468,4 +630,89 @@ function extractPageContent(): ExtractedContent {
     content: cleanContent,
     links: links.slice(0, 100), // Limit to 100 links
   }
+}
+
+// ============================================================================
+// Image extraction function (injected into pages)
+// ============================================================================
+
+interface ExtractedImage {
+  src: string
+  alt: string
+  width: number
+  height: number
+  thumbnailDataUrl?: string
+}
+
+function extractPageImages(): ExtractedImage[] {
+  const images: ExtractedImage[] = []
+  const seenUrls = new Set<string>()
+  const MIN_SIZE = 100 // Minimum dimension to filter out icons/tiny images
+
+  // Helper to get absolute URL
+  const getAbsoluteUrl = (src: string): string => {
+    try {
+      return new URL(src, document.baseURI).href
+    }
+    catch {
+      return src
+    }
+  }
+
+  // Process all img elements
+  document.querySelectorAll('img').forEach((img) => {
+    const src = getAbsoluteUrl(img.src)
+
+    // Skip if already seen, is a data URL, or is too small
+    if (seenUrls.has(src)) return
+    if (src.startsWith('data:')) return
+    if (!src.startsWith('http')) return
+
+    // Get natural dimensions (actual image size) or rendered dimensions
+    const width = img.naturalWidth || img.width
+    const height = img.naturalHeight || img.height
+
+    // Filter out small images (likely icons, buttons, etc.)
+    // Use || to filter if EITHER dimension is too small
+    if (width < MIN_SIZE || height < MIN_SIZE) return
+
+    seenUrls.add(src)
+
+    images.push({
+      src,
+      alt: img.alt || img.title || '',
+      width,
+      height,
+    })
+  })
+
+  // Check for background images in CSS (query all elements, check computed styles)
+  document.querySelectorAll('*').forEach((el) => {
+    const style = window.getComputedStyle(el)
+    const bgImage = style.backgroundImage
+    // Skip if no background image or if it's "none"
+    if (!bgImage || bgImage === 'none') return
+    const match = bgImage.match(/url\(['"]?([^'"()]+)['"]?\)/)
+    if (match) {
+      const src = getAbsoluteUrl(match[1])
+      if (!seenUrls.has(src) && src.startsWith('http')) {
+        const rect = el.getBoundingClientRect()
+        // Only add if element has reasonable size
+        if (rect.width >= MIN_SIZE && rect.height >= MIN_SIZE) {
+          seenUrls.add(src)
+          images.push({
+            src,
+            alt: '',
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+          })
+        }
+      }
+    }
+  })
+
+  // Sort by size (largest first) and limit to reasonable number
+  return images
+    .sort((a, b) => (b.width * b.height) - (a.width * a.height))
+    .slice(0, 50)
 }

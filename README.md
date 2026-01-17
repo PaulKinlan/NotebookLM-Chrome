@@ -328,13 +328,21 @@ interface Notebook {
 interface Source {
   id: string;
   notebookId: string;
-  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text';
+  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'note' | 'image';
   url: string;
   title: string;
-  textContent: string;  // Extracted markdown content
-  favicon?: string;
-  description?: string;
-  wordCount?: number;
+  content: string;  // Extracted markdown content
+  metadata?: {
+    favicon?: string;
+    description?: string;
+    wordCount?: number;
+    // Image-specific metadata (for type: 'image')
+    imageUrl?: string;
+    thumbnailUrl?: string;
+    dimensions?: { width: number; height: number };
+    altText?: string;
+    sourcePageUrl?: string;
+  };
   // ... timestamps, sync fields
 }
 
@@ -403,6 +411,7 @@ Messages between components (defined in `src/types/index.ts`):
 | Permission | Type | Purpose |
 |------------|------|---------|
 | `storage` | Required | IndexedDB access |
+| `unlimitedStorage` | Required | Store large amounts of sources beyond default 5MB limit |
 | `sidePanel` | Required | Side panel UI |
 | `activeTab` | Required | Current tab extraction |
 | `scripting` | Required | Content script injection |

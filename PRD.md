@@ -63,6 +63,8 @@ Users frequently encounter valuable information across multiple web pages but la
 | Bookmarks | `bookmarks` (optional) | Browse and select from bookmarks via picker |
 | History | `history` (optional) | Search and select from browsing history via picker |
 | Context Menu | `contextMenus` (required) | Right-click to add page or link |
+| Notes | None | User-created text content |
+| Page Images | `activeTab` (required) | Select and add images from the current page |
 
 **Acceptance Criteria:**
 - [x] User can add the current tab with one click
@@ -73,6 +75,8 @@ Users frequently encounter valuable information across multiple web pages but la
 - [x] User can search and select from history
 - [x] Sources display title (with external link icon), URL, and initial icon
 - [x] User can drag and drop links or text from web pages to add sources
+- [x] User can create custom text notes as sources
+- [x] User can select and add images from the current page via picker
 
 #### 1.2.1 Drag and Drop Sources
 
@@ -776,7 +780,7 @@ interface SuggestedLink {
 
 interface Source extends SyncableEntity {
   notebookId: string;
-  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'pdf' | 'image' | 'video' | 'audio';
+  type: 'tab' | 'bookmark' | 'history' | 'manual' | 'text' | 'note' | 'pdf' | 'image' | 'video' | 'audio';
   url: string;
   title: string;
   content: string; // Text content (empty for media-only sources)
@@ -984,7 +988,8 @@ async function getModel(): Promise<LanguageModel | null> {
 ## Architecture Decisions
 
 ### Storage: IndexedDB
-All data stored in IndexedDB for unlimited local storage capacity:
+All data stored in IndexedDB with `unlimitedStorage` permission for unlimited local storage capacity:
+- `unlimitedStorage` permission removes Chrome's default 5MB storage limit
 - Notebooks and sources stored separately (sources reference notebookId)
 - Settings stored as key-value pairs
 - Designed for future sync with SyncableEntity base type

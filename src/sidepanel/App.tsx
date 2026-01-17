@@ -28,9 +28,7 @@ import { LibraryTab } from './components/LibraryTab'
 import { SettingsTab } from './components/SettingsTab'
 import { BottomNav } from './components/BottomNav'
 import { Fab } from './components/Fab'
-import { PickerModal } from './components/Modals'
-import { NotebookDialog } from './components/Modals'
-import { ConfirmDialog } from './components/Modals'
+import { PickerModal, NotebookDialog, ConfirmDialog, AddNoteDialog, ImagePickerModal } from './components/Modals'
 import { Notification } from './components/Notification'
 import { Onboarding } from './components/Onboarding'
 import { DropZone } from './components/DropZone'
@@ -39,7 +37,11 @@ import {
   importTabs,
   addSourceFromUrl,
   addTextSource,
+  addNote as addNoteService,
+  getImagesFromCurrentPage,
+  importImages,
 } from './services/sources'
+import type { ImageInfo } from './services/sources'
 import { clearAllData as clearAllStorage } from '../lib/storage'
 import { checkPermissions, requestPermission as requestPerm } from '../lib/permissions'
 
@@ -139,6 +141,15 @@ export function App(props: AppProps) {
   // State for refresh button loading indicators
   const [isRefreshingSources, setIsRefreshingSources] = useState(false)
   const [isRegeneratingSummary, setIsRegeneratingSummary] = useState(false)
+
+  // State for note dialog
+  const [isNoteDialogOpen, setIsNoteDialogOpen] = useState(false)
+
+  // State for image picker
+  const [isImagePickerOpen, setIsImagePickerOpen] = useState(false)
+  const [imagePickerLoading, setImagePickerLoading] = useState(false)
+  const [pageImages, setPageImages] = useState<Array<ImageInfo & { selected: boolean }>>([])
+  const selectedImageCount = pageImages.filter(img => img.selected).length
 
   // Check for highlighted tabs on mount and when tab becomes active
   const checkHighlightedTabs = useCallback(async () => {
@@ -401,6 +412,94 @@ export function App(props: AppProps) {
     await openPicker('history')
   }
 
+  // Handle note dialog
+  const handleOpenNoteDialog = () => {
+    if (!currentNotebookId.value) {
+      showNotification('Please select a notebook first')
+      return
+    }
+    setIsNoteDialogOpen(true)
+  }
+
+  const handleAddNote = async (title: string, content: string) => {
+    try {
+      const source = await addNoteService(title, content)
+      if (source) {
+        showNotification(`Added note "${source.title}"`)
+      }
+      else {
+        showNotification('Failed to add note')
+      }
+    }
+    catch (error) {
+      console.error('Failed to add note:', error)
+      showNotification('Failed to add note')
+    }
+  }
+
+  // Handle image picker
+  const handleOpenImagePicker = async () => {
+    if (!currentNotebookId.value) {
+      showNotification('Please select a notebook first')
+      return
+    }
+
+    setIsImagePickerOpen(true)
+    setImagePickerLoading(true)
+
+    try {
+      const images = await getImagesFromCurrentPage()
+      setPageImages(images.map(img => ({ ...img, selected: false })))
+    }
+    catch (error) {
+      console.error('Failed to get images from page:', error)
+      showNotification('Failed to scan page for images')
+      setPageImages([])
+    }
+    finally {
+      setImagePickerLoading(false)
+    }
+  }
+
+  const handleToggleImage = (src: string) => {
+    setPageImages(prev =>
+      prev.map(img =>
+        img.src === src ? { ...img, selected: !img.selected } : img,
+      ),
+    )
+  }
+
+  const handleSelectAllImages = () => {
+    setPageImages(prev => prev.map(img => ({ ...img, selected: true })))
+  }
+
+  const handleDeselectAllImages = () => {
+    setPageImages(prev => prev.map(img => ({ ...img, selected: false })))
+  }
+
+  const handleAddSelectedImages = async () => {
+    const selectedImages = pageImages.filter(img => img.selected)
+    if (selectedImages.length === 0) return
+
+    try {
+      const sources = await importImages(selectedImages)
+      if (sources.length > 0) {
+        showNotification(`Added ${sources.length} image${sources.length !== 1 ? 's' : ''}`)
+      }
+      setIsImagePickerOpen(false)
+      setPageImages([])
+    }
+    catch (error) {
+      console.error('Failed to add images:', error)
+      showNotification('Failed to add images')
+    }
+  }
+
+  const handleCloseImagePicker = () => {
+    setIsImagePickerOpen(false)
+    setPageImages([])
+  }
+
   // Handle adding selected items from picker
   const handleAddPickerItems = async () => {
     const count = await addSelectedPickerItems()
@@ -556,6 +655,8 @@ export function App(props: AppProps) {
           onImportTabGroups={() => void handleOpenTabGroupsPicker()}
           onImportBookmarks={() => void handleOpenBookmarksPicker()}
           onImportHistory={() => void handleOpenHistoryPicker()}
+          onAddNote={handleOpenNoteDialog}
+          onAddImages={() => void handleOpenImagePicker()}
           onRemoveSource={id => void handleRemoveSource(id)}
         />
 
@@ -688,6 +789,22 @@ export function App(props: AppProps) {
         message={confirmDialog.value?.message ?? null}
         onConfirm={triggerConfirm}
         onClose={closeConfirmDialog}
+      />
+      <AddNoteDialog
+        isOpen={isNoteDialogOpen}
+        onClose={() => setIsNoteDialogOpen(false)}
+        onAddNote={handleAddNote}
+      />
+      <ImagePickerModal
+        isOpen={isImagePickerOpen}
+        images={pageImages}
+        isLoading={imagePickerLoading}
+        selectedCount={selectedImageCount}
+        onClose={handleCloseImagePicker}
+        onToggleImage={handleToggleImage}
+        onSelectAll={handleSelectAllImages}
+        onDeselectAll={handleDeselectAllImages}
+        onAddSelected={() => void handleAddSelectedImages()}
       />
       <Notification />
       <Onboarding hidden={onboardingHidden} />
