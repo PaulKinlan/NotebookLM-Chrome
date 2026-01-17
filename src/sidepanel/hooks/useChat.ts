@@ -89,15 +89,19 @@ export function useChat(notebookId: string | null): UseChatReturn {
       let hasContent = false
 
       // streamChat returns AsyncGenerator<StreamEvent, ChatResult>
-      // The return value is captured as the second value in for-await-of
-      for await (const chunk of streamChat(sources, question, history)) {
+      // We need to manually iterate to capture the return value with parsed citations
+      const generator = streamChat(sources, question, history)
+      let result = await generator.next()
+
+      while (!result.done) {
+        const chunk = result.value
         if (chunk.type === 'text') {
           responseContent += chunk.content
           if (!hasContent) {
             hasContent = true
             chatStatus.value = 'Receiving response...'
           }
-          // Update the last message content
+          // Update the last message content (show streaming response)
           const updated = [...chatMessages.value]
           const lastEvent = updated[updated.length - 1]
           if (lastEvent && lastEvent.type === 'assistant') {
@@ -105,14 +109,17 @@ export function useChat(notebookId: string | null): UseChatReturn {
           }
           chatMessages.value = updated
         }
+        result = await generator.next()
       }
 
-      // The return value from AsyncGenerator is not directly captured by for-await
-      // We need to call streamChat again or track it differently
-      // For now, we'll save the accumulated content without citations
+      // result.value now contains the ChatResult with cleanContent and citations
+      const chatResult = result.value
+
+      // Create final event with parsed content and citations
       const finalEvent = createAssistantEvent(
         effectiveNotebookId,
-        responseContent,
+        chatResult.content,
+        { citations: chatResult.citations },
       )
       await saveChatEvent(finalEvent)
       const updated = [...chatMessages.value]
