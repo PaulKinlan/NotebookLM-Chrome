@@ -397,8 +397,9 @@ export async function addNote(title: string, content: string): Promise<Source | 
   const { saveSource } = await import('../../lib/storage')
   await saveSource(source)
 
-  // Broadcast the change so UI updates
+  // Broadcast the change for cross-context sync and trigger local UI update
   postSourcesMessage({ type: 'source:created', notebookId, sourceId: source.id })
+  window.dispatchEvent(new CustomEvent('foliolm:sources-changed'))
 
   chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
 
@@ -468,8 +469,9 @@ export async function addImage(
   const { saveSource } = await import('../../lib/storage')
   await saveSource(source)
 
-  // Broadcast the change so UI updates
+  // Broadcast the change for cross-context sync and trigger local UI update
   postSourcesMessage({ type: 'source:created', notebookId, sourceId: source.id })
+  window.dispatchEvent(new CustomEvent('foliolm:sources-changed'))
 
   chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
 
@@ -567,8 +569,9 @@ export async function addSourceFromUrl(url: string, title: string): Promise<Sour
   const { saveSource } = await import('../../lib/storage')
   await saveSource(source)
 
-  // Broadcast the change so UI updates
+  // Broadcast the change for cross-context sync and trigger local UI update
   postSourcesMessage({ type: 'source:created', notebookId, sourceId: source.id })
+  window.dispatchEvent(new CustomEvent('foliolm:sources-changed'))
 
   chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
 
@@ -601,8 +604,9 @@ export async function addTextSource(text: string, title?: string): Promise<Sourc
   const { saveSource } = await import('../../lib/storage')
   await saveSource(source)
 
-  // Broadcast the change so UI updates
+  // Broadcast the change for cross-context sync and trigger local UI update
   postSourcesMessage({ type: 'source:created', notebookId, sourceId: source.id })
+  window.dispatchEvent(new CustomEvent('foliolm:sources-changed'))
 
   chrome.runtime.sendMessage({ type: 'SOURCE_ADDED' }).catch(() => {})
 
