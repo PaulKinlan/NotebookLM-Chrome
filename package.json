@@ -93,6 +93,6 @@
     }
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "^4.55.1"
+    "@rollup/rollup-linux-x64-gnu": "^4.55.2"
   }
 }
