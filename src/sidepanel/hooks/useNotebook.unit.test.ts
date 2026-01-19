@@ -86,6 +86,10 @@ vi.mock('../../lib/db.ts', () => ({
     // Mock querying by index
     return Promise.resolve([])
   }),
+  dbCountByIndex: vi.fn((): Promise<number> => {
+    // Mock counting by index
+    return Promise.resolve(0)
+  }),
   dbClearAll: vi.fn((): Promise<void> => {
     mockNotebooks.clear()
     mockSettings.clear()
