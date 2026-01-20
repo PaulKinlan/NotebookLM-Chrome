@@ -26,6 +26,7 @@ export interface Source extends SyncableEntity {
   content: string
   htmlContent?: string
   links?: ExtractedLink[] // Links extracted from the source content
+  order?: number // Manual ordering index (lower = higher in list)
   metadata?: {
     favicon?: string
     description?: string

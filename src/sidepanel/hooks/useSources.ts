@@ -14,6 +14,7 @@ import {
   getSourcesByNotebook,
   saveSource,
   deleteSource as deleteSrc,
+  reorderSources as reorderSrcs,
 } from '../../lib/storage.ts'
 
 export interface UseSourcesReturn {
@@ -29,6 +30,8 @@ export interface UseSourcesReturn {
   reloadSources: () => Promise<void>
   /** Clear all sources */
   clearSources: () => void
+  /** Reorder sources by providing new order of IDs */
+  reorderSources: (sourceIds: string[]) => Promise<void>
 }
 
 /**
@@ -125,6 +128,15 @@ export function useSources(notebookId: string | null): UseSourcesReturn {
     sources.value = []
   }, [])
 
+  const reorderSources = useCallback(async (sourceIds: string[]) => {
+    // Optimistically update local state for immediate feedback
+    const reordered = sourceIds.map(id => sources.value.find(s => s.id === id)).filter((s): s is Source => s !== undefined)
+    sources.value = reordered
+
+    // Persist the new order
+    await reorderSrcs(sourceIds)
+  }, [])
+
   return {
     sources: sources.value,
     isLoading: sourcesLoading.value,
@@ -132,5 +144,6 @@ export function useSources(notebookId: string | null): UseSourcesReturn {
     removeSource,
     reloadSources: loadSources,
     clearSources,
+    reorderSources,
   }
 }

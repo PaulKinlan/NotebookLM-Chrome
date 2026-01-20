@@ -1,4 +1,4 @@
-import { useRef } from 'preact/hooks'
+import { useRef, useState, useCallback } from 'preact/hooks'
 import type { Source, Citation } from '../../types/index.ts'
 import { SourceItem } from './SourceItem'
 import { RefreshButton } from './RefreshButton'
@@ -141,6 +141,7 @@ interface ChatTabProps {
   onRemoveSource?: (sourceId: string) => void
   onClearAllSources?: () => void
   onAddSuggestedLink?: (url: string, title: string) => void
+  onReorderSources?: (sourceIds: string[]) => void
   summaryContent: string | null
   showSummary: boolean
   isRefreshingSources?: boolean
@@ -148,8 +149,12 @@ interface ChatTabProps {
 }
 
 export function ChatTab(props: ChatTabProps) {
-  const { active, sources, onQuery, onClearChat, onRegenerateSummary, onAddCurrentTab, onRefreshSources, onRemoveSource, onClearAllSources, onAddSuggestedLink, summaryContent, showSummary, isRefreshingSources = false, isRegeneratingSummary = false } = props
+  const { active, sources, onQuery, onClearChat, onRegenerateSummary, onAddCurrentTab, onRefreshSources, onRemoveSource, onClearAllSources, onAddSuggestedLink, onReorderSources, summaryContent, showSummary, isRefreshingSources = false, isRegeneratingSummary = false } = props
   const queryInputRef = useRef<HTMLInputElement>(null)
+
+  // Drag and drop state
+  const [draggedSourceId, setDraggedSourceId] = useState<string | null>(null)
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
 
   // Suggested links hook
   const {
@@ -176,6 +181,51 @@ export function ChatTab(props: ChatTabProps) {
       handleQuery()
     }
   }
+
+  // Drag and drop handlers
+  const handleDragStart = useCallback((e: DragEvent, sourceId: string) => {
+    setDraggedSourceId(sourceId)
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move'
+      e.dataTransfer.setData('text/plain', sourceId)
+    }
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedSourceId(null)
+    setDropTargetId(null)
+  }, [])
+
+  const handleDragOver = useCallback((_e: DragEvent, sourceId: string) => {
+    if (draggedSourceId && sourceId !== draggedSourceId) {
+      setDropTargetId(sourceId)
+    }
+  }, [draggedSourceId])
+
+  const handleDrop = useCallback((_e: DragEvent, targetId: string) => {
+    if (!draggedSourceId || draggedSourceId === targetId || !onReorderSources) {
+      handleDragEnd()
+      return
+    }
+
+    // Calculate new order
+    const currentOrder = sources.map(s => s.id)
+    const draggedIndex = currentOrder.indexOf(draggedSourceId)
+    const targetIndex = currentOrder.indexOf(targetId)
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      handleDragEnd()
+      return
+    }
+
+    // Remove dragged item and insert at target position
+    const newOrder = [...currentOrder]
+    newOrder.splice(draggedIndex, 1)
+    newOrder.splice(targetIndex, 0, draggedSourceId)
+
+    onReorderSources(newOrder)
+    handleDragEnd()
+  }, [draggedSourceId, sources, onReorderSources, handleDragEnd])
 
   return (
     <section id="tab-chat" className={`tab-content ${active ? 'active' : ''}`}>
@@ -266,7 +316,17 @@ export function ChatTab(props: ChatTabProps) {
                 )
               : (
                   sources.map(source => (
-                    <SourceItem key={source.id} source={source} onRemove={onRemoveSource} />
+                    <SourceItem
+                      key={source.id}
+                      source={source}
+                      onRemove={onRemoveSource}
+                      isDragging={draggedSourceId === source.id}
+                      isDropTarget={dropTargetId === source.id}
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop}
+                    />
                   ))
                 )}
           </div>

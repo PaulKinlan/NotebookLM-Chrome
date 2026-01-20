@@ -87,7 +87,38 @@ class IndexedDBStorage implements StorageAdapter {
 
   async getSourcesByNotebook(notebookId: string): Promise<Source[]> {
     const sources = await dbGetByIndex<Source>('sources', 'notebookId', notebookId)
-    return sources.sort((a, b) => b.createdAt - a.createdAt)
+    // Sort by order if present, otherwise by createdAt (newest first as fallback)
+    return sources.sort((a, b) => {
+      const orderA = a.order ?? Number.MAX_SAFE_INTEGER
+      const orderB = b.order ?? Number.MAX_SAFE_INTEGER
+      if (orderA !== orderB) {
+        return orderA - orderB
+      }
+      // Fallback to newest first for sources without order
+      return b.createdAt - a.createdAt
+    })
+  }
+
+  async reorderSources(sourceIds: string[]): Promise<void> {
+    // Update order field for each source
+    const updates = sourceIds.map(async (id, index) => {
+      const source = await this.getSource(id)
+      if (source) {
+        source.order = index
+        source.updatedAt = Date.now()
+        await dbPut('sources', source)
+      }
+    })
+    await Promise.all(updates)
+
+    // Get the notebookId from the first source for the event
+    if (sourceIds.length > 0) {
+      const firstSource = await this.getSource(sourceIds[0])
+      if (firstSource) {
+        const event: SourceCreatedEvent = { type: 'source:created', notebookId: firstSource.notebookId, sourceId: sourceIds[0] }
+        postSourcesMessage(event)
+      }
+    }
   }
 
   async getSource(id: string): Promise<Source | null> {
@@ -441,6 +472,7 @@ export const getSource = (id: string) => storage.getSource(id)
 export const saveSource = (source: Source) => storage.saveSource(source)
 export const deleteSource = (id: string) => storage.deleteSource(id)
 export const getSourceCountByNotebook = (notebookId: string) => storage.getSourceCountByNotebook(notebookId)
+export const reorderSources = (sourceIds: string[]) => storage.reorderSources(sourceIds)
 
 export const getChatHistory = (notebookId: string) => storage.getChatHistory(notebookId)
 export const saveChatEvent = (event: ChatEvent) => storage.saveChatEvent(event)

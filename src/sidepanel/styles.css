@@ -1397,6 +1397,56 @@ input[type="text"]:focus {
   color: var(--danger-color);
 }
 
+/* Drag Handle */
+.source-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 28px;
+  flex-shrink: 0;
+  cursor: grab;
+  color: var(--text-muted);
+  opacity: 0.5;
+  transition: opacity 0.15s ease, color 0.15s ease;
+  margin-left: -4px;
+  margin-right: -4px;
+}
+
+.source-drag-handle:hover {
+  opacity: 1;
+  color: var(--text-secondary);
+}
+
+.source-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Dragging state */
+.source-item[draggable="true"] {
+  cursor: grab;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.source-item.source-item-dragging {
+  opacity: 0.5;
+  transform: scale(0.98);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background: var(--bg-tertiary);
+  cursor: grabbing;
+}
+
+/* Drop target indicator */
+.source-item.source-item-drop-target {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color-light);
+}
+
+/* Visual feedback on dragover */
+.source-item:not(.source-item-dragging):hover {
+  background: var(--bg-secondary);
+}
+
 .sources-list.compact .source-item {
   padding: 10px;
 }

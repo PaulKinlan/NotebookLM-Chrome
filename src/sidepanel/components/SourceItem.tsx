@@ -4,10 +4,16 @@ interface SourceItemProps {
   source: Source
   onRemove?: (sourceId: string) => void
   onOpenInNewTab?: (url: string) => void
+  isDragging?: boolean
+  isDropTarget?: boolean
+  onDragStart?: (e: DragEvent, sourceId: string) => void
+  onDragEnd?: (e: DragEvent) => void
+  onDragOver?: (e: DragEvent, sourceId: string) => void
+  onDrop?: (e: DragEvent, sourceId: string) => void
 }
 
 export function SourceItem(props: SourceItemProps) {
-  const { source, onRemove, onOpenInNewTab } = props
+  const { source, onRemove, onOpenInNewTab, isDragging, isDropTarget, onDragStart, onDragEnd, onDragOver, onDrop } = props
 
   const handleOpenInNewTab = () => {
     if (source.url) {
@@ -119,8 +125,52 @@ export function SourceItem(props: SourceItemProps) {
     return source.url
   }
 
+  const handleDragStart = (e: DragEvent) => {
+    if (onDragStart) {
+      onDragStart(e, source.id)
+    }
+  }
+
+  const handleDragEnd = (e: DragEvent) => {
+    if (onDragEnd) {
+      onDragEnd(e)
+    }
+  }
+
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault()
+    if (onDragOver) {
+      onDragOver(e, source.id)
+    }
+  }
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault()
+    if (onDrop) {
+      onDrop(e, source.id)
+    }
+  }
+
   return (
-    <div className={`source-item ${source.type === 'image' ? 'source-item-with-thumbnail' : ''}`} data-source-id={source.id}>
+    <div
+      className={`source-item ${source.type === 'image' ? 'source-item-with-thumbnail' : ''} ${isDragging ? 'source-item-dragging' : ''} ${isDropTarget ? 'source-item-drop-target' : ''}`}
+      data-source-id={source.id}
+      draggable={true}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      <div className="source-drag-handle" title="Drag to reorder">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="9" cy="6" r="2"></circle>
+          <circle cx="15" cy="6" r="2"></circle>
+          <circle cx="9" cy="12" r="2"></circle>
+          <circle cx="15" cy="12" r="2"></circle>
+          <circle cx="9" cy="18" r="2"></circle>
+          <circle cx="15" cy="18" r="2"></circle>
+        </svg>
+      </div>
       {renderThumbnail()}
       <div className="source-icon">{renderIcon()}</div>
       <div className="source-content">

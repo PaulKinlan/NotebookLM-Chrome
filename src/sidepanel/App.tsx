@@ -101,7 +101,7 @@ export function App(props: AppProps) {
 
   // Notebook hooks (keep for now, will be refactored)
   const { selectNotebook, createNotebook, deleteNotebook } = useNotebook()
-  const { removeSource } = useSources(currentNotebookId.value)
+  const { removeSource, reorderSources } = useSources(currentNotebookId.value)
 
   // Chat hooks
   const { query, clearChat, setSources: setChatSources } = useChat(currentNotebookId.value)
@@ -752,6 +752,7 @@ export function App(props: AppProps) {
               }
             })()
           }}
+          onReorderSources={(sourceIds: string[]) => void reorderSources(sourceIds)}
           summaryContent={summaryContent.value}
           showSummary={showSummary.value}
         />
