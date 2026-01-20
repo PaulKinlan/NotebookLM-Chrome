@@ -22,7 +22,7 @@ import {
   dbClearAll,
 } from './db.ts'
 import { postSourcesMessage, postNotebooksMessage, postChatMessage } from '../sidepanel/lib/broadcast'
-import type { SourceCreatedEvent, SourceDeletedEvent, NotebookCreatedEvent, NotebookDeletedEvent, NotebookSelectedEvent, ChatAddedEvent, ChatClearedEvent } from '../sidepanel/lib/broadcast'
+import type { SourceCreatedEvent, SourceDeletedEvent, SourceReorderedEvent, NotebookCreatedEvent, NotebookDeletedEvent, NotebookSelectedEvent, ChatAddedEvent, ChatClearedEvent } from '../sidepanel/lib/broadcast'
 
 // ============================================================================
 // Storage Adapter Implementation
@@ -100,24 +100,42 @@ class IndexedDBStorage implements StorageAdapter {
   }
 
   async reorderSources(sourceIds: string[]): Promise<void> {
-    // Update order field for each source
-    const updates = sourceIds.map(async (id, index) => {
+    if (sourceIds.length === 0) return
+
+    // Batch read: fetch all sources at once
+    const sourcesMap = new Map<string, Source>()
+    const fetchPromises = sourceIds.map(async (id) => {
       const source = await this.getSource(id)
       if (source) {
-        source.order = index
-        source.updatedAt = Date.now()
-        await dbPut('sources', source)
+        sourcesMap.set(id, source)
       }
     })
-    await Promise.all(updates)
+    await Promise.all(fetchPromises)
 
-    // Get the notebookId from the first source for the event
-    if (sourceIds.length > 0) {
-      const firstSource = await this.getSource(sourceIds[0])
-      if (firstSource) {
-        const event: SourceCreatedEvent = { type: 'source:created', notebookId: firstSource.notebookId, sourceId: sourceIds[0] }
-        postSourcesMessage(event)
+    // Prepare updates with new order values
+    const now = Date.now()
+    const updatedSources: Source[] = []
+    let notebookId: string | null = null
+
+    for (let i = 0; i < sourceIds.length; i++) {
+      const source = sourcesMap.get(sourceIds[i])
+      if (source) {
+        source.order = i
+        source.updatedAt = now
+        updatedSources.push(source)
+        if (!notebookId) {
+          notebookId = source.notebookId
+        }
       }
+    }
+
+    // Batch write: save all sources
+    await Promise.all(updatedSources.map(source => dbPut('sources', source)))
+
+    // Emit reordered event (not created)
+    if (notebookId) {
+      const event: SourceReorderedEvent = { type: 'source:reordered', notebookId }
+      postSourcesMessage(event)
     }
   }
 

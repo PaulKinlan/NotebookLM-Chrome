@@ -129,12 +129,23 @@ export function useSources(notebookId: string | null): UseSourcesReturn {
   }, [])
 
   const reorderSources = useCallback(async (sourceIds: string[]) => {
+    // Save previous state for rollback on failure
+    const previousSources = sources.value
+
     // Optimistically update local state for immediate feedback
     const reordered = sourceIds.map(id => sources.value.find(s => s.id === id)).filter((s): s is Source => s !== undefined)
     sources.value = reordered
 
-    // Persist the new order
-    await reorderSrcs(sourceIds)
+    try {
+      // Persist the new order
+      await reorderSrcs(sourceIds)
+    }
+    catch (error) {
+      // Revert to previous state on failure
+      sources.value = previousSources
+      console.error('Failed to reorder sources:', error)
+      throw error
+    }
   }, [])
 
   return {

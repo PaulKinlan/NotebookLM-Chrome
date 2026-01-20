@@ -1422,6 +1422,12 @@ input[type="text"]:focus {
   cursor: grabbing;
 }
 
+.source-drag-handle:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
 /* Dragging state */
 .source-item[draggable="true"] {
   cursor: grab;
@@ -1438,8 +1444,8 @@ input[type="text"]:focus {
 
 /* Drop target indicator */
 .source-item.source-item-drop-target {
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 2px var(--accent-color-light);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-muted);
 }
 
 /* Visual feedback on dragover */

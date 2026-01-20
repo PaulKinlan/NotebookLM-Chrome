@@ -44,7 +44,12 @@ export interface SourceRefreshedEvent {
   sourceId: string
 }
 
-export type SourcesEvent = SourceCreatedEvent | SourceDeletedEvent | SourceRefreshedEvent
+export interface SourceReorderedEvent {
+  type: 'source:reordered'
+  notebookId: string
+}
+
+export type SourcesEvent = SourceCreatedEvent | SourceDeletedEvent | SourceRefreshedEvent | SourceReorderedEvent
 
 export interface NotebookCreatedEvent {
   type: 'notebook:created'

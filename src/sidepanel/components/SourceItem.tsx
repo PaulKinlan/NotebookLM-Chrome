@@ -10,10 +10,15 @@ interface SourceItemProps {
   onDragEnd?: (e: DragEvent) => void
   onDragOver?: (e: DragEvent, sourceId: string) => void
   onDrop?: (e: DragEvent, sourceId: string) => void
+  onMoveUp?: (sourceId: string) => void
+  onMoveDown?: (sourceId: string) => void
 }
 
 export function SourceItem(props: SourceItemProps) {
-  const { source, onRemove, onOpenInNewTab, isDragging, isDropTarget, onDragStart, onDragEnd, onDragOver, onDrop } = props
+  const { source, onRemove, onOpenInNewTab, isDragging, isDropTarget, onDragStart, onDragEnd, onDragOver, onDrop, onMoveUp, onMoveDown } = props
+
+  // Check if drag functionality is enabled
+  const isDraggable = Boolean(onDragStart)
 
   const handleOpenInNewTab = () => {
     if (source.url) {
@@ -151,26 +156,47 @@ export function SourceItem(props: SourceItemProps) {
     }
   }
 
+  // Keyboard handler for accessibility
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'ArrowUp' && onMoveUp) {
+      e.preventDefault()
+      onMoveUp(source.id)
+    }
+    else if (e.key === 'ArrowDown' && onMoveDown) {
+      e.preventDefault()
+      onMoveDown(source.id)
+    }
+  }
+
   return (
     <div
       className={`source-item ${source.type === 'image' ? 'source-item-with-thumbnail' : ''} ${isDragging ? 'source-item-dragging' : ''} ${isDropTarget ? 'source-item-drop-target' : ''}`}
       data-source-id={source.id}
-      draggable={true}
+      draggable={isDraggable}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <div className="source-drag-handle" title="Drag to reorder">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="9" cy="6" r="2"></circle>
-          <circle cx="15" cy="6" r="2"></circle>
-          <circle cx="9" cy="12" r="2"></circle>
-          <circle cx="15" cy="12" r="2"></circle>
-          <circle cx="9" cy="18" r="2"></circle>
-          <circle cx="15" cy="18" r="2"></circle>
-        </svg>
-      </div>
+      {isDraggable && (
+        <div
+          className="source-drag-handle"
+          title="Drag to reorder (or use arrow keys)"
+          tabIndex={0}
+          role="button"
+          aria-label={`Reorder ${source.title}. Use arrow keys to move up or down.`}
+          onKeyDown={handleKeyDown}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="9" cy="6" r="2"></circle>
+            <circle cx="15" cy="6" r="2"></circle>
+            <circle cx="9" cy="12" r="2"></circle>
+            <circle cx="15" cy="12" r="2"></circle>
+            <circle cx="9" cy="18" r="2"></circle>
+            <circle cx="15" cy="18" r="2"></circle>
+          </svg>
+        </div>
+      )}
       {renderThumbnail()}
       <div className="source-icon">{renderIcon()}</div>
       <div className="source-content">

@@ -227,6 +227,37 @@ export function ChatTab(props: ChatTabProps) {
     handleDragEnd()
   }, [draggedSourceId, sources, onReorderSources, handleDragEnd])
 
+  // Keyboard handlers for accessibility
+  const handleMoveUp = useCallback((sourceId: string) => {
+    if (!onReorderSources) return
+
+    const currentOrder = sources.map(s => s.id)
+    const index = currentOrder.indexOf(sourceId)
+
+    if (index <= 0) return // Already at top
+
+    // Swap with previous item
+    const newOrder = [...currentOrder]
+    ;[newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]]
+
+    onReorderSources(newOrder)
+  }, [sources, onReorderSources])
+
+  const handleMoveDown = useCallback((sourceId: string) => {
+    if (!onReorderSources) return
+
+    const currentOrder = sources.map(s => s.id)
+    const index = currentOrder.indexOf(sourceId)
+
+    if (index === -1 || index >= currentOrder.length - 1) return // Already at bottom
+
+    // Swap with next item
+    const newOrder = [...currentOrder]
+    ;[newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]]
+
+    onReorderSources(newOrder)
+  }, [sources, onReorderSources])
+
   return (
     <section id="tab-chat" className={`tab-content ${active ? 'active' : ''}`}>
       {/* Summary Section (Collapsible) - Open by default */}
@@ -322,10 +353,12 @@ export function ChatTab(props: ChatTabProps) {
                       onRemove={onRemoveSource}
                       isDragging={draggedSourceId === source.id}
                       isDropTarget={dropTargetId === source.id}
-                      onDragStart={handleDragStart}
-                      onDragEnd={handleDragEnd}
-                      onDragOver={handleDragOver}
-                      onDrop={handleDrop}
+                      onDragStart={onReorderSources ? handleDragStart : undefined}
+                      onDragEnd={onReorderSources ? handleDragEnd : undefined}
+                      onDragOver={onReorderSources ? handleDragOver : undefined}
+                      onDrop={onReorderSources ? handleDrop : undefined}
+                      onMoveUp={onReorderSources ? handleMoveUp : undefined}
+                      onMoveDown={onReorderSources ? handleMoveDown : undefined}
                     />
                   ))
                 )}
