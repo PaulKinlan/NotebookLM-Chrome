@@ -478,7 +478,7 @@ Users can start multiple transformations simultaneously without waiting for prev
 - [x] User can manually select/deselect images
 - [x] Right-click adds single image to notebook
 - [x] Images display as thumbnails in source list
-- [ ] Images are sent to multimodal AI providers
+- [x] Images are sent to multimodal AI providers
 
 #### 5.3 Video Content (P3)
 
@@ -951,7 +951,7 @@ async function getModel(): Promise<LanguageModel | null> {
 - [x] Image picker modal UI with select all/deselect all
 - [x] Context menu: "Add image to Notebook"
 - [x] Image thumbnail display in source list
-- [ ] Multimodal AI context building with images
+- [x] Multimodal AI context building with images
 
 ### Phase 4 - Video/Audio Support (P3)
 - [ ] Video element detection (HTML5, YouTube, Vimeo)

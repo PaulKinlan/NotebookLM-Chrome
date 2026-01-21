@@ -7,6 +7,7 @@ import {
   getProviderConfig,
   getProviderDefaultModel,
   providerRequiresApiKey,
+  providerSupportsVision,
   type AIProvider,
 } from './provider-registry.ts'
 import { withRetry } from './errors.ts'
@@ -613,6 +614,85 @@ function buildSourceList(sources: Source[]): string {
 }
 
 // ============================================================================
+// Multimodal Support
+// ============================================================================
+
+/**
+ * Image source with URL for multimodal AI
+ */
+interface ImageSource {
+  id: string
+  title: string
+  url: string
+  altText?: string
+}
+
+/**
+ * Extract image sources from the sources array
+ */
+function extractImageSources(sources: Source[]): ImageSource[] {
+  return sources
+    .filter(source => source.type === 'image')
+    .map(source => ({
+      id: source.id,
+      title: source.title,
+      url: source.metadata?.imageUrl || source.url,
+      altText: source.metadata?.altText,
+    }))
+    .filter(img => img.url && !img.url.startsWith('data:')) // Filter out data URLs (too large)
+}
+
+/**
+ * Build multimodal user message content with text and images
+ * Uses Vercel AI SDK format: array of { type: 'text' | 'image', ... }
+ */
+type MultimodalContent = Array<
+  | { type: 'text', text: string }
+  | { type: 'image', image: URL }
+>
+
+function buildMultimodalUserMessage(
+  question: string,
+  images: ImageSource[],
+): MultimodalContent {
+  const content: MultimodalContent = []
+
+  // Add text content first
+  if (images.length > 0) {
+    content.push({
+      type: 'text',
+      text: `${question}\n\n[The following images are included as visual context from your notebook sources:]`,
+    })
+  }
+  else {
+    content.push({ type: 'text', text: question })
+  }
+
+  // Add images (limit to 10 to avoid token limits)
+  const imagesToInclude = images.slice(0, 10)
+  for (const img of imagesToInclude) {
+    try {
+      content.push({
+        type: 'image',
+        image: new URL(img.url),
+      })
+      // Add image description as text
+      if (img.altText || img.title) {
+        content.push({
+          type: 'text',
+          text: `[Image: ${img.title}${img.altText ? ` - ${img.altText}` : ''}]`,
+        })
+      }
+    }
+    catch (error) {
+      console.warn(`[AI] Failed to create URL for image ${img.id}:`, error)
+    }
+  }
+
+  return content
+}
+
+// ============================================================================
 // Chat Query
 // ============================================================================
 
@@ -678,6 +758,7 @@ async function buildChatSystemPrompt(
   sources: Source[],
   query: string,
   compressionMode: 'two-pass' | 'single-pass' = 'two-pass',
+  hasImages: boolean = false,
 ): Promise<string> {
   const sourceContext = await buildSourceContext(sources, query, compressionMode)
 
@@ -696,13 +777,20 @@ You can:
 Keep your responses conversational and helpful.`
   }
 
+  // Add image instructions if images are included
+  const imageInstructions = hasImages
+    ? `
+5. Images from the notebook are included in the user's message. Analyze them and incorporate visual information into your response when relevant.
+6. When referencing information from an image, describe what you see and cite the image source.`
+    : ''
+
   return `You are a helpful AI assistant that answers questions based on the provided sources.
 
 IMPORTANT INSTRUCTIONS:
 1. Base your answers ONLY on the provided sources
 2. When you use information from a source, cite it using the format [Source N] where N is the numeric index (e.g., [Source 1], [Source 2])
 3. Be accurate and well-structured
-4. If the sources don't contain relevant information, say so
+4. If the sources don't contain relevant information, say so${imageInstructions}
 
 After your main response, add a CITATIONS section in this exact format:
 ---CITATIONS---
@@ -987,6 +1075,15 @@ export async function* streamChat(
   const { model, config } = modelWithConfig
   const { tools, contextMode, onStatus } = options || {}
 
+  // Check if provider supports vision for multimodal input
+  const supportsVision = providerSupportsVision(config.providerType)
+  const imageSources = supportsVision ? extractImageSources(sources) : []
+  const hasImages = imageSources.length > 0
+
+  if (hasImages) {
+    console.log(`[AI] Including ${imageSources.length} images in multimodal context`)
+  }
+
   // Agentic mode: Pass tools to LLM, minimal initial context
   if (tools && contextMode === 'agentic') {
     const notebookName = sources[0]?.notebookId || 'this notebook'
@@ -996,12 +1093,17 @@ export async function* streamChat(
 
     console.log('[Agentic Mode] Starting stream with tools:', Object.keys(tools))
 
+    // Build user message (multimodal if images available)
+    const userMessage = hasImages
+      ? { role: 'user' as const, content: buildMultimodalUserMessage(question, imageSources) }
+      : { role: 'user' as const, content: question }
+
     const result = streamText({
       model,
       system: systemPrompt,
       messages: [
         ...messages,
-        { role: 'user', content: question },
+        userMessage,
       ],
       tools,
     })
@@ -1074,17 +1176,22 @@ export async function* streamChat(
   // Classic mode: Pre-load sources with compression
   const compressionMode = await getCompressionMode()
   onStatus?.('Analyzing sources...')
-  const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode)
+  const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode, hasImages)
   onStatus?.('Generating response...')
 
   const messages = buildChatHistory(history)
+
+  // Build user message (multimodal if images available)
+  const classicUserMessage = hasImages
+    ? { role: 'user' as const, content: buildMultimodalUserMessage(question, imageSources) }
+    : { role: 'user' as const, content: question }
 
   const result = streamText({
     model,
     system: systemPrompt,
     messages: [
       ...messages,
-      { role: 'user', content: question },
+      classicUserMessage,
     ],
   })
 
@@ -1132,12 +1239,26 @@ export async function chat(
 
   const { model, config } = modelWithConfig
 
+  // Check if provider supports vision for multimodal input
+  const supportsVision = providerSupportsVision(config.providerType)
+  const imageSources = supportsVision ? extractImageSources(sources) : []
+  const hasImages = imageSources.length > 0
+
+  if (hasImages) {
+    console.log(`[AI] Including ${imageSources.length} images in multimodal context`)
+  }
+
   const compressionMode = await getCompressionMode()
   onStatus?.('Analyzing sources...')
-  const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode)
+  const systemPrompt = await buildChatSystemPrompt(sources, question, compressionMode, hasImages)
   onStatus?.('Generating response...')
 
   const messages = buildChatHistory(history)
+
+  // Build user message (multimodal if images available)
+  const userMessage = hasImages
+    ? { role: 'user' as const, content: buildMultimodalUserMessage(question, imageSources) }
+    : { role: 'user' as const, content: question }
 
   // Use retry logic for recoverable errors (network, rate limits)
   const result = await withRetry(
@@ -1146,7 +1267,7 @@ export async function chat(
       system: systemPrompt,
       messages: [
         ...messages,
-        { role: 'user', content: question },
+        userMessage,
       ],
     }),
     {
