@@ -1508,7 +1508,10 @@ async function handleCancelTransform(
 }
 
 /**
- * Get pending/running transforms, optionally filtered by notebook.
+ * Get pending/running/completed transforms, optionally filtered by notebook.
+ * Returns all transforms that haven't been cleaned up yet.
+ * The side panel is responsible for cleaning up completed/failed/cancelled
+ * transforms after processing them.
  */
 async function handleGetPendingTransforms(
   notebookId?: string,
@@ -1516,14 +1519,9 @@ async function handleGetPendingTransforms(
   try {
     if (notebookId) {
       const all = await getBackgroundTransforms(notebookId)
-      // Return pending, running, and recently completed (last 10 minutes)
-      const cutoff = Date.now() - 10 * 60 * 1000
-      const relevant = all.filter(t =>
-        t.status === 'pending'
-        || t.status === 'running'
-        || (t.completedAt && t.completedAt > cutoff),
-      )
-      return { transforms: relevant }
+      // Return all transforms - the side panel will clean up after processing
+      // This ensures no results are lost regardless of how long the panel was closed
+      return { transforms: all }
     }
     const pending = await getPendingBackgroundTransforms()
     return { transforms: pending }
@@ -1604,22 +1602,27 @@ async function executeTransform(transformId: string): Promise<void> {
 
     // Check if cancelled after executing
     const finalCheck = await getBackgroundTransform(transformId)
-    if (finalCheck?.status === 'cancelled') {
+    if (!finalCheck) {
+      console.error('[Background Transform] Transform not found after execution:', transformId)
+      runningTransforms.delete(transformId)
+      return
+    }
+    if (finalCheck.status === 'cancelled') {
       console.log('[Background Transform] Transform was cancelled after execution:', transformId)
       runningTransforms.delete(transformId)
       return
     }
 
-    // Update with result
-    transform.status = 'completed'
-    transform.completedAt = Date.now()
-    transform.content = content
-    await saveBackgroundTransform(transform)
+    // Update finalCheck with result (not the stale transform object)
+    finalCheck.status = 'completed'
+    finalCheck.completedAt = Date.now()
+    finalCheck.content = content
+    await saveBackgroundTransform(finalCheck)
 
     console.log('[Background Transform] Transform completed:', transformId, 'content length:', content.length)
 
     // Notify completion
-    notifyTransformComplete(transform)
+    notifyTransformComplete(finalCheck)
   }
   catch (error) {
     console.error('[Background Transform] Transform failed:', transformId, error)

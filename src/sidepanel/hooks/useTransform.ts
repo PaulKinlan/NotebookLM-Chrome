@@ -375,6 +375,9 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
           // Remove from pending
           pendingTransforms.value = pendingTransforms.value.filter(p => p.id !== bg.id)
           console.error('[useTransform] Transform failed:', bg.error)
+
+          // Clean up the failed background transform record from IndexedDB
+          void deleteBackgroundTransform(bg.id)
           break
         }
       }
@@ -447,6 +450,12 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
               // Clean up the background transform record
               void deleteBackgroundTransform(bg.id)
             }
+          }
+          else if (bg.status === 'failed' || bg.status === 'cancelled') {
+            // Clean up failed and cancelled transform records from IndexedDB
+            // to prevent accumulation over time
+            console.log('[useTransform] Cleaning up', bg.status, 'transform:', bg.id)
+            void deleteBackgroundTransform(bg.id)
           }
         }
 
