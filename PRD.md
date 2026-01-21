@@ -29,7 +29,7 @@ Users frequently encounter valuable information across multiple web pages but la
 |-------|----------|----------|--------|
 | Phase 1 | Text sources, notebooks, basic AI chat, transformations | P0 | Complete |
 | Phase 2 | PDF support (local + web), improved content extraction | P1 | Planned |
-| Phase 3 | Image extraction, multimodal AI context | P2 | Planned |
+| Phase 3 | Image extraction, multimodal AI context | P2 | Complete |
 | Phase 4 | Video/Audio sources, expanded context menu | P3 | Planned |
 | Future | Server sync, collaboration, mobile companion | P4 | Future |
 
@@ -372,6 +372,46 @@ Each transformation supports custom configuration through a settings popover:
 - [x] Advanced section shows prompt structure details
 - [x] Reset restores default configuration
 
+#### 4.6.1 Multimodal Transform Support
+
+Transformations support image sources when using vision-capable AI providers (Anthropic Claude, OpenAI GPT-4o/V, Google Gemini, etc.).
+
+**How It Works:**
+- When image sources are present and the provider supports vision, images are sent alongside text
+- The AI can analyze visual content and incorporate it into the transformation
+- For quizzes: Questions can be about visual content
+- For summaries/takeaways: Insights from images are included
+- For slide decks: Visual content can be referenced
+
+**Currently Multimodal-Enabled Transforms:**
+All 19 transforms now support multimodal image analysis:
+- Summary
+- Key Takeaways
+- Study Quiz
+- Slide Deck
+- Study Guide
+- Podcast Script
+- Email Summary
+- Report
+- Flashcards
+- Data Table
+- Mind Map
+- Timeline
+- Glossary
+- Comparison
+- FAQ
+- Action Items
+- Executive Brief
+- Pros & Cons
+- Citation List
+- Outline
+
+**Acceptance Criteria:**
+- [x] Images are extracted from sources when provider supports vision
+- [x] Multimodal message format used for vision-capable providers
+- [x] Text-only fallback for providers without vision support
+- [x] System prompts instruct AI to analyze visual content
+
 #### 4.7 Transform Persistence & Management
 
 Each generated transform result can be saved, deleted, or opened in a new tab for full-screen viewing. **Transform history is per-notebook** - when switching between folios, the Transform tab shows only the saved transforms for that specific folio.
@@ -473,12 +513,12 @@ Users can start multiple transformations simultaneously without waiting for prev
 - Has meaningful alt text or is figure/infographic
 
 **Acceptance Criteria:**
-- [ ] User can view images detected on current page
-- [ ] Auto-detection filters out UI/ad images
-- [ ] User can manually select/deselect images
-- [ ] Right-click adds single image to notebook
-- [ ] Images display as thumbnails in source list
-- [ ] Images are sent to multimodal AI providers
+- [x] User can view images detected on current page
+- [ ] Auto-detection filters out UI/ad images (currently size-based only)
+- [x] User can manually select/deselect images
+- [x] Right-click adds single image to notebook
+- [x] Images display as thumbnails in source list
+- [x] Images are sent to multimodal AI providers
 
 #### 5.3 Video Content (P3)
 
@@ -571,7 +611,7 @@ Right-click context menu for quick source addition:
 **Acceptance Criteria:**
 - [x] "Add page" extracts and adds current page
 - [x] "Add link" opens, extracts, and closes background tab
-- [ ] "Add image" appears on right-click over images
+- [x] "Add image" appears on right-click over images
 - [ ] "Add video" appears on right-click over videos
 - [ ] "Add audio" appears on right-click over audio
 - [x] Side panel opens after adding source
@@ -945,12 +985,13 @@ async function getModel(): Promise<LanguageModel | null> {
 - [ ] Error handling for encrypted PDFs
 
 ### Phase 3 - Image Support (P2)
-- [ ] Image detection on current page
-- [ ] Auto-detection heuristics (size, position, content area)
-- [ ] Image picker modal UI
-- [ ] Context menu: "Add image to Notebook"
-- [ ] Image thumbnail display in source list
-- [ ] Multimodal AI context building with images
+- [x] Image detection on current page
+- [x] Size-based image filtering (100x100px minimum)
+- [ ] Content-aware filtering (exclude UI/ads based on position/context)
+- [x] Image picker modal UI with select all/deselect all
+- [x] Context menu: "Add image to Notebook"
+- [x] Image thumbnail display in source list
+- [x] Multimodal AI context building with images
 
 ### Phase 4 - Video/Audio Support (P3)
 - [ ] Video element detection (HTML5, YouTube, Vimeo)

@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { GlossaryConfig } from '../../types/index.ts'
 import { DEFAULT_GLOSSARY_CONFIG } from '../transform-config.ts'
@@ -53,10 +53,7 @@ Organize terms ${sortDesc[c.sortOrder]}.${examplesNote}${relatedNote}${
     ? '\n  *Related: Term 2, Term 3*'
     : ''
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create a glossary of key terms from these sources:
+  const textPrompt = `Create a glossary of key terms from these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -67,8 +64,9 @@ Format as ${c.sortOrder === 'by-category' ? 'category-grouped sections' : c.sort
 
 **Term 2**: Definition...
 
-Include technical terms, acronyms, and important concepts.`,
-  })
+Include technical terms, acronyms, and important concepts.`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

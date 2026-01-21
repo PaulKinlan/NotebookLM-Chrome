@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { CitationsConfig } from '../../types/index.ts'
 import { DEFAULT_CITATIONS_CONFIG } from '../transform-config.ts'
@@ -57,10 +57,7 @@ ${example}
     })
     .join('\n\n')
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create a citation list for these sources:
+  const textPrompt = `Create a citation list for these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -70,8 +67,9 @@ ${c.groupByType ? 'Group by source type, then format as:' : 'Format as:'}
 
 ${stylesFormat}
 
-Use the actual titles and URLs from the sources provided. Make your best effort to determine author information, publication dates, and other citation elements from the source content.`,
-  })
+Use the actual titles and URLs from the sources provided. Make your best effort to determine author information, publication dates, and other citation elements from the source content.`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

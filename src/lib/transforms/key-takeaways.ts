@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { TakeawaysConfig } from '../../types/index.ts'
 import { DEFAULT_TAKEAWAYS_CONFIG } from '../transform-config.ts'
@@ -28,22 +28,26 @@ export async function generateKeyTakeaways(
     ? 'Include a brief supporting detail or context for each point.'
     : 'Keep each point concise and self-contained without additional details.'
 
+  // Check if we have images
+  const hasImages = modelConfig.supportsVision && sources.some(s => s.type === 'image')
+  const imageInstructions = hasImages
+    ? '\nImages from the sources are included. Include relevant insights from visual content in your takeaways.'
+    : ''
+
   const systemPrompt = `You are a helpful AI assistant that extracts key takeaways.
 Create ${formatDesc[c.format]} with the ${c.pointCount} most important points from the sources.
 Each takeaway should be clear, actionable, and self-contained.
-${detailsNote}${
+${detailsNote}${imageInstructions}${
   c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
 }`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Extract the ${c.pointCount} key takeaways from these sources:
+  const textPrompt = `Extract the ${c.pointCount} key takeaways from these sources:
 
 ${buildSourceContextSimple(sources)}
 
-Format as ${formatDesc[c.format]} with clear, concise points.`,
-  })
+Format as ${formatDesc[c.format]} with clear, concise points.`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

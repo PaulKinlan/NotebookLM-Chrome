@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { QuizConfig } from '../../types/index.ts'
 import { DEFAULT_QUIZ_CONFIG } from '../transform-config.ts'
@@ -32,21 +32,24 @@ export async function generateQuiz(
     mixed: 'a mix of easy, medium, and hard questions',
   }
 
+  // Check if we have images to include in the quiz
+  const hasImages = modelConfig.supportsVision && sources.some(s => s.type === 'image')
+  const imageInstructions = hasImages
+    ? '\nImages from the sources are included. You may create questions about the visual content in these images.'
+    : ''
+
   const systemPrompt = `You are a helpful AI assistant that creates interactive educational quizzes as self-contained HTML/CSS/JS.
 Generate an interactive quiz with ${questionTypeDesc} that test understanding of the key concepts.
 The difficulty level should be: ${difficultyDesc[c.difficulty]}.
 ${c.includeExplanations ? 'Include a brief explanation after each answer is revealed.' : 'Do not include explanations after answers.'}
-The quiz must be fully functional with immediate feedback when answers are selected.
+The quiz must be fully functional with immediate feedback when answers are selected.${imageInstructions}
 
 IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No markdown.
 Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.${
   c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
 }`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create a ${c.questionCount}-question interactive quiz based on these sources:
+  const textPrompt = `Create a ${c.questionCount}-question interactive quiz based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -68,8 +71,9 @@ Structure your response as:
 </style>
 <script>
   // Interactive JavaScript referencing elements from the HTML above
-</script>`,
-  })
+</script>`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

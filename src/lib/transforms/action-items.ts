@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { ActionItemsConfig } from '../../types/index.ts'
 import { DEFAULT_ACTIONITEMS_CONFIG } from '../transform-config.ts'
@@ -93,18 +93,16 @@ Identify actionable steps, recommendations, and to-dos from the sources.${priori
 - [ ] Action item 3`
   }
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Extract action items and tasks from these sources:
+  const textPrompt = `Extract action items and tasks from these sources:
 
 ${buildSourceContextSimple(sources)}
 
 Format as:
 ${formatTemplate}
 
-Include any deadlines, owners, or dependencies mentioned in the sources.`,
-  })
+Include any deadlines, owners, or dependencies mentioned in the sources.`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

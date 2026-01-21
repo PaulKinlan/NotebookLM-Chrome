@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { FAQConfig } from '../../types/index.ts'
 import { DEFAULT_FAQ_CONFIG } from '../transform-config.ts'
@@ -59,10 +59,7 @@ Provide ${lengthDesc[c.answerLength]} based on the source content.${groupNote}${
 ### Q: [Question 2]?
 **A:** [Detailed answer based on the sources]`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create a FAQ with ${c.questionCount} questions based on these sources:
+  const textPrompt = `Create a FAQ with ${c.questionCount} questions based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -73,8 +70,9 @@ ${formatExample}
 
 ...
 
-Cover the most important and likely questions about the topics.`,
-  })
+Cover the most important and likely questions about the topics.`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

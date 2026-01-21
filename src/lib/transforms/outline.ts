@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { OutlineConfig } from '../../types/index.ts'
 import { DEFAULT_OUTLINE_CONFIG } from '../transform-config.ts'
@@ -56,10 +56,7 @@ Use ${c.style} outline formatting.${descNote}${
   c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
 }`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create a detailed outline based on these sources:
+  const textPrompt = `Create a detailed outline based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -74,8 +71,9 @@ ${styleExamples[c.style]}
 ## ${c.style === 'alphanumeric' ? 'II' : c.style === 'decimal' ? '2' : c.style === 'roman' ? 'II' : 'Second Major Section'}. Second Major Section
    ...
 
-Create a comprehensive outline that captures all major themes and details.`,
-  })
+Create a comprehensive outline that captures all major themes and details.`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { ReportConfig } from '../../types/index.ts'
 import { DEFAULT_REPORT_CONFIG } from '../transform-config.ts'
@@ -52,16 +52,14 @@ Use clear sections and professional language.${
   c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
 }`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create a formal report based on these sources:
+  const textPrompt = `Create a formal report based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
 Format with the following sections:
-${sectionsFormat}`,
-  })
+${sectionsFormat}`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

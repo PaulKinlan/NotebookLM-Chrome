@@ -52,6 +52,8 @@ export interface ProviderFeatures {
   authStyle: AuthStyle
   /** Additional headers to include in requests (e.g., anthropic-version) */
   extraHeaders?: Record<string, string>
+  /** Supports vision/multimodal inputs (images) */
+  supportsVision: boolean
 }
 
 /**
@@ -137,6 +139,7 @@ function anthropicProvider(
       requiresApiKey: true,
       authStyle: 'x-api-key',
       extraHeaders: { 'anthropic-version': '2023-06-01' },
+      supportsVision: true, // Claude models support vision
     },
     modelsResponseFormat: { modelsPath: 'data', idField: 'id', nameField: 'display_name' },
     group: 'Anthropic',
@@ -161,9 +164,10 @@ function openAICompatibleProvider(
     requiresApiKeyForFetching?: boolean
     modelIdTransform?: ModelIdTransform
     pricing?: ProviderPricingMap
+    supportsVision?: boolean
   },
 ): ProviderConfig {
-  const { id, displayName, defaultModel, baseURL, modelsAPIEndpoint, authStyle, requiresApiKeyForFetching, modelIdTransform, pricing } = config
+  const { id, displayName, defaultModel, baseURL, modelsAPIEndpoint, authStyle, requiresApiKeyForFetching, modelIdTransform, pricing, supportsVision } = config
   return {
     id,
     displayName,
@@ -175,6 +179,7 @@ function openAICompatibleProvider(
       requiresApiKeyForFetching: requiresApiKeyForFetching ?? true,
       requiresApiKey: true,
       authStyle: authStyle ?? 'bearer',
+      supportsVision: supportsVision ?? false, // Most OpenAI-compatible providers don't support vision
     },
     modelsResponseFormat: { modelsPath: 'data', idField: 'id', nameField: 'id' },
     modelIdTransform,
@@ -232,6 +237,7 @@ export const PROVIDER_REGISTRY = {
       requiresApiKeyForFetching: true,
       requiresApiKey: true,
       authStyle: 'bearer',
+      supportsVision: true, // GPT-4o, GPT-4V support vision
     },
     modelsResponseFormat: {
       modelsPath: 'data',
@@ -276,6 +282,7 @@ export const PROVIDER_REGISTRY = {
       requiresApiKeyForFetching: false,
       requiresApiKey: true,
       authStyle: 'bearer',
+      supportsVision: true, // Proxies vision-capable models (Claude, GPT-4, Gemini)
     },
     modelsResponseFormat: {
       modelsPath: 'data',
@@ -300,6 +307,7 @@ export const PROVIDER_REGISTRY = {
       requiresApiKeyForFetching: true,
       requiresApiKey: true,
       authStyle: 'query',
+      supportsVision: true, // Gemini models support vision
     },
     modelsResponseFormat: {
       modelsPath: 'models',
@@ -342,6 +350,7 @@ export const PROVIDER_REGISTRY = {
       requiresApiKeyForFetching: false,
       requiresApiKey: true,
       authStyle: 'bearer',
+      supportsVision: true, // Gemini models support vision
     },
     modelsResponseFormat: {
       modelsPath: '',
@@ -395,6 +404,7 @@ export const PROVIDER_REGISTRY = {
       requiresApiKeyForFetching: true,
       requiresApiKey: true,
       authStyle: 'bearer',
+      supportsVision: true, // Groq supports vision with llava and some llama models
     },
     modelsResponseFormat: {
       modelsPath: 'data',
@@ -435,6 +445,7 @@ export const PROVIDER_REGISTRY = {
       requiresApiKeyForFetching: false,
       requiresApiKey: true,
       authStyle: 'none',
+      supportsVision: false, // Depends on model, disabled by default
     },
     modelsResponseFormat: {
       modelsPath: '', // Root array
@@ -578,6 +589,7 @@ export const PROVIDER_REGISTRY = {
       requiresApiKeyForFetching: false,
       requiresApiKey: false,
       authStyle: 'none',
+      supportsVision: false, // Gemini Nano is text-only
     },
     modelsResponseFormat: {
       modelsPath: '',
@@ -678,6 +690,16 @@ export function providerRequiresApiKey(provider: AIProvider): boolean {
 export function providerRequiresApiKeyForFetching(provider: AIProvider): boolean {
   if (isValidProviderKey(provider)) {
     return PROVIDER_REGISTRY[provider].features.requiresApiKeyForFetching
+  }
+  return false
+}
+
+/**
+ * Check if provider supports vision/multimodal inputs
+ */
+export function providerSupportsVision(provider: AIProvider): boolean {
+  if (isValidProviderKey(provider)) {
+    return PROVIDER_REGISTRY[provider].features.supportsVision
   }
   return false
 }

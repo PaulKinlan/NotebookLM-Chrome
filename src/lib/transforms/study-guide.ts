@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { StudyGuideConfig } from '../../types/index.ts'
 import { DEFAULT_STUDYGUIDE_CONFIG } from '../transform-config.ts'
@@ -45,19 +45,22 @@ export async function generateStudyGuide(
     .filter(Boolean)
     .join('\n- ')
 
+  // Check if we have images
+  const hasImages = modelConfig.supportsVision && sources.some(s => s.type === 'image')
+  const imageInstructions = hasImages
+    ? '\nImages from the sources are included. Reference and describe relevant visual content in the study material.'
+    : ''
+
   const systemPrompt = `You are a helpful AI assistant that creates interactive study guides as self-contained HTML/CSS/JS.
 Create a ${depthDesc[c.depth]} study guide for ${audienceDesc[c.audienceLevel]}.
-Organize material for effective learning and review with expandable sections.
+Organize material for effective learning and review with expandable sections.${imageInstructions}
 
 IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No markdown.
 Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.${
   c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
 }`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create an interactive study guide based on these sources:
+  const textPrompt = `Create an interactive study guide based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -85,8 +88,9 @@ Structure your response as:
 </style>
 <script>
   // Interactive JavaScript for expand/collapse and reveal - reference elements from HTML above
-</script>`,
-  })
+</script>`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 
 export async function generateSummary(sources: Source[]): Promise<string> {
@@ -9,17 +9,23 @@ export async function generateSummary(sources: Source[]): Promise<string> {
     )
   }
 
-  const result = await generateText({
-    model: config.model,
-    system: `You are a helpful AI assistant that creates concise overviews.
+  // Check if we have images
+  const hasImages = config.supportsVision && sources.some(s => s.type === 'image')
+  const imageInstructions = hasImages
+    ? '\nImages from the sources are included. Incorporate relevant visual information into your overview.'
+    : ''
+
+  const systemPrompt = `You are a helpful AI assistant that creates concise overviews.
 Write a single cohesive paragraph that provides an overview of all the materials.
 The paragraph should flow naturally and cover what the sources are about, their key themes, and how they relate to each other.
 Be concise but thorough - the paragraph can be long if needed to capture the essence of all sources.
-Do not use bullet points, headings, or multiple paragraphs. Output only the overview paragraph.`,
-    prompt: `Write a concise overview paragraph for these sources:
+Do not use bullet points, headings, or multiple paragraphs. Output only the overview paragraph.${imageInstructions}`
 
-${buildSourceContextSimple(sources)}`,
-  })
+  const textPrompt = `Write a concise overview paragraph for these sources:
+
+${buildSourceContextSimple(sources)}`
+
+  const result = await generateTextWithImages(config, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {
