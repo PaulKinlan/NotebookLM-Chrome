@@ -81,6 +81,8 @@ export type {
   TransformConfigMap,
   TransformConfig,
   TransformConfigSettings,
+  BackgroundTransformStatus,
+  BackgroundTransform,
 } from './transform.ts'
 
 export type {

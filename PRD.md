@@ -442,15 +442,23 @@ Each generated transform result can be saved, deleted, or opened in a new tab fo
 - [x] Blob URLs are cleaned up after tab opens to prevent memory leaks
 - [x] Transform history is per-notebook (switching notebooks loads saved transforms for that notebook)
 
-#### 4.8 Concurrent Transforms
+#### 4.8 Concurrent Transforms & Background Execution
 
-Users can start multiple transformations simultaneously without waiting for previous ones to complete. Each transform runs independently and displays its progress in the transform history.
+Users can start multiple transformations simultaneously without waiting for previous ones to complete. Each transform runs independently in the background service worker and displays its progress in the transform history.
+
+**Background Execution:**
+Transformations run in the background service worker, allowing them to continue even when the side panel is closed:
+- **Persistent State**: Pending transforms are saved to IndexedDB, surviving side panel close/reopen
+- **Automatic Resume**: When the side panel reopens, it syncs with any transforms that completed while closed
+- **Service Worker Restart**: On service worker restart, any interrupted transforms are automatically resumed
+- **Message Passing**: Side panel communicates with background via chrome.runtime messages (START_TRANSFORM, TRANSFORM_PROGRESS, TRANSFORM_COMPLETE, etc.)
 
 **Features:**
 - **Queue Multiple Transforms**: Users can click on multiple transform type buttons without waiting for previous transforms to finish
 - **Pending Transform Display**: Each in-progress transform shows in the transform history with a spinning indicator and "Generating..." message
 - **Independent Completion**: Each transform completes independently and is added to history when done
 - **Error Isolation**: If one transform fails, others continue running unaffected
+- **Survivable Execution**: Transforms continue running even if the side panel is closed
 
 **UI Changes:**
 - Section title shows count of generating transforms when any are pending (e.g., "Transforms (2 generating...)")
@@ -467,6 +475,9 @@ Users can start multiple transformations simultaneously without waiting for prev
 - [x] Failed transforms are removed from pending without affecting others
 - [x] `pendingTransforms` signal tracks all in-progress transforms
 - [x] `pending` property exposed from useTransform hook
+- [x] Transforms continue running when side panel is closed
+- [x] Pending transforms persist to IndexedDB
+- [x] Side panel syncs with background state on open
 
 ### 5. Multimodal Sources
 
@@ -720,16 +731,22 @@ Shared modal for tabs, bookmarks, history, and media selection:
 ┌─────────────────────────────────────────────────────────┐
 │                    Chrome Extension                      │
 ├─────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐ │
-│  │ Side Panel  │  │ Background  │  │ Content Script  │ │
-│  │  (Preact)   │◄─┤   Worker    ├─►│  (Turndown)     │ │
-│  │             │  │             │  │                 │ │
-│  └─────────────┘  └──────┬──────┘  └─────────────────┘ │
-│                          │                              │
-│                   ┌──────▼──────┐                       │
-│                   │  IndexedDB  │                       │
-│                   │  (Storage)  │                       │
-│                   └─────────────┘                       │
+│  ┌─────────────┐  ┌─────────────────┐  ┌─────────────┐ │
+│  │ Side Panel  │  │   Background    │  │   Content   │ │
+│  │  (Preact)   │◄─┤    Worker       ├─►│   Script    │ │
+│  │             │  │                 │  │ (Turndown)  │ │
+│  │  - Chat UI  │  │ - Extraction    │  │             │ │
+│  │  - Sources  │  │ - Context menus │  └─────────────┘ │
+│  │  - History  │  │ - Transforms*   │                   │
+│  └─────────────┘  └───────┬─────────┘                   │
+│         │                 │                              │
+│         │ (sync on open)  │ (execute transforms)        │
+│         │                 │                              │
+│         └────────►┌───────▼──────┐◄─────────────────────┘
+│                   │  IndexedDB   │                       │
+│                   │  (Storage)   │                       │
+│                   │ backgroundTransforms store          │
+│                   └──────────────┘                       │
 └─────────────────────────────────────────────────────────┘
                            │
                            ▼
@@ -739,6 +756,8 @@ Shared modal for tabs, bookmarks, history, and media selection:
               │  Anthropic, OpenAI,     │
               │  Google, Chrome Built-in│
               └─────────────────────────┘
+
+* Transforms run in background worker, surviving side panel close
 ```
 
 ### File Structure
@@ -872,6 +891,23 @@ interface Transformation extends SyncableEntity {
   title: string;
   content: string;
   sourceIds: string[];
+}
+
+// Background transform for service worker execution
+type BackgroundTransformStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+interface BackgroundTransform {
+  id: string;
+  type: TransformationType;
+  notebookId: string;
+  sourceIds: string[];
+  status: BackgroundTransformStatus;
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  content?: string;       // Generated content (if completed)
+  error?: string;         // Error message (if failed)
+  progress?: number;      // Progress indicator (0-100)
 }
 
 // Configuration stored per transformation type

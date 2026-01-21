@@ -1,5 +1,5 @@
 const DB_NAME = 'notebooklm-chrome'
-const DB_VERSION = 6
+const DB_VERSION = 7
 
 export interface DBSchema {
   notebooks: {
@@ -73,6 +73,14 @@ export interface DBSchema {
     indexes: {
       notebookId: string
       timestamp: number
+    }
+  }
+  backgroundTransforms: {
+    key: string
+    indexes: {
+      notebookId: string
+      status: string
+      createdAt: number
     }
   }
 }
@@ -258,6 +266,14 @@ export function getDB(): Promise<IDBDatabase> {
         const approvalStore = db.createObjectStore('approvalRequests', { keyPath: 'key' })
         approvalStore.createIndex('status', 'status', { unique: false })
       }
+
+      // Background transforms (for transforms running in service worker)
+      if (!db.objectStoreNames.contains('backgroundTransforms')) {
+        const bgTransformsStore = db.createObjectStore('backgroundTransforms', { keyPath: 'id' })
+        bgTransformsStore.createIndex('notebookId', 'notebookId', { unique: false })
+        bgTransformsStore.createIndex('status', 'status', { unique: false })
+        bgTransformsStore.createIndex('createdAt', 'createdAt', { unique: false })
+      }
     }
   })
 }
@@ -389,7 +405,7 @@ export async function dbClear(storeName: string): Promise<void> {
  */
 export async function dbClearAll(): Promise<void> {
   const db = await getDB()
-  const storeNames = ['notebooks', 'sources', 'chatEvents', 'transformations', 'responseCache', 'settings', 'providerConfigs', 'toolResults', 'approvalRequests']
+  const storeNames = ['notebooks', 'sources', 'chatEvents', 'transformations', 'responseCache', 'settings', 'providerConfigs', 'toolResults', 'approvalRequests', 'backgroundTransforms']
 
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(storeNames, 'readwrite')

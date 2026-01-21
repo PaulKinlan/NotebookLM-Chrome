@@ -1,4 +1,4 @@
-import type { Message, ContentExtractionResult, ExtractedLink } from './types/index.ts'
+import type { Message, ContentExtractionResult, ExtractedLink, BackgroundTransform, TransformationType, Source } from './types/index.ts'
 import {
   createSource,
   saveSource,
@@ -7,7 +7,33 @@ import {
   setActiveNotebookId,
   getSource,
   getSourcesByNotebook,
+  getBackgroundTransforms,
+  getPendingBackgroundTransforms,
+  getBackgroundTransform,
+  saveBackgroundTransform,
+  createBackgroundTransform,
 } from './lib/storage.ts'
+import {
+  generatePodcastScript,
+  generateQuiz,
+  generateKeyTakeaways,
+  generateEmailSummary,
+  generateSlideDeck,
+  generateReport,
+  generateDataTable,
+  generateMindMap,
+  generateFlashcards,
+  generateTimeline,
+  generateGlossary,
+  generateComparison,
+  generateFAQ,
+  generateActionItems,
+  generateExecutiveBrief,
+  generateStudyGuide,
+  generateProsCons,
+  generateCitationList,
+  generateOutline,
+} from './lib/ai.ts'
 // Note: getLinksInSelection from './lib/selection-links.ts' is not used here
 // because chrome.scripting.executeScript requires a self-contained function.
 // The function is inlined in extractLinksFromSelection() below.
@@ -872,6 +898,41 @@ async function handleMessage(message: Message): Promise<unknown> {
       }
       return null
     }
+    // Background transformation messages
+    case 'START_TRANSFORM': {
+      const payload = message.payload
+      if (
+        payload
+        && typeof payload === 'object'
+        && 'notebookId' in payload
+        && 'type' in payload
+        && 'sourceIds' in payload
+        && typeof payload.notebookId === 'string'
+        && typeof payload.type === 'string'
+        && Array.isArray(payload.sourceIds)
+      ) {
+        return handleStartTransform(
+          payload.notebookId,
+          payload.type as TransformationType,
+          payload.sourceIds as string[],
+        )
+      }
+      return null
+    }
+    case 'CANCEL_TRANSFORM': {
+      const payload = message.payload
+      if (payload && typeof payload === 'object' && 'transformId' in payload && typeof payload.transformId === 'string') {
+        return handleCancelTransform(payload.transformId)
+      }
+      return null
+    }
+    case 'GET_PENDING_TRANSFORMS': {
+      const payload = message.payload
+      const notebookId = payload && typeof payload === 'object' && 'notebookId' in payload
+        ? (typeof payload.notebookId === 'string' ? payload.notebookId : undefined)
+        : undefined
+      return handleGetPendingTransforms(notebookId)
+    }
     default:
       return null
   }
@@ -1352,3 +1413,321 @@ async function handleReadPageContent(payload: { tabId: number }): Promise<{
     return null
   }
 }
+
+// ============================================================================
+// Background Transform Handlers
+// ============================================================================
+
+// Track currently running transforms to avoid duplicate execution
+const runningTransforms = new Set<string>()
+
+// Map transform types to their generator functions
+const TRANSFORM_GENERATORS: Record<TransformationType, (sources: Source[]) => Promise<string>> = {
+  podcast: generatePodcastScript,
+  quiz: generateQuiz,
+  takeaways: generateKeyTakeaways,
+  email: generateEmailSummary,
+  slidedeck: generateSlideDeck,
+  report: generateReport,
+  datatable: generateDataTable,
+  mindmap: generateMindMap,
+  flashcards: generateFlashcards,
+  timeline: generateTimeline,
+  glossary: generateGlossary,
+  comparison: generateComparison,
+  faq: generateFAQ,
+  actionitems: generateActionItems,
+  executivebrief: generateExecutiveBrief,
+  studyguide: generateStudyGuide,
+  proscons: generateProsCons,
+  citations: generateCitationList,
+  outline: generateOutline,
+}
+
+/**
+ * Start a new background transformation.
+ * Creates the transform record and begins execution.
+ */
+async function handleStartTransform(
+  notebookId: string,
+  type: TransformationType,
+  sourceIds: string[],
+): Promise<{ success: boolean, transformId?: string, error?: string }> {
+  try {
+    // Create the transform record
+    const transform = createBackgroundTransform(notebookId, type, sourceIds)
+    await saveBackgroundTransform(transform)
+
+    // Notify the side panel that a transform has started
+    notifyTransformStarted(transform)
+
+    // Execute the transform in the background (don't await)
+    void executeTransform(transform.id)
+
+    return { success: true, transformId: transform.id }
+  }
+  catch (error) {
+    console.error('[Background Transform] Failed to start transform:', error)
+    return { success: false, error: String(error) }
+  }
+}
+
+/**
+ * Cancel a running or pending transformation.
+ */
+async function handleCancelTransform(
+  transformId: string,
+): Promise<{ success: boolean, error?: string }> {
+  try {
+    const transform = await getBackgroundTransform(transformId)
+    if (!transform) {
+      return { success: false, error: 'Transform not found' }
+    }
+
+    if (transform.status === 'completed' || transform.status === 'failed') {
+      return { success: false, error: 'Transform already finished' }
+    }
+
+    // Mark as cancelled
+    transform.status = 'cancelled'
+    transform.completedAt = Date.now()
+    await saveBackgroundTransform(transform)
+
+    // Remove from running set (if running)
+    runningTransforms.delete(transformId)
+
+    // Notify the side panel
+    notifyTransformComplete(transform)
+
+    return { success: true }
+  }
+  catch (error) {
+    console.error('[Background Transform] Failed to cancel transform:', error)
+    return { success: false, error: String(error) }
+  }
+}
+
+/**
+ * Get pending/running transforms, optionally filtered by notebook.
+ */
+async function handleGetPendingTransforms(
+  notebookId?: string,
+): Promise<{ transforms: BackgroundTransform[] }> {
+  try {
+    if (notebookId) {
+      const all = await getBackgroundTransforms(notebookId)
+      // Return pending, running, and recently completed (last 10 minutes)
+      const cutoff = Date.now() - 10 * 60 * 1000
+      const relevant = all.filter(t =>
+        t.status === 'pending'
+        || t.status === 'running'
+        || (t.completedAt && t.completedAt > cutoff),
+      )
+      return { transforms: relevant }
+    }
+    const pending = await getPendingBackgroundTransforms()
+    return { transforms: pending }
+  }
+  catch (error) {
+    console.error('[Background Transform] Failed to get pending transforms:', error)
+    return { transforms: [] }
+  }
+}
+
+/**
+ * Execute a transformation in the background.
+ * This is called asynchronously after the transform record is created.
+ */
+async function executeTransform(transformId: string): Promise<void> {
+  // Check if already running
+  if (runningTransforms.has(transformId)) {
+    console.warn('[Background Transform] Transform already running:', transformId)
+    return
+  }
+
+  runningTransforms.add(transformId)
+
+  try {
+    // Get the transform record
+    const transform = await getBackgroundTransform(transformId)
+    if (!transform) {
+      console.error('[Background Transform] Transform not found:', transformId)
+      runningTransforms.delete(transformId)
+      return
+    }
+
+    // Check if cancelled before starting
+    if (transform.status === 'cancelled') {
+      console.log('[Background Transform] Transform was cancelled:', transformId)
+      runningTransforms.delete(transformId)
+      return
+    }
+
+    // Update status to running
+    transform.status = 'running'
+    transform.startedAt = Date.now()
+    await saveBackgroundTransform(transform)
+
+    // Notify progress
+    notifyTransformProgress(transform)
+
+    // Get the sources
+    const sources: Source[] = []
+    for (const sourceId of transform.sourceIds) {
+      const source = await getSource(sourceId)
+      if (source) {
+        sources.push(source)
+      }
+    }
+
+    if (sources.length === 0) {
+      throw new Error('No valid sources found for transformation')
+    }
+
+    // Get the generator function
+    const generator = TRANSFORM_GENERATORS[transform.type]
+    if (!generator) {
+      throw new Error(`Unknown transform type: ${transform.type}`)
+    }
+
+    // Check if cancelled before executing
+    const checkTransform = await getBackgroundTransform(transformId)
+    if (checkTransform?.status === 'cancelled') {
+      console.log('[Background Transform] Transform was cancelled before execution:', transformId)
+      runningTransforms.delete(transformId)
+      return
+    }
+
+    // Execute the transformation
+    console.log('[Background Transform] Executing transform:', transform.type, 'with', sources.length, 'sources')
+    const content = await generator(sources)
+
+    // Check if cancelled after executing
+    const finalCheck = await getBackgroundTransform(transformId)
+    if (finalCheck?.status === 'cancelled') {
+      console.log('[Background Transform] Transform was cancelled after execution:', transformId)
+      runningTransforms.delete(transformId)
+      return
+    }
+
+    // Update with result
+    transform.status = 'completed'
+    transform.completedAt = Date.now()
+    transform.content = content
+    await saveBackgroundTransform(transform)
+
+    console.log('[Background Transform] Transform completed:', transformId, 'content length:', content.length)
+
+    // Notify completion
+    notifyTransformComplete(transform)
+  }
+  catch (error) {
+    console.error('[Background Transform] Transform failed:', transformId, error)
+
+    // Update with error
+    const transform = await getBackgroundTransform(transformId)
+    if (transform && transform.status !== 'cancelled') {
+      transform.status = 'failed'
+      transform.completedAt = Date.now()
+      transform.error = error instanceof Error ? error.message : String(error)
+      await saveBackgroundTransform(transform)
+
+      // Notify error
+      notifyTransformError(transform)
+    }
+  }
+  finally {
+    runningTransforms.delete(transformId)
+  }
+}
+
+/**
+ * Notify the side panel that a transform has started.
+ */
+function notifyTransformStarted(transform: BackgroundTransform): void {
+  chrome.runtime
+    .sendMessage({
+      type: 'TRANSFORM_STARTED',
+      payload: transform,
+    })
+    .catch(() => {
+      // Side panel may not be listening
+    })
+}
+
+/**
+ * Notify the side panel of transform progress.
+ */
+function notifyTransformProgress(transform: BackgroundTransform): void {
+  chrome.runtime
+    .sendMessage({
+      type: 'TRANSFORM_PROGRESS',
+      payload: transform,
+    })
+    .catch(() => {
+      // Side panel may not be listening
+    })
+}
+
+/**
+ * Notify the side panel that a transform has completed.
+ */
+function notifyTransformComplete(transform: BackgroundTransform): void {
+  chrome.runtime
+    .sendMessage({
+      type: 'TRANSFORM_COMPLETE',
+      payload: transform,
+    })
+    .catch(() => {
+      // Side panel may not be listening
+    })
+}
+
+/**
+ * Notify the side panel that a transform has failed.
+ */
+function notifyTransformError(transform: BackgroundTransform): void {
+  chrome.runtime
+    .sendMessage({
+      type: 'TRANSFORM_ERROR',
+      payload: transform,
+    })
+    .catch(() => {
+      // Side panel may not be listening
+    })
+}
+
+// ============================================================================
+// Service Worker Startup - Resume Pending Transforms
+// ============================================================================
+
+/**
+ * On service worker startup, check for any pending/running transforms
+ * that may have been interrupted and resume them.
+ */
+async function resumePendingTransforms(): Promise<void> {
+  try {
+    const pending = await getPendingBackgroundTransforms()
+    console.log('[Background Transform] Found', pending.length, 'pending transforms on startup')
+
+    for (const transform of pending) {
+      // If it was running when we shut down, reset to pending
+      if (transform.status === 'running') {
+        transform.status = 'pending'
+        await saveBackgroundTransform(transform)
+      }
+
+      // Re-execute pending transforms
+      if (transform.status === 'pending') {
+        console.log('[Background Transform] Resuming transform:', transform.id, transform.type)
+        void executeTransform(transform.id)
+      }
+    }
+  }
+  catch (error) {
+    console.error('[Background Transform] Failed to resume pending transforms:', error)
+  }
+}
+
+// Resume pending transforms when the service worker starts
+void resumePendingTransforms()

@@ -61,6 +61,14 @@ export type MessageType
     | 'LIST_TABS'
     | 'LIST_TAB_GROUPS'
     | 'READ_PAGE_CONTENT'
+  // Background transformation messages
+    | 'START_TRANSFORM'
+    | 'CANCEL_TRANSFORM'
+    | 'GET_PENDING_TRANSFORMS'
+    | 'TRANSFORM_STARTED'
+    | 'TRANSFORM_PROGRESS'
+    | 'TRANSFORM_COMPLETE'
+    | 'TRANSFORM_ERROR'
 
 export interface Message<T = unknown> {
   type: MessageType
