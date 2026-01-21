@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { SlideDeckConfig } from '../../types/index.ts'
 import { DEFAULT_SLIDEDECK_CONFIG } from '../transform-config.ts'
@@ -28,19 +28,22 @@ export async function generateSlideDeck(
     ? '\nInclude speaker notes for each slide as HTML comments that can be shown/hidden.'
     : ''
 
+  // Check if we have images
+  const hasImages = modelConfig.supportsVision && sources.some(s => s.type === 'image')
+  const imageInstructions = hasImages
+    ? '\nImages from the sources are included. Reference relevant visual content in your slides where appropriate.'
+    : ''
+
   const systemPrompt = `You are a helpful AI assistant that creates interactive slide deck presentations as self-contained HTML/CSS/JS.
 Create a professional presentation with approximately ${c.slideCount} slides using a ${styleDesc[c.style]} approach.
-Each slide should have a clear title and well-structured content.${speakerNotesNote}
+Each slide should have a clear title and well-structured content.${speakerNotesNote}${imageInstructions}
 
 IMPORTANT: Generate ONLY valid HTML with embedded <style> and <script> tags. No markdown.
 Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div with styles and scripts.${
   c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
 }`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create an interactive slide deck presentation with approximately ${c.slideCount} slides based on these sources:
+  const textPrompt = `Create an interactive slide deck presentation with approximately ${c.slideCount} slides based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -65,8 +68,9 @@ Structure your response as:
 </style>
 <script>
   // Interactive JavaScript for navigation - reference elements from HTML above
-</script>`,
-  })
+</script>`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

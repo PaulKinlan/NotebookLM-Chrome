@@ -372,6 +372,30 @@ Each transformation supports custom configuration through a settings popover:
 - [x] Advanced section shows prompt structure details
 - [x] Reset restores default configuration
 
+#### 4.6.1 Multimodal Transform Support
+
+Transformations support image sources when using vision-capable AI providers (Anthropic Claude, OpenAI GPT-4o/V, Google Gemini, etc.).
+
+**How It Works:**
+- When image sources are present and the provider supports vision, images are sent alongside text
+- The AI can analyze visual content and incorporate it into the transformation
+- For quizzes: Questions can be about visual content
+- For summaries/takeaways: Insights from images are included
+- For slide decks: Visual content can be referenced
+
+**Currently Multimodal-Enabled Transforms:**
+- Study Quiz
+- Key Takeaways
+- Summary
+- Slide Deck
+- Study Guide
+
+**Acceptance Criteria:**
+- [x] Images are extracted from sources when provider supports vision
+- [x] Multimodal message format used for vision-capable providers
+- [x] Text-only fallback for providers without vision support
+- [x] System prompts instruct AI to analyze visual content
+
 #### 4.7 Transform Persistence & Management
 
 Each generated transform result can be saved, deleted, or opened in a new tab for full-screen viewing. **Transform history is per-notebook** - when switching between folios, the Transform tab shows only the saved transforms for that specific folio.
