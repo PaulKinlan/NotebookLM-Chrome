@@ -473,11 +473,11 @@ Users can start multiple transformations simultaneously without waiting for prev
 - Has meaningful alt text or is figure/infographic
 
 **Acceptance Criteria:**
-- [ ] User can view images detected on current page
-- [ ] Auto-detection filters out UI/ad images
-- [ ] User can manually select/deselect images
-- [ ] Right-click adds single image to notebook
-- [ ] Images display as thumbnails in source list
+- [x] User can view images detected on current page
+- [ ] Auto-detection filters out UI/ad images (currently size-based only)
+- [x] User can manually select/deselect images
+- [x] Right-click adds single image to notebook
+- [x] Images display as thumbnails in source list
 - [ ] Images are sent to multimodal AI providers
 
 #### 5.3 Video Content (P3)
@@ -571,7 +571,7 @@ Right-click context menu for quick source addition:
 **Acceptance Criteria:**
 - [x] "Add page" extracts and adds current page
 - [x] "Add link" opens, extracts, and closes background tab
-- [ ] "Add image" appears on right-click over images
+- [x] "Add image" appears on right-click over images
 - [ ] "Add video" appears on right-click over videos
 - [ ] "Add audio" appears on right-click over audio
 - [x] Side panel opens after adding source
@@ -945,11 +945,12 @@ async function getModel(): Promise<LanguageModel | null> {
 - [ ] Error handling for encrypted PDFs
 
 ### Phase 3 - Image Support (P2)
-- [ ] Image detection on current page
-- [ ] Auto-detection heuristics (size, position, content area)
-- [ ] Image picker modal UI
-- [ ] Context menu: "Add image to Notebook"
-- [ ] Image thumbnail display in source list
+- [x] Image detection on current page
+- [x] Size-based image filtering (100x100px minimum)
+- [ ] Content-aware filtering (exclude UI/ads based on position/context)
+- [x] Image picker modal UI with select all/deselect all
+- [x] Context menu: "Add image to Notebook"
+- [x] Image thumbnail display in source list
 - [ ] Multimodal AI context building with images
 
 ### Phase 4 - Video/Audio Support (P3)
