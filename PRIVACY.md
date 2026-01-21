@@ -1,6 +1,6 @@
 # Privacy Policy for FolioLM
 
-**Last Updated:** January 17, 2026
+**Last Updated:** January 21, 2026
 
 ## Overview
 
@@ -25,6 +25,7 @@ All data you create within FolioLM (notebooks, sources, and extracted content) i
 - **Images**: Image URLs and metadata (dimensions, alt text) from web pages you choose to save
 - **Notebooks**: Organization containers for your sources
 - **AI configurations**: Your API keys and model preferences (stored locally only)
+- **Background transformations**: Temporary records of AI transformations in progress, stored in IndexedDB (`backgroundTransforms` store). These records allow transformations to continue running even when the side panel is closed, and are automatically cleaned up after completion or failure.
 
 ### Usage Analytics Data
 

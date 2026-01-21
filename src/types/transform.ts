@@ -341,3 +341,46 @@ export type TransformConfig<T extends TransformationType> = TransformConfigMap[T
 export interface TransformConfigSettings {
   configs: Partial<TransformConfigMap>
 }
+
+// ============================================================================
+// Background Transform Types
+// ============================================================================
+
+/**
+ * Status of a background transformation task
+ */
+export type BackgroundTransformStatus
+  = | 'pending' // Queued, waiting to start
+    | 'running' // Currently executing
+    | 'completed' // Successfully completed
+    | 'failed' // Failed with error
+    | 'cancelled' // User cancelled
+
+/**
+ * A transformation task that runs in the background service worker.
+ * Persisted to storage so it survives side panel close/reopen.
+ */
+export interface BackgroundTransform {
+  /** Unique ID for this transform task */
+  id: string
+  /** Transform type being generated */
+  type: TransformationType
+  /** Notebook this transform belongs to */
+  notebookId: string
+  /** Source IDs being transformed */
+  sourceIds: string[]
+  /** Current status */
+  status: BackgroundTransformStatus
+  /** When the transform was requested */
+  createdAt: number
+  /** When the transform started executing (if running/completed/failed) */
+  startedAt?: number
+  /** When the transform completed (if completed/failed) */
+  completedAt?: number
+  /** The generated content (if completed) */
+  content?: string
+  /** Error message (if failed) */
+  error?: string
+  /** Progress indicator (0-100) for long-running transforms */
+  progress?: number
+}

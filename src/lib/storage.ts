@@ -10,6 +10,8 @@ import type {
   NotebookSummary,
   ExtractedLink,
   JSONValue,
+  BackgroundTransform,
+  TransformationType,
 } from '../types/index.ts'
 import {
   dbGet,
@@ -490,3 +492,53 @@ export function createSummary(
 }
 
 export const clearAllData = () => storage.clearAll()
+
+// ============================================================================
+// Background Transform Functions
+// ============================================================================
+
+export async function getBackgroundTransforms(notebookId?: string): Promise<BackgroundTransform[]> {
+  if (notebookId) {
+    const transforms = await dbGetByIndex<BackgroundTransform>('backgroundTransforms', 'notebookId', notebookId)
+    return transforms.sort((a, b) => b.createdAt - a.createdAt)
+  }
+  const transforms = await dbGetAll<BackgroundTransform>('backgroundTransforms')
+  return transforms.sort((a, b) => b.createdAt - a.createdAt)
+}
+
+export async function getPendingBackgroundTransforms(): Promise<BackgroundTransform[]> {
+  const pending = await dbGetByIndex<BackgroundTransform>('backgroundTransforms', 'status', 'pending')
+  const running = await dbGetByIndex<BackgroundTransform>('backgroundTransforms', 'status', 'running')
+  return [...pending, ...running].sort((a, b) => a.createdAt - b.createdAt)
+}
+
+export async function getBackgroundTransform(id: string): Promise<BackgroundTransform | null> {
+  return dbGet<BackgroundTransform>('backgroundTransforms', id)
+}
+
+export async function saveBackgroundTransform(transform: BackgroundTransform): Promise<void> {
+  await dbPut('backgroundTransforms', transform)
+}
+
+export async function deleteBackgroundTransform(id: string): Promise<void> {
+  await dbDelete('backgroundTransforms', id)
+}
+
+export async function deleteBackgroundTransformsByNotebook(notebookId: string): Promise<void> {
+  await dbDeleteByIndex('backgroundTransforms', 'notebookId', notebookId)
+}
+
+export function createBackgroundTransform(
+  notebookId: string,
+  type: TransformationType,
+  sourceIds: string[],
+): BackgroundTransform {
+  return {
+    id: crypto.randomUUID(),
+    type,
+    notebookId,
+    sourceIds,
+    status: 'pending',
+    createdAt: Date.now(),
+  }
+}

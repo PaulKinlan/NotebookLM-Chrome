@@ -3,84 +3,35 @@
  *
  * Tests the transform management hook including:
  * - Transform state management (isTransforming, history)
- * - Transform execution for all transform types
+ * - Background message passing for transform execution
  * - Save/delete functionality
  * - Open in new tab functionality
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/preact'
-import type { Source, TransformationType } from '../../types/index.ts'
+import type { Source, TransformationType, BackgroundTransform } from '../../types/index.ts'
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-// Mock all AI transform functions
-const mockGeneratePodcastScript = vi.fn()
-const mockGenerateQuiz = vi.fn()
-const mockGenerateKeyTakeaways = vi.fn()
-const mockGenerateEmailSummary = vi.fn()
-const mockGenerateSlideDeck = vi.fn()
-const mockGenerateReport = vi.fn()
-const mockGenerateDataTable = vi.fn()
-const mockGenerateMindMap = vi.fn()
-const mockGenerateFlashcards = vi.fn()
-const mockGenerateTimeline = vi.fn()
-const mockGenerateGlossary = vi.fn()
-const mockGenerateComparison = vi.fn()
-const mockGenerateFAQ = vi.fn()
-const mockGenerateActionItems = vi.fn()
-const mockGenerateExecutiveBrief = vi.fn()
-const mockGenerateStudyGuide = vi.fn()
-const mockGenerateProsCons = vi.fn()
-const mockGenerateCitationList = vi.fn()
-const mockGenerateOutline = vi.fn()
-
-// Mock the ai.ts module
-vi.mock('../../lib/ai.ts', () => ({
-  generatePodcastScript: () => mockGeneratePodcastScript(),
-  generateQuiz: () => mockGenerateQuiz(),
-  generateKeyTakeaways: () => mockGenerateKeyTakeaways(),
-  generateEmailSummary: () => mockGenerateEmailSummary(),
-  generateSlideDeck: () => mockGenerateSlideDeck(),
-  generateReport: () => mockGenerateReport(),
-  generateDataTable: () => mockGenerateDataTable(),
-  generateMindMap: () => mockGenerateMindMap(),
-  generateFlashcards: () => mockGenerateFlashcards(),
-  generateTimeline: () => mockGenerateTimeline(),
-  generateGlossary: () => mockGenerateGlossary(),
-  generateComparison: () => mockGenerateComparison(),
-  generateFAQ: () => mockGenerateFAQ(),
-  generateActionItems: () => mockGenerateActionItems(),
-  generateExecutiveBrief: () => mockGenerateExecutiveBrief(),
-  generateStudyGuide: () => mockGenerateStudyGuide(),
-  generateProsCons: () => mockGenerateProsCons(),
-  generateCitationList: () => mockGenerateCitationList(),
-  generateOutline: () => mockGenerateOutline(),
-  classifyError: vi.fn(),
-  formatErrorForUser: vi.fn(),
-  withRetry: vi.fn(),
-  streamChat: vi.fn(),
-  chat: vi.fn(),
-  testConnection: vi.fn(),
-  testConnectionWithConfig: vi.fn(),
-  rankSourceRelevance: vi.fn(),
-  type: {},
-}))
-
 // Mock storage functions
 const mockSaveTransformation = vi.fn()
 const mockDeleteTransformation = vi.fn()
 const mockCreateTransformation = vi.fn()
+const mockDeleteBackgroundTransform = vi.fn()
+const mockGetTransformations = vi.fn()
 
 vi.mock('../../lib/storage.ts', () => ({
   saveTransformation: (t: unknown) => mockSaveTransformation(t),
   deleteTransformation: (id: string) => mockDeleteTransformation(id),
   createTransformation: (nb: string, type: string, title: string, content: string, sourceIds: string[]) => mockCreateTransformation(nb, type, title, content, sourceIds),
+  deleteBackgroundTransform: (id: string) => mockDeleteBackgroundTransform(id),
+  getTransformations: (nbId: string) => mockGetTransformations(nbId),
 }))
 
-// Mock chrome.tabs.create
+// Mock markdown renderer
 vi.mock('../../lib/markdown-renderer.ts', () => ({
   renderMarkdown: (text: string) => `<p>${text}</p>`,
   isHtmlContent: (content: string) => content.startsWith('<html>'),
@@ -89,6 +40,12 @@ vi.mock('../../lib/markdown-renderer.ts', () => ({
 vi.mock('../dom-utils.ts', () => ({
   escapeHtml: (text: string) => text.replace(/</g, '&lt;').replace(/>/g, '&gt;'),
 }))
+
+// Mock for message listeners
+const messageListeners: ((message: unknown) => void)[] = []
+
+// Mock sendMessage to resolve with success by default
+const mockSendMessage = vi.fn()
 
 // Mock chrome APIs
 globalThis.chrome = {
@@ -100,11 +57,29 @@ globalThis.chrome = {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     },
+    sendMessage: vi.fn(),
   },
   runtime: {
     getURL: vi.fn((path: string) => `chrome-extension://test-id/${path}`),
+    sendMessage: mockSendMessage,
+    onMessage: {
+      addListener: vi.fn((listener: (message: unknown) => void) => {
+        messageListeners.push(listener)
+      }),
+      removeListener: vi.fn((listener: (message: unknown) => void) => {
+        const index = messageListeners.indexOf(listener)
+        if (index > -1) messageListeners.splice(index, 1)
+      }),
+    },
   },
 } as never
+
+// Helper to simulate messages from background
+function simulateBackgroundMessage(message: unknown) {
+  for (const listener of messageListeners) {
+    listener(message)
+  }
+}
 
 // Mock DOMPurify
 vi.mock('dompurify', () => ({
@@ -156,33 +131,24 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.resetModules()
 
+  // Clear message listeners
+  messageListeners.length = 0
+
   // Reset global signals
   transformHistory.value = []
   pendingTransforms.value = []
 
-  // Reset all mock functions
-  mockGeneratePodcastScript.mockReset()
-  mockGenerateQuiz.mockReset()
-  mockGenerateKeyTakeaways.mockReset()
-  mockGenerateEmailSummary.mockReset()
-  mockGenerateSlideDeck.mockReset()
-  mockGenerateReport.mockReset()
-  mockGenerateDataTable.mockReset()
-  mockGenerateMindMap.mockReset()
-  mockGenerateFlashcards.mockReset()
-  mockGenerateTimeline.mockReset()
-  mockGenerateGlossary.mockReset()
-  mockGenerateComparison.mockReset()
-  mockGenerateFAQ.mockReset()
-  mockGenerateActionItems.mockReset()
-  mockGenerateExecutiveBrief.mockReset()
-  mockGenerateStudyGuide.mockReset()
-  mockGenerateProsCons.mockReset()
-  mockGenerateCitationList.mockReset()
-  mockGenerateOutline.mockReset()
+  // Reset mock functions
   mockSaveTransformation.mockReset()
   mockDeleteTransformation.mockReset()
   mockCreateTransformation.mockReset()
+  mockDeleteBackgroundTransform.mockReset()
+  mockGetTransformations.mockReset()
+  mockSendMessage.mockReset()
+
+  // Default mock return values
+  mockGetTransformations.mockResolvedValue([])
+  mockSendMessage.mockResolvedValue({ success: true, transformId: 'bg-transform-1' })
 
   consoleWarnSpy.mockClear()
   consoleErrorSpy.mockClear()
@@ -207,7 +173,7 @@ describe('useTransform', () => {
     })
   })
 
-  describe('transform', () => {
+  describe('transform via background', () => {
     it('returns early with warning when sources array is empty', async () => {
       const { result } = renderHook(() => useTransform())
 
@@ -216,55 +182,41 @@ describe('useTransform', () => {
       })
 
       expect(consoleWarnSpy).toHaveBeenCalledWith('[useTransform] No sources to transform')
-      expect(result.current.history).toHaveLength(0)
+      expect(mockSendMessage).not.toHaveBeenCalled()
     })
 
-    it('logs error for unknown transform type', async () => {
+    it('sends START_TRANSFORM message to background', async () => {
       const { result } = renderHook(() => useTransform())
 
       await act(async () => {
-        await result.current.transform('unknown' as TransformationType, mockSources, mockNotebookId)
+        await result.current.transform('podcast', mockSources, mockNotebookId)
       })
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[useTransform] Unknown transform type:', 'unknown')
-      expect(result.current.history).toHaveLength(0)
+      expect(mockSendMessage).toHaveBeenCalledWith({
+        type: 'START_TRANSFORM',
+        payload: {
+          notebookId: mockNotebookId,
+          type: 'podcast',
+          sourceIds: ['source-1', 'source-2'],
+        },
+      })
     })
 
-    it('sets isTransforming to true during transform and false after completion', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('Podcast result')
-
+    it('adds pending transform after successful START_TRANSFORM', async () => {
       const { result } = renderHook(() => useTransform())
 
       await act(async () => {
-        void result.current.transform('podcast', mockSources, mockNotebookId)
+        await result.current.transform('podcast', mockSources, mockNotebookId)
       })
 
-      expect(result.current.isTransforming).toBe(false)
-      expect(result.current.history).toHaveLength(1)
+      expect(result.current.pending).toHaveLength(1)
+      expect(result.current.pending[0].type).toBe('podcast')
+      expect(result.current.pending[0].notebookId).toBe(mockNotebookId)
+      expect(result.current.isTransforming).toBe(true)
     })
 
-    it('resets isTransforming to false even when transform throws error', async () => {
-      mockGeneratePodcastScript.mockRejectedValue(new Error('API Error'))
-
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        // The transform will reject, but we still expect state to be reset
-        try {
-          await result.current.transform('podcast', mockSources, mockNotebookId)
-        }
-        catch {
-          // Expected to throw
-        }
-      })
-
-      expect(result.current.isTransforming).toBe(false)
-      expect(result.current.history).toHaveLength(0)
-    })
-
-    it('creates transform result with correct properties for markdown content', async () => {
-      const mockContent = '# Podcast Content\n\nThis is a test.'
-      mockGeneratePodcastScript.mockResolvedValue(mockContent)
+    it('logs error when START_TRANSFORM fails', async () => {
+      mockSendMessage.mockResolvedValue({ success: false, error: 'No API key' })
 
       const { result } = renderHook(() => useTransform())
 
@@ -272,332 +224,192 @@ describe('useTransform', () => {
         await result.current.transform('podcast', mockSources, mockNotebookId)
       })
 
-      expect(result.current.history).toHaveLength(1)
-      const transformResult = result.current.history[0]
-      expect(transformResult.id).toBeDefined()
-      expect(transformResult.title).toBe('Podcast Script')
-      expect(transformResult.type).toBe('podcast')
-      expect(transformResult.content).toBe(mockContent)
-      expect(transformResult.isInteractive).toBe(false)
-      expect(transformResult.sourceIds).toEqual(['source-1', 'source-2'])
-      expect(transformResult.notebookId).toBe(mockNotebookId)
-      expect(transformResult.savedId).toBe(null)
-      expect(transformResult.timestamp).toBeDefined()
-    })
-
-    it('creates interactive transform result for quiz type with HTML content', async () => {
-      const mockHtml = '<html><body><div class="quiz">Interactive quiz</div></body></html>'
-      mockGenerateQuiz.mockResolvedValue(mockHtml)
-
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('quiz', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history).toHaveLength(1)
-      const transformResult = result.current.history[0]
-      expect(transformResult.isInteractive).toBe(true)
-      expect(transformResult.title).toBe('Study Quiz')
-    })
-
-    it('enforces history limit of 10 results', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('Result')
-
-      const { result } = renderHook(() => useTransform())
-
-      // Create 11 transforms
-      for (let i = 0; i < 11; i++) {
-        await act(async () => {
-          await result.current.transform('podcast', mockSources, mockNotebookId)
-        })
-      }
-
-      // Should only have 10 (MAX_TRANSFORM_HISTORY)
-      expect(result.current.history).toHaveLength(10)
-    })
-
-    it('orders history with newest first', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('Podcast result')
-      mockGenerateQuiz.mockResolvedValue('Quiz result')
-
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
-      })
-
-      await act(async () => {
-        await result.current.transform('quiz', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history).toHaveLength(2)
-      expect(result.current.history[0].type).toBe('quiz') // Newest first
-      expect(result.current.history[1].type).toBe('podcast')
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[useTransform] Failed to start transform:',
+        'No API key',
+      )
+      expect(result.current.pending).toHaveLength(0)
     })
   })
 
-  describe('all transform types', () => {
-    it('executes podcast transform', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('Podcast content')
-      const { result } = renderHook(() => useTransform())
+  describe('TRANSFORM_COMPLETE message handling', () => {
+    it('adds completed transform to history when TRANSFORM_COMPLETE received', async () => {
+      const { result } = renderHook(() => useTransform(mockNotebookId))
 
+      // Start a transform
       await act(async () => {
         await result.current.transform('podcast', mockSources, mockNotebookId)
       })
 
+      expect(result.current.pending).toHaveLength(1)
+
+      // Simulate TRANSFORM_COMPLETE from background
+      const bgTransform: BackgroundTransform = {
+        id: 'bg-transform-1',
+        type: 'podcast',
+        notebookId: mockNotebookId,
+        sourceIds: ['source-1', 'source-2'],
+        status: 'completed',
+        createdAt: Date.now() - 1000,
+        startedAt: Date.now() - 500,
+        completedAt: Date.now(),
+        content: '# Podcast Script\n\nThis is a test.',
+      }
+
+      act(() => {
+        simulateBackgroundMessage({
+          type: 'TRANSFORM_COMPLETE',
+          payload: bgTransform,
+        })
+      })
+
+      // Pending should be cleared
+      expect(result.current.pending).toHaveLength(0)
+      expect(result.current.isTransforming).toBe(false)
+
+      // History should have the result
+      expect(result.current.history).toHaveLength(1)
+      expect(result.current.history[0].type).toBe('podcast')
       expect(result.current.history[0].title).toBe('Podcast Script')
-      expect(mockGeneratePodcastScript).toHaveBeenCalled()
+      expect(result.current.history[0].content).toBe('# Podcast Script\n\nThis is a test.')
     })
 
-    it('executes quiz transform', async () => {
-      mockGenerateQuiz.mockResolvedValue('Quiz content')
-      const { result } = renderHook(() => useTransform())
+    it('removes pending transform on TRANSFORM_ERROR', async () => {
+      const { result } = renderHook(() => useTransform(mockNotebookId))
 
+      // Start a transform
       await act(async () => {
-        await result.current.transform('quiz', mockSources, mockNotebookId)
+        await result.current.transform('podcast', mockSources, mockNotebookId)
       })
 
-      expect(result.current.history[0].title).toBe('Study Quiz')
-      expect(mockGenerateQuiz).toHaveBeenCalled()
+      expect(result.current.pending).toHaveLength(1)
+
+      // Simulate TRANSFORM_ERROR from background
+      const bgTransform: BackgroundTransform = {
+        id: 'bg-transform-1',
+        type: 'podcast',
+        notebookId: mockNotebookId,
+        sourceIds: ['source-1', 'source-2'],
+        status: 'failed',
+        createdAt: Date.now() - 1000,
+        startedAt: Date.now() - 500,
+        completedAt: Date.now(),
+        error: 'API rate limit exceeded',
+      }
+
+      act(() => {
+        simulateBackgroundMessage({
+          type: 'TRANSFORM_ERROR',
+          payload: bgTransform,
+        })
+      })
+
+      // Pending should be cleared
+      expect(result.current.pending).toHaveLength(0)
+      expect(result.current.isTransforming).toBe(false)
+
+      // History should be empty (transform failed)
+      expect(result.current.history).toHaveLength(0)
     })
 
-    it('executes takeaways transform', async () => {
-      mockGenerateKeyTakeaways.mockResolvedValue('Takeaways content')
-      const { result } = renderHook(() => useTransform())
+    it('ignores messages for different notebooks', async () => {
+      const { result } = renderHook(() => useTransform(mockNotebookId))
 
+      // Start a transform
       await act(async () => {
-        await result.current.transform('takeaways', mockSources, mockNotebookId)
+        await result.current.transform('podcast', mockSources, mockNotebookId)
       })
 
-      expect(result.current.history[0].title).toBe('Key Takeaways')
-      expect(mockGenerateKeyTakeaways).toHaveBeenCalled()
-    })
+      expect(result.current.pending).toHaveLength(1)
 
-    it('executes email transform', async () => {
-      mockGenerateEmailSummary.mockResolvedValue('Email content')
-      const { result } = renderHook(() => useTransform())
+      // Simulate TRANSFORM_COMPLETE from a different notebook
+      const bgTransform: BackgroundTransform = {
+        id: 'bg-transform-other',
+        type: 'quiz',
+        notebookId: 'other-notebook', // Different notebook
+        sourceIds: ['source-3'],
+        status: 'completed',
+        createdAt: Date.now(),
+        completedAt: Date.now(),
+        content: 'Quiz content',
+      }
 
-      await act(async () => {
-        await result.current.transform('email', mockSources, mockNotebookId)
+      act(() => {
+        simulateBackgroundMessage({
+          type: 'TRANSFORM_COMPLETE',
+          payload: bgTransform,
+        })
       })
 
-      expect(result.current.history[0].title).toBe('Email Summary')
-      expect(mockGenerateEmailSummary).toHaveBeenCalled()
-    })
-
-    it('executes slidedeck transform', async () => {
-      mockGenerateSlideDeck.mockResolvedValue('Slide deck content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('slidedeck', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Slide Deck')
-      expect(mockGenerateSlideDeck).toHaveBeenCalled()
-    })
-
-    it('executes report transform', async () => {
-      mockGenerateReport.mockResolvedValue('Report content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('report', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Report')
-      expect(mockGenerateReport).toHaveBeenCalled()
-    })
-
-    it('executes datatable transform', async () => {
-      mockGenerateDataTable.mockResolvedValue('Data table content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('datatable', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Data Table')
-      expect(mockGenerateDataTable).toHaveBeenCalled()
-    })
-
-    it('executes mindmap transform', async () => {
-      mockGenerateMindMap.mockResolvedValue('Mind map content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('mindmap', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Mind Map')
-      expect(mockGenerateMindMap).toHaveBeenCalled()
-    })
-
-    it('executes flashcards transform', async () => {
-      mockGenerateFlashcards.mockResolvedValue('Flashcards content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('flashcards', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Flashcards')
-      expect(mockGenerateFlashcards).toHaveBeenCalled()
-    })
-
-    it('executes timeline transform', async () => {
-      mockGenerateTimeline.mockResolvedValue('Timeline content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('timeline', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Timeline')
-      expect(mockGenerateTimeline).toHaveBeenCalled()
-    })
-
-    it('executes glossary transform', async () => {
-      mockGenerateGlossary.mockResolvedValue('Glossary content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('glossary', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Glossary')
-      expect(mockGenerateGlossary).toHaveBeenCalled()
-    })
-
-    it('executes comparison transform', async () => {
-      mockGenerateComparison.mockResolvedValue('Comparison content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('comparison', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Comparison')
-      expect(mockGenerateComparison).toHaveBeenCalled()
-    })
-
-    it('executes faq transform', async () => {
-      mockGenerateFAQ.mockResolvedValue('FAQ content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('faq', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('FAQ')
-      expect(mockGenerateFAQ).toHaveBeenCalled()
-    })
-
-    it('executes actionitems transform', async () => {
-      mockGenerateActionItems.mockResolvedValue('Action items content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('actionitems', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Action Items')
-      expect(mockGenerateActionItems).toHaveBeenCalled()
-    })
-
-    it('executes executivebrief transform', async () => {
-      mockGenerateExecutiveBrief.mockResolvedValue('Executive brief content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('executivebrief', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Executive Brief')
-      expect(mockGenerateExecutiveBrief).toHaveBeenCalled()
-    })
-
-    it('executes studyguide transform', async () => {
-      mockGenerateStudyGuide.mockResolvedValue('Study guide content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('studyguide', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Study Guide')
-      expect(mockGenerateStudyGuide).toHaveBeenCalled()
-    })
-
-    it('executes proscons transform', async () => {
-      mockGenerateProsCons.mockResolvedValue('Pros and cons content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('proscons', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Pros and Cons')
-      expect(mockGenerateProsCons).toHaveBeenCalled()
-    })
-
-    it('executes citations transform', async () => {
-      mockGenerateCitationList.mockResolvedValue('Citations content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('citations', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Citation List')
-      expect(mockGenerateCitationList).toHaveBeenCalled()
-    })
-
-    it('executes outline transform', async () => {
-      mockGenerateOutline.mockResolvedValue('Outline content')
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('outline', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history[0].title).toBe('Outline')
-      expect(mockGenerateOutline).toHaveBeenCalled()
+      // Pending should NOT be cleared (different notebook)
+      expect(result.current.pending).toHaveLength(1)
+      // History should be empty (message was for different notebook)
+      expect(result.current.history).toHaveLength(0)
     })
   })
 
   describe('removeResult', () => {
-    it('removes a transform from history by id', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('Podcast content')
-      mockGenerateQuiz.mockResolvedValue('Quiz content')
-
+    it('removes a transform from history by id', () => {
       const { result } = renderHook(() => useTransform())
 
-      await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
-        await result.current.transform('quiz', mockSources, mockNotebookId)
+      // Add items to history inside act
+      act(() => {
+        transformHistory.value = [
+          {
+            id: 'result-1',
+            title: 'Quiz',
+            type: 'quiz' as TransformationType,
+            content: 'Quiz content',
+            isInteractive: false,
+            sourceIds: ['source-1'],
+            notebookId: mockNotebookId,
+            timestamp: Date.now(),
+            savedId: null,
+          },
+          {
+            id: 'result-2',
+            title: 'Podcast',
+            type: 'podcast' as TransformationType,
+            content: 'Podcast content',
+            isInteractive: false,
+            sourceIds: ['source-1'],
+            notebookId: mockNotebookId,
+            timestamp: Date.now() - 1000,
+            savedId: null,
+          },
+        ]
       })
 
-      const firstId = result.current.history[0].id
+      expect(result.current.history).toHaveLength(2)
 
       act(() => {
-        result.current.removeResult(firstId)
+        result.current.removeResult('result-1')
       })
 
       expect(result.current.history).toHaveLength(1)
-      expect(result.current.history[0].type).toBe('podcast')
+      expect(result.current.history[0].id).toBe('result-2')
     })
   })
 
   describe('clearHistory', () => {
-    it('clears all transform history', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('Podcast content')
-
+    it('clears all transform history', () => {
       const { result } = renderHook(() => useTransform())
 
-      await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
+      // Add item to history inside act
+      act(() => {
+        transformHistory.value = [
+          {
+            id: 'result-1',
+            title: 'Quiz',
+            type: 'quiz' as TransformationType,
+            content: 'Quiz content',
+            isInteractive: false,
+            sourceIds: ['source-1'],
+            notebookId: mockNotebookId,
+            timestamp: Date.now(),
+            savedId: null,
+          },
+        ]
       })
 
       expect(result.current.history).toHaveLength(1)
@@ -618,7 +430,7 @@ describe('useTransform', () => {
         type: 'podcast' as const,
         title: 'Podcast Script',
         content: 'Podcast content',
-        sourceIds: ['source-1', 'source-2'],
+        sourceIds: ['source-1'],
         syncStatus: 'local' as const,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -626,19 +438,26 @@ describe('useTransform', () => {
       mockCreateTransformation.mockReturnValue(mockTransformation)
       mockSaveTransformation.mockResolvedValue(undefined)
 
-      mockGeneratePodcastScript.mockResolvedValue('Podcast content')
+      const unsavedResult = {
+        id: 'result-1',
+        title: 'Podcast Script',
+        type: 'podcast' as TransformationType,
+        content: 'Podcast content',
+        isInteractive: false,
+        sourceIds: ['source-1'],
+        notebookId: mockNotebookId,
+        timestamp: Date.now(),
+        savedId: null,
+      }
 
       const { result } = renderHook(() => useTransform())
 
-      await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
+      act(() => {
+        transformHistory.value = [unsavedResult]
       })
 
-      const transformResult = result.current.history[0]
-      expect(transformResult.savedId).toBe(null)
-
       await act(async () => {
-        await result.current.saveResult(transformResult)
+        await result.current.saveResult(unsavedResult)
       })
 
       expect(mockCreateTransformation).toHaveBeenCalledWith(
@@ -646,27 +465,33 @@ describe('useTransform', () => {
         'podcast',
         'Podcast Script',
         'Podcast content',
-        ['source-1', 'source-2'],
+        ['source-1'],
       )
       expect(mockSaveTransformation).toHaveBeenCalledWith(mockTransformation)
       expect(result.current.history[0].savedId).toBe('saved-id-123')
     })
 
     it('does not save already saved result', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('Podcast content')
+      const alreadySavedResult = {
+        id: 'result-1',
+        title: 'Podcast Script',
+        type: 'podcast' as TransformationType,
+        content: 'Podcast content',
+        isInteractive: false,
+        sourceIds: ['source-1'],
+        notebookId: mockNotebookId,
+        timestamp: Date.now(),
+        savedId: 'already-saved', // Already has savedId
+      }
 
       const { result } = renderHook(() => useTransform())
 
-      await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
+      act(() => {
+        transformHistory.value = [alreadySavedResult]
       })
 
-      // Manually set savedId
-      const history = result.current.history
-      history[0] = { ...history[0], savedId: 'already-saved' }
-
       await act(async () => {
-        await result.current.saveResult(result.current.history[0])
+        await result.current.saveResult(alreadySavedResult)
       })
 
       expect(mockCreateTransformation).not.toHaveBeenCalled()
@@ -676,39 +501,28 @@ describe('useTransform', () => {
 
   describe('deleteResult', () => {
     it('deletes saved transform from storage and removes from history', async () => {
-      const mockTransformation = {
-        id: 'saved-id-123',
-        notebookId: mockNotebookId,
-        type: 'podcast' as const,
-        title: 'Podcast Script',
-        content: 'Podcast content',
-        sourceIds: ['source-1', 'source-2'],
-        syncStatus: 'local' as const,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }
-      mockCreateTransformation.mockReturnValue(mockTransformation)
-      mockSaveTransformation.mockResolvedValue(undefined)
       mockDeleteTransformation.mockResolvedValue(undefined)
 
-      mockGeneratePodcastScript.mockResolvedValue('Podcast content')
+      const savedResult = {
+        id: 'result-1',
+        title: 'Podcast Script',
+        type: 'podcast' as TransformationType,
+        content: 'Podcast content',
+        isInteractive: false,
+        sourceIds: ['source-1'],
+        notebookId: mockNotebookId,
+        timestamp: Date.now(),
+        savedId: 'saved-id-123', // Has savedId
+      }
 
       const { result } = renderHook(() => useTransform())
 
-      await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
+      act(() => {
+        transformHistory.value = [savedResult]
       })
 
-      // Save the result first
       await act(async () => {
-        await result.current.saveResult(result.current.history[0])
-      })
-
-      expect(result.current.history[0].savedId).toBe('saved-id-123')
-
-      // Delete the result
-      await act(async () => {
-        await result.current.deleteResult(result.current.history[0])
+        await result.current.deleteResult(savedResult)
       })
 
       expect(mockDeleteTransformation).toHaveBeenCalledWith('saved-id-123')
@@ -716,19 +530,26 @@ describe('useTransform', () => {
     })
 
     it('removes unsaved result from history without calling delete', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('Podcast content')
+      const unsavedResult = {
+        id: 'result-1',
+        title: 'Podcast Script',
+        type: 'podcast' as TransformationType,
+        content: 'Podcast content',
+        isInteractive: false,
+        sourceIds: ['source-1'],
+        notebookId: mockNotebookId,
+        timestamp: Date.now(),
+        savedId: null, // Not saved
+      }
 
       const { result } = renderHook(() => useTransform())
 
-      await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
+      act(() => {
+        transformHistory.value = [unsavedResult]
       })
 
-      const transformResult = result.current.history[0]
-      expect(transformResult.savedId).toBe(null)
-
       await act(async () => {
-        await result.current.deleteResult(transformResult)
+        await result.current.deleteResult(unsavedResult)
       })
 
       expect(mockDeleteTransformation).not.toHaveBeenCalled()
@@ -737,37 +558,53 @@ describe('useTransform', () => {
   })
 
   describe('openInNewTab', () => {
-    it('opens markdown transform in new tab', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('# Test Content\n\nThis is a test.')
+    it('opens markdown transform in new tab', () => {
+      const markdownResult = {
+        id: 'result-1',
+        title: 'Podcast Script',
+        type: 'podcast' as TransformationType,
+        content: '# Test Content',
+        isInteractive: false,
+        sourceIds: ['source-1'],
+        notebookId: mockNotebookId,
+        timestamp: Date.now(),
+        savedId: null,
+      }
 
       const { result } = renderHook(() => useTransform())
 
-      await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
+      act(() => {
+        transformHistory.value = [markdownResult]
       })
 
       act(() => {
-        result.current.openInNewTab(result.current.history[0])
+        result.current.openInNewTab(markdownResult)
       })
 
       expect(globalThis.chrome.tabs.create).toHaveBeenCalled()
     })
 
-    it('opens interactive HTML transform in sandboxed iframe', async () => {
-      const htmlContent = '<html><body><div class="quiz">Interactive quiz content</div></body></html>'
-      mockGenerateQuiz.mockResolvedValue(htmlContent)
+    it('opens interactive HTML transform in sandboxed iframe', () => {
+      const interactiveResult = {
+        id: 'result-1',
+        title: 'Study Quiz',
+        type: 'quiz' as TransformationType,
+        content: '<html><body>Quiz</body></html>',
+        isInteractive: true,
+        sourceIds: ['source-1'],
+        notebookId: mockNotebookId,
+        timestamp: Date.now(),
+        savedId: null,
+      }
 
       const { result } = renderHook(() => useTransform())
 
-      await act(async () => {
-        await result.current.transform('quiz', mockSources, mockNotebookId)
+      act(() => {
+        transformHistory.value = [interactiveResult]
       })
 
-      const transformResult = result.current.history[0]
-      expect(transformResult.isInteractive).toBe(true)
-
       act(() => {
-        result.current.openInNewTab(transformResult)
+        result.current.openInNewTab(interactiveResult)
       })
 
       expect(globalThis.chrome.tabs.create).toHaveBeenCalledWith(
@@ -777,184 +614,37 @@ describe('useTransform', () => {
     })
   })
 
-  describe('edge cases', () => {
-    it('handles empty string result from transform', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('')
+  describe('syncPendingTransforms', () => {
+    it('syncs pending transforms from background on mount', async () => {
+      mockSendMessage.mockResolvedValue({
+        transforms: [
+          {
+            id: 'bg-1',
+            type: 'podcast',
+            notebookId: mockNotebookId,
+            sourceIds: ['source-1'],
+            status: 'running',
+            createdAt: Date.now(),
+            startedAt: Date.now(),
+          },
+        ],
+      })
 
-      const { result } = renderHook(() => useTransform())
+      const { result } = renderHook(() => useTransform(mockNotebookId))
 
+      // Wait for useEffect to run
       await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
+        await new Promise(resolve => setTimeout(resolve, 0))
       })
 
-      expect(result.current.history[0].content).toBe('')
-    })
-
-    it('handles multiple sequential transforms', async () => {
-      mockGeneratePodcastScript.mockResolvedValue('First result')
-        .mockResolvedValueOnce('First result')
-        .mockResolvedValue('Second result')
-
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
+      // Check that GET_PENDING_TRANSFORMS was called
+      expect(mockSendMessage).toHaveBeenCalledWith({
+        type: 'GET_PENDING_TRANSFORMS',
+        payload: { notebookId: mockNotebookId },
       })
 
-      await act(async () => {
-        await result.current.transform('podcast', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.history).toHaveLength(2)
-      expect(result.current.history[0].content).toBe('Second result')
-      expect(result.current.history[1].content).toBe('First result')
-    })
-
-    it('handles single source array', async () => {
-      const singleSource: Source[] = [
-        {
-          id: 'single',
-          title: 'Single Source',
-          url: 'https://example.com/single',
-          content: 'Single content',
-          type: 'manual',
-          createdAt: Date.now(),
-          notebookId: 'notebook-1',
-          syncStatus: 'local',
-          updatedAt: Date.now(),
-        },
-      ]
-
-      mockGenerateQuiz.mockResolvedValue('Quiz of single source')
-
-      const { result } = renderHook(() => useTransform())
-
-      await act(async () => {
-        await result.current.transform('quiz', singleSource, mockNotebookId)
-      })
-
-      expect(result.current.history[0].sourceIds).toEqual(['single'])
-    })
-  })
-
-  describe('concurrent transforms', () => {
-    it('allows multiple transforms to run concurrently', async () => {
-      // Create promises that we can control
-      let resolvePodcast: (value: string) => void
-      let resolveQuiz: (value: string) => void
-
-      const podcastPromise = new Promise<string>((resolve) => {
-        resolvePodcast = resolve
-      })
-      const quizPromise = new Promise<string>((resolve) => {
-        resolveQuiz = resolve
-      })
-
-      mockGeneratePodcastScript.mockReturnValue(podcastPromise)
-      mockGenerateQuiz.mockReturnValue(quizPromise)
-
-      const { result } = renderHook(() => useTransform())
-
-      // Start both transforms concurrently (don't await)
-      act(() => {
-        void result.current.transform('podcast', mockSources, mockNotebookId)
-        void result.current.transform('quiz', mockSources, mockNotebookId)
-      })
-
-      // Both should be pending
-      expect(result.current.pending).toHaveLength(2)
-      expect(result.current.isTransforming).toBe(true)
+      expect(result.current.pending).toHaveLength(1)
       expect(result.current.pending[0].type).toBe('podcast')
-      expect(result.current.pending[1].type).toBe('quiz')
-
-      // Complete the first transform
-      await act(async () => {
-        resolvePodcast!('Podcast result')
-        await podcastPromise
-      })
-
-      // Only one should still be pending
-      expect(result.current.pending).toHaveLength(1)
-      expect(result.current.pending[0].type).toBe('quiz')
-      expect(result.current.isTransforming).toBe(true)
-      expect(result.current.history).toHaveLength(1)
-
-      // Complete the second transform
-      await act(async () => {
-        resolveQuiz!('Quiz result')
-        await quizPromise
-      })
-
-      // No more pending, both in history
-      expect(result.current.pending).toHaveLength(0)
-      expect(result.current.isTransforming).toBe(false)
-      expect(result.current.history).toHaveLength(2)
-    })
-
-    it('pending transforms contain correct metadata', async () => {
-      let resolvePodcast: (value: string) => void
-      const podcastPromise = new Promise<string>((resolve) => {
-        resolvePodcast = resolve
-      })
-
-      mockGeneratePodcastScript.mockReturnValue(podcastPromise)
-
-      const { result } = renderHook(() => useTransform())
-
-      act(() => {
-        void result.current.transform('podcast', mockSources, mockNotebookId)
-      })
-
-      // Check pending transform has correct properties
-      expect(result.current.pending).toHaveLength(1)
-      const pending = result.current.pending[0]
-      expect(pending.id).toBeDefined()
-      expect(pending.type).toBe('podcast')
-      expect(pending.notebookId).toBe(mockNotebookId)
-      expect(pending.sourceIds).toEqual(['source-1', 'source-2'])
-      expect(pending.startTime).toBeDefined()
-      expect(pending.startTime).toBeLessThanOrEqual(Date.now())
-
-      // Clean up
-      await act(async () => {
-        resolvePodcast!('Podcast result')
-        await podcastPromise
-      })
-    })
-
-    it('removes pending transform on error', async () => {
-      let rejectPodcast: (error: Error) => void
-      const podcastPromise = new Promise<string>((_, reject) => {
-        rejectPodcast = reject
-      })
-
-      mockGeneratePodcastScript.mockReturnValue(podcastPromise)
-
-      const { result } = renderHook(() => useTransform())
-
-      // Store the transform promise so we can await it later
-      let transformPromise: Promise<void>
-      act(() => {
-        transformPromise = result.current.transform('podcast', mockSources, mockNotebookId)
-      })
-
-      expect(result.current.pending).toHaveLength(1)
-
-      // Reject the transform and await it to completion
-      await act(async () => {
-        rejectPodcast!(new Error('API Error'))
-        try {
-          await transformPromise
-        }
-        catch {
-          // Expected - the transform should reject
-        }
-      })
-
-      // Pending should be cleared even on error
-      expect(result.current.pending).toHaveLength(0)
-      expect(result.current.isTransforming).toBe(false)
-      expect(result.current.history).toHaveLength(0)
     })
   })
 })

@@ -29,6 +29,7 @@ A browser extension that helps you collect sources from tabs, bookmarks, and his
   - Open in new tab for full-screen viewing (great for slides, quizzes, mind maps)
   - Delete saved transforms when no longer needed
   - Transform history is per-notebook (switching folios shows that folio's saved transforms)
+  - **Background Execution**: Transforms run in the service worker, continuing even when the side panel is closed
 
 ## Installation
 
@@ -188,6 +189,9 @@ Handles extension-level operations:
 - **Context Menus**: "Add page to Folio" / "Add link to Folio" with notebook submenus
 - **Message Routing**: Routes messages between content scripts and side panel
 - **Content Extraction**: Coordinates extraction via content script or fallback injection
+- **Background Transforms**: Executes AI transformations that continue even when side panel is closed
+  - Transforms are persisted to IndexedDB and resumed on service worker restart
+  - Side panel syncs with background state on open
 
 #### Content Script (`src/content/index.ts`)
 
@@ -392,6 +396,24 @@ interface PendingTransform {
   sourceIds: string[];    // Source IDs being transformed
   startTime: number;      // When the transform started
 }
+
+// Background Transform (from src/types/transform.ts)
+// Executes in service worker, persists to IndexedDB
+
+type BackgroundTransformStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+interface BackgroundTransform {
+  id: string;
+  type: TransformationType;
+  notebookId: string;
+  sourceIds: string[];
+  status: BackgroundTransformStatus;
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  content?: string;       // Generated content (if completed)
+  error?: string;         // Error message (if failed)
+}
 ```
 
 ### Message Passing
@@ -405,6 +427,13 @@ Messages between components (defined in `src/types/index.ts`):
 | `ADD_SOURCE` | Background → Side Panel | Notify source added |
 | `CREATE_NOTEBOOK_AND_ADD_PAGE` | Background → Side Panel | Context menu new notebook |
 | `REBUILD_CONTEXT_MENUS` | Side Panel → Background | Update context menus |
+| `START_TRANSFORM` | Side Panel → Background | Start a background transformation |
+| `CANCEL_TRANSFORM` | Side Panel → Background | Cancel a pending/running transform |
+| `GET_PENDING_TRANSFORMS` | Side Panel → Background | Get current transform state |
+| `TRANSFORM_STARTED` | Background → Side Panel | Notify transform has started |
+| `TRANSFORM_PROGRESS` | Background → Side Panel | Update transform progress |
+| `TRANSFORM_COMPLETE` | Background → Side Panel | Notify transform completed |
+| `TRANSFORM_ERROR` | Background → Side Panel | Notify transform failed |
 
 ### Permissions
 

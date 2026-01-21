@@ -2,41 +2,24 @@
  * useTransform Hook
  *
  * Manages content transformation operations including:
- * - Running transformations on sources
+ * - Running transformations on sources (via background service worker)
  * - Managing transform history
  * - Saving/loading transformations
  * - Opening transformations in new tabs
+ *
+ * Transformations now run in the background service worker, allowing them
+ * to continue even when the side panel is closed.
  */
 
 import { useCallback, useEffect } from 'preact/hooks'
 import DOMPurify from 'dompurify'
-import type { Source, TransformationType } from '../../types/index.ts'
-import {
-  generatePodcastScript,
-  generateQuiz,
-  generateKeyTakeaways,
-  generateEmailSummary,
-  generateSlideDeck,
-  generateReport,
-  generateDataTable,
-  generateMindMap,
-  generateFlashcards,
-  generateTimeline,
-  generateGlossary,
-  generateComparison,
-  generateFAQ,
-  generateActionItems,
-  generateExecutiveBrief,
-  generateStudyGuide,
-  generateProsCons,
-  generateCitationList,
-  generateOutline,
-} from '../../lib/ai.ts'
+import type { Source, TransformationType, BackgroundTransform, Message } from '../../types/index.ts'
 import {
   saveTransformation,
   deleteTransformation,
   createTransformation,
   getTransformations,
+  deleteBackgroundTransform,
 } from '../../lib/storage.ts'
 import { renderMarkdown, isHtmlContent } from '../../lib/markdown-renderer.ts'
 import { escapeHtml } from '../dom-utils.ts'
@@ -124,6 +107,8 @@ export interface UseTransformReturn {
   openInNewTab: (result: TransformResult) => void
   /** Reload transform history from storage */
   reloadHistory: () => Promise<void>
+  /** Sync pending transforms from background */
+  syncPendingTransforms: () => Promise<void>
 }
 
 /**
@@ -239,16 +224,168 @@ function generateFullPageHtml(title: string, content: string): string {
 }
 
 /**
+ * Convert a BackgroundTransform to a PendingTransform for UI display
+ */
+function backgroundToPending(bg: BackgroundTransform): PendingTransform {
+  return {
+    id: bg.id,
+    type: bg.type,
+    notebookId: bg.notebookId,
+    sourceIds: bg.sourceIds,
+    startTime: bg.startedAt ?? bg.createdAt,
+  }
+}
+
+/**
+ * Convert a completed BackgroundTransform to a TransformResult
+ */
+function backgroundToResult(bg: BackgroundTransform): TransformResult | null {
+  if (!bg.content || bg.status !== 'completed') {
+    return null
+  }
+
+  const isInteractive = INTERACTIVE_TYPES.has(bg.type) && isHtmlContent(bg.content)
+
+  return {
+    id: bg.id,
+    title: TRANSFORM_TITLES[bg.type],
+    type: bg.type,
+    content: bg.content,
+    isInteractive,
+    sourceIds: bg.sourceIds,
+    notebookId: bg.notebookId,
+    timestamp: bg.completedAt ?? Date.now(),
+    savedId: null,
+  }
+}
+
+/**
+ * Type guard for BackgroundTransform
+ */
+function isBackgroundTransform(value: unknown): value is BackgroundTransform {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'id' in value
+    && 'type' in value
+    && 'status' in value
+    && 'notebookId' in value
+  )
+}
+
+/**
+ * Response type for GET_PENDING_TRANSFORMS message
+ */
+interface GetPendingTransformsResponse {
+  transforms: BackgroundTransform[]
+}
+
+/**
+ * Type guard for GetPendingTransformsResponse
+ */
+function isGetPendingTransformsResponse(value: unknown): value is GetPendingTransformsResponse {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'transforms' in value
+    && Array.isArray((value as GetPendingTransformsResponse).transforms)
+  )
+}
+
+/**
+ * Response type for START_TRANSFORM message
+ */
+interface StartTransformResponse {
+  success: boolean
+  transformId?: string
+  error?: string
+}
+
+/**
+ * Type guard for StartTransformResponse
+ */
+function isStartTransformResponse(value: unknown): value is StartTransformResponse {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && 'success' in value
+    && typeof (value as StartTransformResponse).success === 'boolean'
+  )
+}
+
+/**
  * Hook for managing content transformations
  */
 export function useTransform(notebookId: string | null = null): UseTransformReturn {
-  // Load transform history when notebook changes
+  // Load transform history and sync pending transforms when notebook changes
   useEffect(() => {
     if (notebookId) {
       void loadHistory()
+      void syncPendingTransforms()
     }
     else {
       transformHistory.value = []
+      pendingTransforms.value = []
+    }
+  }, [notebookId])
+
+  // Set up message listener for transform events from background
+  useEffect(() => {
+    const handleMessage = (message: Message) => {
+      if (!message.type || !message.payload) return
+
+      // Only handle transform messages for the current notebook
+      if (!isBackgroundTransform(message.payload)) return
+      const bg = message.payload
+      if (bg.notebookId !== notebookId) return
+
+      switch (message.type) {
+        case 'TRANSFORM_STARTED':
+        case 'TRANSFORM_PROGRESS': {
+          // Update pending transforms
+          const pending = backgroundToPending(bg)
+          const existing = pendingTransforms.value.find(p => p.id === bg.id)
+          if (!existing) {
+            pendingTransforms.value = [...pendingTransforms.value, pending]
+          }
+          break
+        }
+        case 'TRANSFORM_COMPLETE': {
+          // Remove from pending
+          pendingTransforms.value = pendingTransforms.value.filter(p => p.id !== bg.id)
+
+          // Add to history if completed successfully
+          if (bg.status === 'completed') {
+            const result = backgroundToResult(bg)
+            if (result) {
+              // Check if already in history (by id)
+              const exists = transformHistory.value.some(r => r.id === result.id)
+              if (!exists) {
+                const newHistory = [result, ...transformHistory.value]
+                transformHistory.value = newHistory.slice(0, MAX_TRANSFORM_HISTORY)
+              }
+            }
+
+            // Clean up the background transform record after adding to history
+            void deleteBackgroundTransform(bg.id)
+          }
+          break
+        }
+        case 'TRANSFORM_ERROR': {
+          // Remove from pending
+          pendingTransforms.value = pendingTransforms.value.filter(p => p.id !== bg.id)
+          console.error('[useTransform] Transform failed:', bg.error)
+
+          // Clean up the failed background transform record from IndexedDB
+          void deleteBackgroundTransform(bg.id)
+          break
+        }
+      }
+    }
+
+    chrome.runtime.onMessage.addListener(handleMessage)
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage)
     }
   }, [notebookId])
 
@@ -281,6 +418,70 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
     transformHistory.value = results
   }, [notebookId])
 
+  /**
+   * Sync pending transforms from the background service worker.
+   * Called when the side panel opens to restore any in-progress transforms.
+   */
+  const syncPendingTransforms = useCallback(async () => {
+    if (!notebookId) {
+      pendingTransforms.value = []
+      return
+    }
+
+    try {
+      const response: unknown = await chrome.runtime.sendMessage({
+        type: 'GET_PENDING_TRANSFORMS',
+        payload: { notebookId },
+      })
+
+      if (isGetPendingTransformsResponse(response)) {
+        // Separate pending/running from completed
+        const pending: PendingTransform[] = []
+        const completed: TransformResult[] = []
+
+        for (const bg of response.transforms) {
+          if (bg.status === 'pending' || bg.status === 'running') {
+            pending.push(backgroundToPending(bg))
+          }
+          else if (bg.status === 'completed' && bg.content) {
+            const result = backgroundToResult(bg)
+            if (result) {
+              completed.push(result)
+              // Clean up the background transform record
+              void deleteBackgroundTransform(bg.id)
+            }
+          }
+          else if (bg.status === 'failed' || bg.status === 'cancelled') {
+            // Clean up failed and cancelled transform records from IndexedDB
+            // to prevent accumulation over time
+            console.log('[useTransform] Cleaning up', bg.status, 'transform:', bg.id)
+            void deleteBackgroundTransform(bg.id)
+          }
+        }
+
+        // Update pending transforms
+        pendingTransforms.value = pending
+
+        // Add completed transforms to history (if not already there)
+        if (completed.length > 0) {
+          const existingIds = new Set(transformHistory.value.map(r => r.id))
+          const newResults = completed.filter(r => !existingIds.has(r.id))
+          if (newResults.length > 0) {
+            const newHistory = [...newResults, ...transformHistory.value]
+            transformHistory.value = newHistory.slice(0, MAX_TRANSFORM_HISTORY)
+          }
+        }
+      }
+    }
+    catch (error) {
+      console.error('[useTransform] Failed to sync pending transforms:', error)
+    }
+  }, [notebookId])
+
+  /**
+   * Start a transformation via the background service worker.
+   * The transform will continue running even if the side panel is closed.
+   */
   const transform = useCallback(async (
     type: TransformationType,
     sources: Source[],
@@ -291,75 +492,36 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
       return
     }
 
-    // Create a pending transform to track this operation
-    const pendingId = crypto.randomUUID()
-    const pending: PendingTransform = {
-      id: pendingId,
-      type,
-      notebookId: nbId,
-      sourceIds: sources.map(s => s.id),
-      startTime: Date.now(),
-    }
-
-    // Add to pending transforms immediately
-    pendingTransforms.value = [...pendingTransforms.value, pending]
-
     try {
-      let output = ''
+      // Send message to background to start the transform
+      const response: unknown = await chrome.runtime.sendMessage({
+        type: 'START_TRANSFORM',
+        payload: {
+          notebookId: nbId,
+          type,
+          sourceIds: sources.map(s => s.id),
+        },
+      })
 
-      // Map transform types to their generator functions
-      const transformers: Record<TransformationType, () => Promise<string>> = {
-        podcast: () => generatePodcastScript(sources),
-        quiz: () => generateQuiz(sources),
-        takeaways: () => generateKeyTakeaways(sources),
-        email: () => generateEmailSummary(sources),
-        slidedeck: () => generateSlideDeck(sources),
-        report: () => generateReport(sources),
-        datatable: () => generateDataTable(sources),
-        mindmap: () => generateMindMap(sources),
-        flashcards: () => generateFlashcards(sources),
-        timeline: () => generateTimeline(sources),
-        glossary: () => generateGlossary(sources),
-        comparison: () => generateComparison(sources),
-        faq: () => generateFAQ(sources),
-        actionitems: () => generateActionItems(sources),
-        executivebrief: () => generateExecutiveBrief(sources),
-        studyguide: () => generateStudyGuide(sources),
-        proscons: () => generateProsCons(sources),
-        citations: () => generateCitationList(sources),
-        outline: () => generateOutline(sources),
-      }
-
-      if (!transformers[type]) {
-        console.error('[useTransform] Unknown transform type:', type)
+      if (!isStartTransformResponse(response) || !response.success) {
+        const errorMsg = isStartTransformResponse(response) ? response.error : 'Invalid response'
+        console.error('[useTransform] Failed to start transform:', errorMsg)
         return
       }
 
-      output = await transformers[type]()
-
-      // Determine if this is an interactive transform
-      const isInteractive = INTERACTIVE_TYPES.has(type) && isHtmlContent(output)
-
-      // Create result object
-      const result: TransformResult = {
-        id: crypto.randomUUID(),
-        title: TRANSFORM_TITLES[type],
+      // Add to pending immediately (the message listener will update as it progresses)
+      const pending: PendingTransform = {
+        id: response.transformId ?? crypto.randomUUID(),
         type,
-        content: output,
-        isInteractive,
-        sourceIds: sources.map(s => s.id),
         notebookId: nbId,
-        timestamp: Date.now(),
-        savedId: null,
+        sourceIds: sources.map(s => s.id),
+        startTime: Date.now(),
       }
 
-      // Add to history (newest first, enforce limit)
-      const newHistory = [result, ...transformHistory.value]
-      transformHistory.value = newHistory.slice(0, MAX_TRANSFORM_HISTORY)
+      pendingTransforms.value = [...pendingTransforms.value, pending]
     }
-    finally {
-      // Remove from pending transforms when done (success or error)
-      pendingTransforms.value = pendingTransforms.value.filter(p => p.id !== pendingId)
+    catch (error) {
+      console.error('[useTransform] Error starting transform:', error)
     }
   }, [])
 
@@ -510,5 +672,6 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
     deleteResult,
     openInNewTab,
     reloadHistory,
+    syncPendingTransforms,
   }
 }

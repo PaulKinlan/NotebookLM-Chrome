@@ -1,6 +1,6 @@
 # Chrome Web Store Listing
 
-**Last Updated:** January 17, 2026
+**Last Updated:** January 21, 2026
 
 This file contains all information needed for the Chrome Web Store listing. Update this file whenever the product changes, especially for permission changes, new features, or description updates.
 
@@ -44,6 +44,8 @@ FolioLM helps you collect sources from tabs, bookmarks, and history, then query 
   - Analytical: Report, Timeline, Comparison, Data Table, Mind Map
   - Reference: Glossary, FAQ, Outline, Citations
   - Business: Action Items, Executive Brief, Key Takeaways, Pros/Cons
+
+• Background Processing - Transformations continue running even when the side panel is closed. Results are automatically saved and available when you return.
 
 **Privacy First:**
 All your data stays on your device. FolioLM does not collect, store, or transmit any data to our servers. When you use AI features, content is sent directly from your browser to the AI provider you configure - never through us.
@@ -125,6 +127,11 @@ Recommended screenshots for store listing:
 ---
 
 ## Version History
+
+### v0.2.1
+- Background transformations: Transformations now continue running in the background service worker even when the side panel is closed
+- Improved reliability: Fixed race condition in transform completion handling
+- Better cleanup: Failed and cancelled transforms are now properly cleaned up from storage
 
 ### v0.2.0
 - Keyboard shortcuts for quick actions:
