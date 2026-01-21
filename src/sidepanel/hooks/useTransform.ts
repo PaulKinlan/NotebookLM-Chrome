@@ -509,7 +509,8 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
         return
       }
 
-      // Add to pending immediately (the message listener will update as it progresses)
+      // Add to pending if not already added by the message listener
+      // (TRANSFORM_STARTED message may arrive before this code runs)
       const pending: PendingTransform = {
         id: response.transformId ?? crypto.randomUUID(),
         type,
@@ -518,7 +519,10 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
         startTime: Date.now(),
       }
 
-      pendingTransforms.value = [...pendingTransforms.value, pending]
+      const existing = pendingTransforms.value.find(p => p.id === pending.id)
+      if (!existing) {
+        pendingTransforms.value = [...pendingTransforms.value, pending]
+      }
     }
     catch (error) {
       console.error('[useTransform] Error starting transform:', error)
