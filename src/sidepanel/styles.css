@@ -698,6 +698,10 @@ h3 {
   flex-shrink: 0;
 }
 
+.query-box .icon-btn.btn-primary svg {
+  color: inherit;
+}
+
 .query-box input {
   flex: 1;
   border: none;
