@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { EmailConfig } from '../../types/index.ts'
 import { DEFAULT_EMAIL_CONFIG } from '../transform-config.ts'
@@ -45,18 +45,16 @@ ${lengthDesc[c.length]}${recipientNote}${
     ? '- A clear call to action'
     : '- A brief concluding statement'
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create an email summary of these sources:
+  const textPrompt = `Create an email summary of these sources:
 
 ${buildSourceContextSimple(sources)}
 
 Include:
 - A brief introduction
 - Key points (bulleted)
-${ctaInstruction}`,
-  })
+${ctaInstruction}`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

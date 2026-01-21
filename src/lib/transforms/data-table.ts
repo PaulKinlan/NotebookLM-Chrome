@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { DataTableConfig } from '../../types/index.ts'
 import { DEFAULT_DATATABLE_CONFIG } from '../transform-config.ts'
@@ -28,10 +28,7 @@ Present them in a clear tabular format using markdown tables.${summaryNote}${
   c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
 }`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Extract key data and facts from these sources and organize them into tables:
+  const textPrompt = `Extract key data and facts from these sources and organize them into tables:
 
 ${buildSourceContextSimple(sources)}
 
@@ -42,8 +39,9 @@ Use format:
 | Data     | Data     | Data     |
 ${c.includeSummary ? '| Summary  | Total/Avg | ... |' : ''}
 
-Include relevant categories, metrics, or comparisons found in the sources.`,
-  })
+Include relevant categories, metrics, or comparisons found in the sources.`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

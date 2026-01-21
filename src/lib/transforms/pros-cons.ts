@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { ProsConsConfig } from '../../types/index.ts'
 import { DEFAULT_PROSCONS_CONFIG } from '../transform-config.ts'
@@ -88,10 +88,7 @@ Identify advantages and disadvantages objectively.${neutralNote}${assessmentNote
   : ''}`
   }
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create a pros and cons analysis based on these sources:
+  const textPrompt = `Create a pros and cons analysis based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -107,8 +104,9 @@ ${c.includeAssessment
 Balanced conclusion with recommendation if applicable.`
   : ''}
 
-If multiple topics can be analyzed, create separate sections for each.`,
-  })
+If multiple topics can be analyzed, create separate sections for each.`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

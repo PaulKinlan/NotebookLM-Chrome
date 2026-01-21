@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { ComparisonConfig } from '../../types/index.ts'
 import { DEFAULT_COMPARISON_CONFIG } from '../transform-config.ts'
@@ -43,18 +43,16 @@ Present a balanced comparison using ${formatDesc[c.format]} with relevant criter
       ? `Format with clear side-by-side sections for each item being compared, using headers and consistent criteria.`
       : `Format as narrative prose, clearly comparing the items point by point.`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create a comparison of items found in these sources:
+  const textPrompt = `Create a comparison of items found in these sources:
 
 ${buildSourceContextSimple(sources)}
 
 Compare up to ${c.maxItems} items.
 ${formatExample}
 
-${c.includeRecommendation ? 'Include a summary with your recommendation based on the comparison.' : 'Include a summary of key differences and similarities.'}`,
-  })
+${c.includeRecommendation ? 'Include a summary with your recommendation based on the comparison.' : 'Include a summary of key differences and similarities.'}`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

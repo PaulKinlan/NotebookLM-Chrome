@@ -29,7 +29,7 @@ Users frequently encounter valuable information across multiple web pages but la
 |-------|----------|----------|--------|
 | Phase 1 | Text sources, notebooks, basic AI chat, transformations | P0 | Complete |
 | Phase 2 | PDF support (local + web), improved content extraction | P1 | Planned |
-| Phase 3 | Image extraction, multimodal AI context | P2 | Planned |
+| Phase 3 | Image extraction, multimodal AI context | P2 | Complete |
 | Phase 4 | Video/Audio sources, expanded context menu | P3 | Planned |
 | Future | Server sync, collaboration, mobile companion | P4 | Future |
 
@@ -384,11 +384,27 @@ Transformations support image sources when using vision-capable AI providers (An
 - For slide decks: Visual content can be referenced
 
 **Currently Multimodal-Enabled Transforms:**
-- Study Quiz
-- Key Takeaways
+All 19 transforms now support multimodal image analysis:
 - Summary
+- Key Takeaways
+- Study Quiz
 - Slide Deck
 - Study Guide
+- Podcast Script
+- Email Summary
+- Report
+- Flashcards
+- Data Table
+- Mind Map
+- Timeline
+- Glossary
+- Comparison
+- FAQ
+- Action Items
+- Executive Brief
+- Pros & Cons
+- Citation List
+- Outline
 
 **Acceptance Criteria:**
 - [x] Images are extracted from sources when provider supports vision

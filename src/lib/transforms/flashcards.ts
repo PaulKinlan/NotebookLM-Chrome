@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { FlashcardsConfig } from '../../types/index.ts'
 import { DEFAULT_FLASHCARDS_CONFIG } from '../transform-config.ts'
@@ -46,10 +46,7 @@ Do not include <!DOCTYPE>, <html>, <head>, or <body> tags - just the content div
   c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
 }`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create ${c.cardCount} interactive flashcards based on these sources:
+  const textPrompt = `Create ${c.cardCount} interactive flashcards based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -72,8 +69,9 @@ Structure your response as:
 </style>
 <script>
   // Interactive JavaScript for flipping and navigation - reference elements from HTML above
-</script>`,
-  })
+</script>`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

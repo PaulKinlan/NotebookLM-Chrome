@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { PodcastConfig } from '../../types/index.ts'
 import { DEFAULT_PODCAST_CONFIG } from '../transform-config.ts'
@@ -46,12 +46,9 @@ The hosts should be curious, ask follow-up questions, and build on each other's 
 
   const focusNote = c.focusArea ? `\n\nFocus particularly on: ${c.focusArea}` : ''
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create a ${c.lengthMinutes}-minute podcast script (approximately ${
-      c.lengthMinutes * 150
-    } words) based on these sources:
+  const textPrompt = `Create a ${c.lengthMinutes}-minute podcast script (approximately ${
+    c.lengthMinutes * 150
+  } words) based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -60,8 +57,9 @@ ${speakerLabels[0]}: [Introduction and topic setup]
 ${speakerLabels[1]}: [Response and first point]
 ...continue the natural conversation...
 
-Make it engaging and educational, covering the key points from the sources.${focusNote}`,
-  })
+Make it engaging and educational, covering the key points from the sources.${focusNote}`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {

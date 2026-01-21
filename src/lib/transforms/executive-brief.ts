@@ -1,4 +1,4 @@
-import { getModelWithConfig, generateText, buildSourceContextSimple, type Source } from './shared.ts'
+import { getModelWithConfig, generateTextWithImages, buildSourceContextSimple, type Source } from './shared.ts'
 import { trackUsage } from '../usage.ts'
 import type { ExecutiveBriefConfig } from '../../types/index.ts'
 import { DEFAULT_EXECUTIVEBRIEF_CONFIG } from '../transform-config.ts'
@@ -49,10 +49,7 @@ Focus on key insights, implications, and actionable information.${focusNote}${
   c.customInstructions ? `\n\nAdditional instructions: ${c.customInstructions}` : ''
 }`
 
-  const result = await generateText({
-    model: modelConfig.model,
-    system: systemPrompt,
-    prompt: `Create an executive brief based on these sources:
+  const textPrompt = `Create an executive brief based on these sources:
 
 ${buildSourceContextSimple(sources)}
 
@@ -61,8 +58,9 @@ Format as:
 
 ${sectionsFormat}
 
-Keep it ${c.length === 'half-page' ? 'very concise' : c.length === 'two-pages' ? 'comprehensive but organized' : 'concise'} and actionable.`,
-  })
+Keep it ${c.length === 'half-page' ? 'very concise' : c.length === 'two-pages' ? 'comprehensive but organized' : 'concise'} and actionable.`
+
+  const result = await generateTextWithImages(modelConfig, systemPrompt, textPrompt, sources)
 
   // Track usage
   if (result.usage) {
