@@ -22,6 +22,7 @@ type SandboxMessage
     | RenderInteractiveMessage
     | ClearContentMessage
     | GetHeightMessage
+    | SetThemeMessage
     | SandboxReadyMessage
     | RenderCompleteMessage
     | HeightResponseMessage
@@ -46,6 +47,11 @@ interface ClearContentMessage {
 interface GetHeightMessage {
   type: 'GET_HEIGHT'
   messageId: number
+}
+
+interface SetThemeMessage {
+  type: 'SET_THEME'
+  theme: 'light' | 'dark' | null
 }
 
 interface SandboxReadyMessage {
@@ -159,6 +165,17 @@ window.addEventListener('message', (event: MessageEvent) => {
       messageId: msg.messageId,
       height: document.body.scrollHeight,
     } satisfies HeightResponseMessage, '*')
+  }
+  else if (type === 'SET_THEME') {
+    const msg = data as SetThemeMessage
+    // Apply theme to the root HTML element
+    if (msg.theme === null) {
+      // System preference - remove attribute to let CSS media queries handle it
+      document.documentElement.removeAttribute('data-theme')
+    }
+    else {
+      document.documentElement.setAttribute('data-theme', msg.theme)
+    }
   }
 })
 

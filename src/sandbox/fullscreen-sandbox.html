@@ -27,6 +27,7 @@
       min-height: 0;
     }
 
+    /* Light theme (default) */
     iframe {
       display: block;
       width: 100%;
@@ -40,6 +41,18 @@
       color: #ef4444;
       text-align: center;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* Dark theme (explicit) */
+    html[data-theme="dark"] iframe {
+      background: #1e1e2e;
+    }
+
+    /* System preference fallback */
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme]) iframe {
+        background: #1e1e2e;
+      }
     }
   </style>
 </head>

@@ -24,6 +24,7 @@ interface SandboxContentMessage {
   title: string
   content: string
   isInteractive: boolean
+  theme?: 'light' | 'dark' | null
 }
 
 interface SandboxReadyMessage {
@@ -57,7 +58,7 @@ function initializePostMessageListener(): void {
     }
 
     // Render content (title is displayed by the wrapper page)
-    renderContent(data.content, data.isInteractive)
+    renderContent(data.content, data.isInteractive, data.theme)
   })
 
   // Signal to parent that we're ready to receive content
@@ -66,7 +67,7 @@ function initializePostMessageListener(): void {
   } satisfies SandboxReadyMessage, '*')
 }
 
-function renderContent(content: string, isInteractive: boolean): void {
+function renderContent(content: string, isInteractive: boolean, theme?: 'light' | 'dark' | null): void {
   const iframe = document.getElementById('content-frame') as HTMLIFrameElement | null
 
   if (!iframe) {
@@ -74,8 +75,17 @@ function renderContent(content: string, isInteractive: boolean): void {
     return
   }
 
+  // Apply theme to this page's root element (for iframe background styling)
+  if (theme === null || theme === undefined) {
+    // System preference - remove attribute to let CSS media queries handle it
+    document.documentElement.removeAttribute('data-theme')
+  }
+  else {
+    document.documentElement.setAttribute('data-theme', theme)
+  }
+
   // Wrap content in a full HTML document if needed
-  const wrappedContent = wrapContent(content, isInteractive)
+  const wrappedContent = wrapContent(content, isInteractive, theme)
 
   // Use srcdoc to load content - this inherits the sandbox page's permissive CSP
   // which allows inline scripts. The sandbox attribute on the iframe provides
@@ -83,13 +93,21 @@ function renderContent(content: string, isInteractive: boolean): void {
   iframe.srcdoc = wrappedContent
 }
 
-function wrapContent(html: string, isInteractive: boolean): string {
+function wrapContent(html: string, isInteractive: boolean, theme?: 'light' | 'dark' | null): string {
   const trimmed = html.trim()
-  const hasDoctype = trimmed.toLowerCase().startsWith('<!doctype')
-  const hasHtml = trimmed.toLowerCase().startsWith('<html')
+  const lowerHtml = trimmed.toLowerCase()
+  const hasDoctype = lowerHtml.startsWith('<!doctype')
+  const hasHtmlTag = lowerHtml.includes('<html')
 
-  if (hasDoctype || hasHtml) {
-    // Content is already a full document
+  // Determine data-theme attribute
+  const themeAttr = theme ? ` data-theme="${theme}"` : ''
+
+  if (hasDoctype || hasHtmlTag) {
+    // Content is already a full document - inject theme attribute if we can
+    if (theme && hasHtmlTag) {
+      // Try to inject data-theme into existing <html> tag (works with DOCTYPE + html)
+      return html.replace(/<html([^>]*)>/i, `<html$1${themeAttr}>`)
+    }
     return html
   }
 
@@ -98,7 +116,7 @@ function wrapContent(html: string, isInteractive: boolean): string {
   // For non-interactive content, we add basic styling
   if (isInteractive) {
     return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en"${themeAttr}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -110,20 +128,23 @@ ${html}
 </html>`
   }
 
-  // Non-interactive content with styling
+  // Non-interactive content with theme-aware styling
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en"${themeAttr}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
+
+    /* Light theme (default) */
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 16px;
       line-height: 1.6;
       color: #1a1a1a;
+      background: #ffffff;
       padding: 24px;
       max-width: 800px;
       margin: 0 auto;
@@ -144,6 +165,43 @@ ${html}
     th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
     th { background: #f5f5f5; font-weight: 600; }
     hr { border: none; border-top: 1px solid #ddd; margin: 1.5em 0; }
+
+    /* Dark theme (explicit) */
+    html[data-theme="dark"] body {
+      color: #e5e5e5;
+      background: #1e1e2e;
+    }
+    html[data-theme="dark"] pre { background: #2a2a2a; }
+    html[data-theme="dark"] code { background: #333; }
+    html[data-theme="dark"] blockquote { background: #1a1a2e; color: #b0b0b0; }
+    html[data-theme="dark"] th { background: #2a2a2a; }
+    html[data-theme="dark"] th, html[data-theme="dark"] td { border-color: #444; }
+    html[data-theme="dark"] hr { border-color: #444; }
+
+    /* System preference fallback (when no explicit theme set) */
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme]) body {
+        color: #e5e5e5;
+        background: #1e1e2e;
+      }
+      html:not([data-theme]) pre { background: #2a2a2a; }
+      html:not([data-theme]) code { background: #333; }
+      html:not([data-theme]) blockquote { background: #1a1a2e; color: #b0b0b0; }
+      html:not([data-theme]) th { background: #2a2a2a; }
+      html:not([data-theme]) th, html:not([data-theme]) td { border-color: #444; }
+      html:not([data-theme]) hr { border-color: #444; }
+    }
+
+    /* Print styles - override dark theme for printing */
+    @media print {
+      body { background: white !important; color: #1a1a1a !important; }
+      pre { background: #f5f5f5 !important; }
+      code { background: #f0f0f0 !important; }
+      blockquote { background: #f8f8ff !important; color: #666 !important; }
+      th { background: #f5f5f5 !important; }
+      th, td { border-color: #ddd !important; }
+      hr { border-color: #ddd !important; }
+    }
   </style>
 </head>
 <body>

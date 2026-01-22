@@ -984,6 +984,7 @@ async function getModel(): Promise<LanguageModel | null> {
 - [x] **Hooks-based architecture** (Preact hooks for state management)
 - [x] **Service layer** (business logic separated from UI)
 - [x] Side panel UI with light/dark theme support (user preference)
+- [x] Transform content respects user's theme preference (sidepanel and fullscreen views)
 - [x] Bottom tab navigation (Add, Chat, Transform, Library, Settings)
 - [x] IndexedDB storage with StorageAdapter
 - [x] Notebook CRUD operations

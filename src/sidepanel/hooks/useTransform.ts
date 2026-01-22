@@ -14,6 +14,7 @@
 import { useCallback, useEffect } from 'preact/hooks'
 import DOMPurify from 'dompurify'
 import type { Source, TransformationType, BackgroundTransform, Message } from '../../types/index.ts'
+import { getPreference } from './useTheme'
 import {
   saveTransformation,
   deleteTransformation,
@@ -113,22 +114,28 @@ export interface UseTransformReturn {
 
 /**
  * Generate a full HTML page for viewing markdown transforms
+ * @param theme - 'light', 'dark', or null for system preference
  */
-function generateFullPageHtml(title: string, content: string): string {
+function generateFullPageHtml(title: string, content: string, theme: 'light' | 'dark' | null): string {
+  // Determine data-theme attribute
+  const themeAttr = theme ? ` data-theme="${theme}"` : ''
+
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en"${themeAttr}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)} - FolioLM</title>
   <style>
     * { box-sizing: border-box; }
+
+    /* Light theme (default) */
     body {
       margin: 0;
       padding: 24px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1a1a2e;
-      color: #e4e4e7;
+      background: #f9fafb;
+      color: #1f2937;
       min-height: 100vh;
       line-height: 1.6;
     }
@@ -139,17 +146,18 @@ function generateFullPageHtml(title: string, content: string): string {
     h1 {
       margin: 0 0 24px 0;
       font-size: 28px;
-      color: #fff;
-      border-bottom: 1px solid #3f3f5a;
+      color: #111827;
+      border-bottom: 1px solid #e5e7eb;
       padding-bottom: 12px;
     }
     .content {
-      background: #252538;
+      background: #ffffff;
       border-radius: 12px;
       padding: 32px;
+      border: 1px solid #e5e7eb;
     }
     .content h1, .content h2, .content h3, .content h4 {
-      color: #fff;
+      color: #111827;
       margin-top: 24px;
       margin-bottom: 12px;
     }
@@ -167,13 +175,13 @@ function generateFullPageHtml(title: string, content: string): string {
       margin-bottom: 8px;
     }
     .content code {
-      background: #1a1a2e;
+      background: #f3f4f6;
       padding: 2px 6px;
       border-radius: 4px;
       font-family: 'SF Mono', Monaco, 'Courier New', monospace;
     }
     .content pre {
-      background: #1a1a2e;
+      background: #f3f4f6;
       padding: 16px;
       border-radius: 8px;
       overflow-x: auto;
@@ -186,7 +194,7 @@ function generateFullPageHtml(title: string, content: string): string {
       border-left: 3px solid #8b5cf6;
       margin: 0 0 16px 0;
       padding-left: 16px;
-      color: #a1a1aa;
+      color: #6b7280;
     }
     .content table {
       width: 100%;
@@ -194,21 +202,101 @@ function generateFullPageHtml(title: string, content: string): string {
       margin: 16px 0;
     }
     .content th, .content td {
-      border: 1px solid #3f3f5a;
+      border: 1px solid #e5e7eb;
       padding: 12px;
       text-align: left;
     }
     .content th {
-      background: #1a1a2e;
+      background: #f9fafb;
     }
     .content a {
       color: #8b5cf6;
     }
+
+    /* Dark theme (explicit) */
+    html[data-theme="dark"] body {
+      background: #1a1a2e;
+      color: #e4e4e7;
+    }
+    html[data-theme="dark"] h1 {
+      color: #fff;
+      border-bottom-color: #3f3f5a;
+    }
+    html[data-theme="dark"] .content {
+      background: #252538;
+      border-color: #3f3f5a;
+    }
+    html[data-theme="dark"] .content h1,
+    html[data-theme="dark"] .content h2,
+    html[data-theme="dark"] .content h3,
+    html[data-theme="dark"] .content h4 {
+      color: #fff;
+    }
+    html[data-theme="dark"] .content code {
+      background: #1a1a2e;
+    }
+    html[data-theme="dark"] .content pre {
+      background: #1a1a2e;
+    }
+    html[data-theme="dark"] .content blockquote {
+      color: #a1a1aa;
+    }
+    html[data-theme="dark"] .content th,
+    html[data-theme="dark"] .content td {
+      border-color: #3f3f5a;
+    }
+    html[data-theme="dark"] .content th {
+      background: #1a1a2e;
+    }
+
+    /* System preference fallback (when no explicit theme set) */
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme]) body {
+        background: #1a1a2e;
+        color: #e4e4e7;
+      }
+      html:not([data-theme]) h1 {
+        color: #fff;
+        border-bottom-color: #3f3f5a;
+      }
+      html:not([data-theme]) .content {
+        background: #252538;
+        border-color: #3f3f5a;
+      }
+      html:not([data-theme]) .content h1,
+      html:not([data-theme]) .content h2,
+      html:not([data-theme]) .content h3,
+      html:not([data-theme]) .content h4 {
+        color: #fff;
+      }
+      html:not([data-theme]) .content code {
+        background: #1a1a2e;
+      }
+      html:not([data-theme]) .content pre {
+        background: #1a1a2e;
+      }
+      html:not([data-theme]) .content blockquote {
+        color: #a1a1aa;
+      }
+      html:not([data-theme]) .content th,
+      html:not([data-theme]) .content td {
+        border-color: #3f3f5a;
+      }
+      html:not([data-theme]) .content th {
+        background: #1a1a2e;
+      }
+    }
+
     @media print {
-      body { background: white; color: black; }
+      body { background: white !important; color: black !important; }
       .container { max-width: 100%; }
-      .content { background: white; border: 1px solid #ccc; }
-      .content h1, .content h2, .content h3, .content h4 { color: black; }
+      .content { background: white !important; border: 1px solid #ccc !important; }
+      .content h1, .content h2, .content h3, .content h4 { color: black !important; }
+      .content code, .content pre { background: #f3f4f6 !important; }
+      .content th { background: #f9fafb !important; }
+      .content th, .content td { border-color: #e5e7eb !important; }
+      .content blockquote { color: #6b7280 !important; }
+      h1 { color: #111827 !important; border-bottom-color: #e5e7eb !important; }
     }
   </style>
 </head>
@@ -596,11 +684,15 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
           }
 
           // Tab is ready, send content via chrome.tabs.sendMessage
+          // Include theme preference for consistent styling
+          const themePreference = getPreference()
+          const theme: 'light' | 'dark' | null = themePreference === 'system' ? null : themePreference
           void chrome.tabs.sendMessage(tabId, {
             type: 'FULLSCREEN_CONTENT',
             title: result.title,
             content: result.content,
             isInteractive: true,
+            theme,
           })
 
           // Clean up listener
@@ -621,7 +713,10 @@ export function useTransform(notebookId: string | null = null): UseTransformRetu
       const sanitizedContent = DOMPurify.sanitize(renderedContent, {
         USE_PROFILES: { html: true },
       })
-      let fullHtml = generateFullPageHtml(result.title, sanitizedContent)
+      // Include theme preference for consistent styling
+      const themePreference = getPreference()
+      const theme: 'light' | 'dark' | null = themePreference === 'system' ? null : themePreference
+      let fullHtml = generateFullPageHtml(result.title, sanitizedContent, theme)
 
       // Sanitize the entire document
       fullHtml = DOMPurify.sanitize(fullHtml, {
