@@ -288,10 +288,15 @@ function generateFullPageHtml(title: string, content: string, theme: 'light' | '
     }
 
     @media print {
-      body { background: white; color: black; }
+      body { background: white !important; color: black !important; }
       .container { max-width: 100%; }
-      .content { background: white; border: 1px solid #ccc; }
-      .content h1, .content h2, .content h3, .content h4 { color: black; }
+      .content { background: white !important; border: 1px solid #ccc !important; }
+      .content h1, .content h2, .content h3, .content h4 { color: black !important; }
+      .content code, .content pre { background: #f3f4f6 !important; }
+      .content th { background: #f9fafb !important; }
+      .content th, .content td { border-color: #e5e7eb !important; }
+      .content blockquote { color: #6b7280 !important; }
+      h1 { color: #111827 !important; border-bottom-color: #e5e7eb !important; }
     }
   </style>
 </head>

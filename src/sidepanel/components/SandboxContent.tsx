@@ -8,7 +8,7 @@
 import { useRef, useEffect, useState } from 'preact/hooks'
 import { SandboxRenderer } from '../../lib/sandbox-renderer'
 import { renderMarkdown } from '../../lib/markdown-renderer'
-import { getPreference, onThemeChange } from '../hooks/useTheme'
+import { onThemeChange, onThemeInitialized } from '../hooks/useTheme'
 import type { ThemePreference } from '../../types/index'
 
 interface SandboxContentProps {
@@ -62,10 +62,6 @@ export function SandboxContent(props: SandboxContentProps) {
       try {
         await renderer.waitForReady()
 
-        // Apply the current theme to the sandbox
-        const currentPreference = getPreference()
-        renderer.setTheme(getThemeForSandbox(currentPreference))
-
         if (isInteractive) {
           // Interactive content (quiz, flashcards, etc.)
           await renderer.renderInteractive(content)
@@ -87,8 +83,16 @@ export function SandboxContent(props: SandboxContentProps) {
 
     void renderContent()
 
+    // Wait for theme initialization before applying theme to avoid race condition
+    // where getPreference() returns default 'system' before storage is loaded
+    const unsubscribeInit = onThemeInitialized((initialPreference) => {
+      if (rendererRef.current) {
+        rendererRef.current.setTheme(getThemeForSandbox(initialPreference))
+      }
+    })
+
     // Subscribe to theme changes to update the sandbox
-    const unsubscribe = onThemeChange((preference) => {
+    const unsubscribeChange = onThemeChange((preference) => {
       if (rendererRef.current) {
         rendererRef.current.setTheme(getThemeForSandbox(preference))
       }
@@ -96,7 +100,8 @@ export function SandboxContent(props: SandboxContentProps) {
 
     // Cleanup on unmount
     return () => {
-      unsubscribe()
+      unsubscribeInit()
+      unsubscribeChange()
       if (rendererRef.current) {
         rendererRef.current.destroy()
         rendererRef.current = null

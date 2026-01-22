@@ -95,16 +95,17 @@ function renderContent(content: string, isInteractive: boolean, theme?: 'light' 
 
 function wrapContent(html: string, isInteractive: boolean, theme?: 'light' | 'dark' | null): string {
   const trimmed = html.trim()
-  const hasDoctype = trimmed.toLowerCase().startsWith('<!doctype')
-  const hasHtml = trimmed.toLowerCase().startsWith('<html')
+  const lowerHtml = trimmed.toLowerCase()
+  const hasDoctype = lowerHtml.startsWith('<!doctype')
+  const hasHtmlTag = lowerHtml.includes('<html')
 
   // Determine data-theme attribute
   const themeAttr = theme ? ` data-theme="${theme}"` : ''
 
-  if (hasDoctype || hasHtml) {
+  if (hasDoctype || hasHtmlTag) {
     // Content is already a full document - inject theme attribute if we can
-    if (theme && hasHtml) {
-      // Try to inject data-theme into existing <html> tag
+    if (theme && hasHtmlTag) {
+      // Try to inject data-theme into existing <html> tag (works with DOCTYPE + html)
       return html.replace(/<html([^>]*)>/i, `<html$1${themeAttr}>`)
     }
     return html
@@ -189,6 +190,17 @@ ${html}
       html:not([data-theme]) th { background: #2a2a2a; }
       html:not([data-theme]) th, html:not([data-theme]) td { border-color: #444; }
       html:not([data-theme]) hr { border-color: #444; }
+    }
+
+    /* Print styles - override dark theme for printing */
+    @media print {
+      body { background: white !important; color: #1a1a1a !important; }
+      pre { background: #f5f5f5 !important; }
+      code { background: #f0f0f0 !important; }
+      blockquote { background: #f8f8ff !important; color: #666 !important; }
+      th { background: #f5f5f5 !important; }
+      th, td { border-color: #ddd !important; }
+      hr { border-color: #ddd !important; }
     }
   </style>
 </head>
