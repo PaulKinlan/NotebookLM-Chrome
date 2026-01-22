@@ -23,6 +23,7 @@ interface FullscreenContentMessage {
   title: string
   content: string
   isInteractive: boolean
+  theme?: 'light' | 'dark' | null
 }
 
 // Message types for postMessage communication (to/from sandbox iframe)
@@ -35,6 +36,7 @@ interface SandboxContentMessage {
   title: string
   content: string
   isInteractive: boolean
+  theme?: 'light' | 'dark' | null
 }
 
 // Initialize bridge
@@ -103,6 +105,15 @@ function initializeBridge(): void {
     }
     document.title = `${data.title} - FolioLM`
 
+    // Apply theme to wrapper page
+    if (data.theme === null || data.theme === undefined) {
+      // System preference - remove attribute to let CSS media queries handle it
+      document.documentElement.removeAttribute('data-theme')
+    }
+    else {
+      document.documentElement.setAttribute('data-theme', data.theme)
+    }
+
     // Forward to sandbox or store for later
     if (sandboxReady) {
       forwardContentToSandbox(sandboxFrame, data)
@@ -128,5 +139,6 @@ function forwardContentToSandbox(
     title: content.title,
     content: content.content,
     isInteractive: content.isInteractive,
+    theme: content.theme,
   } satisfies SandboxContentMessage, '*')
 }
