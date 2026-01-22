@@ -4925,3 +4925,30 @@ details.suggested-links-section[open] .suggested-links-chevron {
   color: var(--success);
 }
 
+/* ============================================================================
+   About Tab
+   ============================================================================ */
+
+.about-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.about-contact-item a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.about-contact-item a:hover {
+  text-decoration: underline;
+}
+
+.about-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+

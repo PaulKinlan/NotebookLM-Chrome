@@ -175,7 +175,8 @@ src/
 │   ├── components/      # Preact UI components
 │   │   ├── Header.tsx, AddTab.tsx, ChatTab.tsx, etc.
 │   │   ├── TransformConfigPopover.tsx
-│   │   └── DropZone.tsx  # Drag-and-drop overlay for adding sources
+│   │   ├── DropZone.tsx  # Drag-and-drop overlay for adding sources
+│   │   └── AboutTab.tsx  # About page with contact and support info
 │   └── styles.css       # UI styling
 └── types/               # TypeScript interfaces
     └── index.ts         # Notebook, Source, ChatMessage, Credential, ModelConfig, etc.

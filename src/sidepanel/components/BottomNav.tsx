@@ -2,7 +2,7 @@
  * BottomNav component - Bottom navigation bar with Add, Chat, and Transform tabs
  */
 
-type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings'
+import type { TabName } from '../store'
 
 interface BottomNavProps {
   activeTab: TabName

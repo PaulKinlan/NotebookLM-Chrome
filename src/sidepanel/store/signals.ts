@@ -62,10 +62,10 @@ export const hasNotebook = computed(() => currentNotebookId.value !== null)
 // Navigation Signals
 // ============================================================================
 
-export type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings'
+export type TabName = 'add' | 'chat' | 'transform' | 'library' | 'settings' | 'about'
 
 /** Valid tab names for type checking */
-const validTabs: TabName[] = ['add', 'chat', 'transform', 'library', 'settings']
+const validTabs: TabName[] = ['add', 'chat', 'transform', 'library', 'settings', 'about']
 
 function isValidTab(value: unknown): value is TabName {
   return typeof value === 'string' && validTabs.includes(value as TabName)

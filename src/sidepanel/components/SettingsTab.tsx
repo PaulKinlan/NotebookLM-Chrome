@@ -6,7 +6,7 @@ import { useProviderProfiles } from '../hooks/useProviderProfiles'
 import { useState, useEffect } from 'preact/hooks'
 import { requestPermission, revokePermission } from '../../lib/permissions'
 import { getProviderConfigById } from '../../lib/provider-registry'
-import { showNotification } from '../store'
+import { showNotification, navigateToTab } from '../store'
 import { ProfileForm } from './ProfileForm.tsx'
 import { UsageStatsModal } from './UsageStatsModal.tsx'
 
@@ -405,6 +405,16 @@ export function SettingsTab(props: SettingsTabProps) {
         <h3 className="section-title">Data Management</h3>
         <p className="setting-hint">Clear all notebooks, sources, chat history, and AI profiles. This action cannot be undone.</p>
         <button id="clear-all-data-btn" className="btn btn-danger btn-small" onClick={onClearAllData}>Clear All Data</button>
+      </div>
+
+      <div className="settings-group">
+        <h3 className="section-title">About</h3>
+        <button
+          className="btn btn-small btn-outline"
+          onClick={() => navigateToTab('about')}
+        >
+          About FolioLM
+        </button>
       </div>
 
       <UsageStatsModal

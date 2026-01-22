@@ -26,6 +26,7 @@ import { ChatTab } from './components/ChatTab'
 import { TransformTab } from './components/TransformTab'
 import { LibraryTab } from './components/LibraryTab'
 import { SettingsTab } from './components/SettingsTab'
+import { AboutTab } from './components/AboutTab'
 import { BottomNav } from './components/BottomNav'
 import { Fab } from './components/Fab'
 import { PickerModal, NotebookDialog, ConfirmDialog, AddNoteDialog, ImagePickerModal } from './components/Modals'
@@ -784,6 +785,8 @@ export function App(props: AppProps) {
           active={activeTab.value === 'settings'}
           onClearAllData={() => void handleClearAllData()}
         />
+
+        <AboutTab active={activeTab.value === 'about'} />
       </main>
 
       <BottomNav activeTab={activeTab.value} onTabClick={handleTabClick} />
