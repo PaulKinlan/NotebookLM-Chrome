@@ -152,43 +152,84 @@
       margin-right: 0.5em;
     }
 
-    /* Dark mode support via CSS custom properties */
+    /* Dark mode support via data-theme attribute (explicit user preference) */
+    html[data-theme="dark"] body {
+      color: #e5e5e5;
+      background: #1e1e2e;
+    }
+
+    html[data-theme="dark"] pre {
+      background: #2a2a2a;
+    }
+
+    html[data-theme="dark"] code {
+      background: #333;
+    }
+
+    html[data-theme="dark"] blockquote {
+      background: #1a1a2e;
+      color: #b0b0b0;
+    }
+
+    html[data-theme="dark"] th {
+      background: #2a2a2a;
+    }
+
+    html[data-theme="dark"] th,
+    html[data-theme="dark"] td {
+      border-color: #444;
+    }
+
+    html[data-theme="dark"] tr:nth-child(even) {
+      background: #1f1f1f;
+    }
+
+    html[data-theme="dark"] tr:hover {
+      background: #2a2a2a;
+    }
+
+    html[data-theme="dark"] hr {
+      border-color: #444;
+    }
+
+    /* Fallback: system preference when no explicit theme is set */
     @media (prefers-color-scheme: dark) {
-      body {
+      html:not([data-theme]) body {
         color: #e5e5e5;
         background: #1e1e2e;
       }
 
-      pre {
+      html:not([data-theme]) pre {
         background: #2a2a2a;
       }
 
-      code {
+      html:not([data-theme]) code {
         background: #333;
       }
 
-      blockquote {
+      html:not([data-theme]) blockquote {
         background: #1a1a2e;
         color: #b0b0b0;
       }
 
-      th {
+      html:not([data-theme]) th {
         background: #2a2a2a;
       }
 
-      th, td {
+      html:not([data-theme]) th,
+      html:not([data-theme]) td {
         border-color: #444;
       }
 
-      tr:nth-child(even) {
+      html:not([data-theme]) tr:nth-child(even) {
         background: #1f1f1f;
       }
 
-      tr:hover {
+      html:not([data-theme]) tr:hover {
         background: #2a2a2a;
       }
 
-      hr {
+      html:not([data-theme]) hr {
         border-color: #444;
       }
     }
@@ -213,12 +254,22 @@
       border-radius: 3px;
     }
 
+    /* Dark mode scrollbar - explicit theme */
+    html[data-theme="dark"] ::-webkit-scrollbar-track {
+      background: #2a2a2a;
+    }
+
+    html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+      background: #444;
+    }
+
+    /* Fallback: system preference when no explicit theme */
     @media (prefers-color-scheme: dark) {
-      ::-webkit-scrollbar-track {
+      html:not([data-theme]) ::-webkit-scrollbar-track {
         background: #2a2a2a;
       }
 
-      ::-webkit-scrollbar-thumb {
+      html:not([data-theme]) ::-webkit-scrollbar-thumb {
         background: #444;
       }
     }

@@ -8,6 +8,8 @@
 import { useRef, useEffect, useState } from 'preact/hooks'
 import { SandboxRenderer } from '../../lib/sandbox-renderer'
 import { renderMarkdown } from '../../lib/markdown-renderer'
+import { onThemeChange, onThemeInitialized } from '../hooks/useTheme'
+import type { ThemePreference } from '../../types/index'
 
 interface SandboxContentProps {
   /** The content to render */
@@ -44,6 +46,14 @@ export function SandboxContent(props: SandboxContentProps) {
     const renderer = new SandboxRenderer(container)
     rendererRef.current = renderer
 
+    // Helper to get the theme value to send to sandbox
+    const getThemeForSandbox = (preference: ThemePreference): 'light' | 'dark' | null => {
+      if (preference === 'system') {
+        return null // Let the sandbox use its CSS media queries
+      }
+      return preference
+    }
+
     // Render content
     const renderContent = async () => {
       setLoading(true)
@@ -73,8 +83,25 @@ export function SandboxContent(props: SandboxContentProps) {
 
     void renderContent()
 
+    // Wait for theme initialization before applying theme to avoid race condition
+    // where getPreference() returns default 'system' before storage is loaded
+    const unsubscribeInit = onThemeInitialized((initialPreference) => {
+      if (rendererRef.current) {
+        rendererRef.current.setTheme(getThemeForSandbox(initialPreference))
+      }
+    })
+
+    // Subscribe to theme changes to update the sandbox
+    const unsubscribeChange = onThemeChange((preference) => {
+      if (rendererRef.current) {
+        rendererRef.current.setTheme(getThemeForSandbox(preference))
+      }
+    })
+
     // Cleanup on unmount
     return () => {
+      unsubscribeInit()
+      unsubscribeChange()
       if (rendererRef.current) {
         rendererRef.current.destroy()
         rendererRef.current = null
