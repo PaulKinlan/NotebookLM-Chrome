@@ -720,6 +720,12 @@ Shared modal for tabs, bookmarks, history, and media selection:
 - API key input (hidden for Chrome Built-in)
 - Test connection button
 - Permission toggles (Tabs, Tab Groups, Bookmarks, History)
+- **About** - Link to About page with contact info and support links
+
+### About Page
+- **FolioLM** - Brief product description
+- **Contact** - Email contact (paul@aifoc.us)
+- **Support** - Link to GitHub issues for bug reports and feature requests
 
 ---
 
@@ -800,6 +806,7 @@ src/
 │   │   ├── sources.ts     # Source import functions
 │   │   └── ui.ts         # UI helpers
 │   ├── components/       # Preact UI components
+│   │   └── AboutTab.tsx  # About page with contact and support info
 │   └── styles.css        # Dark theme CSS
 └── types/
     └── index.ts          # TypeScript type definitions
