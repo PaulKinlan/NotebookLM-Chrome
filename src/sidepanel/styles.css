@@ -1832,8 +1832,13 @@ details.suggested-links-section[open] .suggested-links-chevron {
 
 .notebooks-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 8px;
+}
+
+/* Empty state should span all grid columns */
+.notebooks-list > .empty-state {
+  grid-column: 1 / -1;
 }
 
 .notebook-item {
@@ -1865,17 +1870,24 @@ details.suggested-links-section[open] .suggested-links-chevron {
 
 .notebook-info {
   flex: 1;
+  min-width: 0; /* Allow text truncation in flex child */
 }
 
 .notebook-name {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .notebook-meta {
   font-size: 12px;
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .notebook-meta .meta-separator {
