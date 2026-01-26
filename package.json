@@ -62,7 +62,7 @@
     "@types/mozilla__readability": "^0.4.2",
     "@types/node": "^25.0.9",
     "@types/turndown": "^5.0.5",
-    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.53.0",
     "@vitest/coverage-v8": "^4.0.17",
     "@vitest/ui": "^4.0.16",
