@@ -1,5 +1,75 @@
 import { useEffect, useRef } from 'preact/hooks'
 
+const FOCUSABLE_SELECTORS = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS)).filter(
+    element => !element.hasAttribute('aria-hidden'),
+  )
+}
+
+function useModalFocusTrap(
+  isOpen: boolean,
+  modalRef: { current: HTMLElement | null },
+  onClose: () => void,
+): void {
+  useEffect(() => {
+    if (!isOpen) return
+    const modal = modalRef.current
+    if (!modal) return
+
+    const previousFocus = document.activeElement as HTMLElement | null
+    const focusTarget = modal.querySelector<HTMLElement>('[data-autofocus="true"]')
+      ?? getFocusableElements(modal)[0]
+    focusTarget?.focus()
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+
+      if (event.key !== 'Tab') {
+        return
+      }
+
+      if (!modal.contains(document.activeElement)) {
+        return
+      }
+
+      const focusable = getFocusableElements(modal)
+      if (focusable.length === 0) return
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      }
+      else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      previousFocus?.focus()
+    }
+  }, [isOpen, onClose])
+}
+
 interface NotebookDialogProps {
   isOpen: boolean
   mode: 'create' | 'edit'
@@ -200,6 +270,9 @@ export function PickerModal(props: PickerModalProps) {
     onDeselectAll,
     onAddSelected,
   } = props
+  const modalRef = useRef<HTMLDivElement>(null)
+
+  useModalFocusTrap(isOpen, modalRef, onClose)
 
   if (!isOpen) {
     return null
@@ -208,10 +281,17 @@ export function PickerModal(props: PickerModalProps) {
   return (
     <div id="picker-modal" className="modal">
       <div className="modal-backdrop" onClick={onClose}></div>
-      <div className="modal-content">
+      <div
+        className="modal-content"
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="picker-title"
+        tabIndex={-1}
+      >
         <div className="modal-header">
           <h3 id="picker-title">{title}</h3>
-          <button id="picker-close" className="icon-btn" onClick={onClose}>
+          <button id="picker-close" className="icon-btn" onClick={onClose} aria-label="Close">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -229,6 +309,7 @@ export function PickerModal(props: PickerModalProps) {
             placeholder="Search..."
             value={searchQuery}
             onInput={e => onSearchChange((e.target as HTMLInputElement).value)}
+            data-autofocus="true"
           />
         </div>
         <div className="picker-select-actions">
@@ -255,6 +336,16 @@ export function PickerModal(props: PickerModalProps) {
                       key={item.id}
                       className={`picker-item ${item.selected ? 'selected' : ''}`}
                       onClick={() => onToggleItem(item.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          onToggleItem(item.id)
+                        }
+                      }}
+                      role="checkbox"
+                      aria-checked={item.selected}
+                      aria-label={item.title}
+                      tabIndex={0}
                     >
                       <div className="picker-checkbox">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -449,6 +540,9 @@ export function ImagePickerModal(props: ImagePickerModalProps) {
     onDeselectAll,
     onAddSelected,
   } = props
+  const modalRef = useRef<HTMLDivElement>(null)
+
+  useModalFocusTrap(isOpen, modalRef, onClose)
 
   if (!isOpen) {
     return null
@@ -457,10 +551,17 @@ export function ImagePickerModal(props: ImagePickerModalProps) {
   return (
     <div id="image-picker-modal" className="modal">
       <div className="modal-backdrop" onClick={onClose}></div>
-      <div className="modal-content modal-content-large">
+      <div
+        className="modal-content modal-content-large"
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="image-picker-title"
+        tabIndex={-1}
+      >
         <div className="modal-header">
-          <h3>Select Images from Page</h3>
-          <button className="icon-btn" onClick={onClose}>
+          <h3 id="image-picker-title">Select Images from Page</h3>
+          <button className="icon-btn" onClick={onClose} aria-label="Close" data-autofocus="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -492,6 +593,16 @@ export function ImagePickerModal(props: ImagePickerModalProps) {
                       className={`image-picker-item ${image.selected ? 'selected' : ''}`}
                       onClick={() => onToggleImage(image.src)}
                       title={image.alt || 'Image'}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          onToggleImage(image.src)
+                        }
+                      }}
+                      role="checkbox"
+                      aria-checked={image.selected}
+                      aria-label={image.alt || 'Image'}
+                      tabIndex={0}
                     >
                       <div className="image-picker-checkbox">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">

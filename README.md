@@ -13,6 +13,7 @@ A browser extension that helps you collect sources from tabs, bookmarks, and his
 - **Flexible Configuration**: Named credentials, per-notebook model overrides, and custom endpoints
 - **Usage Analytics**: Track token usage and estimated costs per AI profile with visual charts
 - **Light/Dark Mode**: Choose between light, dark, or system-preference themes
+- **Accessible UI**: Keyboard navigation and focus trapping in selection modals
 - **Transformations**: Convert your sources into 19 different formats:
   - **Educational**: Quiz, Flashcards, Study Guide
   - **Creative**: Podcast Script, Email, Slide Deck

@@ -1020,6 +1020,7 @@ async function getModel(): Promise<LanguageModel | null> {
 - [x] Basic markdown rendering in chat responses
 - [x] Keyboard shortcuts for quick actions (Ctrl+Shift+F/S/N/E)
 - [x] Source refresh (individual and batch) to re-extract content from URLs
+- [x] Accessibility: keyboard navigation and focus trapping for picker modals
 - [x] **Unit tests** (useDialog hook with promise resolution and listener cleanup)
 
 ### Phase 2 - PDF Support (P1)

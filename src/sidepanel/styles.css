@@ -2619,6 +2619,12 @@ details.suggested-links-section[open] .suggested-links-chevron {
   background: var(--bg-hover);
 }
 
+.picker-item:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+  background: var(--bg-hover);
+}
+
 .picker-item.selected {
   background: var(--accent-muted);
 }
@@ -4830,6 +4836,12 @@ details.suggested-links-section[open] .suggested-links-chevron {
   box-shadow: 0 0 0 2px var(--accent-muted);
 }
 
+.image-picker-item:focus-visible {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-muted);
+  outline: none;
+}
+
 .image-picker-item img {
   width: 100%;
   height: 100%;
@@ -4963,4 +4975,3 @@ details.suggested-links-section[open] .suggested-links-chevron {
   flex-shrink: 0;
   color: var(--text-secondary);
 }
-

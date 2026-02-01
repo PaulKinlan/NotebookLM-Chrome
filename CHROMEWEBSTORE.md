@@ -24,6 +24,8 @@ FolioLM helps you collect sources from tabs, bookmarks, and history, then query 
 
 • Source Collection - Gather content from open tabs, bookmarks, browser history, custom notes, or images from web pages
 
+• Accessible UI - Keyboard navigation and focus trapping in selection modals
+
 • AI-Powered Chat - Query your collected sources with natural language, with citations back to original content
 
 • Multi-Provider Support - 16+ AI providers including Anthropic, OpenAI, Google, Groq, Mistral, and Chrome Built-in AI
@@ -129,6 +131,9 @@ Recommended screenshots for store listing:
 ---
 
 ## Version History
+
+### v0.2.3
+- Accessibility: Keyboard navigable selection modals with focus trapping
 
 ### v0.2.2
 - Notebook rename: Edit folio names directly from the Library list

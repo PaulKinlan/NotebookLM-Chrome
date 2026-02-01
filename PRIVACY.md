@@ -1,6 +1,6 @@
 # Privacy Policy for FolioLM
 
-**Last Updated:** January 21, 2026
+**Last Updated:** February 1, 2026
 
 ## Overview
 
