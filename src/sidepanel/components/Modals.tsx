@@ -4,8 +4,10 @@ interface NotebookDialogProps {
   isOpen: boolean
   mode: 'create' | 'edit'
   initialName: string
+  notebookId: string | null
   onClose: () => void
   onCreateNotebook: (name: string) => Promise<unknown>
+  onRenameNotebook: (id: string, name: string) => Promise<void>
 }
 
 interface ConfirmDialogProps {
@@ -23,7 +25,7 @@ interface ConfirmDialogProps {
  * Creates notebooks through the onCreateNotebook callback prop.
  */
 export function NotebookDialog(props: NotebookDialogProps) {
-  const { isOpen, mode, initialName, onClose, onCreateNotebook } = props
+  const { isOpen, mode, initialName, notebookId, onClose, onCreateNotebook, onRenameNotebook } = props
   const dialogRef = useRef<HTMLDialogElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -46,7 +48,7 @@ export function NotebookDialog(props: NotebookDialogProps) {
 
   // Set initial name value
   useEffect(() => {
-    if (inputRef.current && initialName) {
+    if (inputRef.current) {
       inputRef.current.value = initialName
     }
   }, [initialName])
@@ -68,9 +70,13 @@ export function NotebookDialog(props: NotebookDialogProps) {
         }, 0)
       })
     }
-    // Edit mode not implemented yet
+    if (mode === 'edit' && notebookId) {
+      await onRenameNotebook(notebookId, name)
+    }
 
-    inputRef.current!.value = ''
+    if (inputRef.current) {
+      inputRef.current.value = ''
+    }
     onClose()
   }
 

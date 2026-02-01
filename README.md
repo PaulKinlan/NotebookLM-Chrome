@@ -7,6 +7,7 @@ A browser extension that helps you collect sources from tabs, bookmarks, and his
 ## Features
 
 - **Source Collection**: Gather content from open tabs, bookmarks, browser history, or paste text manually
+- **Notebook Management**: Create, rename, and delete folios to organize sources
 - **AI-Powered Chat**: Query your collected sources with natural language, with citations back to original content
 - **Multi-Provider Support**: 16+ AI providers including Anthropic, OpenAI, Google, Groq, Mistral, and Chrome Built-in AI
 - **Flexible Configuration**: Named credentials, per-notebook model overrides, and custom endpoints

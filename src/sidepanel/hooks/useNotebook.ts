@@ -22,6 +22,7 @@ import {
   deleteNotebook as deleteNb,
   createNotebook as createNb,
   getSourceCountByNotebook,
+  getNotebook,
 } from '../../lib/storage.ts'
 
 export interface UseNotebookReturn {
@@ -37,6 +38,8 @@ export interface UseNotebookReturn {
   createNotebook: (name: string) => Promise<Notebook>
   /** Delete a notebook */
   deleteNotebook: (id: string) => Promise<void>
+  /** Rename a notebook */
+  renameNotebook: (id: string, name: string) => Promise<void>
   /** Reload notebooks list */
   reloadNotebooks: () => Promise<void>
 }
@@ -126,6 +129,29 @@ export function useNotebook(): UseNotebookReturn {
     })
   }, [loadNotebooks])
 
+  const renameNotebook = useCallback(async (id: string, name: string): Promise<void> => {
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      return
+    }
+
+    const existing = await getNotebook(id)
+    if (!existing) {
+      return
+    }
+
+    await saveNotebook({
+      ...existing,
+      name: trimmedName,
+    })
+
+    await loadNotebooks()
+
+    chrome.runtime.sendMessage({ type: 'REBUILD_CONTEXT_MENUS' }).catch(() => {
+      // Background script may not be ready yet
+    })
+  }, [loadNotebooks])
+
   const reloadNotebooks = async (): Promise<void> => {
     await loadNotebooks()
     await loadActiveNotebook()
@@ -138,6 +164,7 @@ export function useNotebook(): UseNotebookReturn {
     selectNotebook,
     createNotebook,
     deleteNotebook,
+    renameNotebook,
     reloadNotebooks,
   }
 }

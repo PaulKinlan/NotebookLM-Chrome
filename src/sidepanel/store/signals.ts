@@ -207,6 +207,7 @@ export interface NotebookDialogState {
   isOpen: boolean
   mode: 'create' | 'edit'
   initialName: string
+  notebookId: string | null
 }
 
 // ============================================================================
@@ -237,6 +238,7 @@ export const notebookDialog = signal<NotebookDialogState>({
   isOpen: false,
   mode: 'create',
   initialName: '',
+  notebookId: null,
 })
 
 /** Confirm dialog state */

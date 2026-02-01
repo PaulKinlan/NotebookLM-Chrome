@@ -94,6 +94,7 @@ export function App(props: AppProps) {
   // Dialog hooks
   const {
     openCreateNotebookDialog,
+    openEditNotebookDialog,
     showConfirmDialog,
     closeNotebookDialog,
     closeConfirmDialog,
@@ -101,7 +102,7 @@ export function App(props: AppProps) {
   } = useDialog()
 
   // Notebook hooks (keep for now, will be refactored)
-  const { selectNotebook, createNotebook, deleteNotebook } = useNotebook()
+  const { selectNotebook, createNotebook, deleteNotebook, renameNotebook } = useNotebook()
   const { removeSource } = useSources(currentNotebookId.value)
 
   // Chat hooks
@@ -764,11 +765,7 @@ export function App(props: AppProps) {
           onSelectNotebook={notebookId => void handleNotebookChange(notebookId)}
           onCreateNotebook={handleNewNotebook}
           onEditNotebook={(notebook) => {
-            notebookDialog.value = {
-              isOpen: true,
-              mode: 'edit',
-              initialName: notebook.name,
-            }
+            openEditNotebookDialog(notebook.id, notebook.name)
           }}
           onDeleteNotebook={(notebookId) => {
             showConfirmDialog(
@@ -811,8 +808,10 @@ export function App(props: AppProps) {
         isOpen={notebookDialog.value.isOpen}
         mode={notebookDialog.value.mode}
         initialName={notebookDialog.value.initialName}
+        notebookId={notebookDialog.value.notebookId}
         onClose={closeNotebookDialog}
         onCreateNotebook={handleCreateNotebookWithPendingAction}
+        onRenameNotebook={renameNotebook}
       />
       <ConfirmDialog
         isOpen={confirmDialog.value?.isOpen ?? false}

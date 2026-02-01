@@ -1,6 +1,6 @@
 # Chrome Web Store Listing
 
-**Last Updated:** January 21, 2026
+**Last Updated:** February 1, 2026
 
 This file contains all information needed for the Chrome Web Store listing. Update this file whenever the product changes, especially for permission changes, new features, or description updates.
 
@@ -19,6 +19,8 @@ Collect and query content from tabs, bookmarks, and history - your AI research c
 FolioLM helps you collect sources from tabs, bookmarks, and history, then query and transform that content using AI.
 
 **Features:**
+
+• Notebook Management - Create, rename, and delete folios to organize your research
 
 • Source Collection - Gather content from open tabs, bookmarks, browser history, custom notes, or images from web pages
 
@@ -127,6 +129,10 @@ Recommended screenshots for store listing:
 ---
 
 ## Version History
+
+### v0.2.2
+- Notebook rename: Edit folio names directly from the Library list
+- Streamlined Add tab layout (removed unused "View All" link)
 
 ### v0.2.1
 - Background transformations: Transformations now continue running in the background service worker even when the side panel is closed

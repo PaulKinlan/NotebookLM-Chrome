@@ -468,6 +468,33 @@ describe('useNotebook', () => {
     })
   })
 
+  describe('renameNotebook', () => {
+    it('renames a notebook and refreshes the list', async () => {
+      const notebook: Notebook = {
+        id: 'nb-1',
+        name: 'Original Name',
+        syncStatus: 'local',
+        createdAt: Date.now() - 10000,
+        updatedAt: Date.now() - 5000,
+      }
+      mockNotebooks.set(notebook.id, notebook)
+
+      const { result } = renderHook(() => useNotebook())
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      await act(async () => {
+        await result.current.renameNotebook('nb-1', 'Renamed Notebook')
+      })
+
+      expect(mockNotebooks.get('nb-1')?.name).toBe('Renamed Notebook')
+      expect(result.current.notebooks[0].name).toBe('Renamed Notebook')
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'REBUILD_CONTEXT_MENUS' })
+    })
+  })
+
   describe('reloadNotebooks', () => {
     it('reloads the notebooks list', async () => {
       const notebook1: Notebook = {

@@ -44,6 +44,7 @@ Users frequently encounter valuable information across multiple web pages but la
 - Each notebook contains multiple sources
 - Notebooks persist in IndexedDB (with sync hooks for future server sync)
 - Active notebook tracked across sessions
+- Rename notebooks from the Library list (edit action updates context menus)
 
 **Acceptance Criteria:**
 - [x] User can create a new notebook with a custom name
@@ -994,7 +995,7 @@ async function getModel(): Promise<LanguageModel | null> {
 - [x] Transform content respects user's theme preference (sidepanel and fullscreen views)
 - [x] Bottom tab navigation (Add, Chat, Transform, Library, Settings)
 - [x] IndexedDB storage with StorageAdapter
-- [x] Notebook CRUD operations
+- [x] Notebook CRUD operations (including rename via Library edit dialog)
 - [x] Source management (add, remove, list)
 - [x] Content extraction with Turndown
 - [x] Fallback inline content extraction

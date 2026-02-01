@@ -16,7 +16,7 @@ export interface UseDialogReturn {
   /** Open notebook dialog for creating */
   openCreateNotebookDialog: () => void
   /** Open notebook dialog for editing */
-  openEditNotebookDialog: (name: string) => void
+  openEditNotebookDialog: (id: string, name: string) => void
   /** Close notebook dialog */
   closeNotebookDialog: () => void
   /** Show confirm dialog */
@@ -40,14 +40,16 @@ export function useDialog(): UseDialogReturn {
       isOpen: true,
       mode: 'create',
       initialName: '',
+      notebookId: null,
     }
   }, [])
 
-  const openEditNotebookDialog = useCallback((name: string) => {
+  const openEditNotebookDialog = useCallback((id: string, name: string) => {
     notebookDialog.value = {
       isOpen: true,
       mode: 'edit',
       initialName: name,
+      notebookId: id,
     }
   }, [])
 
@@ -56,6 +58,7 @@ export function useDialog(): UseDialogReturn {
       isOpen: false,
       mode: 'create',
       initialName: '',
+      notebookId: null,
     }
   }, [])
 

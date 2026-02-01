@@ -163,7 +163,6 @@ export function AddTab(props: AddTabProps) {
 
       <h3 className="section-title">
         Recent Sources
-        <a href="#" id="view-all-sources" className="link">View All</a>
       </h3>
       <div id="sources-list" className="sources-list">
         {sources.length === 0

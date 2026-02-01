@@ -61,6 +61,7 @@ function openDialogWithPendingAction(
     isOpen: true,
     mode: 'create',
     initialName: suggestedName,
+    notebookId: null,
   }
 }
 
