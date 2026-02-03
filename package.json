@@ -60,7 +60,7 @@
     "@types/chrome": "^0.1.36",
     "@types/eslint": "^9.6.1",
     "@types/mozilla__readability": "^0.4.2",
-    "@types/node": "^25.0.9",
+    "@types/node": "^25.2.0",
     "@types/turndown": "^5.0.5",
     "@typescript-eslint/eslint-plugin": "^8.53.0",
     "@typescript-eslint/parser": "^8.53.0",
@@ -80,7 +80,7 @@
     "sharp": "^0.34.5",
     "typescript": "^5.7.2",
     "vite": "^7.3.1",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.18"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
