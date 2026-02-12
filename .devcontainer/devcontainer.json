@@ -1,0 +1,5 @@
+{
+  "image": "://mcr.microsoft.com",
+  "forwardPorts": [3000],
+  "postCreateCommand": "npm install -g npm@latest"
+}
