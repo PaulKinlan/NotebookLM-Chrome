@@ -120,7 +120,7 @@ jobs:
         run: sudo apt-get install -y xvfb
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: foliolm-extension-${{ github.sha }}
           path: dist/
@@ -153,7 +153,7 @@ jobs:
         run: npm ci
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: foliolm-extension-${{ github.sha }}
           path: dist/
